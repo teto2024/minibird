@@ -1,0 +1,61 @@
+:root{
+  --bg:#0f1419;
+  --card:#15202b;
+  --text:#e6e6e6;
+  --muted:#8899a6;
+  --blue:#1d9bf0;
+  --red:#f91880;
+  --green:#00ba7c;
+  --border:#22303c;
+  --nsfw-blur:12px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui, -apple-system, Segoe UI, Roboto, Noto Sans JP, sans-serif}
+.topbar{position:sticky;top:0;display:flex;gap:16px;align-items:center;justify-content:space-between;background:var(--card);padding:10px 16px;border-bottom:1px solid var(--border);z-index:10}
+.logo{font-weight:700}
+.layout{display:grid;grid-template-columns:260px 1fr 320px;gap:16px;max-width:1200px;margin:0 auto;padding:16px}
+.left nav button{display:block;width:100%;text-align:left;background:transparent;border:0;color:var(--text);padding:10px;border-radius:8px}
+.left nav button:hover{background:#1c2731}
+.center{min-height:80vh}
+#composer{background:var(--card);padding:12px;border:1px solid var(--border);border-radius:12px;margin-bottom:12px}
+#composer textarea{width:100%;height:110px;background:#0b1116;color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px}
+.row{display:flex;gap:8px;align-items:center;margin-top:8px}
+.feed-tabs{display:flex;gap:8px;margin:10px 0}
+.feedTab{background:#1c2731;border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:20px}
+.feedTab.active{background:var(--blue)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px}
+.post{display:grid;grid-template-columns:48px 1fr;gap:8px;padding:12px;border-bottom:1px solid var(--border)}
+.avatar{width:48px;height:48px;border-radius:50%;background:#334;display:flex;align-items:center;justify-content:center}
+.content .meta{color:var(--muted);font-size:12px;margin-bottom:6px}
+.buttons button{background:transparent;border:0;color:var(--muted);margin-right:8px;cursor:pointer}
+.buttons button.liked{color:var(--red)}
+.buttons button.reposted{color:var(--green)}
+.media{margin-top:8px;border-radius:12px;overflow:hidden;border:1px solid var(--border)}
+.media img,.media video{max-width:100%;display:block}
+.nsfw .media{filter:blur(var(--nsfw-blur));}
+.notice{padding:10px 12px;background:#1c2731;border-radius:8px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center}
+.modal-content{background:var(--card);border:1px solid var(--border);padding:16px;border-radius:12px;width:420px;max-width:90%}
+.hidden{display:none}
+button{cursor:pointer}
+.link{color:var(--blue)}
+/* Frames */
+.frame-classic{border:1px solid #2d3e50;border-radius:12px;padding:8px}
+.frame-neon{border:2px solid #0ff; box-shadow:0 0 12px #0ff; border-radius:16px;padding:8px}
+.frame-sakura{border:2px solid #ff7aa2; box-shadow:0 0 8px #ff7aa2; border-radius:16px;padding:8px; background:linear-gradient(90deg,rgba(255,122,162,.08),transparent)}
+.content .body {
+    display: block;      /* ブロック要素として表示 */
+    white-space: normal; /* HTMLタグを正しく解釈 */
+    word-break: break-word; /* 長い単語も折り返す */
+}
+.quote {
+    border-left: 2px solid #ccc;
+    padding-left: 8px;
+    margin-bottom: 6px;
+    font-size: 0.9em;
+    color: #555;
+}
+
+.quote-body {
+    margin-top: 2px;
+}
