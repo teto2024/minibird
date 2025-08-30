@@ -1,20 +1,23 @@
 const state = {
-    feed: 'global',
+    feed: 'null',
     posts: [],
     newestId: 0,
     oldestId: 0,
     isLoading: false,
     hasMore: true
 };
+console.log('state.feed:', state.feed);
 
-// -------------------------
-// parseMessage
-// MarkdownをHTMLに変換した後、メンションやリンクを処理
-// -------------------------
+
+//---------------
+//persemessage
+//----------------
 function parseMessage(html) {
-    // メンション @username をリンクに変換
+    // メンション @username を IDベースのリンクに変換
     html = html.replace(/@([a-zA-Z0-9_]+)/g, (m, user) => {
-        return `<a href="/user/${user}" class="link">@${user}</a>`;
+        const id = window.userMap?.[user];
+        if (id) return `<a href="profile.php?id=${id}" class="link">@${user}</a>`;
+        return '@' + user; // ユーザーが存在しない場合はリンクなし
     });
 
     // URLを自動リンク化
@@ -26,13 +29,90 @@ function parseMessage(html) {
 }
 
 
+
 function qs(sel) { return document.querySelector(sel) }
 function ce(tag, cls) { const el = document.createElement(tag); if (cls) el.className = cls; return el }
 function timeago(ts) { return new Date(ts).toLocaleString() }
 async function api(path, data) {
-    const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data), credentials: 'include' });
-    return res.json();
+    try {
+        const res = await fetch(path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+            credentials: 'include'
+        });
+        const text = await res.text(); // まずテキストで取得
+        try {
+            return JSON.parse(text);   // JSON に変換
+        } catch (e) {
+            console.error('JSON parse error:', text);
+            return { ok: false, error: 'invalid_json', raw: text };
+        }
+    } catch (e) {
+        console.error('Fetch error:', e);
+        return { ok: false, error: 'network_error' };
+    }
 }
+
+//----------------------
+// DOMContentLoaded (整理版)
+//----------------------
+document.addEventListener('DOMContentLoaded', () => {
+
+    // Feed 初期ロード
+    const feedEl = document.getElementById('feed');
+    if (feedEl && feedEl.dataset.feed) {
+        state.feed = feedEl.dataset.feed; // PHP からセットされた feed を優先
+    } else {
+        state.feed = 'global';
+    }
+    console.log('refreshFeed feed:', state.feed);
+    refreshFeed(true);
+
+    // スクロールで loadMore
+    window.addEventListener('scroll', () => {
+        if (state.isLoading || !state.hasMore) return;
+        if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) loadMore();
+    });
+
+    // Feed 切り替え
+    document.querySelectorAll('.tabBtn, .feedTab').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const feed = btn.dataset.tab || btn.dataset.feed;
+            if (!feed) return;
+            state.feed = feed;
+            qs('#feed').dataset.feed = feed;
+            document.querySelectorAll('.tabBtn, .feedTab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            console.log('refreshFeed feed:', state.feed);
+            await refreshFeed(true);
+        });
+    });
+
+    // フォロー周り
+    document.querySelectorAll('.followBtn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const targetId = btn.dataset.userid;
+            const action = btn.classList.contains('following') ? 'unfollow' : 'follow';
+
+            const r = await fetch('follow.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, target_id: targetId }),
+                credentials: 'include'
+            }).then(r => r.json());
+
+            if (r.ok) {
+                btn.classList.toggle('following', action === 'follow');
+                btn.textContent = action === 'follow' ? 'フォロー中' : 'フォロー';
+            } else {
+                alert('失敗: ' + r.error);
+            }
+        });
+    });
+
+});
+
 
 // ---------------------
 // Auth
@@ -76,48 +156,60 @@ qs('#submitPost')?.addEventListener('click', async () => {
 // ---------------------
 // Feed switching
 // ---------------------
-document.querySelectorAll('.tabBtn, .feedTab').forEach(btn => {
-    btn.addEventListener('click', async () => {
-        const feed = btn.dataset.tab || btn.dataset.feed;
-        if (!feed) return;
-        state.feed = feed;
-        qs('#feed').dataset.feed = feed;
-        document.querySelectorAll('.tabBtn, .feedTab').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        await refreshFeed(true);
-    });
-});
-
+//ここだけ残して削除済み
 const feedEl = qs('#feed');
 
 // ---------------------
 // Feed Handling
 // ---------------------
 async function refreshFeed(reset = false) {
+    console.log('refreshFeed feed:', state.feed);
     if (state.isLoading) return;
     state.isLoading = true;
-    qs('#loading').style.display = 'block';
+
+    const feedEl = qs('#feed');
+    const loadingEl = qs('#loading');
+    loadingEl.style.display = 'block';
+
     try {
-        const r = await api('feed.php', { action: 'fetch', feed: state.feed, since_id: reset ? 0 : state.newestId, limit: 50 });
+        const r = await api('feed.php', {
+            action: 'fetch',
+            feed: state.feed,
+            since_id: reset ? 0 : state.newestId,
+            limit: 50
+        });
+
         if (r.ok) {
-            if (reset) state.posts = r.items.map(p => ({ ...p }));
-            else {
+            if (reset) {
+                state.posts = r.items.map(p => ({ ...p }));
+            } else {
                 r.items.forEach(p => {
                     if (!state.posts.some(existing => existing.id === p.id)) {
                         state.posts.unshift(p);
                     }
                 });
             }
+
+            // 投稿を描画（投稿要素だけ更新）
+            renderFeed();
+
             if (state.posts.length) {
                 state.newestId = Math.max(...state.posts.map(p => p.id));
                 state.oldestId = Math.min(...state.posts.map(p => p.id));
             }
-            renderFeed();
-        } else { feedEl.innerHTML = '<div>読み込みエラー</div>'; }
-    } catch (e) { feedEl.innerHTML = '<div>通信エラー</div>'; console.error(e); }
-    qs('#loading').style.display = 'none';
+
+        } else {
+            console.error('読み込みエラー', r);
+        }
+    } catch (e) {
+        console.error('通信エラー', e);
+    }
+
+    loadingEl.style.display = 'none';
     state.isLoading = false;
 }
+
+
 
 async function loadMore() {
     if (state.isLoading || !state.hasMore) return;
@@ -148,10 +240,18 @@ function renderPost(p, wrap) {
     av.textContent = p.handle[0]?.toUpperCase() || 'U';
 
     const cnt = ce('div', 'content');
+    // renderPost 内の meta 部分のリンクを IDベースに統一
     const meta = ce('div', 'meta');
-    meta.textContent = '@' + p.handle + ' ・ ' + timeago(p.created_at);
-    if (p.is_repost_of) meta.textContent += ` ・ ${p.reposter}さんがリポストしました`;
     if (p.deleted) meta.textContent += ' ・ 削除済み';
+    // handle ではなく ID を使用
+    const userLink = p.user_id ? `profile.php?id=${p.user_id}` : `profile.php?handle=${encodeURIComponent(p.handle)}`;
+    meta.innerHTML = `<a href="${userLink}" class="mention">@${p.handle}</a> ・ ${timeago(p.created_at)}`;
+
+    if (p.is_repost_of) {
+        const repLink = p.reposter_id ? `profile.php?id=${p.reposter_id}` : `profile.php?handle=${encodeURIComponent(p.reposter)}`;
+        meta.innerHTML += ` ・ <a href="${repLink}" class="mention">${p.reposter}</a>さんの投稿をリポストしました`;
+    }
+
 
     //------------ 
     // 本文 (Markdown + メンション変換)
@@ -198,20 +298,13 @@ function renderPost(p, wrap) {
         else if (['mp4', 'webm', 'ogg'].includes(ext)) mediaEl = ce('video'), mediaEl.controls = true;
         if (mediaEl) mediaEl.src = mediaSrc, mediaWrapper.append(mediaEl);
 
-        if (p.nsfw) {
-            mediaWrapper.style.filter = 'blur(var(--nsfw-blur))';
-            mediaWrapper.style.cursor = 'pointer';
-            mediaWrapper.title = 'NSFW: クリックで表示';
-            mediaWrapper.addEventListener('click', () => { mediaWrapper.style.filter = ''; });
-        }
-
         body.append(mediaWrapper);
     }
 
     // -------------------------
     // NSFW テキストぼかし
     // -------------------------
-    if (p.nsfw && !p.deleted) {
+    if (!p.deleted && p.nsfw) {
         body.style.filter = 'blur(var(--nsfw-blur))';
         body.style.cursor = 'pointer';
         body.title = 'NSFW: クリックで表示';
@@ -219,18 +312,29 @@ function renderPost(p, wrap) {
     }
 
     // -------------------------
+    // NSFW メディアぼかし
+    // -------------------------
+    if (!p.deleted && p.nsfw && typeof mediaWrapper !== 'undefined') {
+        mediaWrapper.style.filter = 'blur(var(--nsfw-blur))';
+        mediaWrapper.style.cursor = 'pointer';
+        mediaWrapper.title = 'NSFW: クリックで表示';
+        mediaWrapper.addEventListener('click', () => { mediaWrapper.style.filter = ''; });
+    }
+
+
+    // -------------------------
     // ボタン類
     // -------------------------
     const buttons = ce('div', 'buttons');
-    const like = ce('button'); like.textContent = '♥ ' + (p.like_count || 0); if (p.liked) like.classList.add('liked');
+    const like = ce('button'); like.textContent = '❤️' + (p.like_count || 0); if (p.liked) like.classList.add('liked');
     like.onclick = async () => { const r = await api('actions.php', { action: 'toggle_like', post_id: p.id }); if (r.ok) { p.liked = r.liked; p.like_count = r.count; updatePost(p); } };
 
-    const repost = ce('button'); repost.textContent = '⤴ ' + (p.repost_count || 0); if (p.reposted) repost.classList.add('reposted');
+    const repost = ce('button'); repost.textContent = '♻️' + (p.repost_count || 0); if (p.reposted) repost.classList.add('reposted');
     repost.onclick = async () => { const r = await api('actions.php', { action: 'toggle_repost', post_id: p.id }); if (r.ok) { p.reposted = r.reposted; p.repost_count = r.count; refreshFeed(true); } };
 
-    const bm = ce('button'); bm.textContent = '🔖'; bm.onclick = async () => { const r = await api('actions.php', { action: 'toggle_bookmark', post_id: p.id }); if (!r.ok) alert('ブックマーク失敗'); };
+    const bm = ce('button'); bm.textContent = '📑'; bm.onclick = async () => { const r = await api('actions.php', { action: 'toggle_bookmark', post_id: p.id }); if (!r.ok) alert('ブックマーク失敗'); };
 
-    const rep = ce('button'); rep.textContent = '💬 ' + (p.reply_count || 0); rep.onclick = () => { window.location = 'replies.php?post_id=' + p.id; };
+    const rep = ce('button'); rep.textContent = '💬' + (p.reply_count || 0); rep.onclick = () => { window.location = 'replies.php?post_id=' + p.id; };
     const qt = ce('button'); qt.textContent = '❝ 引用'; qt.onclick = () => { const t = prompt('引用コメント'); if (t) quotePost(p.id, t); };
 
     let delBtn = null;
@@ -244,7 +348,6 @@ function renderPost(p, wrap) {
     post.append(av, cnt);
     wrap.append(post);
 }
-
 
 
 function renderFeed() {
@@ -263,6 +366,27 @@ async function quotePost(post_id, text) {
     const r = await api('post.php', { action: 'quote_post', post_id, content: text });
     if (r.ok) refreshFeed(true); else alert('引用失敗: ' + r.error);
 }
+//----------------------
+//ハンガーメニュー
+//----------------------
+window.addEventListener("load", () => {
+    const toggleBtn = document.querySelector(".menu-toggle");
+    const leftMenu = document.querySelector(".left");
+    const closeBtn = document.querySelector(".close-menu");
+
+    if (toggleBtn && leftMenu) {
+        toggleBtn.addEventListener("click", () => {
+            leftMenu.classList.add("open");
+        });
+    }
+
+    if (closeBtn && leftMenu) {
+        closeBtn.addEventListener("click", () => {
+            leftMenu.classList.remove("open");
+        });
+    }
+});
+
 
 // ---------------------
 // Polling
@@ -270,4 +394,4 @@ async function quotePost(post_id, text) {
 setInterval(() => refreshFeed(false), 3000);
 
 // 初回ロード
-refreshFeed(true);
+//refreshFeed(true);
