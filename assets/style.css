@@ -1,61 +1,646 @@
-:root{
-  --bg:#0f1419;
-  --card:#15202b;
-  --text:#e6e6e6;
-  --muted:#8899a6;
-  --blue:#1d9bf0;
-  --red:#f91880;
-  --green:#00ba7c;
-  --border:#22303c;
-  --nsfw-blur:12px;
+:root {
+    --bg: #0f1419;
+    --card: #15202b;
+    --text: #e6e6e6;
+    --muted: #8899a6;
+    --blue: #1d9bf0;
+    --red: #f91880;
+    --green: #00ba7c;
+    --border: #22303c;
+    --nsfw-blur: 12px;
+    --gradient-anim: linear-gradient(270deg, #1d9bf0, #ff7aa2, #00ba7c, #f91880);
 }
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui, -apple-system, Segoe UI, Roboto, Noto Sans JP, sans-serif}
-.topbar{position:sticky;top:0;display:flex;gap:16px;align-items:center;justify-content:space-between;background:var(--card);padding:10px 16px;border-bottom:1px solid var(--border);z-index:10}
-.logo{font-weight:700}
-.layout{display:grid;grid-template-columns:260px 1fr 320px;gap:16px;max-width:1200px;margin:0 auto;padding:16px}
-.left nav button{display:block;width:100%;text-align:left;background:transparent;border:0;color:var(--text);padding:10px;border-radius:8px}
-.left nav button:hover{background:#1c2731}
-.center{min-height:80vh}
-#composer{background:var(--card);padding:12px;border:1px solid var(--border);border-radius:12px;margin-bottom:12px}
-#composer textarea{width:100%;height:110px;background:#0b1116;color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px}
-.row{display:flex;gap:8px;align-items:center;margin-top:8px}
-.feed-tabs{display:flex;gap:8px;margin:10px 0}
-.feedTab{background:#1c2731;border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:20px}
-.feedTab.active{background:var(--blue)}
-.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px}
-.post{display:grid;grid-template-columns:48px 1fr;gap:8px;padding:12px;border-bottom:1px solid var(--border)}
-.avatar{width:48px;height:48px;border-radius:50%;background:#334;display:flex;align-items:center;justify-content:center}
-.content .meta{color:var(--muted);font-size:12px;margin-bottom:6px}
-.buttons button{background:transparent;border:0;color:var(--muted);margin-right:8px;cursor:pointer}
-.buttons button.liked{color:var(--red)}
-.buttons button.reposted{color:var(--green)}
-.media{margin-top:8px;border-radius:12px;overflow:hidden;border:1px solid var(--border)}
-.media img,.media video{max-width:100%;display:block}
-.nsfw .media{filter:blur(var(--nsfw-blur));}
-.notice{padding:10px 12px;background:#1c2731;border-radius:8px}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center}
-.modal-content{background:var(--card);border:1px solid var(--border);padding:16px;border-radius:12px;width:420px;max-width:90%}
-.hidden{display:none}
-button{cursor:pointer}
-.link{color:var(--blue)}
-/* Frames */
-.frame-classic{border:1px solid #2d3e50;border-radius:12px;padding:8px}
-.frame-neon{border:2px solid #0ff; box-shadow:0 0 12px #0ff; border-radius:16px;padding:8px}
-.frame-sakura{border:2px solid #ff7aa2; box-shadow:0 0 8px #ff7aa2; border-radius:16px;padding:8px; background:linear-gradient(90deg,rgba(255,122,162,.08),transparent)}
+
+* {
+    box-sizing: border-box
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans JP, sans-serif;
+    line-height: 1.5;
+}
+
+.topbar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card);
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    z-index: 10;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.logo {
+    font-weight: 700;
+    background: linear-gradient(90deg, #1d9bf0, #ff7aa2, #00ba7c);
+    -webkit-background-clip: text;
+    color: transparent;
+    animation: hueRotate 8s linear infinite;
+}
+
+@keyframes hueRotate {
+    0% {
+        filter: hue-rotate(0deg)
+    }
+
+    100% {
+        filter: hue-rotate(360deg)
+    }
+}
+
+.layout {
+    display: grid;
+    grid-template-columns: 260px 1fr 320px;
+    gap: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 16px;
+}
+
+@media (max-width:1024px) {
+    .layout {
+        grid-template-columns: 1fr;
+        padding: 12px
+    }
+
+    .left,
+    .right {
+        display: none
+    }
+}
+
+.left nav button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    color: var(--text);
+    padding: 10px;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.left nav button:hover {
+    background: #1c2731;
+    transform: translateX(4px);
+}
+
+.center {
+    min-height: 80vh
+}
+
+#composer {
+    background: var(--card);
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+#composer textarea {
+    width: 100%;
+    height: 110px;
+    background: #0b1116;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+    transition: border-color 0.3s;
+}
+
+#composer textarea:focus {
+    border-color: var(--blue);
+    outline: none
+}
+
+.row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px
+}
+
+.feed-tabs {
+    display: flex;
+    gap: 8px;
+    margin: 10px 0
+}
+
+.feedTab {
+    background: #1c2731;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 20px;
+    transition: all 0.3s;
+}
+
+.feedTab.active {
+    background: var(--blue);
+    box-shadow: 0 0 12px var(--blue);
+}
+
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+}
+
+.post {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: 8px;
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.3s;
+}
+
+.post:hover {
+    background: rgba(29, 155, 240, 0.05)
+}
+
+.avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #334;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 18px;
+    color: #fff;
+}
+
+.content .meta {
+    color: var(--muted);
+    font-size: 12px;
+    margin-bottom: 6px;
+    transition: color 0.3s;
+}
+
+.buttons button {
+    background: transparent;
+    border: 0;
+    color: var(--muted);
+    margin-right: 8px;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.buttons button:hover {
+    color: var(--blue)
+}
+
+.buttons button.liked {
+    color: var(--red)
+}
+
+.buttons button.reposted {
+    color: var(--green)
+}
+
+.media {
+    margin-top: 8px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    transition: filter 0.3s;
+}
+
+.media img,
+.media video {
+    max-width: 100%;
+    display: block
+}
+
+.nsfw .media {
+    filter: blur(var(--nsfw-blur));
+    cursor: pointer;
+    transition: filter 0.3s
+}
+
+.notice {
+    padding: 10px 12px;
+    background: #1c2731;
+    border-radius: 8px
+}
+
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 16px;
+    border-radius: 12px;
+    width: 420px;
+    max-width: 90%;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px)
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0)
+    }
+}
+
+.hidden {
+    display: none
+}
+
+button {
+    cursor: pointer
+}
+
+.link {
+    color: var(--blue)
+}
+
 .content .body {
-    display: block;      /* ブロック要素として表示 */
-    white-space: normal; /* HTMLタグを正しく解釈 */
-    word-break: break-word; /* 長い単語も折り返す */
+    display: block;
+    white-space: normal;
+    word-break: break-word
 }
+
 .quote {
     border-left: 2px solid #ccc;
     padding-left: 8px;
     margin-bottom: 6px;
     font-size: 0.9em;
-    color: #555;
+    color: #555
 }
 
 .quote-body {
-    margin-top: 2px;
+    margin-top: 2px
+}
+
+.nsfw-blur {
+    filter: blur(10px);
+    cursor: pointer;
+    color: #888;
+    background: #0002;
+    padding: 8px;
+    border-radius: 6px
+}
+
+.nsfw-blur:hover {
+    filter: none;
+    color: inherit;
+    background: inherit
+}
+/* モバイル用ハンバーガーメニュー */
+@media (max-width: 768px) {
+    .left {
+        position: fixed;
+        top: 0;
+        left: -260px;
+        /* 初期は隠す */
+        width: 240px;
+        height: 100%;
+        background: var(--card);
+        border-right: 1px solid var(--border);
+        padding: 16px;
+        transition: left 0.3s ease;
+        z-index: 200;
+        overflow-y: auto;
+        display: block;
+        /* ← これで常に表示扱いにする */
+    }
+
+    .left.open {
+        left: 0 !important;
+        display: block !important;
+        /* ← これで display:none を打ち消す */
+    }
+
+    .menu-toggle {
+        display: block;
+        background: transparent;
+        border: none;
+        font-size: 24px;
+        color: var(--text);
+        cursor: pointer;
+        margin-right: 8px;
+    }
+    .close-menu {
+            display: block;
+            background: transparent;
+            border: none;
+            font-size: 24px;
+            color: var(--text);
+            cursor: pointer;
+            position: absolute;
+            top: 12px;
+            right: 12px;
+    }
+    .right {
+        display: none;
+    }
+}
+
+/* PCではハンバーガー隠す */
+@media (min-width: 769px) {
+    .menu-toggle {
+        display: none;
+    }
+}
+/* Frames */
+.frame-classic {
+    border: 1px solid #2d3e50;
+    border-radius: 12px;
+    padding: 8px;
+    transition: all 0.3s;
+    position: relative;
+}
+
+/* 桜フレーム（擬似要素でふわっと光る） */
+.frame-sakura {
+    border: 2px solid #ff5caa;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(90deg, rgba(255, 92, 170, 0.12), rgba(255, 122, 162, 0.18));
+    color: #ff66aa;
+    position: relative;
+    overflow: hidden;
+}
+
+.frame-sakura::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 0 12px rgba(255, 92, 170, 0.5), 0 0 24px rgba(255, 122, 162, 0.4);
+    animation: sakuraGlowSmooth 6s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes sakuraGlowSmooth {
+
+    0%,
+    100% {
+        box-shadow: 0 0 12px rgba(255, 92, 170, 0.5), 0 0 24px rgba(255, 122, 162, 0.4);
+    }
+
+    25% {
+        box-shadow: 0 0 16px rgba(255, 92, 170, 0.6), 0 0 32px rgba(255, 122, 162, 0.5);
+    }
+
+    50% {
+        box-shadow: 0 0 20px rgba(255, 92, 170, 0.65), 0 0 40px rgba(255, 122, 162, 0.55);
+    }
+
+    75% {
+        box-shadow: 0 0 16px rgba(255, 92, 170, 0.6), 0 0 32px rgba(255, 122, 162, 0.5);
+    }
+}
+
+/* ネオンフレーム（擬似要素でほわほわ光＋背景グラデーション） */
+.frame-neon {
+    border: 2px solid #0ff;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(45deg,
+            rgba(0, 255, 255, 0.25),
+            rgba(29, 155, 240, 0.2),
+            rgba(255, 122, 162, 0.2),
+            rgba(0, 186, 124, 0.2));
+    color: #33ffff;
+    position: relative;
+    overflow: hidden;
+}
+
+.frame-neon::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 0 12px #0ff, 0 0 24px #1d9bf0, 0 0 36px #ff7aa2;
+    animation: neonGlowSmooth 12s ease-in-out infinite, neonGradientShift 20s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes neonGlowSmooth {
+
+    0%,
+    100% {
+        box-shadow: 0 0 12px #0ff, 0 0 24px #1d9bf0, 0 0 36px #ff7aa2;
+    }
+
+    25% {
+        box-shadow: 0 0 14px #0ff, 0 0 28px #1d9bf0, 0 0 42px #ff7aa2;
+    }
+
+    50% {
+        box-shadow: 0 0 16px #0ff, 0 0 32px #1d9bf0, 0 0 48px #ff7aa2;
+    }
+
+    75% {
+        box-shadow: 0 0 14px #0ff, 0 0 28px #1d9bf0, 0 0 42px #ff7aa2;
+    }
+}
+
+@keyframes neonGradientShift {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+/* 花火フレーム（夜空に打ち上がる花火イメージ） */
+.frame-fireworks {
+    position: relative;
+    border: 2px solid #fff5;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(to bottom, #0a0f20 0%, #1b1b3a 100%);
+    color: #ffeedd;
+}
+
+.frame-fireworks::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    background: radial-gradient(circle, rgba(255, 255, 200, 0.3) 0%, transparent 70%);
+    animation: fireworksBurst 3s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes fireworksBurst {
+
+    0%,
+    100% {
+        opacity: 0;
+        transform: scale(0.8) rotate(0deg);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.2) rotate(360deg);
+    }
+}
+
+
+/* ネオン文字（文字にグラデーション・背景もネオンぽく） */
+/* ネオン文字（文字にグラデーション・背景もネオンぽく） */
+.frame-neon-text {
+    position: relative;
+    border: 2px solid #0ff;
+    border-radius: 16px;
+    padding: 12px;
+    /* 背景グラデーションの色味を薄く調整 */
+    background: linear-gradient(45deg, rgba(0, 255, 255, 0.05), rgba(29, 155, 240, 0.05));
+    color: #0ff;
+    font-weight: bold;
+}
+
+.frame-neon-text::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    /* グラデーション色味を薄めに */
+    background: linear-gradient(90deg, rgba(0, 255, 255, 0.4), rgba(29, 155, 240, 0.4), rgba(255, 122, 162, 0.4), rgba(0, 186, 124, 0.4));
+    background-size: 400% 400%;
+    mix-blend-mode: screen;
+    animation: neonTextShift 8s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes neonTextShift {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* VIP（ゴージャス・高級感＋文字ネオン） */
+.frame-vip {
+    position: relative;
+    border: 2px solid gold;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(135deg, #1a1a1a, #333, #555);
+    color: gold;
+    font-weight: bold;
+    text-shadow:
+        0 0 4px gold,
+        0 0 8px gold,
+        0 0 12px goldenrod,
+        0 0 16px gold;
+}
+
+.frame-vip::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.2) 0%, transparent 80%);
+    animation: vipGlow 5s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes vipGlow {
+
+    0%,
+    100% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.6;
+        transform: scale(1.05);
+    }
+}
+/* サイバーパンク（虹色・ペンキ風） */
+.frame-cyberpunk {
+    position: relative;
+    border: 2px solid #ffd700;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(45deg,
+            rgba(255, 0, 255, 0.15),
+            rgba(255, 255, 0, 0.15),
+            rgba(0, 255, 255, 0.15),
+            rgba(255, 140, 0, 0.15));
+    color: #fff100;
+}
+
+.frame-cyberpunk::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
+    animation: cyberGlow 5s ease-in-out infinite;
+    pointer-events: none;
+}
+
+/* パープル（紫系・優しいイメージ、背景濃さ維持） */
+.frame-purple {
+    position: relative;
+    border: 2px solid #cfa0ff;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(45deg,
+            rgba(128, 0, 128, 0.25),
+            rgba(147, 112, 219, 0.25),
+            rgba(186, 85, 211, 0.25));
+    color: #a050ff;
+    /* 文字を濃く */
+}
+
+.frame-purple::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, transparent 70%);
+    animation: purpleGlow 6s ease-in-out infinite;
+    pointer-events: none;
 }
