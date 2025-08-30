@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/config.php';
+
+
 header('Content-Type: application/json');
 $input = json_decode(file_get_contents('php://input'), true) ?: [];
 $action = $input['action'] ?? '';
@@ -22,28 +24,55 @@ if ($action === 'toggle_like') {
 }
 
 if ($action === 'toggle_repost') {
-  require_login();
-  $post_id = (int)($input['post_id'] ?? 0);
-  if ($post_id<=0) { echo json_encode(['ok'=>false]); exit; }
-  $pdo = db();
-  $st = $pdo->prepare("SELECT 1 FROM reposts WHERE user_id=? AND post_id=?");
-  $st->execute([$_SESSION['uid'],$post_id]);
-  if ($st->fetch()) {
-    $pdo->prepare("DELETE FROM reposts WHERE user_id=? AND post_id=?")->execute([$_SESSION['uid'],$post_id]);
-    // remove repost post copy (optional)
-    $pdo->prepare("DELETE FROM posts WHERE user_id=? AND is_repost_of=?")->execute([$_SESSION['uid'],$post_id]);
-    $reposted=false;
-  } else {
-    $pdo->prepare("INSERT INTO reposts(user_id,post_id) VALUES(?,?)")->execute([$_SESSION['uid'],$post_id]);
-    // create a copy in timeline
-    $pdo->prepare("INSERT INTO posts(user_id,content_md,content_html,is_repost_of,created_at) SELECT ?, content_md, content_html, id, NOW() FROM posts WHERE id=?")
-        ->execute([$_SESSION['uid'],$post_id]);
-    $reposted=true;
-  }
-  $cnt = (int)$pdo->query("SELECT COUNT(*) FROM reposts WHERE post_id=".$post_id)->fetchColumn();
-  echo json_encode(['ok'=>true,'count'=>$cnt,'reposted'=>$reposted]);
-  exit;
+    require_login();
+
+    $post_id = (int)($input['post_id'] ?? 0);
+    if ($post_id <= 0) {
+        echo json_encode(['ok' => false]);
+        exit;
+    }
+
+    $pdo = db();
+
+    // 既にリポストしているか確認
+    $st = $pdo->prepare("SELECT 1 FROM reposts WHERE user_id=? AND post_id=?");
+    $st->execute([$_SESSION['uid'], $post_id]);
+
+    if ($st->fetch()) {
+        // リポスト解除
+        $pdo->prepare("DELETE FROM reposts WHERE user_id=? AND post_id=?")
+            ->execute([$_SESSION['uid'], $post_id]);
+
+        // リポストのコピー投稿を削除（オプション）
+        $pdo->prepare("DELETE FROM posts WHERE user_id=? AND is_repost_of=?")
+            ->execute([$_SESSION['uid'], $post_id]);
+
+        $reposted = false;
+    } else {
+        // リポスト追加
+        $pdo->prepare("INSERT INTO reposts(user_id, post_id) VALUES(?, ?)")
+            ->execute([$_SESSION['uid'], $post_id]);
+
+        // タイムライン用に投稿コピーを作成
+        $pdo->prepare("
+            INSERT INTO posts(user_id, content_md, content_html, is_repost_of, created_at)
+            SELECT ?, content_md, content_html, id, NOW() 
+            FROM posts 
+            WHERE id=?
+        ")->execute([$_SESSION['uid'], $post_id]);
+
+        $reposted = true;
+    }
+
+    // リポスト数を取得
+    $cnt = (int)$pdo->query("SELECT COUNT(*) FROM reposts WHERE post_id=" . $post_id)->fetchColumn();
+
+    echo json_encode(['ok' => true, 'count' => $cnt, 'reposted' => $reposted]);
+    exit;
 }
+
+
+
 
 if ($action === 'toggle_bookmark') {
   require_login();

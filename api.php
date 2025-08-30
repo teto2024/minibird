@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__.'/config.php';
+
+
 header('Content-Type: application/json');
 
 $uid = $_SESSION['uid'] ?? 0;

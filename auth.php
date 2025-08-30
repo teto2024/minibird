@@ -2,6 +2,67 @@
 require_once __DIR__ . '/config.php';
 header('Content-Type: application/json');
 
+// -------------------------
+// DBセッションハンドラ設定
+// -------------------------
+class DbSessionHandler implements SessionHandlerInterface {
+    private $pdo;
+    private $table = 'sessions';
+    private $lifetime;
+
+    public function __construct(PDO $pdo) {
+        $this->pdo = $pdo;
+        $this->lifetime = ini_get('session.gc_maxlifetime');
+    }
+
+    public function open($savePath, $sessionName) { return true; }
+    public function close() { return true; }
+
+    public function read($id) {
+        $st = $this->pdo->prepare("SELECT data FROM {$this->table} WHERE id=? AND expires_at > NOW()");
+        $st->execute([$id]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        return $row['data'] ?? '';
+    }
+
+    public function write($id, $data) {
+        $expires = date('Y-m-d H:i:s', time() + $this->lifetime);
+        $st = $this->pdo->prepare("
+            INSERT INTO {$this->table} (id, data, expires_at) 
+            VALUES (?, ?, ?) 
+            ON DUPLICATE KEY UPDATE data=VALUES(data), expires_at=VALUES(expires_at)
+        ");
+        return $st->execute([$id, $data, $expires]);
+    }
+
+    public function destroy($id) {
+        $st = $this->pdo->prepare("DELETE FROM {$this->table} WHERE id=?");
+        return $st->execute([$id]);
+    }
+
+    public function gc($maxlifetime) {
+        $st = $this->pdo->prepare("DELETE FROM {$this->table} WHERE expires_at < NOW()");
+        return $st->execute();
+    }
+}
+
+// PDO取得
+$pdo = db();
+
+// セッションハンドラ登録
+$handler = new DbSessionHandler($pdo);
+session_set_save_handler($handler, true);
+session_start(); // <- ここから $_SESSION が DB に保存される
+// -------------------------
+
+$input = json_decode(file_get_contents('php://input'), true) ?: [];
+$action = $input['action'] ?? '';
+
+// 以下、auth.php の既存処理はそのまま
+
+require_once __DIR__ . '/config.php';
+header('Content-Type: application/json');
+
 $input = json_decode(file_get_contents('php://input'), true) ?: [];
 $action = $input['action'] ?? '';
 

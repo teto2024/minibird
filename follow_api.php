@@ -42,6 +42,32 @@ try {
         $is_following = $stmt->fetchColumn() > 0;
         echo json_encode(['status' => 'success', 'is_following' => $is_following]);
 
+    } elseif ($action === 'follow' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        // フォロー処理
+        $check_id = isset($_POST['target_id']) ? (int)$_POST['target_id'] : 0;
+        if ($check_id <= 0 || $check_id === $user_id) {
+            echo json_encode(['status' => 'error', 'message' => '不正な対象です']);
+            exit;
+        }
+        // 既存チェック
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM follows WHERE follower_id = ? AND followee_id = ?");
+        $stmt->execute([$user_id, $check_id]);
+        if ($stmt->fetchColumn() > 0) {
+            echo json_encode(['status' => 'error', 'message' => 'すでにフォローしています']);
+            exit;
+        }
+        // 追加
+        $stmt = $pdo->prepare("INSERT INTO follows (follower_id, followee_id) VALUES (?, ?)");
+        $stmt->execute([$user_id, $check_id]);
+        echo json_encode(['status' => 'success', 'message' => 'フォローしました']);
+
+    } elseif ($action === 'unfollow' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        // アンフォロー処理
+        $check_id = isset($_POST['target_id']) ? (int)$_POST['target_id'] : 0;
+        $stmt = $pdo->prepare("DELETE FROM follows WHERE follower_id = ? AND followee_id = ?");
+        $stmt->execute([$user_id, $check_id]);
+        echo json_encode(['status' => 'success', 'message' => 'フォローを解除しました']);
+
     } else {
         echo json_encode(['status' => 'error', 'message' => '不明なアクションです']);
     }

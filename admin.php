@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/config.php';
+
+
 $me = user();
 if (!$me || !in_array($me['role'], ['mod','admin'])) { http_response_code(403); echo "forbidden"; exit; }
 $pdo = db();

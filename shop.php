@@ -10,8 +10,14 @@ if ($cnt===0){
   $pdo->exec("INSERT INTO frames(name,css_token,price_coins,price_crystals,preview_css) VALUES
   ('クラシック','frame-classic',200,0,''),
   ('ネオン','frame-neon',800,2,''),
-  ('サクラ','frame-sakura',500,1,'')");
+  ('サクラ','frame-sakura',500,1,''),
+  ('花火','frame-fireworks',600,1,''),
+  ('サイバーパンク','frame-cyberpunk',900,3,''),
+  ('ネオン文字','frame-neon-text',850,2,''),
+  ('VIP','frame-vip',2000,5,''),
+  ('パープル','frame-purple',700,1,'')");
 }
+
 
 if ($_SERVER['REQUEST_METHOD']==='POST'){
   $frame_id = (int)($_POST['frame_id'] ?? 0);

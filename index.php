@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/config.php';
+
 $me = user();
 function linkify_handles($content) {
     return preg_replace(
@@ -19,6 +20,7 @@ function linkify_handles($content) {
 </head>
 <body>
 <header class="topbar">
+  <button class="menu-toggle">☰</button>
   <div class="logo">🐦 MiniBird</div>
   <div class="search"><input id="q" placeholder="検索 (ハッシュ/ユーザー)"></div>
   <div class="user">
@@ -33,6 +35,7 @@ function linkify_handles($content) {
 
 <main class="layout">
   <aside class="left">
+  <button class="close-menu" aria-label="メニューを閉じる">✕</button>
     <nav>
       <button class="tabBtn" data-tab="recommended">おすすめ</button>
       <button class="tabBtn" data-tab="global" aria-selected="true">全体</button>
