@@ -26,6 +26,16 @@ function linkify_handles($content) {
   <div class="user">
     <?php if ($me): ?>
       <span>@<?=htmlspecialchars($me['handle'])?></span>
+      <button id="notificationBtn">
+  🔔 <span id="notification-badge" class="badge"></span>
+</button>
+
+<!-- ポップアップ -->
+<div id="notificationPopup" class="hidden">
+  <ul id="notificationList"></ul>
+  <a href="/notifications.php">すべてを見る</a>
+</div>
+
       <button id="logoutBtn">ログアウト</button>
     <?php else: ?>
       <button id="showAuth">ログイン / 登録</button>
@@ -37,17 +47,21 @@ function linkify_handles($content) {
   <aside class="left">
   <button class="close-menu" aria-label="メニューを閉じる">✕</button>
     <nav>
-      <button class="tabBtn" data-tab="recommended">おすすめ</button>
-      <button class="tabBtn" data-tab="global" aria-selected="true">全体</button>
-      <?php if ($me): ?>
-        <button class="tabBtn" data-tab="following">フォロー中</button>
-        <button class="tabBtn" data-tab="bookmarks">ブックマーク</button>
-        <button class="tabBtn" data-tab="communities">コミュニティ</button>
-        <a href="focus.php" class="tabBtn block">集中</a>
-        <a href="shop.php" class="tabBtn block">フレーム・ショップ</a>
-        <a href="admin.php" class="tabBtn block">管理者用</a>
-      <?php endif; ?>
-    </nav>
+  <button class="tabBtn" data-tab="recommended">おすすめ</button>
+  <button class="tabBtn" data-tab="global" aria-selected="true">全体</button>
+  <?php if ($me): ?>
+    <button class="tabBtn" data-tab="following">フォロー中</button>
+    <button class="tabBtn" data-tab="bookmarks">ブックマーク</button>
+    <button class="tabBtn" data-tab="communities">コミュニティ</button>
+    <!-- 通知タブを a タグに変更 -->
+    <a href="notifications.php" class="tabBtn block">通知</a>
+    <a href="focus.php" class="tabBtn block">集中</a>
+    <a href="shop.php" class="tabBtn block">フレーム・ショップ</a>
+    <a href="admin.php" class="tabBtn block">管理者用</a>
+  <?php endif; ?>
+</nav>
+
+
   </aside>
 
   <section class="center">
@@ -79,7 +93,8 @@ function linkify_handles($content) {
       <h3>プロフィール</h3>
       <?php if ($me): ?>
       <h2>@example_user</h2>
-  　　<button id="follow-btn" data-user-id="123">フォローする</button>
+
+      <button id="follow-btn" data-user-id="123">フォローする</button>
       <div>ユーザーハッシュ: <button id="revealHash">表示</button> <code id="userHash" class="hidden"></code></div>
       <div>コイン: <span id="coins"><?=$me['coins']?></span> / クリスタル: <span id="crystals"><?=$me['crystals']?></span></div>
       <div class="row"><input id="newPass" type="password" placeholder="新パスワード"><button id="changePass">変更</button></div>

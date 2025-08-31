@@ -2,7 +2,6 @@
 require_once 'config.php';
 var_dump(session_id(), $_SESSION);
 
-
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['user_id'])) {
@@ -19,10 +18,25 @@ if ($target_id <= 0 || $target_id === $user_id) {
     exit;
 }
 
+// 通知作成用関数
+function insertNotification($type, $actor_id, $target_user_id, $post_id = null) {
+    if ($actor_id === $target_user_id) return; // 自分のアクションは通知しない
+    $pdo = db();
+    $st = $pdo->prepare("
+        INSERT INTO notifications (user_id, actor_id, type, post_id, created_at, is_read)
+        VALUES (?, ?, ?, ?, NOW(), 0)
+    ");
+    $st->execute([$target_user_id, $actor_id, $type, $post_id]);
+}
+
 try {
     if ($action === 'follow') {
         $stmt = $pdo->prepare("INSERT IGNORE INTO follows (follower_id, followee_id, created_at) VALUES (?, ?, NOW())");
         $stmt->execute([$user_id, $target_id]);
+
+        // フォロー通知
+        insertNotification('follow', $user_id, $target_id);
+
         echo json_encode(['status' => 'success', 'message' => 'フォローしました']);
     } elseif ($action === 'unfollow') {
         $stmt = $pdo->prepare("DELETE FROM follows WHERE follower_id = ? AND followee_id = ?");

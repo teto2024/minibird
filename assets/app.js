@@ -425,6 +425,135 @@ window.addEventListener("load", () => {
         });
     }
 });
+//----------------------------
+// 通知管理スクリプト (安全強化版)
+//----------------------------
+
+let lastNotificationId = 0;
+
+const notificationBtn = document.getElementById("notificationBtn");
+const notificationPopup = document.getElementById("notificationPopup");
+const notificationList = document.getElementById("notificationList");
+const badge = document.querySelector("#notification-badge");
+const feed = document.getElementById("feed");
+
+// JSON 安全取得関数
+async function fetchJSON(url) {
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+    } catch (e) {
+        console.error("JSON取得エラー", e);
+        return [];
+    }
+}
+
+// 未読バッジ更新
+function updateNotificationBadge(count) {
+    if (!badge) return;
+    badge.textContent = count > 0 ? count : "";
+}
+
+// 通知を既読化
+async function markNotificationsRead() {
+    try {
+        await fetch("/mark_notifications_read.php", { method: "POST" });
+        updateNotificationBadge(0);
+    } catch (e) {
+        console.error("既読化失敗", e);
+    }
+}
+
+// 通知一覧の表示
+async function loadNotifications() {
+    if (!feed) return;
+    feed.innerHTML = "<p>通知を読み込み中...</p>";
+
+    const data = await fetchJSON("/notifications_api.php");
+    if (data.length === 0) {
+        feed.innerHTML = "<p>通知はまだありません。</p>";
+        return;
+    }
+
+    // 最新 ID を更新
+    const ids = data.map(n => n.id).filter(id => typeof id === "number");
+    if (ids.length > 0) lastNotificationId = Math.max(...ids);
+
+    // 未読件数バッジ更新
+    const unreadCount = data.filter(n => n.is_read === 0).length;
+    updateNotificationBadge(unreadCount);
+
+    feed.innerHTML = data.map(n => {
+        const actorIcon = n.actor?.icon || '/default_icon.png';
+        const message = n.message || '';
+        return `
+        <div class="notification ${n.highlight ? "highlight" : ""}">
+            <img src="${actorIcon}" alt="アイコン" class="avatar">
+            <div>
+                <p>${message}</p>
+                <small>${n.created_at || ''}</small>
+            </div>
+        </div>`;
+    }).join("");
+
+    await markNotificationsRead();
+}
+
+// ポップアップ表示用の最新5件
+notificationBtn?.addEventListener("click", async () => {
+    notificationPopup?.classList.toggle("hidden");
+
+    const data = await fetchJSON("/notifications_api.php?limit=5");
+    notificationList.innerHTML = data.map(n => {
+        const actorIcon = n.actor?.icon || '/default_icon.png';
+        const message = n.message || '';
+        return `
+        <li class="${n.highlight ? "highlight" : ""}">
+            <img src="${actorIcon}" class="avatar" alt="アイコン">
+            <span>${message}</span>
+        </li>`;
+    }).join("");
+});
+
+// 定期的に新着通知チェック
+async function fetchNewNotifications() {
+    const data = await fetchJSON(`/notifications_api.php?since_id=${lastNotificationId}`);
+    if (data.length > 0) {
+        const ids = data.map(n => n.id).filter(id => typeof id === "number");
+        if (ids.length > 0) lastNotificationId = Math.max(...ids);
+        const unreadCount = data.filter(n => n.is_read === 0).length;
+        updateNotificationBadge(unreadCount);
+    }
+}
+
+// 初回ロード時に既存通知の件数と最新IDを取得
+(async function initNotifications() {
+    const data = await fetchJSON("/notifications_api.php");
+    if (data.length > 0) {
+        const ids = data.map(n => n.id).filter(id => typeof id === "number");
+        if (ids.length > 0) lastNotificationId = Math.max(...ids);
+        const unreadCount = data.filter(n => n.is_read === 0).length;
+        updateNotificationBadge(unreadCount);
+    }
+})();
+
+// 5秒おきに新着通知チェック
+setInterval(fetchNewNotifications, 5000);
+
+// タブ切り替え時に通知タブならロード
+document.querySelectorAll(".tabBtn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+        const tab = btn.dataset.tab;
+        if (tab === "notifications") {
+            await loadNotifications();
+        } else {
+            // 他タブの既存処理
+            loadFeed(tab);
+        }
+    });
+});
 
 
 // ---------------------
