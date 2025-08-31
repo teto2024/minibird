@@ -644,3 +644,40 @@ button {
     animation: purpleGlow 6s ease-in-out infinite;
     pointer-events: none;
 }
+/* フルスクリーン用*/
+.fullscreen-fallback {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: black;
+    /* 任意 */
+    z-index: 9999;
+}
+//アイコン
+.user-display-name {
+    font-weight: bold;
+    font-size: 1.2em;
+    margin-bottom: 5px;
+}
+
+.user-bio {
+    font-size: 0.95em;
+    color: #666;
+    margin-bottom: 10px;
+}
+/* プロフィールアイコンのサイズ調整 */
+.user-icon {
+    width: 80px;
+    /* 横幅 */
+    height: 80px;
+    /* 高さ */
+    object-fit: cover;
+    /* 画像の縦横比を維持して中央を切り抜き */
+    border-radius: 50%;
+    /* 丸く表示したい場合 */
+    display: block;
+    margin-bottom: 8px;
+    /* 下に余白 */
+}

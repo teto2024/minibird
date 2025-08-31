@@ -1,6 +1,8 @@
 <?php
 session_start();
 require_once 'config.php';
+$pdo = db();
+
 
 header('Content-Type: application/json');
 
@@ -10,8 +12,8 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $user_id = (int)$_SESSION['user_id'];
-$action = $_GET['action'] ?? '';
-$target_id = isset($_GET['user_id']) ? (int)$_GET['user_id'] : $user_id;
+$action = $_POST['action'] ?? $_GET['action'] ?? '';
+$target_id = isset($_POST['target_id']) ? (int)$_POST['target_id'] : (isset($_GET['user_id']) ? (int)$_GET['user_id'] : $user_id);
 
 try {
     if ($action === 'list_following') {

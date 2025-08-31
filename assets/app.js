@@ -7,7 +7,24 @@ const state = {
     hasMore: true
 };
 console.log('state.feed:', state.feed);
+//----------
+//いいね更新用関数
+//-----------
+function updateLikeUI(p) {
+    const wrap = qs('#feed');
+    const postEl = wrap.querySelector(`[data-post-id="${p.id}"]`);
+    if (!postEl) return;
 
+    const likeBtn = postEl.querySelector('.like-btn');
+    if (likeBtn) {
+        likeBtn.textContent = '❤️' + (p.like_count || 0);
+        if (p.liked) {
+            likeBtn.classList.add('liked');
+        } else {
+            likeBtn.classList.remove('liked');
+        }
+    }
+}
 
 //---------------
 //persemessage
@@ -228,30 +245,41 @@ window.addEventListener('scroll', () => {
     if (state.isLoading || !state.hasMore) return;
     if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) loadMore();
 });
-//-----------
-//Render
-//-----------
-
+//----------------------
+//render
+//----------------------
 function renderPost(p, wrap) {
+    console.log('renderPost data:', p); // ←ここ
     const post = ce('div', 'post ' + (p.frame_class || ''));
     post.dataset.postId = p.id;
 
-    const av = ce('div', 'avatar');
-    av.textContent = p.handle[0]?.toUpperCase() || 'U';
+    // アイコン
+    const av = ce('img');
+    // PHP側で正しいパスが返るのでそのまま使用。なければデフォルトアイコン
+    av.src = p.icon || '/uploads/icons/default_icon.png';
+    // 表示名があれば alt に設定
+    av.alt = p.display_name || p.handle || 'unknown';
+    av.classList.add('avatar');
 
+    // コンテンツ
     const cnt = ce('div', 'content');
-    // renderPost 内の meta 部分のリンクを IDベースに統一
-    const meta = ce('div', 'meta');
-    if (p.deleted) meta.textContent += ' ・ 削除済み';
-    // handle ではなく ID を使用
-    const userLink = p.user_id ? `profile.php?id=${p.user_id}` : `profile.php?handle=${encodeURIComponent(p.handle)}`;
-    meta.innerHTML = `<a href="${userLink}" class="mention">@${p.handle}</a> ・ ${timeago(p.created_at)}`;
 
+    // meta
+    const meta = ce('div', 'meta');
+    // 表示名優先、なければハンドルネーム
+    const displayName = p.display_name || p.handle || 'unknown';
+    // ユーザープロフィールリンク
+    const userLink = p.user_id ? `profile.php?id=${p.user_id}` : `profile.php?handle=${encodeURIComponent(p.handle)}`;
+    meta.innerHTML = `<a href="${userLink}" class="mention">${displayName}</a> @${p.handle} ・ ${timeago(p.created_at)}`;
+
+    // リポスト情報
     if (p.is_repost_of) {
         const repLink = p.reposter_id ? `profile.php?id=${p.reposter_id}` : `profile.php?handle=${encodeURIComponent(p.reposter)}`;
-        meta.innerHTML += ` ・ <a href="${repLink}" class="mention">${p.reposter}</a>さんの投稿をリポストしました`;
+        const repName = p.reposter || 'unknown';
+        meta.innerHTML += ` ・ <a href="${repLink}" class="mention">${repName}</a>さんの投稿をリポストしました`;
     }
 
+    if (p.deleted) meta.textContent += ' ・ 削除済み';
 
     //------------ 
     // 本文 (Markdown + メンション変換)
@@ -266,7 +294,9 @@ function renderPost(p, wrap) {
             const quoteDiv = ce('div', 'quote');
 
             const quoteMeta = ce('div', 'meta');
-            quoteMeta.textContent = `引用元: @${p.quoted_post.handle}`;
+            const qDisplayName = p.quoted_post.display_name || p.quoted_post.handle || 'unknown';
+            const qLink = p.quoted_post.user_id ? `profile.php?id=${p.quoted_post.user_id}` : `profile.php?handle=${encodeURIComponent(p.quoted_post.handle)}`;
+            quoteMeta.innerHTML = `<a href="${qLink}" class="mention">${qDisplayName}</a>`;
             quoteDiv.append(quoteMeta);
 
             const quoteBody = ce('div', 'quote-body');
@@ -283,7 +313,6 @@ function renderPost(p, wrap) {
         myBody.innerHTML = parseMessage(marked.parse(rawContent));
         body.append(myBody);
     }
-
 
     // -------------------------
     // メディア表示
@@ -321,13 +350,23 @@ function renderPost(p, wrap) {
         mediaWrapper.addEventListener('click', () => { mediaWrapper.style.filter = ''; });
     }
 
-
     // -------------------------
     // ボタン類
     // -------------------------
     const buttons = ce('div', 'buttons');
-    const like = ce('button'); like.textContent = '❤️' + (p.like_count || 0); if (p.liked) like.classList.add('liked');
-    like.onclick = async () => { const r = await api('actions.php', { action: 'toggle_like', post_id: p.id }); if (r.ok) { p.liked = r.liked; p.like_count = r.count; updatePost(p); } };
+    // いいねボタン
+    const like = ce('button', 'like-btn');
+    like.textContent = '❤️' + (p.like_count || 0);
+    if (p.liked) like.classList.add('liked');
+
+    like.onclick = async () => {
+        const r = await api('actions.php', { action: 'toggle_like', post_id: p.id });
+        if (r.ok) {
+            p.liked = r.liked;
+            p.like_count = r.count;
+            updateLikeUI(p);  // ← 投稿全体ではなくUIだけ更新
+        }
+    };
 
     const repost = ce('button'); repost.textContent = '♻️' + (p.repost_count || 0); if (p.reposted) repost.classList.add('reposted');
     repost.onclick = async () => { const r = await api('actions.php', { action: 'toggle_repost', post_id: p.id }); if (r.ok) { p.reposted = r.reposted; p.repost_count = r.count; refreshFeed(true); } };

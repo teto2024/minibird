@@ -45,6 +45,7 @@ function linkify_handles($content) {
         <button class="tabBtn" data-tab="communities">コミュニティ</button>
         <a href="focus.php" class="tabBtn block">集中</a>
         <a href="shop.php" class="tabBtn block">フレーム・ショップ</a>
+        <a href="admin.php" class="tabBtn block">管理者用</a>
       <?php endif; ?>
     </nav>
   </aside>

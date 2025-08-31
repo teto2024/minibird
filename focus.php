@@ -15,29 +15,82 @@
 </section></main>
 <script>
 let lock=false,t=null,end=0;
-document.getElementById('start').onclick=()=>{
+
+document.getElementById('start').onclick=async ()=>{
   if (lock) return;
   const mins=parseInt(document.getElementById('mins').value||'25',10);
-  document.documentElement.requestFullscreen?.();
-  end=Date.now()+mins*60*1000; lock=true; tick();
+
+  try {
+    // ← Safari対応フルスクリーン呼び出し
+    await enterFullscreen(document.documentElement);
+  } catch(e) {
+    alert("フルスクリーン開始に失敗しました");
+    return; // 開始しない
+  }
+
+  end=Date.now()+mins*60*1000;
+  lock=true;
+  tick();
   t=setInterval(tick, 250);
-  window.onblur=fail; document.onvisibilitychange=()=>{ if(document.visibilityState!=='visible') fail(); };
+
+  // 画面外に行ったら失敗
+  window.onblur=fail;
+  document.onvisibilitychange=()=>{ if(document.visibilityState!=='visible') fail(); };
 };
+
 function tick(){
   const remain=Math.max(0,end-Date.now());
   const s=Math.floor(remain/1000), m=Math.floor(s/60), ss=('0'+(s%60)).slice(-2);
   document.getElementById('timer').textContent=`${m}:${ss}`;
   if (remain<=0){ success(); }
 }
+
 function success(){
-  clearInterval(t); lock=false; document.exitFullscreen?.();
-  alert('成功！コイン+5 / クリスタル+1');
-  fetch('focus_api.php',{method:'POST'});
+  clearInterval(t); lock=false;
+  exitFullscreen();
+
+  // 入力された時間
+  const mins=parseInt(document.getElementById('mins').value||'25',10);
+
+  // 報酬計算（指数関数的増加）
+  const coins = Math.floor(5 * Math.pow(1.1, mins));
+  const crystals = Math.floor(1 * Math.pow(1.05, mins));
+
+  alert(`成功！コイン+${coins} / クリスタル+${crystals}`);
+
+  // サーバーに報酬を送る（時間も送るとよさげ）
+  fetch('focus_api.php',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ mins, coins, crystals })
+  });
 }
+
+
 function fail(){
   if (!lock) return;
-  clearInterval(t); lock=false; document.exitFullscreen?.();
-  alert('失敗...'); 
+  clearInterval(t); lock=false;
+  exitFullscreen();
+  alert('失敗...');
+}
+
+// ✅ Safari対応版フルスクリーン関数
+function enterFullscreen(elem) {
+  if (elem.requestFullscreen) {
+    return elem.requestFullscreen();
+  } else if (elem.webkitRequestFullscreen) { // Safari
+    return elem.webkitRequestFullscreen();
+  } else {
+    return Promise.reject("Fullscreen API not supported");
+  }
+}
+
+function exitFullscreen() {
+  if (document.exitFullscreen) {
+    document.exitFullscreen();
+  } else if (document.webkitExitFullscreen) {
+    document.webkitExitFullscreen();
+  }
 }
 </script>
 </body></html>

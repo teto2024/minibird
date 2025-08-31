@@ -11,41 +11,48 @@ $action = $input['action'] ?? 'fetch';
 function serialize_post($row, $uid, $pdo){
     $content_html = null;
 
-    if ($row['deleted_at']) {
-        $content_html = $row['deleted_by_mod'] ? 'モデレータにより削除済み' : '削除済み';
+    if (!empty($row['deleted_at'])) {
+        $content_html = !empty($row['deleted_by_mod']) ? 'モデレータにより削除済み' : '削除済み';
     } elseif (!empty($row['content_html'])) {
         $content_html = $row['content_html'];
     } elseif (!empty($row['content_md'])) {
-        // MarkdownをHTML化
         $content_html = nl2br(htmlspecialchars($row['content_md']));
 
-        // @handle をリンク化
-        // serialize_post内のメンションリンク修正
-$content_html = preg_replace_callback(
-    '/@([a-zA-Z0-9_]+)/',
-    function($matches) use ($pdo) {
-        $handle = $matches[1];
-        $stmt = $pdo->prepare("SELECT id FROM users WHERE handle=?");
-        $stmt->execute([$handle]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($user) {
-            $url = "profile.php?id=" . (int)$user['id'];  // IDベースに変更
-            return '<a href="' . $url . '" class="mention">@' . htmlspecialchars($handle) . '</a>';
-        } else {
-            return '@' . htmlspecialchars($handle);
-        }
-    },
-    $content_html
-);
+        $content_html = preg_replace_callback(
+            '/@([a-zA-Z0-9_]+)/',
+            function($matches) use ($pdo) {
+                $handle = $matches[1];
+                $stmt = $pdo->prepare("SELECT id FROM users WHERE handle=?");
+                $stmt->execute([$handle]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($user) {
+                    $url = "profile.php?id=" . (int)$user['id'];
+                    return '<a href="' . $url . '" class="mention">@' . htmlspecialchars($handle) . '</a>';
+                } else {
+                    return '@' . htmlspecialchars($handle);
+                }
+            },
+            $content_html
+        );
     } else {
         $content_html = '';
     }
 
-    // 以下省略せずにそのまま
+    // ------------------------
+    // ★ ここを修正：ユーザー情報を確実に取得
+    // ------------------------
+    $userStmt = $pdo->prepare("SELECT display_name, icon FROM users WHERE id = ?");
+    $userStmt->execute([$row['user_id']]);
+    $userData = $userStmt->fetch(PDO::FETCH_ASSOC);
+
+    $display_name = !empty($userData['display_name']) ? $userData['display_name'] : ($row['handle'] ?? 'unknown');
+    $icon = !empty($userData['icon']) ? '/' . ltrim($userData['icon'], '/') : '/uploads/icons/default_icon.png';
+
+    // quoted_post の安全化
     $quoted_post = null;
     if (!empty($row['quote_post_id'])) {
         $q = $pdo->prepare("
-            SELECT posts.id, posts.user_id, u.handle, posts.content_md, posts.content_html, posts.deleted_at, posts.deleted_by_mod
+            SELECT posts.id, posts.user_id, u.handle, u.display_name, u.icon, posts.content_md, posts.content_html, posts.deleted_at, posts.deleted_by_mod
             FROM posts
             JOIN users u ON u.id = posts.user_id
             WHERE posts.id = ?
@@ -54,39 +61,43 @@ $content_html = preg_replace_callback(
         $qp = $q->fetch(PDO::FETCH_ASSOC);
         if ($qp) {
             $quoted_post = [
-                'id' => (int)$qp['id'],
-                'handle' => $qp['handle'],
-                'content_md' => $qp['content_md'],
-                'content_html' => $qp['content_html'],
-                'deleted' => (bool)$qp['deleted_at']
+                'id' => (int)($qp['id'] ?? 0),
+                'handle' => $qp['handle'] ?? 'unknown',
+                'display_name' => !empty($qp['display_name']) ? $qp['display_name'] : ($qp['handle'] ?? 'unknown'),
+                'icon' => !empty($qp['icon']) ? '/' . ltrim($qp['icon'], '/') : '/uploads/icons/default_icon.png',
+                'content_md' => $qp['content_md'] ?? '',
+                'content_html' => $qp['content_html'] ?? '',
+                'deleted' => !empty($qp['deleted_at'])
             ];
         }
     }
 
     return [
-    'id'=> (int)$row['id'],
-    // ここをリンク化
-    'handle'=> $row['handle'],
-    'created_at'=> $row['created_at'],
-    'content_html'=> $content_html,
-    'content_md'  => $row['deleted_at'] ? null : $row['content_md'],
-    'deleted'=> (bool)$row['deleted_at'],
-    'nsfw'=> (int)$row['nsfw']===1,
-    'media_path'=> $row['media_path'],
-    'media_type'=> $row['media_type'],
-    'like_count'=> (int)($row['like_count'] ?? 0),
-    'repost_count'=> (int)($row['repost_count'] ?? 0),
-    'reply_count'=> (int)($row['reply_count'] ?? 0),
-    'liked'=> (bool)($row['liked'] ?? false),
-    'reposted'=> (bool)($row['reposted'] ?? false),
-    'is_repost_of'=> $row['is_repost_of'] ? (int)$row['is_repost_of'] : null,
-    'reposter'=> $row['reposter'] ?? null,
-    'frame_class'=> $row['frame_class'] ?? null,
-    '_can_delete' => false,
-    'quoted_post' => $quoted_post
-];
-
+        'id'=> (int)($row['id'] ?? 0),
+        'handle'=> $row['handle'] ?? 'unknown',
+        'display_name'=> $display_name,
+        'icon'=> $icon,
+        'created_at'=> $row['created_at'] ?? null,
+        'content_html'=> $content_html,
+        'content_md'  => !empty($row['deleted_at']) ? null : ($row['content_md'] ?? ''),
+        'deleted'=> !empty($row['deleted_at']),
+        'nsfw'=> (int)($row['nsfw'] ?? 0)===1,
+        'media_path'=> $row['media_path'] ?? null,
+        'media_type'=> $row['media_type'] ?? null,
+        'like_count'=> (int)($row['like_count'] ?? 0),
+        'repost_count'=> (int)($row['repost_count'] ?? 0),
+        'reply_count'=> (int)($row['reply_count'] ?? 0),
+        'liked'=> !empty($row['liked']),
+        'reposted'=> !empty($row['reposted']),
+        'is_repost_of'=> !empty($row['is_repost_of']) ? (int)$row['is_repost_of'] : null,
+        'reposter'=> $row['reposter'] ?? null,
+        'frame_class'=> $row['frame_class'] ?? null,
+        '_can_delete' => false,
+        'quoted_post' => $quoted_post
+    ];
 }
+
+
 
 
 $pdo = db();

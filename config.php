@@ -18,7 +18,11 @@ session_set_cookie_params([
     'samesite' => 'Lax'
 ]);
 session_start();
-
+// ユーザーIDの統一
+// ログイン時に $_SESSION['uid'] がセットされる場合も $_SESSION['user_id'] にコピー
+if (isset($_SESSION['uid']) && !isset($_SESSION['user_id'])) {
+    $_SESSION['user_id'] = $_SESSION['uid'];
+}
 // ----- DB接続 -----
 function db() {
     static $pdo;
