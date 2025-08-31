@@ -273,11 +273,17 @@ function renderPost(p, wrap) {
     meta.innerHTML = `<a href="${userLink}" class="mention">${displayName}</a> @${p.handle} ・ ${timeago(p.created_at)}`;
 
     // リポスト情報
-    if (p.is_repost_of) {
-        const repLink = p.reposter_id ? `profile.php?id=${p.reposter_id}` : `profile.php?handle=${encodeURIComponent(p.reposter)}`;
-        const repName = p.reposter || 'unknown';
-        meta.innerHTML += ` ・ <a href="${repLink}" class="mention">${repName}</a>さんの投稿をリポストしました`;
-    }
+if (p.is_repost_of) {
+    const repLink = p.reposter_id 
+        ? `profile.php?id=${p.reposter_id}` 
+        : `profile.php?handle=${encodeURIComponent(p.reposter)}`;
+    const repName = p.reposter || 'unknown';
+    meta.innerHTML += `
+        ・ <span class="repost-label">♲リポスト</span>
+        <a href="${repLink}" class="mention"><strong>${repName}</strong></a>さんの投稿をリポストしました
+    `;
+}
+
 
     if (p.deleted) meta.textContent += ' ・ 削除済み';
 
@@ -555,6 +561,40 @@ document.querySelectorAll(".tabBtn").forEach(btn => {
     });
 });
 
+//---------------------
+//検索
+//----------------------
+const searchInput = document.getElementById('q');
+
+searchInput.addEventListener('keypress', async (e) => {
+    if (e.key === 'Enter') {
+        const q = searchInput.value.trim();
+        if (!q) return;
+
+        const res = await fetch(`/search.php?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+
+        // 結果を表示
+        const feed = document.getElementById('feed');
+        feed.innerHTML = '';
+
+        if (data.users.length > 0) {
+            feed.innerHTML += '<h3>ユーザー</h3><ul>' +
+                data.users.map(u => `<li><a href="/profile.php?handle=${u.handle}">@${u.handle}</a></li>`).join('') +
+                '</ul>';
+        }
+
+        if (data.posts.length > 0) {
+            feed.innerHTML += '<h3>投稿</h3><ul>' +
+                data.posts.map(p => `<li>${p.content}</li>`).join('') +
+                '</ul>';
+        }
+
+        if (data.users.length === 0 && data.posts.length === 0) {
+            feed.innerHTML = '<p>検索結果はありませんでした。</p>';
+        }
+    }
+});
 
 // ---------------------
 // Polling

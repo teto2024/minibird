@@ -22,7 +22,10 @@ function linkify_handles($content) {
 <header class="topbar">
   <button class="menu-toggle">☰</button>
   <div class="logo">🐦 MiniBird</div>
-  <div class="search"><input id="q" placeholder="検索 (ハッシュ/ユーザー)"></div>
+  <form method="get" action="/search.php">
+  <input name="q" placeholder="検索..." value="<?=htmlspecialchars($q)?>">
+  <button>検索</button>
+</form>
   <div class="user">
     <?php if ($me): ?>
       <span>@<?=htmlspecialchars($me['handle'])?></span>

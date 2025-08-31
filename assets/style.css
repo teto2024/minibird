@@ -801,3 +801,118 @@ button {
     background: #1d9bf0;
     color: #fff;
 }
+
+/* リポストラベル */
+.repost-label {
+    display: inline-block;
+    background-color: #4CAF50;
+    /* 緑色 */
+    color: #fff;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+/* search.css */
+
+body {
+    font-family: 'Helvetica', 'Arial', sans-serif;
+    background: #0f1419;
+    color: #e6e6e6;
+    margin: 0;
+    padding: 0;
+}
+
+a {
+    color: #1d9bf0;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.topbar {
+    display: flex;
+    align-items: center;
+    padding: 10px 20px;
+    background: #15202b;
+    border-bottom: 1px solid #222;
+}
+
+.topbar .logo {
+    font-size: 1.5em;
+    margin-right: 20px;
+}
+
+.topbar .search input {
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: none;
+    outline: none;
+    width: 200px;
+}
+
+.layout {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.center {
+    flex: 1;
+    max-width: 600px;
+}
+
+.feed-tabs {
+    display: flex;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #222;
+}
+
+.feedTab {
+    padding: 8px 16px;
+    cursor: pointer;
+    color: #8899a6;
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+}
+
+.feedTab.active {
+    color: #fff;
+    border-bottom: 3px solid #1d9bf0;
+}
+
+#feed ul {
+    list-style: none;
+    padding: 0;
+}
+
+#feed li {
+    background: #15202b;
+    margin-bottom: 10px;
+    padding: 10px 15px;
+    border-radius: 12px;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+#feed li h4 {
+    margin: 0 0 5px;
+    font-size: 1em;
+    color: #1d9bf0;
+}
+
+#feed li p {
+    margin: 0;
+}
+
+#feed h3 {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    color: #e6e6e6;
+    border-bottom: 1px solid #222;
+    padding-bottom: 5px;
+}
