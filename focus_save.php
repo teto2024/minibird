@@ -3,12 +3,17 @@ require_once __DIR__ . '/config.php';
 require_login();
 $pdo = db();
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// JSONデータ取得
+$input_raw = file_get_contents('php://input');
+error_log("RAW INPUT: " . $input_raw);
+$input = json_decode($input_raw, true);
 
-// JSON データ取得
-$input = json_decode(file_get_contents('php://input'), true);
+if ($input === null) {
+    error_log("JSON decode error: " . json_last_error_msg());
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok'=>false,'error'=>'invalid json']);
+    exit;
+}
 
 // 入力値取得
 $task       = trim($input['task'] ?? '');
@@ -17,39 +22,127 @@ $ended_at   = $input['ended_at'] ?? '';
 $mins       = (int)($input['mins'] ?? 0);
 $coins      = (int)($input['coins'] ?? 0);
 $crystals   = (int)($input['crystals'] ?? 0);
-$status     = $input['status'] ?? 'success'; // success / fail
+$status     = $input['status'] ?? 'success';
+$tag_handle = trim($input['tag_handle'] ?? '');
+$uid        = $_SESSION['uid'] ?? 0;
+
+// JSON専用出力関数
+function json_exit($data) {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($data);
+    exit;
+}
 
 // 必須フィールド確認
-if ($task && $started_at && $ended_at) {
+if (!$task || !$started_at || !$ended_at || !$uid) {
+    json_exit(['ok'=>false,'error'=>'missing fields']);
+}
 
-    // タスク履歴保存
-    $st = $pdo->prepare("
-        INSERT INTO focus_tasks 
-        (user_id, task, started_at, ended_at, minutes, coins, crystals, status) 
-        VALUES (?,?,?,?,?,?,?,?)
-    ");
-    $st->execute([
-        $_SESSION['uid'], $task, $started_at, $ended_at,
-        $mins, $coins, $crystals, $status
-    ]);
+try {
+    // --------------------------
+    // タッグボーナス判定
+    // --------------------------
+    $tagged_user_id = null;
+    $bonus_multiplier = 1;
 
-    if ($status === 'success') {
-        // 成功時のみコイン・クリスタル加算
-        $st = $pdo->prepare("UPDATE users SET coins=coins+?, crystals=crystals+? WHERE id=?");
-        $st->execute([$coins, $crystals, $_SESSION['uid']]);
+    if ($status === 'success' && $tag_handle) {
+        $st = $pdo->prepare("SELECT id FROM users WHERE handle=? LIMIT 1");
+        $st->execute([$tag_handle]);
+        $tagged_user_id = $st->fetchColumn() ?: null;
 
-        // 報酬イベント登録
-        $st = $pdo->prepare("INSERT INTO reward_events(user_id,kind,amount,meta) VALUES(?,?,?,?)");
-        $st->execute([
-            $_SESSION['uid'],
-            'focus_reward',
-            $coins + $crystals,
-            json_encode(['task'=>$task])
-        ]);
+        if ($tagged_user_id) {
+            $st = $pdo->prepare("
+                SELECT started_at FROM focus_tasks 
+                WHERE user_id=? AND status='success'
+                ORDER BY started_at DESC LIMIT 1
+            ");
+            $st->execute([$tagged_user_id]);
+            $tagged_started = $st->fetchColumn();
+            if ($tagged_started) {
+                $diff = abs(strtotime($started_at) - strtotime($tagged_started));
+                if ($diff <= 180) { // ±3分以内
+                    $bonus_multiplier = 2;
+                }
+            }
+        }
     }
 
-    echo json_encode(['ok'=>true]);
+    $coins *= $bonus_multiplier;
+    $crystals *= $bonus_multiplier;
 
-} else {
-    echo json_encode(['ok'=>false,'error'=>'missing fields']);
+    // --------------------------
+    // タスク履歴保存（成功・失敗ともに記録）
+    // --------------------------
+    $st = $pdo->prepare("
+        INSERT INTO focus_tasks
+        (user_id, task, started_at, ended_at, minutes, coins, crystals, status, tagged_user_id)
+        VALUES (?,?,?,?,?,?,?,?,?)
+    ");
+    $st->execute([$uid, $task, $started_at, $ended_at, $mins, $coins, $crystals, $status, $tagged_user_id]);
+
+    $next_tier = 0;
+
+    if ($status === 'success') {
+        // --------------------------
+        // コイン・クリスタル加算
+        // --------------------------
+        $st = $pdo->prepare("UPDATE users SET coins=coins+?, crystals=crystals+? WHERE id=?");
+        $st->execute([$coins, $crystals, $uid]);
+
+        // --------------------------
+        // 累計時間更新
+        // --------------------------
+        $st = $pdo->prepare("UPDATE users SET total_focus_time = total_focus_time + ? WHERE id=?");
+        $st->execute([$mins, $uid]);
+
+        // --------------------------
+        // 累計時間取得・ティア更新
+        // --------------------------
+        $st = $pdo->prepare("SELECT total_focus_time, focus_tier FROM users WHERE id=?");
+        $st->execute([$uid]);
+        $user = $st->fetch(PDO::FETCH_ASSOC);
+        $total_time = (int)($user['total_focus_time'] ?? 0);
+        $tier       = (int)($user['focus_tier'] ?? 0);
+
+        $tier_times = [
+            1=>10,2=>15,3=>22,4=>33,5=>50,6=>76,7=>115,8=>173,9=>260,10=>390,
+            11=>480,12=>600,13=>750,14=>900,15=>1100,16=>1300,17=>1500,18=>1750,
+            19=>2000,20=>2300,21=>2600,22=>2900,23=>3300,24=>3700,25=>4100,
+            26=>4500,27=>5000,28=>5500,29=>6000,30=>6600
+        ];
+
+        $next_tier = $tier;
+        while ($next_tier < 30) {
+            if (isset($tier_times[$next_tier+1]) && $total_time >= $tier_times[$next_tier+1]) {
+                $next_tier++;
+            } else break;
+        }
+
+        if ($next_tier != $tier) {
+            $st = $pdo->prepare("UPDATE users SET focus_tier=? WHERE id=?");
+            $st->execute([$next_tier, $uid]);
+        }
+
+        // --------------------------
+        // 報酬イベント登録
+        // --------------------------
+        $st = $pdo->prepare("INSERT INTO reward_events(user_id,kind,amount,meta) VALUES(?,?,?,?)");
+        $st->execute([
+            $uid,
+            'focus_reward',
+            $coins + $crystals,
+            json_encode(['task'=>$task,'tier'=>$next_tier,'bonus_multiplier'=>$bonus_multiplier])
+        ]);
+
+    } else {
+        // 失敗時はティア変更なし
+        $st = $pdo->prepare("SELECT focus_tier FROM users WHERE id=?");
+        $st->execute([$uid]);
+        $next_tier = (int)($st->fetchColumn() ?? 0);
+    }
+
+    json_exit(['ok'=>true,'tier'=>$next_tier,'bonus'=>$bonus_multiplier]);
+
+} catch (Exception $e) {
+    json_exit(['ok'=>false,'error'=>'exception','msg'=>$e->getMessage()]);
 }
