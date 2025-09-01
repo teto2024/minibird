@@ -71,9 +71,9 @@ async function api(path, data) {
     }
 }
 
-//----------------------
+// ---------------------
 // DOMContentLoaded (整理版)
-//----------------------
+// ---------------------
 document.addEventListener('DOMContentLoaded', () => {
 
     // Feed 初期ロード
@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('refreshFeed feed:', state.feed);
     refreshFeed(true);
 
-    // スクロールで loadMore
+    // スクロールで loadMore（統合版）
     window.addEventListener('scroll', () => {
         if (state.isLoading || !state.hasMore) return;
         if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) loadMore();
@@ -129,6 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 });
+
 
 
 // ---------------------
@@ -564,42 +565,180 @@ document.querySelectorAll(".tabBtn").forEach(btn => {
 //---------------------
 //検索
 //----------------------
-const searchInput = document.getElementById('q');
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('q');
+    if (!searchInput) return; // 存在しなければ処理を止める
 
-searchInput.addEventListener('keypress', async (e) => {
-    if (e.key === 'Enter') {
-        const q = searchInput.value.trim();
-        if (!q) return;
+    searchInput.addEventListener('keypress', async (e) => {
+        if (e.key === 'Enter') {
+            const q = searchInput.value.trim();
+            if (!q) return;
 
-        const res = await fetch(`/search.php?q=${encodeURIComponent(q)}`);
-        const data = await res.json();
+            const res = await fetch(`/search.php?q=${encodeURIComponent(q)}`);
+            const data = await res.json();
 
-        // 結果を表示
-        const feed = document.getElementById('feed');
-        feed.innerHTML = '';
+            const feed = document.getElementById('feed');
+            feed.innerHTML = '';
 
-        if (data.users.length > 0) {
-            feed.innerHTML += '<h3>ユーザー</h3><ul>' +
-                data.users.map(u => `<li><a href="/profile.php?handle=${u.handle}">@${u.handle}</a></li>`).join('') +
-                '</ul>';
+            if (data.users.length > 0) {
+                feed.innerHTML += '<h3>ユーザー</h3><ul>' +
+                    data.users.map(u => `<li><a href="/profile.php?handle=${u.handle}">@${u.handle}</a></li>`).join('') +
+                    '</ul>';
+            }
+
+            if (data.posts.length > 0) {
+                feed.innerHTML += '<h3>投稿</h3><ul>' +
+                    data.posts.map(p => `<li>${p.content}</li>`).join('') +
+                    '</ul>';
+            }
+
+            if (data.users.length === 0 && data.posts.length === 0) {
+                feed.innerHTML = '<p>検索結果はありませんでした。</p>';
+            }
         }
-
-        if (data.posts.length > 0) {
-            feed.innerHTML += '<h3>投稿</h3><ul>' +
-                data.posts.map(p => `<li>${p.content}</li>`).join('') +
-                '</ul>';
-        }
-
-        if (data.users.length === 0 && data.posts.length === 0) {
-            feed.innerHTML = '<p>検索結果はありませんでした。</p>';
-        }
-    }
+    });
 });
+
+
+// ---------------------
+// 差分取得用 Feed 更新
+// ---------------------
+async function refreshFeedPartial() {
+    if (state.isLoading) return;
+    state.isLoading = true;
+
+    try {
+        const r = await api('feed.php', {
+            action: 'fetch',
+            feed: state.feed,
+            since_id: state.newestId,
+            limit: 50
+        });
+
+        if (r.ok && r.items.length) {
+            r.items.forEach(p => {
+                if (!state.posts.some(existing => existing.id === p.id)) {
+                    state.posts.unshift(p);
+                    renderPost(p, qs('#feed'), true); // wrap, prepend
+                }
+            });
+            state.newestId = Math.max(...state.posts.map(p => p.id));
+        }
+
+    } catch (e) {
+        console.error(e);
+    }
+
+    state.isLoading = false;
+}
+
+// prepend オプションを追加
+function renderPost(p, wrap, prepend = false) {
+    console.log('renderPost data:', p);
+    const post = ce('div', 'post ' + (p.frame_class || ''));
+    post.dataset.postId = p.id;
+
+    const av = ce('img');
+    av.src = p.icon || '/uploads/icons/default_icon.png';
+    av.alt = p.display_name || p.handle || 'unknown';
+    av.classList.add('avatar');
+
+    const cnt = ce('div', 'content');
+
+    const meta = ce('div', 'meta');
+    const displayName = p.display_name || p.handle || 'unknown';
+    const userLink = p.user_id ? `profile.php?id=${p.user_id}` : `profile.php?handle=${encodeURIComponent(p.handle)}`;
+    meta.innerHTML = `<a href="${userLink}" class="mention">${displayName}</a> @${p.handle} ・ ${timeago(p.created_at)}`;
+
+    if (p.is_repost_of) {
+        const repLink = p.reposter_id ? `profile.php?id=${p.reposter_id}` : `profile.php?handle=${encodeURIComponent(p.reposter)}`;
+        const repName = p.reposter || 'unknown';
+        meta.innerHTML += `
+            ・ <span class="repost-label">♲リポスト</span>
+            <a href="${repLink}" class="mention"><strong>${repName}</strong></a>さんの投稿をリポストしました
+        `;
+    }
+
+    if (p.deleted) meta.textContent += ' ・ 削除済み';
+
+    const body = ce('div', 'body');
+
+    if (p.deleted) {
+        body.textContent = '削除済み';
+    } else {
+        if (p.quoted_post) {
+            const quoteDiv = ce('div', 'quote');
+            const quoteMeta = ce('div', 'meta');
+            const qDisplayName = p.quoted_post.display_name || p.quoted_post.handle || 'unknown';
+            const qLink = p.quoted_post.user_id ? `profile.php?id=${p.quoted_post.user_id}` : `profile.php?handle=${encodeURIComponent(p.quoted_post.handle)}`;
+            quoteMeta.innerHTML = `<a href="${qLink}" class="mention">${qDisplayName}</a>`;
+            quoteDiv.append(quoteMeta);
+            const quoteBody = ce('div', 'quote-body');
+            const quotedMd = p.quoted_post.content_md || p.quoted_post.content_html || '';
+            quoteBody.innerHTML = parseMessage(marked.parse(quotedMd));
+            quoteDiv.append(quoteBody);
+            body.append(quoteDiv);
+        }
+
+        const rawContent = p.content_md || p.content_html || '';
+        const myBody = ce('div', 'my-body');
+        myBody.innerHTML = parseMessage(marked.parse(rawContent));
+        body.append(myBody);
+    }
+
+    if (!p.deleted && p.media_path) {
+        const mediaWrapper = ce('div', 'media');
+        let mediaEl;
+        const ext = p.media_path.split('.').pop().toLowerCase();
+        const mediaSrc = window.location.origin + '/' + p.media_path;
+
+        if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) mediaEl = ce('img');
+        else if (['mp4', 'webm', 'ogg'].includes(ext)) mediaEl = ce('video'), mediaEl.controls = true;
+        if (mediaEl) mediaEl.src = mediaSrc, mediaWrapper.append(mediaEl);
+        body.append(mediaWrapper);
+    }
+
+    if (!p.deleted && p.nsfw) {
+        body.style.filter = 'blur(var(--nsfw-blur))';
+        body.style.cursor = 'pointer';
+        body.title = 'NSFW: クリックで表示';
+        body.addEventListener('click', () => { body.style.filter = ''; });
+    }
+
+    const buttons = ce('div', 'buttons');
+    const like = ce('button', 'like-btn');
+    like.textContent = '❤️' + (p.like_count || 0);
+    if (p.liked) like.classList.add('liked');
+    like.onclick = async () => { const r = await api('actions.php', { action: 'toggle_like', post_id: p.id }); if (r.ok) { p.liked = r.liked; p.like_count = r.count; updateLikeUI(p); } };
+
+    const repost = ce('button'); repost.textContent = '♻️' + (p.repost_count || 0); if (p.reposted) repost.classList.add('reposted');
+    repost.onclick = async () => { const r = await api('actions.php', { action: 'toggle_repost', post_id: p.id }); if (r.ok) { p.reposted = r.reposted; p.repost_count = r.count; refreshFeed(true); } };
+
+    const bm = ce('button'); bm.textContent = '📑'; bm.onclick = async () => { const r = await api('actions.php', { action: 'toggle_bookmark', post_id: p.id }); if (!r.ok) alert('ブックマーク失敗'); };
+
+    const rep = ce('button'); rep.textContent = '💬' + (p.reply_count || 0); rep.onclick = () => { window.location = 'replies.php?post_id=' + p.id; };
+    const qt = ce('button'); qt.textContent = '❝ 引用'; qt.onclick = () => { const t = prompt('引用コメント'); if (t) quotePost(p.id, t); };
+
+    let delBtn = null;
+    if (p._can_delete && !p.deleted) {
+        delBtn = ce('button'); delBtn.textContent = '削除';
+        delBtn.onclick = async () => { if (!confirm('この投稿を削除しますか？')) return; const r = await api('actions.php', { action: 'delete_post', post_id: p.id }); if (r.ok) { p.deleted = true; updatePost(p); } else alert('削除失敗'); };
+    }
+
+    buttons.append(like, repost, bm, rep, qt); if (delBtn) buttons.append(delBtn);
+    cnt.append(meta, body, buttons);
+    post.append(av, cnt);
+
+    if (prepend) wrap.prepend(post); else wrap.append(post);
+}
+
+// 3秒ごとに差分取得
+setInterval(() => refreshFeedPartial(), 3000);
 
 // ---------------------
 // Polling
 // ---------------------
-setInterval(() => refreshFeed(false), 3000);
+//setInterval(() => refreshFeed(false), 3000);
 
 // 初回ロード
 //refreshFeed(true);

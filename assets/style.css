@@ -916,3 +916,34 @@ a:hover {
     border-bottom: 1px solid #222;
     padding-bottom: 5px;
 }
+/* -------------------- */
+/* スマホ対応: 縦画面時のレイアウト */
+/* -------------------- */
+@media (max-width: 768px) {
+    main.layout {
+        display: block !important;
+    }
+
+    aside.right {
+        display: block !important;
+        width: 100% !important;
+        margin: 0;
+        padding: 10px;
+        position: relative;
+        z-index: 1;
+    }
+
+    section.center {
+        width: 100% !important;
+        margin: 0;
+        padding: 10px;
+    }
+
+    #follow-btn,
+    #profileForm input,
+    #profileForm textarea,
+    #profileForm button {
+        width: 100%;
+        box-sizing: border-box;
+    }
+}

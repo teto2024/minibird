@@ -39,7 +39,8 @@ $users = $pdo->query("SELECT id, handle, muted_until, frozen FROM users ORDER BY
   </div>
   <div class="card"><h3>投稿管理</h3>
     <table><tr><th>ID</th><th>ユーザー</th><th>内容</th><th>操作</th></tr>
-      <?php foreach($posts as $p){ echo "<tr><td>{$p['id']}</td><td>@".htmlspecialchars($p['handle'])."</td><td>".htmlspecialchars($p['content_md'])."</td><td>".($p['deleted_at']?'削除済み':"<a href='moderate.php?del={$p['id']}'>削除</a>")."</td></tr>"; } ?>
+      <?php foreach($posts as $p){ echo "<tr><td>{$p['id']}</td><td>@".htmlspecialchars($p['handle'])."</td><td>".htmlspecialchars($p['content_md'])."</td><td>".($p['deleted_at'] ? '削除済み' : "<a href='moderate.php?del={$p['id']}' onclick=\"return confirm('本当に削除しますか？');\">削除</a>")
+."</td></tr>"; } ?>
     </table>
   </div>
 </section></main>

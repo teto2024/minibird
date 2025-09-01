@@ -28,9 +28,9 @@ try {
     if ($action === 'create_post') {
         require_login();
         $u = user();
-        if ($u['muted_until'] && strtotime($u['muted_until'].' UTC') > time()) {
-            echo json_encode(['ok'=>false,'error'=>'muted']); exit;
-        }
+        if ($u['muted_until'] && strtotime($u['muted_until']) > time()) {
+    echo json_encode(['ok'=>false,'error'=>'muted']); exit;
+}
         $content = trim($_POST['content'] ?? '');
         $nsfw = ($_POST['nsfw'] ?? '0') === '1' ? 1 : 0;
         if ($content === '' && empty($_FILES['media']['name'])) {
