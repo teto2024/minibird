@@ -30,12 +30,20 @@
 
 <script>
 let lock=false, t=null, end=0;
-
 const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+let startTime = null; // ★開始時刻を記録用
 
 document.getElementById('start').onclick = async () => {
   if (lock) return;
+
   const mins = parseInt(document.getElementById('mins').value || '25', 10);
+  const task = document.getElementById('task').value.trim();
+  if (!task) {
+    alert("タスク名を入力してください");
+    return;
+  }
+
+  startTime = new Date(); // ★開始時刻をセット
 
   // iPhone PWAモード or 通常フルスクリーン
   if (!isiOS) {
@@ -52,7 +60,7 @@ document.getElementById('start').onclick = async () => {
   tick();
   t = setInterval(tick, 250);
 
-  // 画面外に行ったら失敗
+  // 集中モード中に画面を離れたら失敗
   window.onblur = fail;
   document.onvisibilitychange = () => { if(document.visibilityState !== 'visible') fail(); };
 };
@@ -71,14 +79,12 @@ function success() {
   const mins = parseInt(document.getElementById('mins').value || '25', 10);
   const coins = Math.floor(5 * Math.pow(1.1, mins));
   const crystals = Math.floor(1 * Math.pow(1.05, mins));
+  const task = document.getElementById('task').value.trim();
+  const endTime = new Date();
 
   alert(`成功！コイン+${coins} / クリスタル+${crystals}`);
 
-  fetch('focus_api.php', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ mins, coins, crystals })
-  });
+  sendFocusLog(task, startTime, endTime, mins, coins, crystals, "success");
 }
 
 function fail() {
@@ -86,6 +92,29 @@ function fail() {
   clearInterval(t); lock=false;
   exitFullscreen();
   alert('失敗...');
+
+  const task = document.getElementById('task').value.trim();
+  const endTime = new Date();
+  const started = startTime ?? endTime; // startTime が null なら現在時刻を代入
+
+  sendFocusLog(task, started, endTime, 0, 0, 0, "fail");
+}
+
+// 共通ログ送信関数
+function sendFocusLog(task, started_at, ended_at, mins, coins, crystals, status) {
+  if (!task) return; // タスク名が空なら送信しない
+
+  fetch('focus_save.php', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      task,
+      started_at: started_at.toISOString().slice(0,19).replace('T',' '),
+      ended_at: ended_at.toISOString().slice(0,19).replace('T',' '),
+      mins, coins, crystals,
+      status
+    })
+  }).catch(e => console.error("focus_save fetch error:", e));
 }
 
 // Safari対応フルスクリーン
@@ -100,12 +129,15 @@ function enterFullscreen(elem) {
 }
 
 function exitFullscreen() {
-  if (document.exitFullscreen) {
-    document.exitFullscreen();
-  } else if (document.webkitExitFullscreen) {
-    document.webkitExitFullscreen();
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    if (document.exitFullscreen) {
+      document.exitFullscreen().catch(()=>{});
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    }
   }
 }
 </script>
+
 </body>
 </html>

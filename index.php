@@ -58,7 +58,8 @@ function linkify_handles($content) {
     <button class="tabBtn" data-tab="communities">コミュニティ</button>
     <!-- 通知タブを a タグに変更 -->
     <a href="notifications.php" class="tabBtn block">通知</a>
-    <a href="focus.php" class="tabBtn block">集中</a>
+    <a href="focus.php" class="tabBtn block">集中タスク</a>
+    <a href="focus_history.php" class="tabBtn block">集中タスク履歴</a>
     <a href="shop.php" class="tabBtn block">フレーム・ショップ</a>
     <a href="admin.php" class="tabBtn block">管理者用</a>
   <?php endif; ?>
