@@ -375,6 +375,25 @@ button {
         display: none;
     }
 }
+
+/* PCではクローンを非表示 */
+.mobile-only {
+    display: none;
+}
+
+/* スマホではクローンを表示 */
+@media (max-width: 768px) {
+    .mobile-only {
+        display: block;
+        margin-top: 1rem;
+    }
+}
+/* スマホでは右サイドバーを非表示 */
+@media (max-width: 768px) {
+    aside.right {
+        display: none;
+    }
+}
 /* Frames */
 .frame-classic {
     border: 1px solid #2d3e50;
@@ -644,6 +663,163 @@ button {
     animation: purpleGlow 6s ease-in-out infinite;
     pointer-events: none;
 }
+/* 星空フレーム（黄色・星が浮かぶ・二重線） */
+.frame-stars {
+    position: relative;
+    border: 3px double #ffd700;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(135deg, #1a1a40, #2b2b60);
+    color: #fff8b0;
+    overflow: hidden;
+}
+
+.frame-stars::before {
+    content: '★';
+    position: absolute;
+    font-size: 24px;
+    color: rgba(255, 255, 150, 0.3);
+    animation: starMove 6s linear infinite;
+}
+
+@keyframes starMove {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+
+    25% {
+        transform: translate(50px, 20px) rotate(45deg);
+    }
+
+    50% {
+        transform: translate(100px, 0) rotate(90deg);
+    }
+
+    75% {
+        transform: translate(50px, -20px) rotate(135deg);
+    }
+
+    100% {
+        transform: translate(0, 0) rotate(180deg);
+    }
+}
+
+/* 価格: コイン 50,000 / クリスタル 5 */
+
+.frame-lovely {
+    position: relative;
+    border: 2px solid #ff69b4;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(45deg, #ffe6f0, #ffb6d5, #ff80bf);
+    color: #ff007f;
+    font-family: 'M PLUS Rounded 1c', 'うずらフォント', 'Comic Sans MS', cursive, sans-serif;
+    font-weight: bold;
+    overflow: hidden;
+    animation: lovelyPulse 3s ease-in-out infinite alternate;
+}
+
+.frame-lovely::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), transparent 70%);
+    animation: lovelyGlow 5s linear infinite alternate;
+    pointer-events: none;
+}
+
+@keyframes lovelyPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02) rotate(-1deg); }
+    100% { transform: scale(1.04) rotate(1deg); }
+}
+
+@keyframes lovelyGlow {
+    0% { background-position: 0% 0%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 100%; }
+}
+
+
+/* 炎フレーム（赤系・燃えるアニメーション） */
+.frame-flame {
+    position: relative;
+    border: 2px solid #ff7f50; /* 柔らかめのコーラル色 */
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(45deg, #ffb380, #ff7f50, #ff6347, #ffa07a); /* 優しいオレンジ〜赤トーン */
+    color: #fff8f0; /* 温かみのある文字色 */
+    font-weight: bold;
+    overflow: hidden;
+    animation: flameWave 4s linear infinite;
+}
+
+.frame-flame::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+    animation: flameFlicker 1s ease-in-out infinite alternate;
+    pointer-events: none;
+}
+
+@keyframes flameWave {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes flameFlicker {
+    0% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.05); opacity: 0.85; } /* 少し抑えた明るさ */
+    100% { transform: scale(1); opacity: 0.6; }
+}
+
+
+/* 価格: コイン 40,000 / クリスタル 4 */
+
+/* 集中マスターフレーム（緑系・ティア10以上条件） */
+.frame-master {
+    position: relative;
+    border: 2px solid #00ba7c;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(45deg, #00ff90, #00ba7c, #007f50);
+    color: #e6ffe6;
+    font-weight: bold;
+    overflow: hidden;
+    animation: masterShift 6s ease-in-out infinite alternate;
+}
+
+.frame-master::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 80%);
+    animation: masterGlow 4s ease-in-out infinite alternate;
+    pointer-events: none;
+}
+
+@keyframes masterShift {
+    0% { background-position: 0% 50%; transform: rotate(0deg); }
+    50% { background-position: 100% 50%; transform: rotate(1deg); }
+    100% { background-position: 0% 50%; transform: rotate(0deg); }
+}
+
+@keyframes masterGlow {
+    0% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.03); }
+    100% { opacity: 0.5; transform: scale(1); }
+}
+
+
+/* 価格: コイン 100,000 / クリスタル 10（ティア10以上限定） */
+
+
+
 /* フルスクリーン用*/
 .fullscreen-fallback {
     position: fixed !important;
@@ -655,7 +831,7 @@ button {
     /* 任意 */
     z-index: 9999;
 }
-//アイコン
+/*アイコン */
 .user-display-name {
     font-weight: bold;
     font-size: 1.2em;
@@ -946,4 +1122,79 @@ a:hover {
         width: 100%;
         box-sizing: border-box;
     }
+}
+
+/* バフ用*/
+/* バフバー全体 */
+.buff-status-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+/* 個々のバフアイコン */
+.buff-icon {
+    position: relative;
+    display: inline-block;
+    width: 100px;
+    height: 100px;
+    text-align: center;
+    font-size: 48px;
+    border-radius: 8px;
+    background: #222;
+    /* ダーク系背景 */
+    color: #fff;
+}
+
+/* 個人バフは枠線で強調 */
+.buff-icon.personal {
+    border: 2px solid #0f0;
+}
+
+/* バフ％表示 */
+.buff-percent {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 24px;
+    color: #ff0;
+    font-weight: bold;
+}
+
+/* 残り時間タイマー */
+.buff-timer {
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 24px;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 1px 3px;
+    border-radius: 3px;
+}
+
+/* バフ発動ボタン */
+.buff-buttons {
+    margin: 10px 0;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.buff-buttons button {
+    padding: 6px 12px;
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    background: #1d9bf0;
+    color: #fff;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+.buff-buttons button:hover {
+    background: #0c7cd5;
 }

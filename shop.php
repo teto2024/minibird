@@ -5,6 +5,7 @@ if (!$me){ header('Location: ./'); exit; }
 $pdo = db();
 
 // Seed sample frames if none
+// Seed sample frames if none
 $cnt = (int)$pdo->query("SELECT COUNT(*) FROM frames")->fetchColumn();
 if ($cnt===0){
   $pdo->exec("INSERT INTO frames(name,css_token,price_coins,price_crystals,preview_css) VALUES
@@ -15,24 +16,31 @@ if ($cnt===0){
   ('サイバーパンク','frame-cyberpunk',900,3,''),
   ('ネオン文字','frame-neon-text',850,2,''),
   ('VIP','frame-vip',2000,5,''),
-  ('パープル','frame-purple',700,1,'')");
+  ('パープル','frame-purple',700,1,''),
+  ('星空','frame-stars',50000,5,''),
+  ('ラブリー','frame-lovely',30000,3,''),
+  ('炎','frame-flame',40000,4,''),
+  ('集中マスター','frame-master',100000,10','')"); // 集中マスターはティア10以上限定
 }
 
-
+// POST処理
 if ($_SERVER['REQUEST_METHOD']==='POST'){
   $frame_id = (int)($_POST['frame_id'] ?? 0);
   $act = $_POST['act'] ?? '';
   if ($act==='buy'){
     $fr = $pdo->prepare("SELECT * FROM frames WHERE id=?"); $fr->execute([$frame_id]); $f = $fr->fetch();
     if (!$f){ $msg='フレームが見つかりません'; }
-    else{
-      if ($me['coins'] >= $f['price_coins'] && $me['crystals'] >= $f['price_crystals']) {
-        $pdo->prepare("INSERT IGNORE INTO user_frames(user_id,frame_id) VALUES(?,?)")->execute([$me['id'],$frame_id]);
-        $pdo->prepare("UPDATE users SET coins=coins-?, crystals=crystals-? WHERE id=?")->execute([$f['price_coins'],$f['price_crystals'],$me['id']]);
-        $pdo->prepare("INSERT INTO reward_events(user_id,kind,amount,meta) VALUES(?,?,?,JSON_OBJECT('frame_id',?))")
-            ->execute([$me['id'],'buy_frame',-$f['price_coins'],$frame_id]);
-        $msg='購入しました';
-      } else { $msg='残高不足'; }
+    else {
+        // 集中マスターフレームはティア10以上チェック
+        if ($f['css_token']==='frame-master' && ($me['focus_tier'] ?? 0) < 10){
+            $msg = '集中マスターはティア10以上のユーザーのみ購入可能です';
+        } elseif ($me['coins'] >= $f['price_coins'] && $me['crystals'] >= $f['price_crystals']){
+            $pdo->prepare("INSERT IGNORE INTO user_frames(user_id,frame_id) VALUES(?,?)")->execute([$me['id'],$frame_id]);
+            $pdo->prepare("UPDATE users SET coins=coins-?, crystals=crystals-? WHERE id=?")->execute([$f['price_coins'],$f['price_crystals'],$me['id']]);
+            $pdo->prepare("INSERT INTO reward_events(user_id,kind,amount,meta) VALUES(?,?,?,JSON_OBJECT('frame_id',?))")
+                ->execute([$me['id'],'buy_frame',-$f['price_coins'],$frame_id]);
+            $msg='購入しました';
+        } else { $msg='残高不足'; }
     }
   } elseif ($act==='equip'){
     $own = $pdo->prepare("SELECT 1 FROM user_frames WHERE user_id=? AND frame_id=?"); $own->execute([$me['id'],$frame_id]);
@@ -43,6 +51,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST'){
   }
   header("Location: shop.php?msg=".urlencode($msg)); exit;
 }
+
 
 $frames = $pdo->query("SELECT f.*, (SELECT 1 FROM user_frames uf WHERE uf.user_id={$me['id']} AND uf.frame_id=f.id) owned FROM frames f ORDER BY id")->fetchAll();
 $active = (int)($me['active_frame_id'] ?? 0);

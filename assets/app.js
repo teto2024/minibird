@@ -432,6 +432,18 @@ window.addEventListener("load", () => {
         });
     }
 });
+document.addEventListener("DOMContentLoaded", () => {
+    const rightAside = document.querySelector("aside.right");
+    const leftNav = document.querySelector("aside.left nav");
+
+    if (rightAside && leftNav) {
+        // クローンを作って追加（スマホ用）
+        const clone = rightAside.cloneNode(true);
+        clone.classList.add("mobile-only"); // スタイル用
+        leftNav.appendChild(clone);
+    }
+});
+
 //----------------------------
 // 通知管理スクリプト (安全強化版)
 //----------------------------

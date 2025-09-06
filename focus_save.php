@@ -44,41 +44,69 @@ try {
     // --------------------------
     $tagged_user_id = null;
     $bonus_multiplier = 1;
+    $tag_bonus_active = false;
 
     if ($status === 'success' && $tag_handle) {
         $st = $pdo->prepare("SELECT id FROM users WHERE handle=? LIMIT 1");
         $st->execute([$tag_handle]);
-        $tagged_user_id = $st->fetchColumn() ?: null;
+        $tagged_user_id_candidate = $st->fetchColumn();
 
-        if ($tagged_user_id) {
+        if ($tagged_user_id_candidate) {
             $st = $pdo->prepare("
                 SELECT started_at FROM focus_tasks 
                 WHERE user_id=? AND status='success'
                 ORDER BY started_at DESC LIMIT 1
             ");
-            $st->execute([$tagged_user_id]);
+            $st->execute([$tagged_user_id_candidate]);
             $tagged_started = $st->fetchColumn();
+
             if ($tagged_started) {
                 $diff = abs(strtotime($started_at) - strtotime($tagged_started));
                 if ($diff <= 180) { // ±3分以内
                     $bonus_multiplier = 2;
+                    $tagged_user_id = $tagged_user_id_candidate;
+                    $tag_bonus_active = true;
                 }
             }
         }
     }
 
-    $coins *= $bonus_multiplier;
-    $crystals *= $bonus_multiplier;
+    // --------------------------
+// タスク開始時のバフ倍率取得
+// --------------------------
+$nowStr = (new DateTime())->format('Y-m-d H:i:s'); // サーバー時刻を使用
+$st = $pdo->prepare("
+    SELECT MAX(level) as lvl
+    FROM buffs
+    WHERE type = 'task'
+      AND start_time <= ?
+      AND end_time >= ?
+");
+$st->execute([$nowStr, $nowStr]);
+$level_at_start = (int)($st->fetchColumn() ?? 0);
+$start_buff_multiplier = $level_at_start > 0 ? 1 + 0.2 * $level_at_start : 1;
+
 
     // --------------------------
-    // タスク履歴保存（成功・失敗ともに記録）
+    // タッグボーナスと掛け合わせる
+    // --------------------------
+    $total_multiplier = $bonus_multiplier * $start_buff_multiplier;
+
+    // --------------------------
+    // 実際に適用するコイン・クリスタル
+    // --------------------------
+    $final_coins    = (int)($coins * $total_multiplier);
+    $final_crystals = (int)($crystals * $total_multiplier);
+
+    // --------------------------
+    // タスク履歴保存（開始時バフ倍率も記録）
     // --------------------------
     $st = $pdo->prepare("
         INSERT INTO focus_tasks
-        (user_id, task, started_at, ended_at, minutes, coins, crystals, status, tagged_user_id)
-        VALUES (?,?,?,?,?,?,?,?,?)
+        (user_id, task, started_at, ended_at, minutes, coins, crystals, status, tagged_user_id, buff_multiplier)
+        VALUES (?,?,?,?,?,?,?,?,?,?)
     ");
-    $st->execute([$uid, $task, $started_at, $ended_at, $mins, $coins, $crystals, $status, $tagged_user_id]);
+    $st->execute([$uid, $task, $started_at, $ended_at, $mins, $final_coins, $final_crystals, $status, $tagged_user_id, $start_buff_multiplier]);
 
     $next_tier = 0;
 
@@ -87,7 +115,7 @@ try {
         // コイン・クリスタル加算
         // --------------------------
         $st = $pdo->prepare("UPDATE users SET coins=coins+?, crystals=crystals+? WHERE id=?");
-        $st->execute([$coins, $crystals, $uid]);
+        $st->execute([$final_coins, $final_crystals, $uid]);
 
         // --------------------------
         // 累計時間更新
@@ -124,14 +152,22 @@ try {
         }
 
         // --------------------------
-        // 報酬イベント登録
+        // 報酬イベント登録（開始時バフ＋タッグ後の値を記録）
         // --------------------------
         $st = $pdo->prepare("INSERT INTO reward_events(user_id,kind,amount,meta) VALUES(?,?,?,?)");
         $st->execute([
             $uid,
             'focus_reward',
-            $coins + $crystals,
-            json_encode(['task'=>$task,'tier'=>$next_tier,'bonus_multiplier'=>$bonus_multiplier])
+            $final_coins + $final_crystals,
+            json_encode([
+                'task' => $task,
+                'tier' => $next_tier,
+                'coins' => $final_coins,
+                'crystals' => $final_crystals,
+                'total_multiplier' => $total_multiplier,
+                'start_buff_multiplier' => $start_buff_multiplier,
+                'tag_bonus_active' => $tag_bonus_active
+            ])
         ]);
 
     } else {
@@ -141,7 +177,18 @@ try {
         $next_tier = (int)($st->fetchColumn() ?? 0);
     }
 
-    json_exit(['ok'=>true,'tier'=>$next_tier,'bonus'=>$bonus_multiplier]);
+    // --------------------------
+    // JSON出力（バフ＋タッグ後の値）
+    // --------------------------
+    json_exit([
+        'ok' => true,
+        'tier' => $next_tier,
+        'coins' => $final_coins,
+        'crystals' => $final_crystals,
+        'total_multiplier' => $total_multiplier,
+        'start_buff_multiplier' => $start_buff_multiplier,
+        'tag_bonus_active' => $tag_bonus_active
+    ]);
 
 } catch (Exception $e) {
     json_exit(['ok'=>false,'error'=>'exception','msg'=>$e->getMessage()]);
