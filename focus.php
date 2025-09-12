@@ -273,8 +273,12 @@ function sendFocusLog(task, started_at, ended_at, mins, coins, crystals, status)
       // ティア表示更新
       document.getElementById('currentTier').textContent = `ティア${data.tier}`;
 
-      // コイン・クリスタル表示（バフ＋タッグ後の実数値）
-      alert(`成功！コイン+${data.coins} / クリスタル+${data.crystals}`);
+      // 成功・失敗に関わらず報酬表示
+      if(status === "success"){
+        alert(`成功！コイン+${data.coins} / クリスタル+${data.crystals}`);
+      } else {
+        alert(`失敗でも報酬！コイン+${data.coins} / クリスタル+${data.crystals}`);
+      }
 
       // タッグボーナス表示
       if(data.tag_bonus_active){
@@ -290,12 +294,16 @@ function success(){
   clearInterval(quoteInterval);
   exitFullscreen();
   const mins = parseInt(document.getElementById('mins').value || '25', 10);
-  const coins = Math.floor(5 * Math.pow(1.1, mins));
+
+  // --------------------------
+  // 指数関数的報酬計算を JS 側でも統一
+  // --------------------------
+  const coins = Math.floor(5 * Math.pow(1.05, mins));
   const crystals = Math.floor(1 * Math.pow(1.05, mins));
+
   const task = document.getElementById('task').value.trim();
   const endTime = new Date();
   
-  // 成功時のログ送信
   sendFocusLog(task, startTime, endTime, mins, coins, crystals, "success");
 }
 
@@ -304,11 +312,20 @@ function fail(){
   clearInterval(t); lock=false;
   clearInterval(quoteInterval);
   exitFullscreen();
-  const task=document.getElementById('task').value.trim();
-  const endTime=new Date();
-  const started=startTime??endTime;
-  alert('失敗...');
-  sendFocusLog(task,started,endTime,0,0,0,"fail");
+
+  const task = document.getElementById('task').value.trim();
+  const endTime = new Date();
+  const started = startTime ?? endTime;
+
+  const mins = parseInt(document.getElementById('mins').value || '25', 10);
+
+  // --------------------------
+  // 失敗時も指数関数的報酬を計算（半分はサーバー側で対応）
+  // --------------------------
+  const coins = Math.floor(5 * Math.pow(1.05, mins));
+  const crystals = Math.floor(1 * Math.pow(1.05, mins));
+
+  sendFocusLog(task, started, endTime, mins, coins, crystals, "fail");
 }
 
 function enterFullscreen(elem){

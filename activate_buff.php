@@ -157,6 +157,11 @@ $st->execute([5, $post_content_md, $post_content_html]);
 </head>
 <body>
 <h2>バフ発動ページ（Ajax版）</h2>
+※説明
+タスク報酬→集中タスク報酬20％アップ、20分間持続。重ねがけ可能。
+英単語報酬→未実装
+チャット祭り→チャットに愉快な絵文字が追加されるだけです。20分間有効。
+個人免除バフ→未実装
 
 <div class="buff-status-bar" id="buffBar"></div>
 
@@ -207,16 +212,32 @@ async function initBuffBar(){
     updateBuffBar(data);
 }
 
-// --- ボタン処理 ---
+// --- ボタン処理（確認アラート + 値段表示） ---
+const COSTS = {
+    'task': {coin:1000, crystal:1},
+    'word': {coin:1000, crystal:1},
+    'chat_festival': {coin:2000, crystal:2},
+    'festival_exempt': {coin:500, crystal:1},
+};
+
 document.querySelectorAll('.buff-btn').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
         const type = btn.dataset.type;
+        const cost = COSTS[type];
+        if(!confirm(`${btn.textContent}バフを発動しますか？\n必要コイン: ${cost.coin} / クリスタル: ${cost.crystal}`)){
+            return; // キャンセルしたら中止
+        }
+
         const formData = new FormData();
         formData.append('type', type);
         const res = await fetch('',{method:'POST', body:formData});
         const data = await res.json();
-        if(data.ok){ alert(data.message); initBuffBar(); }
-        else{ alert('エラー: '+data.error); }
+        if(data.ok){
+            alert(data.message);
+            initBuffBar();
+        } else {
+            alert('エラー: '+data.error);
+        }
     });
 });
 
@@ -224,5 +245,6 @@ document.querySelectorAll('.buff-btn').forEach(btn=>{
 setInterval(initBuffBar, 5000);
 initBuffBar();
 </script>
+
 </body>
 </html>

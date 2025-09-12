@@ -29,14 +29,56 @@ try {
         require_login();
         $u = user();
         if ($u['muted_until'] && strtotime($u['muted_until']) > time()) {
-    echo json_encode(['ok'=>false,'error'=>'muted']); exit;
-}
+            echo json_encode(['ok'=>false,'error'=>'muted']); exit;
+        }
+
         $content = trim($_POST['content'] ?? '');
         $nsfw = ($_POST['nsfw'] ?? '0') === '1' ? 1 : 0;
+
         if ($content === '' && empty($_FILES['media']['name'])) {
             echo json_encode(['ok'=>false,'error'=>'empty']); exit;
         }
         if (!pass_banned($content)) { echo json_encode(['ok'=>false,'error'=>'banned_word']); exit; }
+
+        $pdo = db();
+
+        // --- チャット祭バフ判定 ---
+        $nowStr = (new DateTime())->format('Y-m-d H:i:s');
+        $st = $pdo->prepare("
+            SELECT 1 
+            FROM buffs 
+            WHERE type='chat_festival' AND start_time<=? AND end_time>=? 
+            LIMIT 1
+        ");
+        $st->execute([$nowStr,$nowStr]);
+        if ($st->fetchColumn()) {
+            $faces = [
+    // シンプルだけど可愛い
+    '٩( ᐛ )و','(ง ˙ω˙)ว','( ᐛ )و','٩(　ᐕ)و','(　ᐕ)⁾⁾','ᕕ( ᐛ )ᕗ','m(._.)m',
+    '(　˙³˙)','乁( ˙ω˙ 乁)ｳｨｰ!','_(ゝLꒊ:)_','_(:3 ⌒ﾞ)_','三三ᕕ( ᐛ )ᕗ','ᕙ(⍢)ᕗ',
+    '(๑¯ω¯๑)','(๏ɷ๏)','( :D)┸┓','o(:3 )～(¦3ꇤ )=','(((ง’ω’)و三 ง’ω’)ڡ≡ｼｭｯｼｭ',
+    '₍₍ ᕕ( ˘ω˘ )ᕗ⁾⁾','＼＼٩( ‘ω’ )و //／／','(　³ω³ )','(⊙ө⊙;)','ฅ(๑*д*๑)ฅ!!',
+    '( ‘Θ’)','_(•̀ω•́ 」∠)_ ₎₎','(꒦໊ྀʚ꒦໊ི )','✋(　˙-˙　)ﾊﾊｯ','(｡˘•ε•˘｡)','(　˙灬˙　)♡',
+    'ฅ•ﻌ•ฅ','ฅ’ω’ฅ','0(:3 _ )～','⁽˙³˙⁾◟( ˘•ω•˘ )◞⁽˙³˙⁾','└(‘- ‘ ┌)└( ‘-‘ )┘(┐’ -‘)┘',
+
+    // その他( ᐛ )この顔
+    '( ᐛ )','( ᐙ )','（ ᑒ ）','( ⌳̈ )','ᐠ( ᐛ )ᐟ','\\( ᐙ )/','ᐠ( ᐕ )ᐟ',
+    'ᐠ( ᐛ )ᐟ','(/ ᐕ)/','(੭ ᐕ)੭','( ᐛ )?','(੭ ᐕ)？','( ᐛ )σ','(˙◁˙)','(૭ ᐕ)૭',
+    '(੭ुᐛ)੭ु⁾⁾','( ᐛ ).｡oஇ','| ᐕ)⁾⁾♡ʾʾ','│ᐕ) ⁾⁾','| ᐕ)','.*.｡ଘ( ᐛ ) ଓ','(   ᐛღ )',
+
+    // 絵文字つき
+    '( ᐕ)ﾉ ⁾⁾⭐','( ᐛ👐)','(*ᐛ*)ᒃ✨','(☝ ᐛ )☝','( ᐛ🙏)','☝️( ᐛ☝️)','👏(　ᐛ 　)',
+
+    // 二人組
+    '⁽⁽*( ᐖ )*⁾⁾ ₍₍*( ᐛ )*₎₎','ᐠ( ᐛ )ᐟᐠ( ᐛ )ᐟ'
+];
+
+            shuffle($faces);
+            // 2～3個をランダムで選択して文末に追加
+            $count = random_int(2,3);
+            $face_str = implode(' ', array_slice($faces, 0, $count));
+            $content .= " ".$face_str;
+        }
 
         $media_path = null; $media_type = null;
         if (!empty($_FILES['media']['name'])) {
@@ -53,7 +95,6 @@ try {
         }
 
         $html = markdown_to_html($content);
-        $pdo = db();
         $pdo->prepare("INSERT INTO posts(user_id,content_md,content_html,nsfw,media_path,media_type,created_at) VALUES(?,?,?,?,?,?,NOW())")
             ->execute([$_SESSION['uid'],$content,$html,$nsfw,$media_path,$media_type]);
         $post_id = $pdo->lastInsertId();

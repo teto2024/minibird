@@ -72,31 +72,51 @@ try {
     }
 
     // --------------------------
-// タスク開始時のバフ倍率取得
-// --------------------------
-$nowStr = (new DateTime())->format('Y-m-d H:i:s'); // サーバー時刻を使用
-$st = $pdo->prepare("
-    SELECT MAX(level) as lvl
-    FROM buffs
-    WHERE type = 'task'
-      AND start_time <= ?
-      AND end_time >= ?
-");
-$st->execute([$nowStr, $nowStr]);
-$level_at_start = (int)($st->fetchColumn() ?? 0);
-$start_buff_multiplier = $level_at_start > 0 ? 1 + 0.2 * $level_at_start : 1;
-
+    // タスク開始時のバフ倍率取得
+    // --------------------------
+    $nowStr = (new DateTime())->format('Y-m-d H:i:s'); // サーバー時刻を使用
+    $st = $pdo->prepare("
+        SELECT MAX(level) as lvl
+        FROM buffs
+        WHERE type = 'task'
+          AND start_time <= ?
+          AND end_time >= ?
+    ");
+    $st->execute([$nowStr, $nowStr]);
+    $level_at_start = (int)($st->fetchColumn() ?? 0);
+    $start_buff_multiplier = $level_at_start > 0 ? 1 + 0.2 * $level_at_start : 1;
 
     // --------------------------
     // タッグボーナスと掛け合わせる
     // --------------------------
     $total_multiplier = $bonus_multiplier * $start_buff_multiplier;
 
+        // --------------------------
+    // 成功・失敗ごとのコイン・クリスタル計算
     // --------------------------
-    // 実際に適用するコイン・クリスタル
-    // --------------------------
-    $final_coins    = (int)($coins * $total_multiplier);
-    $final_crystals = (int)($crystals * $total_multiplier);
+        if ($status === 'success') {
+        // 成功時：指数関数的な時間ボーナス
+        $time_multiplier = pow(1.05, $mins);
+
+        $final_coins    = (int)floor($coins * $time_multiplier * $total_multiplier);
+        $final_crystals = (int)floor($crystals * $time_multiplier * $total_multiplier);
+    } else {
+        // 失敗時：実施時間 / 設定時間 の比率で報酬を決定
+
+        // 実施時間（分単位、最低1分保証）
+        $actual_mins = max(1, floor((strtotime($ended_at) - strtotime($started_at)) / 60));
+
+        // 実施比率（0〜1）
+        $progress_ratio = min(1, $actual_mins / $mins);
+
+        // 実施時間に応じた指数補正
+        $time_multiplier = pow(1.05, $actual_mins);
+
+        // 比率＋指数補正＋各種ボーナスを掛け合わせ
+        $final_coins    = (int)floor($coins * $progress_ratio * $time_multiplier * $total_multiplier);
+        $final_crystals = (int)floor($crystals * $progress_ratio * $time_multiplier * $total_multiplier);
+    }
+
 
     // --------------------------
     // タスク履歴保存（開始時バフ倍率も記録）
@@ -152,7 +172,7 @@ $start_buff_multiplier = $level_at_start > 0 ? 1 + 0.2 * $level_at_start : 1;
         }
 
         // --------------------------
-        // 報酬イベント登録（開始時バフ＋タッグ後の値を記録）
+        // 報酬イベント登録（成功）
         // --------------------------
         $st = $pdo->prepare("INSERT INTO reward_events(user_id,kind,amount,meta) VALUES(?,?,?,?)");
         $st->execute([
@@ -171,10 +191,34 @@ $start_buff_multiplier = $level_at_start > 0 ? 1 + 0.2 * $level_at_start : 1;
         ]);
 
     } else {
-        // 失敗時はティア変更なし
+        // --------------------------
+        // 失敗時：コイン・クリスタルのみ加算（ティア変更なし）
+        // --------------------------
+        $st = $pdo->prepare("UPDATE users SET coins=coins+?, crystals=crystals+? WHERE id=?");
+        $st->execute([$final_coins, $final_crystals, $uid]);
+
+        // ティアはそのまま
         $st = $pdo->prepare("SELECT focus_tier FROM users WHERE id=?");
         $st->execute([$uid]);
         $next_tier = (int)($st->fetchColumn() ?? 0);
+
+        // --------------------------
+        // 報酬イベント登録（失敗）
+        // --------------------------
+        $st = $pdo->prepare("INSERT INTO reward_events(user_id,kind,amount,meta) VALUES(?,?,?,?)");
+        $st->execute([
+            $uid,
+            'focus_fail_reward',
+            $final_coins + $final_crystals,
+            json_encode([
+                'task' => $task,
+                'coins' => $final_coins,
+                'crystals' => $final_crystals,
+                'total_multiplier' => $total_multiplier,
+                'start_buff_multiplier' => $start_buff_multiplier,
+                'tag_bonus_active' => $tag_bonus_active
+            ])
+        ]);
     }
 
     // --------------------------
