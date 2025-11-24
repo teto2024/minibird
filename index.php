@@ -99,6 +99,7 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
     }
     update();
 });
+
 </script>
 
 <?php endif; ?>
@@ -146,6 +147,7 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
     <a href="ranking.php" class="tabBtn block">集中ランキング</a>
     <a href="shop.php" class="tabBtn block">フレーム・ショップ</a>
     <a href="activate_buff.php" class="tabBtn block">バフショップ</a>
+    <a href="vip_shop.php" class="tabBtn block">VIPショップ</a>
     <a href="admin.php" class="tabBtn block">管理者用</a>
   <?php endif; ?>
 </nav>

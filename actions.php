@@ -8,7 +8,7 @@ $input = json_decode(file_get_contents('php://input'), true) ?: [];
 $action = $input['action'] ?? '';
 
 function insertNotification($type, $actor_id, $target_user_id, $post_id = null) {
-    if ($actor_id === $target_user_id) return; // 自分のアクションは通知不要
+    if ($actor_id === $target_user_id) return; // 自分のアクションは通不要
     $pdo = db();
     $st = $pdo->prepare("
         INSERT INTO notifications (user_id, actor_id, type, post_id, created_at, is_read)
@@ -44,41 +44,76 @@ if ($action === 'toggle_like') {
 
 if ($action === 'toggle_repost') {
     require_login();
+
     $post_id = (int)($input['post_id'] ?? 0);
-    if ($post_id <= 0) { echo json_encode(['ok'=>false]); exit; }
+    if ($post_id <= 0) {
+        echo json_encode(['ok' => false]);
+        exit;
+    }
 
     $pdo = db();
+
+    // 投稿情報を取得
+    $st = $pdo->prepare("SELECT is_repost_of, user_id FROM posts WHERE id=?");
+    $st->execute([$post_id]);
+    $post = $st->fetch(PDO::FETCH_ASSOC);
+
+    if (!$post) {
+        echo json_encode(['ok' => false, 'message' => '投稿が存在しません']);
+        exit;
+    }
+
+    // すでにリポストされた投稿は再リポスト不可
+    if ($post['is_repost_of'] !== null) {
+        echo json_encode(['ok' => false, 'message' => 'リポストは再リポストできません']);
+        exit;
+    }
+
+    // すでにリポスト済みか確認
     $st = $pdo->prepare("SELECT 1 FROM reposts WHERE user_id=? AND post_id=?");
     $st->execute([$_SESSION['uid'], $post_id]);
     $alreadyReposted = (bool)$st->fetch();
 
     if ($alreadyReposted) {
-        $pdo->prepare("DELETE FROM reposts WHERE user_id=? AND post_id=?")->execute([$_SESSION['uid'], $post_id]);
+        // リポスト削除
+        $pdo->prepare("DELETE FROM reposts WHERE user_id=? AND post_id=?")
+            ->execute([$_SESSION['uid'], $post_id]);
+
         // 投稿コピーも削除
-        $pdo->prepare("DELETE FROM posts WHERE user_id=? AND is_repost_of=?")->execute([$_SESSION['uid'], $post_id]);
+        $pdo->prepare("DELETE FROM posts WHERE user_id=? AND is_repost_of=?")
+            ->execute([$_SESSION['uid'], $post_id]);
+
         $reposted = false;
     } else {
-        $pdo->prepare("INSERT INTO reposts(user_id, post_id) VALUES(?, ?)")->execute([$_SESSION['uid'], $post_id]);
+        // リポスト登録
+        $pdo->prepare("INSERT INTO reposts(user_id, post_id) VALUES(?, ?)")
+            ->execute([$_SESSION['uid'], $post_id]);
 
         // タイムライン用にコピー作成
         $pdo->prepare("
             INSERT INTO posts(user_id, content_md, content_html, is_repost_of, created_at)
-            SELECT ?, content_md, content_html, id, NOW() 
-            FROM posts 
+            SELECT ?, content_md, content_html, id, NOW()
+            FROM posts
             WHERE id=?
         ")->execute([$_SESSION['uid'], $post_id]);
 
         // 投稿者に通知
-        $original_post_owner_id = (int)$pdo->query("SELECT user_id FROM posts WHERE id=$post_id")->fetchColumn();
+        $original_post_owner_id = (int)$post['user_id'];
         insertNotification('repost', $_SESSION['uid'], $original_post_owner_id, $post_id);
 
         $reposted = true;
     }
 
-    $cnt = (int)$pdo->query("SELECT COUNT(*) FROM reposts WHERE post_id=".$post_id)->fetchColumn();
-    echo json_encode(['ok'=>true, 'count'=>$cnt, 'reposted'=>$reposted]);
+    // リポスト数を取得
+    $cnt = (int)$pdo->query("SELECT COUNT(*) FROM reposts WHERE post_id=" . $post_id)
+        ->fetchColumn();
+
+    echo json_encode(['ok' => true, 'count' => $cnt, 'reposted' => $reposted]);
     exit;
 }
+
+
+
 
 if ($action === 'toggle_bookmark') {
     require_login();

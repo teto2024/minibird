@@ -4,20 +4,18 @@ header('Content-Type: application/json');
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-
 $input = json_decode(file_get_contents('php://input'), true) ?: [];
 $action = $input['action'] ?? 'fetch';
 
 function serialize_post($row, $uid, $pdo){
-    $content_html = null;
-
+    // --- メッセージ内容 ---
+    $content_html = '';
     if (!empty($row['deleted_at'])) {
         $content_html = !empty($row['deleted_by_mod']) ? 'モデレータにより削除済み' : '削除済み';
     } elseif (!empty($row['content_html'])) {
         $content_html = $row['content_html'];
     } elseif (!empty($row['content_md'])) {
         $content_html = nl2br(htmlspecialchars($row['content_md']));
-
         $content_html = preg_replace_callback(
             '/@([a-zA-Z0-9_]+)/',
             function($matches) use ($pdo) {
@@ -28,31 +26,35 @@ function serialize_post($row, $uid, $pdo){
                 if ($user) {
                     $url = "profile.php?id=" . (int)$user['id'];
                     return '<a href="' . $url . '" class="mention">@' . htmlspecialchars($handle) . '</a>';
-                } else {
-                    return '@' . htmlspecialchars($handle);
                 }
+                return '@' . htmlspecialchars($handle);
             },
             $content_html
         );
-    } else {
-        $content_html = '';
     }
 
-    // ------------------------
-    // ★ ここを修正：ユーザー情報を確実に取得
-    // ------------------------
-    $userStmt = $pdo->prepare("SELECT display_name, icon FROM users WHERE id = ?");
-    $userStmt->execute([$row['user_id']]);
-    $userData = $userStmt->fetch(PDO::FETCH_ASSOC);
+    // --- 投稿者情報（通常投稿 or リポスト元） ---
+    $is_repost = !empty($row['original_id']);
+    if ($is_repost) {
+        $display_name = $row['original_display_name'] ?? $row['original_handle'] ?? 'unknown';
+        $icon = !empty($row['original_icon']) ? '/' . ltrim($row['original_icon'], '/') : '/uploads/icons/default_icon.png';
+        $vip_level = isset($row['original_vip']) ? (int)$row['original_vip'] : 0;
+        $handle = $row['original_handle'] ?? 'unknown';
+        $frame_class = $row['original_frame_class'] ?? null;
+    } else {
+        $display_name = !empty($row['display_name']) ? $row['display_name'] : ($row['handle'] ?? 'unknown');
+        $icon = !empty($row['icon']) ? '/' . ltrim($row['icon'], '/') : '/uploads/icons/default_icon.png';
+        $vip_level = isset($row['vip_level']) ? (int)$row['vip_level'] : 0;
+        $handle = $row['handle'] ?? 'unknown';
+        $frame_class = $row['frame_class'] ?? null;
+    }
 
-    $display_name = !empty($userData['display_name']) ? $userData['display_name'] : ($row['handle'] ?? 'unknown');
-    $icon = !empty($userData['icon']) ? '/' . ltrim($userData['icon'], '/') : '/uploads/icons/default_icon.png';
-
-    // quoted_post の安全化
+    // --- 引用投稿 ---
     $quoted_post = null;
     if (!empty($row['quote_post_id'])) {
         $q = $pdo->prepare("
-            SELECT posts.id, posts.user_id, u.handle, u.display_name, u.icon, posts.content_md, posts.content_html, posts.deleted_at, posts.deleted_by_mod
+            SELECT posts.id, posts.user_id, u.handle, u.display_name, u.icon, u.vip_level,
+                   posts.content_md, posts.content_html, posts.deleted_at, posts.deleted_by_mod
             FROM posts
             JOIN users u ON u.id = posts.user_id
             WHERE posts.id = ?
@@ -62,9 +64,11 @@ function serialize_post($row, $uid, $pdo){
         if ($qp) {
             $quoted_post = [
                 'id' => (int)($qp['id'] ?? 0),
+                'user_id' => (int)($qp['user_id'] ?? 0),
                 'handle' => $qp['handle'] ?? 'unknown',
                 'display_name' => !empty($qp['display_name']) ? $qp['display_name'] : ($qp['handle'] ?? 'unknown'),
                 'icon' => !empty($qp['icon']) ? '/' . ltrim($qp['icon'], '/') : '/uploads/icons/default_icon.png',
+                'vip_level' => isset($qp['vip_level']) ? (int)$qp['vip_level'] : 0,
                 'content_md' => $qp['content_md'] ?? '',
                 'content_html' => $qp['content_html'] ?? '',
                 'deleted' => !empty($qp['deleted_at'])
@@ -74,9 +78,11 @@ function serialize_post($row, $uid, $pdo){
 
     return [
         'id'=> (int)($row['id'] ?? 0),
-        'handle'=> $row['handle'] ?? 'unknown',
+        'user_id'=> $is_repost ? (int)($row['original_id'] ?? 0) : (int)($row['user_id'] ?? 0),
+        'handle'=> $handle,
         'display_name'=> $display_name,
         'icon'=> $icon,
+        'vip_level'=> $vip_level,
         'created_at'=> $row['created_at'] ?? null,
         'content_html'=> $content_html,
         'content_md'  => !empty($row['deleted_at']) ? null : ($row['content_md'] ?? ''),
@@ -90,196 +96,202 @@ function serialize_post($row, $uid, $pdo){
         'liked'=> !empty($row['liked']),
         'reposted'=> !empty($row['reposted']),
         'is_repost_of'=> !empty($row['is_repost_of']) ? (int)$row['is_repost_of'] : null,
-        'reposter'=> $row['reposter'] ?? null,
-        'frame_class'=> $row['frame_class'] ?? null,
+        'reposter'=> [
+            'id'     => isset($row['reposter_id']) ? (int)$row['reposter_id'] : null,
+            'handle' => $row['reposter_handle'] ?? null,
+            'display_name' => $row['reposter_display_name'] ?? $row['reposter_handle'] ?? null,
+            'icon'   => !empty($row['reposter_icon']) ? '/' . ltrim($row['reposter_icon'], '/') : null,
+        ],
+        'frame_class'=> $frame_class,
         '_can_delete' => false,
         'quoted_post' => $quoted_post
     ];
 }
 
-
-
-
 $pdo = db();
 $uid = $_SESSION['uid'] ?? 0;
 $me = $uid ? user() : null;
 
-if ($action === 'fetch' || $action === 'fetch_more') {
-    // 修正ポイント: GET からも feed を受け取る
+// --- 共通 fetch 処理 ---
+function fetch_feed($sql, $params, $uid, $pdo, $me, $limit){
+    $st = $pdo->prepare($sql);
+    $i = 1;
+    foreach($params as $val){ $st->bindValue($i++, $val, PDO::PARAM_INT); }
+    $st->bindValue($i, $limit, PDO::PARAM_INT);
+    $st->execute();
+    $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+    $items = [];
+    foreach($rows as $row){
+        $p = serialize_post($row, $uid, $pdo);
+        $p['_can_delete'] = ($uid && ($uid === (int)$row['user_id'] || ($me && in_array($me['role'],['mod','admin']))));
+        $items[] = $p;
+    }
+    return $items;
+}
+
+// ========================
+// fetch / fetch_more
+// ========================
+if($action === 'fetch' || $action === 'fetch_more'){
     $feed = $input['feed'] ?? ($_GET['feed'] ?? 'global');
     $limit = max(1, min(100, (int)($input['limit'] ?? ($_GET['limit'] ?? 50))));
 
-
     // --- bookmarks ---
-if ($feed === 'bookmarks') {
-    if (!$me) { echo json_encode(['ok'=>false,'error'=>'login_required']); exit; }
-    $sql = "SELECT p.*, u.handle, p.deleted_at, p.deleted_by_mod,
-              (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
-              (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
-              (SELECT COUNT(*) FROM replies rp WHERE rp.post_id=p.id) AS reply_count,
-              EXISTS(SELECT 1 FROM likes l2 WHERE l2.post_id=p.id AND l2.user_id=?) AS liked,
-              EXISTS(SELECT 1 FROM reposts r2 WHERE r2.post_id=p.id AND r2.user_id=?) AS reposted,
-              (SELECT handle FROM users u2 WHERE u2.id = (SELECT user_id FROM posts WHERE id = p.is_repost_of)) AS reposter,
-              (SELECT css_token FROM frames f WHERE f.id = (SELECT active_frame_id FROM users WHERE id=p.user_id)) AS frame_class
-            FROM bookmarks b
-            JOIN posts p ON p.id = b.post_id
-            JOIN users u ON u.id = p.user_id
-            WHERE b.user_id = ?
-            ORDER BY b.created_at DESC
-            LIMIT ?";
-    $st = $pdo->prepare($sql);
-    // ここで整数としてバインド
-    $st->bindValue(1, $uid, PDO::PARAM_INT);
-    $st->bindValue(2, $uid, PDO::PARAM_INT);
-    $st->bindValue(3, $uid, PDO::PARAM_INT);
-    $st->bindValue(4, $limit, PDO::PARAM_INT);
-    $st->execute();
-    $rows = $st->fetchAll(PDO::FETCH_ASSOC);
-
-    $items = [];
-    foreach ($rows as $row) {
-        $p = serialize_post($row, $uid, $pdo);
-        $p['_can_delete'] = ($uid && ($uid === (int)$row['user_id'] || ($me && ($me['role']==='mod' || $me['role']==='admin'))));
-        $items[] = $p;
+    if($feed === 'bookmarks'){
+        if(!$me){ echo json_encode(['ok'=>false,'error'=>'login_required']); exit; }
+        $sql = "SELECT p.*, u.handle, u.display_name, u.vip_level, p.deleted_at, p.deleted_by_mod,
+                  (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
+                  (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
+                  (SELECT COUNT(*) FROM replies rp WHERE rp.post_id=p.id) AS reply_count,
+                  EXISTS(SELECT 1 FROM likes l2 WHERE l2.post_id=p.id AND l2.user_id=?) AS liked,
+                  EXISTS(SELECT 1 FROM reposts r2 WHERE r2.post_id=p.id AND r2.user_id=?) AS reposted,
+                  ou.id AS original_id,
+                  ou.handle AS original_handle,
+                  ou.display_name AS original_display_name,
+                  ou.icon AS original_icon,
+                  ou.vip_level AS original_vip,
+                  f_orig.css_token AS original_frame_class,
+                  ru.id AS reposter_id,
+                  ru.handle AS reposter_handle,
+                  ru.display_name AS reposter_display_name,
+                  ru.icon AS reposter_icon,
+                  f.css_token AS frame_class
+                FROM bookmarks b
+                JOIN posts p ON p.id = b.post_id
+                JOIN users u ON u.id = p.user_id
+                LEFT JOIN posts op ON op.id = p.is_repost_of
+                LEFT JOIN users ou ON ou.id = op.user_id
+                LEFT JOIN frames f_orig ON f_orig.id = (SELECT active_frame_id FROM users WHERE id=ou.id)
+                LEFT JOIN users ru ON ru.id = p.user_id
+                LEFT JOIN frames f ON f.id = (SELECT active_frame_id FROM users WHERE id=p.user_id)
+                WHERE b.user_id = ?
+                ORDER BY b.created_at DESC
+                LIMIT ?";
+        $items = fetch_feed($sql, [$uid,$uid,$uid], $uid, $pdo, $me, $limit);
+        echo json_encode(['ok'=>true,'items'=>$items]);
+        exit;
     }
-    echo json_encode(['ok'=>true,'items'=>$items]);
-    exit;
-}
 
-// --- communities ---
-if ($feed === 'communities') {
-    if (!$me) { echo json_encode(['ok'=>false,'error'=>'login_required']); exit; }
-    $sql = "SELECT p.*, u.handle, p.deleted_at, p.deleted_by_mod,
-              (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
-              (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
-              (SELECT COUNT(*) FROM replies rp WHERE rp.post_id=p.id) AS reply_count,
-              EXISTS(SELECT 1 FROM likes l2 WHERE l2.post_id=p.id AND l2.user_id=?) AS liked,
-              EXISTS(SELECT 1 FROM reposts r2 WHERE r2.post_id=p.id AND r2.user_id=?) AS reposted,
-              (SELECT handle FROM users u2 WHERE u2.id = (SELECT user_id FROM posts WHERE id = p.is_repost_of)) AS reposter,
-              (SELECT css_token FROM frames f WHERE f.id = (SELECT active_frame_id FROM users WHERE id=p.user_id)) AS frame_class
-            FROM community_members m
-            JOIN posts p ON p.community_id = m.community_id
-            JOIN users u ON u.id = p.user_id
-            WHERE m.user_id = ?
-            ORDER BY p.id DESC
-            LIMIT ?";
-    $st = $pdo->prepare($sql);
-    // ここも整数としてバインド
-    $st->bindValue(1, $uid, PDO::PARAM_INT);
-    $st->bindValue(2, $uid, PDO::PARAM_INT);
-    $st->bindValue(3, $uid, PDO::PARAM_INT);
-    $st->bindValue(4, $limit, PDO::PARAM_INT);
-    $st->execute();
-    $rows = $st->fetchAll(PDO::FETCH_ASSOC);
-
-    $items = [];
-    foreach ($rows as $row) {
-        $p = serialize_post($row, $uid, $pdo);
-        $p['_can_delete'] = ($uid && ($uid === (int)$row['user_id'] || ($me && ($me['role']==='mod' || $me['role']==='admin'))));
-        $items[] = $p;
+    // --- communities ---
+    if($feed === 'communities'){
+        if(!$me){ echo json_encode(['ok'=>false,'error'=>'login_required']); exit; }
+        $sql = "SELECT p.*, u.handle, u.display_name, u.vip_level, p.deleted_at, p.deleted_by_mod,
+                  (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
+                  (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
+                  (SELECT COUNT(*) FROM replies rp WHERE rp.post_id=p.id) AS reply_count,
+                  EXISTS(SELECT 1 FROM likes l2 WHERE l2.post_id=p.id AND l2.user_id=?) AS liked,
+                  EXISTS(SELECT 1 FROM reposts r2 WHERE r2.post_id=p.id AND r2.user_id=?) AS reposted,
+                  ou.id AS original_id,
+                  ou.handle AS original_handle,
+                  ou.display_name AS original_display_name,
+                  ou.icon AS original_icon,
+                  ou.vip_level AS original_vip,
+                  f_orig.css_token AS original_frame_class,
+                  ru.id AS reposter_id,
+                  ru.handle AS reposter_handle,
+                  ru.display_name AS reposter_display_name,
+                  ru.icon AS reposter_icon,
+                  f.css_token AS frame_class
+                FROM community_members m
+                JOIN posts p ON p.community_id = m.community_id
+                JOIN users u ON u.id = p.user_id
+                LEFT JOIN posts op ON op.id = p.is_repost_of
+                LEFT JOIN users ou ON ou.id = op.user_id
+                LEFT JOIN frames f_orig ON f_orig.id = (SELECT active_frame_id FROM users WHERE id=ou.id)
+                LEFT JOIN users ru ON ru.id = p.user_id
+                LEFT JOIN frames f ON f.id = (SELECT active_frame_id FROM users WHERE id=p.user_id)
+                WHERE m.user_id = ?
+                ORDER BY p.id DESC
+                LIMIT ?";
+        $items = fetch_feed($sql, [$uid,$uid,$uid], $uid, $pdo, $me, $limit);
+        echo json_encode(['ok'=>true,'items'=>$items]);
+        exit;
     }
-    echo json_encode(['ok'=>true,'items'=>$items]);
-    exit;
-}
-
 
     // --- recommended ---
-if ($feed === 'recommended') {
-    $sql = "
-    SELECT 
-        p.*,
-        u.handle,
-        p.deleted_at,
-        p.deleted_by_mod,
-        (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
-        (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
-        (SELECT COUNT(*) FROM replies rp WHERE rp.post_id=p.id) AS reply_count,
-        ".($uid ? "EXISTS(SELECT 1 FROM likes l2 WHERE l2.post_id=p.id AND l2.user_id=$uid)" : "0")." AS liked,
-        ".($uid ? "EXISTS(SELECT 1 FROM reposts r2 WHERE r2.post_id=p.id AND r2.user_id=$uid)" : "0")." AS reposted,
-        u2.handle AS reposter,
-        f.css_token AS frame_class
-    FROM posts p
-    JOIN users u ON u.id = p.user_id
-    LEFT JOIN posts rp_post ON rp_post.id = p.is_repost_of
-    LEFT JOIN users u2 ON u2.id = rp_post.user_id
-    LEFT JOIN frames f ON f.id = (SELECT active_frame_id FROM users WHERE id=p.user_id)
-    WHERE p.nsfw = 0 AND p.created_at >= (NOW() - INTERVAL 3 DAY) AND p.deleted_at IS NULL
-    ORDER BY ((SELECT COUNT(*) FROM replies rpX WHERE rpX.post_id=p.id)*3
-             + (SELECT COUNT(*) FROM reposts rX WHERE rX.post_id=p.id)*2
-             + (SELECT COUNT(*) FROM likes lX WHERE lX.post_id=p.id)) DESC,
-             p.id DESC
-    LIMIT ?
-    ";
-
-    $st = $pdo->prepare($sql);
-    // 数値としてバインド
-    $st->bindValue(1, $limit, PDO::PARAM_INT);
-    $st->execute();
-    $rows = $st->fetchAll(PDO::FETCH_ASSOC);
-
-    $items = [];
-    foreach ($rows as $row) {
-        $p = serialize_post($row, $uid, $pdo);
-        $p['_can_delete'] = ($uid && ($uid === (int)$row['user_id'] || ($me && ($me['role']==='mod' || $me['role']==='admin'))));
-        $items[] = $p;
+    if($feed === 'recommended'){
+        $sql = "SELECT p.*, u.handle, u.display_name, u.vip_level,
+                    p.deleted_at, p.deleted_by_mod,
+                    (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
+                    (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
+                    (SELECT COUNT(*) FROM replies rp WHERE rp.post_id=p.id) AS reply_count,
+                    ".($uid?"EXISTS(SELECT 1 FROM likes l2 WHERE l2.post_id=p.id AND l2.user_id=$uid)":"0")." AS liked,
+                    ".($uid?"EXISTS(SELECT 1 FROM reposts r2 WHERE r2.post_id=p.id AND r2.user_id=$uid)":"0")." AS reposted,
+                    ou.id AS original_id,
+                    ou.handle AS original_handle,
+                    ou.display_name AS original_display_name,
+                    ou.icon AS original_icon,
+                    ou.vip_level AS original_vip,
+                    f_orig.css_token AS original_frame_class,
+                    ru.id AS reposter_id,
+                    ru.handle AS reposter_handle,
+                    ru.display_name AS reposter_display_name,
+                    ru.icon AS reposter_icon,
+                    f.css_token AS frame_class
+                FROM posts p
+                JOIN users u ON u.id = p.user_id
+                LEFT JOIN posts op ON op.id = p.is_repost_of
+                LEFT JOIN users ou ON ou.id = op.user_id
+                LEFT JOIN frames f_orig ON f_orig.id = (SELECT active_frame_id FROM users WHERE id=ou.id)
+                LEFT JOIN users ru ON ru.id = p.user_id
+                LEFT JOIN frames f ON f.id = (SELECT active_frame_id FROM users WHERE id=p.user_id)
+                WHERE p.nsfw = 0 AND p.created_at >= (NOW() - INTERVAL 3 DAY) AND p.deleted_at IS NULL
+                ORDER BY ((SELECT COUNT(*) FROM replies rpX WHERE rpX.post_id=p.id)*3
+                         + (SELECT COUNT(*) FROM reposts rX WHERE rX.post_id=p.id)*2
+                         + (SELECT COUNT(*) FROM likes lX WHERE lX.post_id=p.id)) DESC,
+                         p.id DESC
+                LIMIT ?";
+        $items = fetch_feed($sql, [], $uid, $pdo, $me, $limit);
+        echo json_encode(['ok'=>true,'items'=>$items]);
+        exit;
     }
+
+    // --- global / following / user ---
+    $where = "p.deleted_at IS NULL";
+    $params = [];
+    $since_id = (int)($input['since_id'] ?? 0);
+    $max_id = (int)($input['max_id'] ?? 0);
+
+    if($feed==='following' && $uid){
+        $where .= " AND p.user_id IN (SELECT followee_id FROM follows WHERE follower_id=?)";
+        $params[] = $uid;
+    }
+    if(strpos($feed,'user_')===0){
+        $targetId = (int)substr($feed,5);
+        $where .= " AND p.user_id = ?";
+        $params[] = $targetId;
+    }
+    if($since_id>0){ $where.=" AND p.id > ?"; $params[]=$since_id; }
+    if($max_id>0){ $where.=" AND p.id <= ?"; $params[]=$max_id; }
+
+    $sql = "SELECT p.*, u.handle, u.display_name, u.vip_level, p.deleted_at, p.deleted_by_mod,
+                (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
+                (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
+                (SELECT COUNT(*) FROM replies rp WHERE rp.post_id=p.id) AS reply_count,
+                ".($uid?"EXISTS(SELECT 1 FROM likes l2 WHERE l2.post_id=p.id AND l2.user_id=$uid)":"0")." AS liked,
+                ".($uid?"EXISTS(SELECT 1 FROM reposts r2 WHERE r2.post_id=p.id AND r2.user_id=$uid)":"0")." AS reposted,
+                ou.id AS original_id,
+                ou.handle AS original_handle,
+                ou.display_name AS original_display_name,
+                ou.icon AS original_icon,
+                ou.vip_level AS original_vip,
+                f_orig.css_token AS original_frame_class,
+                ru.id AS reposter_id,
+                ru.handle AS reposter_handle,
+                ru.display_name AS reposter_display_name,
+                ru.icon AS reposter_icon,
+                f.css_token AS frame_class
+            FROM posts p
+            JOIN users u ON u.id = p.user_id
+            LEFT JOIN posts op ON op.id = p.is_repost_of
+            LEFT JOIN users ou ON ou.id = op.user_id
+            LEFT JOIN frames f_orig ON f_orig.id = (SELECT active_frame_id FROM users WHERE id=ou.id)
+            LEFT JOIN users ru ON ru.id = p.user_id
+            LEFT JOIN frames f ON f.id = (SELECT active_frame_id FROM users WHERE id=p.user_id)
+            WHERE $where
+            ORDER BY p.id DESC
+            LIMIT ?";
+    $items = fetch_feed($sql, $params, $uid, $pdo, $me, $limit);
     echo json_encode(['ok'=>true,'items'=>$items]);
     exit;
 }
-
-// --- global / following / user feed ---
-$where = "p.deleted_at IS NULL";
-$order = "p.id DESC";
-$since_id = (int)($input['since_id'] ?? 0);
-$max_id = (int)($input['max_id'] ?? 0);
-$params = [];
-
-// followingフィード
-if ($feed === 'following' && $uid) {
-    $where .= " AND p.user_id IN (SELECT followee_id FROM follows WHERE follower_id=?)";
-    $params[] = $uid;
-}
-
-// user_xxxフィード（IDベースに統一）
-if (strpos($feed, 'user_') === 0) {
-    $targetId = (int)substr($feed, 5);
-    $where .= " AND p.user_id = ?";
-    $params[] = $targetId;
-}
-if ($since_id > 0) { $where .= " AND p.id > ?"; $params[] = $since_id; }
-if ($max_id > 0) { $where .= " AND p.id <= ?"; $params[] = $max_id; }
-
-$sql = "SELECT p.*, u.handle, p.deleted_at, p.deleted_by_mod,
-            (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
-            (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
-            (SELECT COUNT(*) FROM replies rp WHERE rp.post_id=p.id) AS reply_count,
-            ".($uid ? "EXISTS(SELECT 1 FROM likes l2 WHERE l2.post_id=p.id AND l2.user_id=$uid)" : "0")." AS liked,
-            ".($uid ? "EXISTS(SELECT 1 FROM reposts r2 WHERE r2.post_id=p.id AND r2.user_id=$uid)" : "0")." AS reposted,
-            (SELECT handle FROM users u2 WHERE u2.id = (SELECT user_id FROM posts WHERE id = p.is_repost_of)) AS reposter,
-            (SELECT css_token FROM frames f WHERE f.id = (SELECT active_frame_id FROM users WHERE id=p.user_id)) AS frame_class
-        FROM posts p
-        JOIN users u ON u.id = p.user_id
-        WHERE $where
-        ORDER BY $order
-        LIMIT ?";
-
-$st = $pdo->prepare($sql);
-$i = 1;
-foreach ($params as $val) { $st->bindValue($i++, $val, PDO::PARAM_INT); }
-// ここも整数としてバインド
-$st->bindValue($i, $limit, PDO::PARAM_INT);
-$st->execute();
-$rows = $st->fetchAll(PDO::FETCH_ASSOC);
-
-$items = [];
-foreach ($rows as $row) {
-    $p = serialize_post($row, $uid, $pdo);
-    $p['_can_delete'] = ($uid && ($uid === (int)$row['user_id'] || ($me && ($me['role']==='mod' || $me['role']==='admin'))));
-    $items[] = $p;
-}
-echo json_encode(['ok'=>true,'items'=>$items]);
-exit;
-
-}
-
-echo json_encode(['ok'=>false,'error'=>'unknown_action']);
