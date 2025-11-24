@@ -319,6 +319,7 @@ button {
     color: inherit;
     background: inherit
 }
+
 /* モバイル用ハンバーガーメニュー */
 @media (max-width: 768px) {
     .left {
@@ -353,17 +354,19 @@ button {
         cursor: pointer;
         margin-right: 8px;
     }
+
     .close-menu {
-            display: block;
-            background: transparent;
-            border: none;
-            font-size: 24px;
-            color: var(--text);
-            cursor: pointer;
-            position: absolute;
-            top: 12px;
-            right: 12px;
+        display: block;
+        background: transparent;
+        border: none;
+        font-size: 24px;
+        color: var(--text);
+        cursor: pointer;
+        position: absolute;
+        top: 12px;
+        right: 12px;
     }
+
     .right {
         display: none;
     }
@@ -388,12 +391,14 @@ button {
         margin-top: 1rem;
     }
 }
+
 /* スマホでは右サイドバーを非表示 */
 @media (max-width: 768px) {
     aside.right {
         display: none;
     }
 }
+
 /* Frames */
 .frame-classic {
     border: 1px solid #2d3e50;
@@ -502,6 +507,7 @@ button {
         background-position: 0% 50%;
     }
 }
+
 /* 花火フレーム（夜空に打ち上がる花火イメージ） */
 .frame-fireworks {
     position: relative;
@@ -616,6 +622,7 @@ button {
         transform: scale(1.05);
     }
 }
+
 /* サイバーパンク（虹色・ペンキ風） */
 .frame-cyberpunk {
     position: relative;
@@ -663,6 +670,7 @@ button {
     animation: purpleGlow 6s ease-in-out infinite;
     pointer-events: none;
 }
+
 /* 星空フレーム（黄色・星が浮かぶ・二重線） */
 .frame-stars {
     position: relative;
@@ -724,32 +732,51 @@ button {
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), transparent 70%);
+    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3), transparent 70%);
     animation: lovelyGlow 5s linear infinite alternate;
     pointer-events: none;
 }
 
 @keyframes lovelyPulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.02) rotate(-1deg); }
-    100% { transform: scale(1.04) rotate(1deg); }
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.02) rotate(-1deg);
+    }
+
+    100% {
+        transform: scale(1.04) rotate(1deg);
+    }
 }
 
 @keyframes lovelyGlow {
-    0% { background-position: 0% 0%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 100%; }
+    0% {
+        background-position: 0% 0%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 100%;
+    }
 }
 
 
 /* 炎フレーム（赤系・燃えるアニメーション） */
 .frame-flame {
     position: relative;
-    border: 2px solid #ff7f50; /* 柔らかめのコーラル色 */
+    border: 2px solid #ff7f50;
+    /* 柔らかめのコーラル色 */
     border-radius: 16px;
     padding: 12px;
-    background: linear-gradient(45deg, #ffb380, #ff7f50, #ff6347, #ffa07a); /* 優しいオレンジ〜赤トーン */
-    color: #fff8f0; /* 温かみのある文字色 */
+    background: linear-gradient(45deg, #ffb380, #ff7f50, #ff6347, #ffa07a);
+    /* 優しいオレンジ〜赤トーン */
+    color: #fff8f0;
+    /* 温かみのある文字色 */
     font-weight: bold;
     overflow: hidden;
     animation: flameWave 4s linear infinite;
@@ -760,21 +787,41 @@ button {
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
     animation: flameFlicker 1s ease-in-out infinite alternate;
     pointer-events: none;
 }
 
 @keyframes flameWave {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
 }
 
 @keyframes flameFlicker {
-    0% { transform: scale(1); opacity: 0.6; }
-    50% { transform: scale(1.05); opacity: 0.85; } /* 少し抑えた明るさ */
-    100% { transform: scale(1); opacity: 0.6; }
+    0% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
+
+    50% {
+        transform: scale(1.05);
+        opacity: 0.85;
+    }
+
+    /* 少し抑えた明るさ */
+    100% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
 }
 
 
@@ -798,21 +845,43 @@ button {
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 80%);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 80%);
     animation: masterGlow 4s ease-in-out infinite alternate;
     pointer-events: none;
 }
 
 @keyframes masterShift {
-    0% { background-position: 0% 50%; transform: rotate(0deg); }
-    50% { background-position: 100% 50%; transform: rotate(1deg); }
-    100% { background-position: 0% 50%; transform: rotate(0deg); }
+    0% {
+        background-position: 0% 50%;
+        transform: rotate(0deg);
+    }
+
+    50% {
+        background-position: 100% 50%;
+        transform: rotate(1deg);
+    }
+
+    100% {
+        background-position: 0% 50%;
+        transform: rotate(0deg);
+    }
 }
 
 @keyframes masterGlow {
-    0% { opacity: 0.5; transform: scale(1); }
-    50% { opacity: 0.8; transform: scale(1.03); }
-    100% { opacity: 0.5; transform: scale(1); }
+    0% {
+        opacity: 0.5;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.8;
+        transform: scale(1.03);
+    }
+
+    100% {
+        opacity: 0.5;
+        transform: scale(1);
+    }
 }
 
 
@@ -831,6 +900,7 @@ button {
     /* 任意 */
     z-index: 9999;
 }
+
 /*アイコン */
 .user-display-name {
     font-weight: bold;
@@ -843,6 +913,7 @@ button {
     color: #666;
     margin-bottom: 10px;
 }
+
 /* プロフィールアイコンのサイズ調整 */
 .user-icon {
     width: 80px;
@@ -857,6 +928,7 @@ button {
     margin-bottom: 8px;
     /* 下に余白 */
 }
+
 /* 通知 */
 .notification {
     display: flex;
@@ -949,6 +1021,7 @@ button {
     vertical-align: top;
     margin-left: 4px;
 }
+
 /* タブボタン用*/
 /* タブボタン共通 */
 .tabBtn {
@@ -991,6 +1064,7 @@ button {
     margin-right: 4px;
     vertical-align: middle;
 }
+
 /* search.css */
 
 body {
@@ -1092,6 +1166,7 @@ a:hover {
     border-bottom: 1px solid #222;
     padding-bottom: 5px;
 }
+
 /* -------------------- */
 /* スマホ対応: 縦画面時のレイアウト */
 /* -------------------- */
@@ -1197,4 +1272,22 @@ a:hover {
 
 .buff-buttons button:hover {
     background: #0c7cd5;
+}
+
+.vip-label {
+    background: linear-gradient(90deg, gold, orange);
+    color: black;
+    font-weight: bold;
+    border-radius: 6px;
+    padding: 2px 6px;
+    margin-left: 6px;
+    font-size: 0.85em;
+    box-shadow: 0 0 6px gold;
+    animation: shine 2s infinite linear;
+}
+
+@keyframes shine {
+    0%   { box-shadow: 0 0 6px gold; }
+    50%  { box-shadow: 0 0 14px orange; }
+    100% { box-shadow: 0 0 6px gold; }
 }
