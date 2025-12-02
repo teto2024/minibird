@@ -138,17 +138,22 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
   <?php if ($me): ?>
     <button class="tabBtn" data-tab="following">フォロー中</button>
     <button class="tabBtn" data-tab="bookmarks">ブックマーク</button>
+    <!--
     <button class="tabBtn" data-tab="communities">コミュニティ</button>
+    -->
     <!-- 通知タブを a タグに変更 -->
     <a href="notifications.php" class="tabBtn block">通知</a>
     <a href="focus.php" class="tabBtn block">集中タスク</a>
     <a href="focus_history.php" class="tabBtn block">集中タスク履歴</a>
+    <!--
     <a href="quiz.php" class="tabBtn block">英単語マスター</a>
+     -->
     <a href="ranking.php" class="tabBtn block">集中ランキング</a>
     <a href="shop.php" class="tabBtn block">フレーム・ショップ</a>
     <a href="activate_buff.php" class="tabBtn block">バフショップ</a>
     <a href="vip_shop.php" class="tabBtn block">VIPショップ</a>
     <a href="admin.php" class="tabBtn block">管理者用</a>
+    <a href="game.php" class="tabBtn block">育成ゲーム（近日公開）</a>
   <?php endif; ?>
 </nav>
 
