@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/darkroom_engine.php';
 
 // ====== 設定 ======
 $TICK_INTERVAL = 1; // 秒
@@ -19,6 +20,9 @@ if (!$uid) {
 }
 
 $pdo = db();
+
+// ====== ゲームエンジン初期化 ======
+$engine = new DarkroomEngine($pdo, $uid);
 
 // ====== ゲームステート初期化 ======
 if (!isset($_SESSION['darkroom_state'])) {
@@ -55,29 +59,57 @@ if (isset($_GET['reset']) && $_GET['reset'] === '1') {
 if (isset($_GET['ajax'])) {
     header('Content-Type: application/json; charset=UTF-8');
     
-    // ====== ティック処理（自動収集） ======
-    $now = time();
-    $elapsed = $now - $state['last_tick'];
-    if ($elapsed > 0) {
-        // 罠から食料を自動収集
-        if ($state['traps'] > 0) {
-            $state['food'] += $state['traps'] * $elapsed * 0.1;
-        }
-        // 火が消えないようにする（木材を消費）
-        if ($state['fire_level'] > 0) {
-            $state['fire_stoked'] -= $elapsed;
-            if ($state['fire_stoked'] <= 0) {
-                $state['fire_level'] = max(0, $state['fire_level'] - 1);
-                $state['fire_stoked'] = 0;
-            }
-        }
-        $state['last_tick'] = $now;
-    }
+    $ajaxAction = $_GET['ajax'];
     
-    echo json_encode([
-        'ok' => true,
-        'state' => $state
-    ]);
+    switch ($ajaxAction) {
+        case '1': // ティック処理
+            $now = time();
+            $elapsed = $now - $state['last_tick'];
+            if ($elapsed > 0) {
+                // 罠から食料を自動収集
+                if ($state['traps'] > 0) {
+                    $state['food'] += $state['traps'] * $elapsed * 0.1;
+                }
+                // 火が消えないようにする（木材を消費）
+                if ($state['fire_level'] > 0) {
+                    $state['fire_stoked'] -= $elapsed;
+                    if ($state['fire_stoked'] <= 0) {
+                        $state['fire_level'] = max(0, $state['fire_level'] - 1);
+                        $state['fire_stoked'] = 0;
+                    }
+                }
+                $state['last_tick'] = $now;
+            }
+            
+            echo json_encode([
+                'ok' => true,
+                'state' => $state
+            ]);
+            break;
+            
+        case 'player_stats':
+            echo json_encode($engine->getPlayerStats());
+            break;
+            
+        case 'inventory':
+            echo json_encode($engine->getInventory());
+            break;
+            
+        case 'recipes':
+            echo json_encode($engine->getAvailableRecipes());
+            break;
+            
+        case 'quests':
+            echo json_encode($engine->getQuests());
+            break;
+            
+        case 'enemies':
+            echo json_encode($engine->getAvailableEnemies());
+            break;
+            
+        default:
+            echo json_encode(['error' => 'Unknown AJAX action']);
+    }
     exit;
 }
 
@@ -91,6 +123,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $reward_crystal = 0;
     
     switch ($action) {
+        // ====== 新機能: レベリング ======
+        case 'allocate_stat':
+            $stat = $_POST['stat'] ?? '';
+            $result = $engine->allocateStatPoint($stat);
+            if ($result['success']) {
+                $msg = "{$stat} を強化しました！ (+{$result['increment']})";
+            } else {
+                $msg = $result['error'];
+            }
+            break;
+            
+        // ====== 新機能: アイテムクラフト ======
+        case 'craft_item':
+            $recipeKey = $_POST['recipe_key'] ?? '';
+            $result = $engine->craftItem($recipeKey);
+            if ($result['success']) {
+                $msg = "{$result['item_name']} x{$result['quantity']} を作成しました！";
+                if ($result['leveled_up']) {
+                    $msg .= " レベルアップ！ Lv.{$result['new_level']}";
+                }
+                // クエスト進捗更新
+                $engine->updateQuestProgress('craft', $recipeKey, 1);
+            } else {
+                $msg = $result['error'];
+            }
+            break;
+            
+        // ====== 新機能: クエスト ======
+        case 'start_quest':
+            $questKey = $_POST['quest_key'] ?? '';
+            $result = $engine->startQuest($questKey);
+            if ($result['success']) {
+                $msg = "クエスト「{$result['quest_title']}」を開始しました！";
+            } else {
+                $msg = $result['error'];
+            }
+            break;
+            
+        case 'complete_quest':
+            $questKey = $_POST['quest_key'] ?? '';
+            $result = $engine->completeQuest($questKey);
+            if ($result['success']) {
+                $msg = "クエスト「{$result['quest_title']}」を完了しました！ " . implode(', ', $result['rewards']);
+                if ($result['leveled_up']) {
+                    $msg .= " レベルアップ！ Lv.{$result['new_level']}";
+                }
+            } else {
+                $msg = $result['error'];
+            }
+            break;
+            
+        // ====== 新機能: 戦闘 ======
+        case 'battle':
+            $enemyKey = $_POST['enemy_key'] ?? '';
+            $result = $engine->battle($enemyKey);
+            if ($result['success']) {
+                if ($result['result'] === 'victory') {
+                    $msg = "勝利！ 経験値 +{$result['experience_gained']}";
+                    if (count($result['loot']) > 0) {
+                        $lootText = [];
+                        foreach ($result['loot'] as $item) {
+                            $lootText[] = "{$item['item_key']} x{$item['quantity']}";
+                        }
+                        $msg .= " | 獲得: " . implode(', ', $lootText);
+                    }
+                    if ($result['leveled_up']) {
+                        $msg .= " | レベルアップ！ Lv.{$result['new_level']}";
+                    }
+                } elseif ($result['result'] === 'defeat') {
+                    $msg = "敗北... HP: {$result['player_health']}";
+                } else {
+                    $msg = "逃走しました";
+                }
+            } else {
+                $msg = $result['error'];
+            }
+            break;
+            
+        // ====== 既存機能 ======
         case 'light_fire':
             if ($state['fire_level'] === 0) {
                 $state['fire_level'] = 1;
@@ -125,6 +236,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $state['total_actions']++;
                 $msg = "木材を " . $WOOD_PER_GATHER . " 集めた。";
                 $reward_coin = $COIN_REWARD_RATE;
+                
+                // アイテムシステムにも追加（拡張機能）
+                $engine->addItem('wood', $WOOD_PER_GATHER);
+                
+                // クエスト進捗更新
+                $engine->updateQuestProgress('gather', 'wood', $WOOD_PER_GATHER);
+                
+                // 経験値獲得
+                $expResult = $engine->addExperience(2);
+                if ($expResult['leveled_up']) {
+                    $msg .= " | レベルアップ！ Lv.{$expResult['new_level']}";
+                }
             }
             break;
             
@@ -443,6 +566,159 @@ h1 {
 .hidden {
     display: none;
 }
+.tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #333;
+}
+.tab {
+    padding: 10px 20px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    color: #888;
+    transition: all 0.3s;
+}
+.tab:hover {
+    background: #222;
+    color: #aaa;
+}
+.tab.active {
+    background: #0a0a0a;
+    color: #fff;
+    border-color: #666;
+}
+.tab-content {
+    display: none;
+}
+.tab-content.active {
+    display: block;
+}
+.player-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.stat-item {
+    background: #1a1a1a;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #333;
+}
+.stat-label {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+}
+.stat-value {
+    font-size: 18px;
+    color: #fff;
+    font-weight: bold;
+}
+.item-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 10px;
+}
+.item-card {
+    background: #1a1a1a;
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px solid #333;
+}
+.item-card.common { border-left: 3px solid #999; }
+.item-card.uncommon { border-left: 3px solid #4a9; }
+.item-card.rare { border-left: 3px solid #49f; }
+.item-card.epic { border-left: 3px solid #a4f; }
+.item-card.legendary { border-left: 3px solid #fa0; }
+.item-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 5px;
+}
+.item-desc {
+    font-size: 12px;
+    color: #aaa;
+    margin-bottom: 8px;
+}
+.item-stats {
+    font-size: 11px;
+    color: #4a9;
+    margin-bottom: 5px;
+}
+.quest-card {
+    background: #1a1a1a;
+    padding: 15px;
+    border-radius: 4px;
+    border: 1px solid #333;
+    margin-bottom: 10px;
+}
+.quest-card.active {
+    border-left: 3px solid #4a9;
+}
+.quest-card.completed {
+    border-left: 3px solid #666;
+    opacity: 0.6;
+}
+.quest-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    margin-bottom: 5px;
+}
+.quest-desc {
+    font-size: 13px;
+    color: #aaa;
+    margin-bottom: 10px;
+}
+.quest-progress {
+    font-size: 12px;
+    color: #4a9;
+    margin-bottom: 5px;
+}
+.enemy-card {
+    background: #1a1a1a;
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px solid #333;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.enemy-card.boss {
+    border: 2px solid #f44;
+}
+.enemy-info {
+    flex: 1;
+}
+.enemy-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
+}
+.enemy-stats {
+    font-size: 11px;
+    color: #888;
+}
+.btn.small {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+.btn.danger {
+    background: #4a1a1a;
+    border-color: #c44;
+    color: #faa;
+}
+.btn.danger:hover:not(:disabled) {
+    background: #6a2a2a;
+    border-color: #f66;
+}
 </style>
 </head>
 <body>
@@ -454,6 +730,18 @@ h1 {
     
     <h1>暗い部屋</h1>
     
+    <!-- タブナビゲーション -->
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('tab-village')">村</div>
+        <div class="tab" onclick="switchTab('tab-character')">キャラクター</div>
+        <div class="tab" onclick="switchTab('tab-inventory')">インベントリ</div>
+        <div class="tab" onclick="switchTab('tab-craft')">クラフト</div>
+        <div class="tab" onclick="switchTab('tab-quests')">クエスト</div>
+        <div class="tab" onclick="switchTab('tab-battle')">戦闘</div>
+    </div>
+    
+    <!-- 村タブ（既存機能） -->
+    <div id="tab-village" class="tab-content active">
     <div id="story">
         <?php
         $stories = [
@@ -571,7 +859,46 @@ h1 {
         </div>
     </div>
     <?php endif; ?>
-</div>
+    </div><!-- tab-village終了 -->
+    
+    <!-- キャラクタータブ -->
+    <div id="tab-character" class="tab-content">
+        <h2 style="color: #fff; margin-bottom: 15px;">キャラクターステータス</h2>
+        <div class="player-stats" id="playerStats"></div>
+        <div class="action-section">
+            <h3>ステータス強化（ポイント: <span id="statPoints">0</span>）</h3>
+            <button class="btn" onclick="allocateStat('max_health')">最大HP +10</button>
+            <button class="btn" onclick="allocateStat('attack')">攻撃力 +1</button>
+            <button class="btn" onclick="allocateStat('defense')">防御力 +1</button>
+            <button class="btn" onclick="allocateStat('agility')">敏捷性 +1</button>
+        </div>
+    </div>
+    
+    <!-- インベントリタブ -->
+    <div id="tab-inventory" class="tab-content">
+        <h2 style="color: #fff; margin-bottom: 15px;">インベントリ</h2>
+        <div class="item-grid" id="inventoryGrid"></div>
+    </div>
+    
+    <!-- クラフトタブ -->
+    <div id="tab-craft" class="tab-content">
+        <h2 style="color: #fff; margin-bottom: 15px;">アイテムクラフト</h2>
+        <div class="item-grid" id="recipesGrid"></div>
+    </div>
+    
+    <!-- クエストタブ -->
+    <div id="tab-quests" class="tab-content">
+        <h2 style="color: #fff; margin-bottom: 15px;">クエスト</h2>
+        <div id="questsList"></div>
+    </div>
+    
+    <!-- 戦闘タブ -->
+    <div id="tab-battle" class="tab-content">
+        <h2 style="color: #fff; margin-bottom: 15px;">戦闘</h2>
+        <div id="enemiesList"></div>
+    </div>
+    
+</div><!-- container終了 -->
 
 <div id="message"></div>
 
@@ -688,6 +1015,249 @@ setInterval(async () => {
 
 // 初期UI更新
 updateUI();
+
+// ====== 新機能のJavaScript ======
+
+// タブ切り替え
+function switchTab(tabId) {
+    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    
+    event.target.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+    
+    // タブが開かれたときにデータを読み込む
+    if (tabId === 'tab-character') loadPlayerStats();
+    if (tabId === 'tab-inventory') loadInventory();
+    if (tabId === 'tab-craft') loadRecipes();
+    if (tabId === 'tab-quests') loadQuests();
+    if (tabId === 'tab-battle') loadEnemies();
+}
+
+// プレイヤーステータス読み込み
+async function loadPlayerStats() {
+    const res = await fetch('darkroom.php?ajax=player_stats');
+    const stats = await res.json();
+    
+    const html = `
+        <div class="stat-item">
+            <div class="stat-label">レベル</div>
+            <div class="stat-value">${stats.level || 1}</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">経験値</div>
+            <div class="stat-value">${stats.experience || 0} / ${stats.level * 100}</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">HP</div>
+            <div class="stat-value">${stats.health || 100} / ${stats.max_health || 100}</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">攻撃力</div>
+            <div class="stat-value">${stats.attack || 10}</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">防御力</div>
+            <div class="stat-value">${stats.defense || 5}</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">敏捷性</div>
+            <div class="stat-value">${stats.agility || 5}</div>
+        </div>
+    `;
+    
+    document.getElementById('playerStats').innerHTML = html;
+    document.getElementById('statPoints').textContent = stats.stat_points || 0;
+}
+
+// ステータス割り振り
+async function allocateStat(stat) {
+    const res = await fetch('darkroom.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({action: 'allocate_stat', stat: stat})
+    });
+    const data = await res.json();
+    
+    if (data.ok) {
+        showMessage(data.msg);
+        loadPlayerStats();
+    }
+}
+
+// インベントリ読み込み
+async function loadInventory() {
+    const res = await fetch('darkroom.php?ajax=inventory');
+    const items = await res.json();
+    
+    let html = '';
+    items.forEach(item => {
+        const stats = item.stats ? JSON.parse(item.stats) : null;
+        const statsText = stats ? Object.entries(stats).map(([k,v]) => `${k}+${v}`).join(', ') : '';
+        
+        html += `
+            <div class="item-card ${item.rarity}">
+                <div class="item-name">${item.name} x${item.quantity}</div>
+                <div class="item-desc">${item.description || ''}</div>
+                ${statsText ? `<div class="item-stats">${statsText}</div>` : ''}
+                <div style="font-size: 11px; color: #666;">${item.type} | ${item.rarity}</div>
+            </div>
+        `;
+    });
+    
+    document.getElementById('inventoryGrid').innerHTML = html || '<p style="color: #888;">アイテムがありません</p>';
+}
+
+// レシピ読み込み
+async function loadRecipes() {
+    const res = await fetch('darkroom.php?ajax=recipes');
+    const recipes = await res.json();
+    
+    let html = '';
+    recipes.forEach(recipe => {
+        const materials = JSON.parse(recipe.materials);
+        const matText = materials.map(m => `${m.item_key} x${m.quantity}`).join(', ');
+        
+        html += `
+            <div class="item-card">
+                <div class="item-name">${recipe.result_name}</div>
+                <div class="item-desc">必要素材: ${matText}</div>
+                <div style="font-size: 11px; color: #888; margin-bottom: 8px;">
+                    必要レベル: ${recipe.required_level} | 経験値: +${recipe.experience_reward}
+                </div>
+                <button class="btn small" onclick="craftItem('${recipe.recipe_key}')">作成</button>
+            </div>
+        `;
+    });
+    
+    document.getElementById('recipesGrid').innerHTML = html || '<p style="color: #888;">利用可能なレシピがありません</p>';
+}
+
+// クラフト実行
+async function craftItem(recipeKey) {
+    const res = await fetch('darkroom.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({action: 'craft_item', recipe_key: recipeKey})
+    });
+    const data = await res.json();
+    
+    showMessage(data.msg);
+    if (data.ok) {
+        loadRecipes();
+        loadInventory();
+    }
+}
+
+// クエスト読み込み
+async function loadQuests() {
+    const res = await fetch('darkroom.php?ajax=quests');
+    const quests = await res.json();
+    
+    let html = '';
+    quests.forEach(quest => {
+        const objectives = JSON.parse(quest.objectives);
+        const progress = quest.progress ? JSON.parse(quest.progress) : {};
+        
+        let progressHtml = '';
+        objectives.forEach((obj, idx) => {
+            const current = progress[idx] || 0;
+            progressHtml += `<div class="quest-progress">・${obj.type}: ${current}/${obj.count}</div>`;
+        });
+        
+        html += `
+            <div class="quest-card ${quest.player_status}">
+                <div class="quest-title">${quest.title} [${quest.type}]</div>
+                <div class="quest-desc">${quest.description}</div>
+                ${progressHtml}
+                <div style="font-size: 11px; color: #666; margin-top: 5px;">
+                    必要レベル: ${quest.required_level}
+                </div>
+                ${quest.player_status === 'available' ? 
+                    `<button class="btn small" onclick="startQuest('${quest.quest_key}')">開始</button>` : ''}
+                ${quest.player_status === 'active' ? 
+                    `<button class="btn small primary" onclick="completeQuest('${quest.quest_key}')">完了</button>` : ''}
+                ${quest.player_status === 'completed' ? 
+                    '<span style="color: #4a9;">完了済み</span>' : ''}
+            </div>
+        `;
+    });
+    
+    document.getElementById('questsList').innerHTML = html || '<p style="color: #888;">クエストがありません</p>';
+}
+
+// クエスト開始
+async function startQuest(questKey) {
+    const res = await fetch('darkroom.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({action: 'start_quest', quest_key: questKey})
+    });
+    const data = await res.json();
+    
+    showMessage(data.msg);
+    if (data.ok) loadQuests();
+}
+
+// クエスト完了
+async function completeQuest(questKey) {
+    const res = await fetch('darkroom.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({action: 'complete_quest', quest_key: questKey})
+    });
+    const data = await res.json();
+    
+    showMessage(data.msg);
+    if (data.ok) loadQuests();
+}
+
+// 敵一覧読み込み
+async function loadEnemies() {
+    const res = await fetch('darkroom.php?ajax=enemies');
+    const enemies = await res.json();
+    
+    let html = '';
+    enemies.forEach(enemy => {
+        html += `
+            <div class="enemy-card ${enemy.is_boss ? 'boss' : ''}">
+                <div class="enemy-info">
+                    <div class="enemy-name">${enemy.name} ${enemy.is_boss ? '👑' : ''}</div>
+                    <div class="enemy-stats">
+                        Lv.${enemy.level} | HP: ${enemy.health} | 攻: ${enemy.attack} | 防: ${enemy.defense} | 経験値: ${enemy.experience_reward}
+                    </div>
+                    <div class="item-desc">${enemy.description || ''}</div>
+                </div>
+                <button class="btn danger small" onclick="startBattle('${enemy.enemy_key}')">戦闘</button>
+            </div>
+        `;
+    });
+    
+    document.getElementById('enemiesList').innerHTML = html || '<p style="color: #888;">敵がいません</p>';
+}
+
+// 戦闘開始
+async function startBattle(enemyKey) {
+    if (!confirm('戦闘を開始しますか？')) return;
+    
+    showMessage('戦闘中...');
+    
+    const res = await fetch('darkroom.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({action: 'battle', enemy_key: enemyKey})
+    });
+    const data = await res.json();
+    
+    if (data.ok) {
+        showMessage(data.msg);
+        loadPlayerStats();
+        loadEnemies();
+    }
+}
+
+// 初回ロード
+loadPlayerStats();
 </script>
 </body>
 </html>
