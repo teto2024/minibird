@@ -1,32 +1,4 @@
-:root {
-    --bg: #0f1419;
-    --card: #15202b;
-    --text: #e6e6e6;
-    --muted: #8899a6;
-    --blue: #1d9bf0;
-    --red: #f91880;
-    --green: #00ba7c;
-    --border: #22303c;
-    --nsfw-blur: 12px;
-    --gradient-anim: linear-gradient(270deg, #1d9bf0, #ff7aa2, #00ba7c, #f91880);
-}
 
-* {
-    box-sizing: border-box
-}
-
-body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans JP, sans-serif;
-    line-height: 1.5;
-}
-
-.topbar {
-    position: sticky;
-    top: 0;
-    display: flex;
     gap: 16px;
     align-items: center;
     justify-content: space-between;
