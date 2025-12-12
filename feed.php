@@ -83,6 +83,8 @@ function serialize_post($row, $uid, $pdo){
         'display_name'=> $display_name,
         'icon'=> $icon,
         'vip_level'=> $vip_level,
+        'title_text'=> $row['title_text'] ?? null,
+        'title_css'=> $row['title_css'] ?? null,
         'created_at'=> $row['created_at'] ?? null,
         'content_html'=> $content_html,
         'content_md'  => !empty($row['deleted_at']) ? null : ($row['content_md'] ?? ''),

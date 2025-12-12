@@ -1746,3 +1746,93 @@ a:hover {
     50%  { box-shadow: 0 0 14px orange; }
     100% { box-shadow: 0 0 6px gold; }
 }
+
+/* ===============================================
+   称号スタイル（Title Styles）
+   =============================================== */
+.user-title {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-left: 5px;
+}
+
+.title-beginner {
+    color: #4299e1;
+    background: rgba(66, 153, 225, 0.1);
+}
+
+.title-veteran {
+    color: #ed8936;
+    background: rgba(237, 137, 54, 0.1);
+    text-shadow: 0 0 5px rgba(237, 137, 54, 0.3);
+}
+
+.title-master {
+    color: #9f7aea;
+    background: rgba(159, 122, 234, 0.1);
+    text-shadow: 0 0 10px rgba(159, 122, 234, 0.5);
+}
+
+.title-legend {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    padding: 3px 10px;
+    border: 1px solid #f093fb;
+}
+
+.title-leader {
+    color: #48bb78;
+    background: rgba(72, 187, 120, 0.1);
+    font-weight: bold;
+}
+
+.title-trendsetter {
+    color: #f56565;
+    background: rgba(245, 101, 101, 0.1);
+    animation: title-pulse 2s infinite;
+}
+
+@keyframes title-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* ===============================================
+   リッチデザイン統一
+   =============================================== */
+.card, .post, .community-card, .quest-card {
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover, .post:hover, .community-card:hover, .quest-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+button, .btn {
+    transition: all 0.3s ease;
+}
+
+button:hover, .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* グラデーションボタン */
+.btn-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.btn-gradient:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}

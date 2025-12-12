@@ -35,6 +35,12 @@ if ($action === 'toggle_like') {
         // 投稿者に通知
         $post_owner_id = (int)$pdo->query("SELECT user_id FROM posts WHERE id=$post_id")->fetchColumn();
         insertNotification('like', $_SESSION['uid'], $post_owner_id, $post_id);
+        
+        // クエスト進行チェック
+        if (file_exists(__DIR__ . '/quest_progress.php')) {
+            require_once __DIR__ . '/quest_progress.php';
+            check_quest_progress($_SESSION['uid'], 'like', 1);
+        }
     }
 
     $cnt = (int)$pdo->query("SELECT COUNT(*) FROM likes WHERE post_id=".$post_id)->fetchColumn();
@@ -100,6 +106,12 @@ if ($action === 'toggle_repost') {
         // 投稿者に通知
         $original_post_owner_id = (int)$post['user_id'];
         insertNotification('repost', $_SESSION['uid'], $original_post_owner_id, $post_id);
+        
+        // クエスト進行チェック
+        if (file_exists(__DIR__ . '/quest_progress.php')) {
+            require_once __DIR__ . '/quest_progress.php';
+            check_quest_progress($_SESSION['uid'], 'repost', 1);
+        }
 
         $reposted = true;
     }
