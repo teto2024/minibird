@@ -50,12 +50,6 @@ try {
             ");
             $stmt->execute([$community_id, $user_id, $user_id]);
             
-            // フォームからの送信の場合はリダイレクト
-            if (isset($_POST['action']) && !isset($_SERVER['HTTP_X_REQUESTED_WITH'])) {
-                header("Location: communities.php?msg=" . urlencode('コミュニティを作成しました'));
-                exit;
-            }
-            
             echo json_encode([
                 'ok' => true,
                 'community_id' => $community_id,
