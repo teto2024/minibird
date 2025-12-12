@@ -1,4 +1,9 @@
 <?php
+// リダイレクトを改良版へ
+header('Location: replies_enhanced.php?post_id=' . intval($_GET['post_id'] ?? 0));
+exit;
+
+// 以下は旧版（使用されない）
 require_once __DIR__ . '/config.php';
 $me = user();
 $post_id = (int)($_GET['post_id'] ?? 0);

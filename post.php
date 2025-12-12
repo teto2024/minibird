@@ -105,6 +105,13 @@ try {
         $pdo->prepare("INSERT INTO reward_events(user_id,kind,amount,meta) VALUES(?,?,?,JSON_OBJECT('post_id',?))")
             ->execute([$_SESSION['uid'],'post_reward',$coins,$post_id]);
 
+        // クエスト進行チェック
+        if (file_exists(__DIR__ . '/quest_progress.php')) {
+            require_once __DIR__ . '/quest_progress.php';
+            check_quest_progress($_SESSION['uid'], 'post', 1);
+            check_quest_progress_with_text($_SESSION['uid'], 'post_contains', $content);
+        }
+
         echo json_encode(['ok'=>true,'id'=>$post_id]); exit;
     }
 

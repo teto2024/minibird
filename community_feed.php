@@ -15,7 +15,10 @@ $pdo = db();
 $community_id = intval($_GET['id'] ?? 0);
 
 if (!$community_id) {
-    header('Location: ./');
+    echo "<!DOCTYPE html><html><head><title>エラー</title></head><body>";
+    echo "<h1>コミュニティIDが指定されていません</h1>";
+    echo "<a href='index.php'>トップに戻る</a>";
+    echo "</body></html>";
     exit;
 }
 

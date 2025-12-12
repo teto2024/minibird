@@ -818,7 +818,14 @@ function renderPost(p, wrap, prepend = false) {
     const userId = (isRepost && orig && orig.user_id) || p.user_id;
     const handle = (isRepost && orig && orig.handle) || p.handle;
     const userLink = userId ? `profile.php?id=${userId}` : `profile.php?handle=${encodeURIComponent(handle)}`;
-    meta.innerHTML = `<a href="${userLink}" class="mention">${displayName}</a> @${handle} ・ ${timeago(p.created_at)}`;
+    meta.innerHTML = `<a href="${userLink}" class="mention">${displayName}</a> @${handle}`;
+    
+    // 称号表示
+    if (p.title_text && p.title_css) {
+        meta.innerHTML += ` <span class="user-title ${p.title_css}">${p.title_text}</span>`;
+    }
+    
+    meta.innerHTML += ` ・ ${timeago(p.created_at)}`;
 
     if (p.vip_level && p.vip_level > 0) {
         meta.innerHTML += ` ・ <span class="vip-label">👑VIP${p.vip_level}</span>`;
