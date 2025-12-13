@@ -282,8 +282,15 @@ $weekly_quests = array_filter($quests, fn($q) => $q['type'] === 'weekly');
 
     <!-- リレークエスト -->
     <div class="quest-section">
-        <h2>🔗 リレークエスト（順番にクリア）</h2>
-        <p style="color: #718096; margin-bottom: 15px;">前のクエストをクリアすると次のクエストが解放されます</p>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div>
+                <h2 style="margin: 0;">🔗 リレークエスト（順番にクリア）</h2>
+                <p style="color: #718096; margin: 5px 0;">前のクエストをクリアすると次のクエストが解放されます</p>
+            </div>
+            <button id="resetRelayBtn" style="padding: 10px 20px; background: #f56565; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">
+                🔄 リセット
+            </button>
+        </div>
         <div class="relay-quest-chain">
         <?php foreach ($relay_quests as $index => $quest): 
             $conditions = json_decode($quest['conditions'], true);
@@ -338,7 +345,32 @@ $weekly_quests = array_filter($quests, fn($q) => $q['type'] === 'weekly');
 </div>
 
 <script>
-// 3秒ごとに自動リロード（クエスト進行状況更新）
+// リレークエストリセット
+document.getElementById('resetRelayBtn')?.addEventListener('click', async () => {
+    if (!confirm('リレークエストをリセットしますか？進行状況は最初に戻ります。')) {
+        return;
+    }
+    
+    try {
+        const res = await fetch('quest_reset_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'reset_relay'})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            alert('リレークエストをリセットしました');
+            location.reload();
+        } else {
+            alert('リセット失敗: ' + data.error);
+        }
+    } catch (err) {
+        alert('エラーが発生しました');
+    }
+});
+
+// 5秒ごとに自動リロード（クエスト進行状況更新）
 setInterval(() => {
     location.reload();
 }, 5000);

@@ -29,6 +29,27 @@ function check_quest_progress($user_id, $action, $count = 1) {
 }
 
 /**
+ * リレークエストをリセット
+ * @param int $user_id ユーザーID
+ * @return bool 成功したかどうか
+ */
+function reset_relay_quests($user_id) {
+    $pdo = db();
+    try {
+        $stmt = $pdo->prepare("
+            DELETE FROM user_quest_progress 
+            WHERE user_id = ? 
+            AND quest_id IN (SELECT id FROM quests WHERE reset_type = 'relay')
+        ");
+        $stmt->execute([$user_id]);
+        return true;
+    } catch (Exception $e) {
+        error_log("Relay quest reset error: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
  * テキスト含有チェックを伴うクエスト進行
  * @param int $user_id ユーザーID
  * @param string $action アクション種類（post_contains）

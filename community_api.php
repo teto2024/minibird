@@ -6,7 +6,7 @@
 
 require_once __DIR__ . '/config.php';
 $pdo = db();
-$user_id = $_SESSION['user_id'] ?? null;
+$user_id = $_SESSION['uid'] ?? null;
 
 header('Content-Type: application/json; charset=utf-8');
 
