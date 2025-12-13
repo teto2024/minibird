@@ -141,7 +141,7 @@ if($action === 'fetch' || $action === 'fetch_more'){
     // --- bookmarks ---
     if($feed === 'bookmarks'){
         if(!$me){ echo json_encode(['ok'=>false,'error'=>'login_required']); exit; }
-        $sql = "SELECT p.*, u.handle, u.display_name, u.vip_level, p.deleted_at, p.deleted_by_mod,
+        $sql = "SELECT p.*, u.handle, u.display_name, u.icon, u.vip_level, p.deleted_at, p.deleted_by_mod,
                   (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
                   (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
                   (SELECT COUNT(*) FROM replies rp WHERE rp.post_id=p.id) AS reply_count,
@@ -157,7 +157,8 @@ if($action === 'fetch' || $action === 'fetch_more'){
                   ru.handle AS reposter_handle,
                   ru.display_name AS reposter_display_name,
                   ru.icon AS reposter_icon,
-                  f.css_token AS frame_class
+                  f.css_token AS frame_class,
+                  tp.title_text, tp.title_css
                 FROM bookmarks b
                 JOIN posts p ON p.id = b.post_id
                 JOIN users u ON u.id = p.user_id
@@ -166,6 +167,8 @@ if($action === 'fetch' || $action === 'fetch_more'){
                 LEFT JOIN frames f_orig ON f_orig.id = (SELECT active_frame_id FROM users WHERE id=ou.id)
                 LEFT JOIN users ru ON ru.id = p.user_id
                 LEFT JOIN frames f ON f.id = (SELECT active_frame_id FROM users WHERE id=p.user_id)
+                LEFT JOIN user_titles ut ON ut.user_id = u.id AND ut.is_equipped = TRUE
+                LEFT JOIN title_packages tp ON tp.id = ut.title_id
                 WHERE b.user_id = ?
                 ORDER BY b.created_at DESC
                 LIMIT ?";
@@ -177,7 +180,7 @@ if($action === 'fetch' || $action === 'fetch_more'){
     // --- communities ---
     if($feed === 'communities'){
         if(!$me){ echo json_encode(['ok'=>false,'error'=>'login_required']); exit; }
-        $sql = "SELECT p.*, u.handle, u.display_name, u.vip_level, p.deleted_at, p.deleted_by_mod,
+        $sql = "SELECT p.*, u.handle, u.display_name, u.icon, u.vip_level, p.deleted_at, p.deleted_by_mod,
                   (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
                   (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
                   (SELECT COUNT(*) FROM replies rp WHERE rp.post_id=p.id) AS reply_count,
@@ -193,7 +196,8 @@ if($action === 'fetch' || $action === 'fetch_more'){
                   ru.handle AS reposter_handle,
                   ru.display_name AS reposter_display_name,
                   ru.icon AS reposter_icon,
-                  f.css_token AS frame_class
+                  f.css_token AS frame_class,
+                  tp.title_text, tp.title_css
                 FROM community_members m
                 JOIN posts p ON p.community_id = m.community_id
                 JOIN users u ON u.id = p.user_id
@@ -202,6 +206,8 @@ if($action === 'fetch' || $action === 'fetch_more'){
                 LEFT JOIN frames f_orig ON f_orig.id = (SELECT active_frame_id FROM users WHERE id=ou.id)
                 LEFT JOIN users ru ON ru.id = p.user_id
                 LEFT JOIN frames f ON f.id = (SELECT active_frame_id FROM users WHERE id=p.user_id)
+                LEFT JOIN user_titles ut ON ut.user_id = u.id AND ut.is_equipped = TRUE
+                LEFT JOIN title_packages tp ON tp.id = ut.title_id
                 WHERE m.user_id = ?
                 ORDER BY p.id DESC
                 LIMIT ?";
@@ -212,7 +218,7 @@ if($action === 'fetch' || $action === 'fetch_more'){
 
     // --- recommended ---
     if($feed === 'recommended'){
-        $sql = "SELECT p.*, u.handle, u.display_name, u.vip_level,
+        $sql = "SELECT p.*, u.handle, u.display_name, u.icon, u.vip_level,
                     p.deleted_at, p.deleted_by_mod,
                     (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
                     (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
@@ -229,7 +235,8 @@ if($action === 'fetch' || $action === 'fetch_more'){
                     ru.handle AS reposter_handle,
                     ru.display_name AS reposter_display_name,
                     ru.icon AS reposter_icon,
-                    f.css_token AS frame_class
+                    f.css_token AS frame_class,
+                    tp.title_text, tp.title_css
                 FROM posts p
                 JOIN users u ON u.id = p.user_id
                 LEFT JOIN posts op ON op.id = p.is_repost_of
@@ -237,6 +244,8 @@ if($action === 'fetch' || $action === 'fetch_more'){
                 LEFT JOIN frames f_orig ON f_orig.id = (SELECT active_frame_id FROM users WHERE id=ou.id)
                 LEFT JOIN users ru ON ru.id = p.user_id
                 LEFT JOIN frames f ON f.id = (SELECT active_frame_id FROM users WHERE id=p.user_id)
+                LEFT JOIN user_titles ut ON ut.user_id = u.id AND ut.is_equipped = TRUE
+                LEFT JOIN title_packages tp ON tp.id = ut.title_id
                 WHERE p.nsfw = 0 AND p.created_at >= (NOW() - INTERVAL 3 DAY) AND p.deleted_at IS NULL
                 ORDER BY ((SELECT COUNT(*) FROM replies rpX WHERE rpX.post_id=p.id)*3
                          + (SELECT COUNT(*) FROM reposts rX WHERE rX.post_id=p.id)*2
@@ -266,7 +275,7 @@ if($action === 'fetch' || $action === 'fetch_more'){
     if($since_id>0){ $where.=" AND p.id > ?"; $params[]=$since_id; }
     if($max_id>0){ $where.=" AND p.id <= ?"; $params[]=$max_id; }
 
-    $sql = "SELECT p.*, u.handle, u.display_name, u.vip_level, p.deleted_at, p.deleted_by_mod,
+    $sql = "SELECT p.*, u.handle, u.display_name, u.icon, u.vip_level, p.deleted_at, p.deleted_by_mod,
                 (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
                 (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
                 (SELECT COUNT(*) FROM replies rp WHERE rp.post_id=p.id) AS reply_count,
@@ -282,7 +291,8 @@ if($action === 'fetch' || $action === 'fetch_more'){
                 ru.handle AS reposter_handle,
                 ru.display_name AS reposter_display_name,
                 ru.icon AS reposter_icon,
-                f.css_token AS frame_class
+                f.css_token AS frame_class,
+                tp.title_text, tp.title_css
             FROM posts p
             JOIN users u ON u.id = p.user_id
             LEFT JOIN posts op ON op.id = p.is_repost_of
@@ -290,6 +300,8 @@ if($action === 'fetch' || $action === 'fetch_more'){
             LEFT JOIN frames f_orig ON f_orig.id = (SELECT active_frame_id FROM users WHERE id=ou.id)
             LEFT JOIN users ru ON ru.id = p.user_id
             LEFT JOIN frames f ON f.id = (SELECT active_frame_id FROM users WHERE id=p.user_id)
+            LEFT JOIN user_titles ut ON ut.user_id = u.id AND ut.is_equipped = TRUE
+            LEFT JOIN title_packages tp ON tp.id = ut.title_id
             WHERE $where
             ORDER BY p.id DESC
             LIMIT ?";

@@ -7,15 +7,42 @@ $action = $input['action'] ?? '';
 if ($action==='list'){
   $post_id = (int)($input['post_id'] ?? 0);
   $pdo = db();
-  $st = $pdo->prepare("SELECT r.*, u.handle FROM replies r JOIN users u ON u.id=r.user_id WHERE r.post_id=? ORDER BY r.id DESC LIMIT 200");
+  $uid = $_SESSION['uid'] ?? 0;
+  $me = $uid ? user() : null;
+  
+  $st = $pdo->prepare("
+    SELECT r.*, u.handle, u.display_name, u.icon, u.active_frame_id,
+           f.css_token as frame_class,
+           ut.title_id, tp.title_text, tp.title_css,
+           (SELECT COUNT(*) FROM likes WHERE post_id = r.id) as like_count,
+           ".($uid ? "EXISTS(SELECT 1 FROM likes WHERE post_id = r.id AND user_id = $uid)" : "0")." as user_liked
+    FROM replies r
+    JOIN users u ON u.id = r.user_id
+    LEFT JOIN frames f ON f.id = u.active_frame_id
+    LEFT JOIN user_titles ut ON ut.user_id = u.id AND ut.is_equipped = TRUE
+    LEFT JOIN title_packages tp ON tp.id = ut.title_id
+    WHERE r.post_id = ?
+    ORDER BY r.id DESC LIMIT 200
+  ");
   $st->execute([$post_id]);
   $items = [];
   foreach ($st as $row){
+    $can_delete = ($me && ($row['user_id'] == $me['id'] || in_array($me['role'], ['mod', 'admin'])));
     $items[] = [
       'id'=>(int)$row['id'],
+      'user_id'=>(int)$row['user_id'],
       'handle'=>$row['handle'],
+      'display_name'=>$row['display_name'] ?? $row['handle'],
+      'icon'=>$row['icon'] ?? '/uploads/icons/default_icon.png',
+      'frame_class'=>$row['frame_class'],
+      'title_text'=>$row['title_text'],
+      'title_css'=>$row['title_css'],
+      'content_md'=>$row['content_md'],
       'content_html'=>$row['content_html'],
-      'created_at'=>$row['created_at']
+      'created_at'=>$row['created_at'],
+      'like_count'=>(int)($row['like_count'] ?? 0),
+      'user_liked'=>!empty($row['user_liked']),
+      '_can_delete'=>$can_delete
     ];
   }
   echo json_encode(['ok'=>true,'items'=>$items]); exit;
@@ -50,6 +77,41 @@ if ($action==='create'){
     }
 
     echo json_encode(['ok'=>true]); 
+    exit;
+}
+
+// --------------------
+// 返信削除
+// --------------------
+if ($action === 'delete') {
+    require_login();
+    $reply_id = (int)($input['reply_id'] ?? 0);
+
+    if ($reply_id <= 0) {
+        echo json_encode(['ok' => false, 'error' => 'bad_input']);
+        exit;
+    }
+
+    $pdo = db();
+    $me = user();
+    
+    // 返信の所有者を確認
+    $stmt = $pdo->prepare("SELECT user_id FROM replies WHERE id = ?");
+    $stmt->execute([$reply_id]);
+    $reply = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$reply) {
+        echo json_encode(['ok' => false, 'error' => 'not_found']);
+        exit;
+    }
+
+    // 自分の返信 or モデレータ/管理者のみ削除可能
+    if ($reply['user_id'] == $me['id'] || in_array($me['role'], ['mod', 'admin'])) {
+        $pdo->prepare("DELETE FROM replies WHERE id = ?")->execute([$reply_id]);
+        echo json_encode(['ok' => true]);
+    } else {
+        echo json_encode(['ok' => false, 'error' => 'forbidden']);
+    }
     exit;
 }
 

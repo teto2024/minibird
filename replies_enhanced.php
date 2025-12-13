@@ -49,6 +49,7 @@ if (!$original_post) {
 <link rel="stylesheet" href="assets/style.css">
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
+/* グローバルstyle.cssからフレームスタイルを適用するため、追加のカスタマイズのみ記述 */
 .replies-container {
     max-width: 800px;
     margin: 0 auto;
@@ -195,27 +196,7 @@ if (!$original_post) {
     color: #a0aec0;
 }
 
-/* フレームスタイル */
-.frame-classic { border: 2px solid #cbd5e0; }
-.frame-neon { border: 2px solid #f093fb; box-shadow: 0 0 10px rgba(240, 147, 251, 0.5); }
-.frame-sakura { border: 2px solid #fbb6ce; }
-.frame-fireworks { border: 2px solid #f59e0b; }
-.frame-cyberpunk { border: 2px solid #8b5cf6; }
-.frame-vip { border: 3px solid #f59e0b; box-shadow: 0 0 15px rgba(245, 158, 11, 0.6); }
-.frame-purple { border: 2px solid #9f7aea; }
-.frame-stars { border: 2px solid #ecc94b; }
-
-/* 称号スタイル */
-.title-beginner { color: #4299e1; }
-.title-veteran { color: #ed8936; text-shadow: 0 0 5px rgba(237, 137, 54, 0.3); }
-.title-master { color: #9f7aea; text-shadow: 0 0 10px rgba(159, 122, 234, 0.5); }
-.title-legend { 
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-.title-leader { color: #48bb78; font-weight: bold; }
-.title-trendsetter { color: #f56565; }
+/* フレームスタイルはassets/style.cssから継承されます */
 </style>
 </head>
 <body>
@@ -331,6 +312,11 @@ function renderReply(reply) {
     const titleHtml = reply.title_text ? 
         `<span class="reply-title ${reply.title_css}">${reply.title_text}</span>` : '';
     
+    const deleteBtn = reply._can_delete ? 
+        `<button class="reply-action-btn" onclick="deleteReply(${reply.id})" style="color: #e53e3e;">
+            🗑️ 削除
+        </button>` : '';
+    
     return `
         <div class="reply-item ${frameClass}" data-reply-id="${reply.id}">
             <div class="reply-header">
@@ -356,6 +342,7 @@ function renderReply(reply) {
                 <button class="reply-action-btn" onclick="replyTo(${reply.id})">
                     💬 返信
                 </button>
+                ${deleteBtn}
             </div>
         </div>
     `;
@@ -440,6 +427,29 @@ function formatTime(datetime) {
 function replyTo(replyId) {
     document.getElementById('replyText').focus();
     // ネスト返信の実装は後ほど
+}
+
+// 返信削除
+async function deleteReply(replyId) {
+    if (!confirm('この返信を削除しますか？')) return;
+    
+    try {
+        const res = await fetch('replies_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'delete', reply_id: replyId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            loadReplies();
+        } else {
+            alert('削除失敗: ' + (data.error || '不明なエラー'));
+        }
+    } catch (err) {
+        console.error('削除エラー', err);
+        alert('ネットワークエラー');
+    }
 }
 
 // 初回読み込み
