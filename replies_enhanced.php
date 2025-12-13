@@ -22,7 +22,7 @@ $stmt = $pdo->prepare("
            f.css_token as frame_class,
            ut.title_id, tp.title_text, tp.title_css,
            (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
-           (SELECT COUNT(*) FROM posts WHERE repost_of = p.id) as repost_count,
+           (SELECT COUNT(*) FROM posts WHERE is_repost_of = p.id) as repost_count,
            (SELECT 1 FROM likes WHERE post_id = p.id AND user_id = ?) as user_liked
     FROM posts p
     JOIN users u ON u.id = p.user_id
