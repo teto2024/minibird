@@ -5,6 +5,10 @@
 // ===============================================
 
 require_once __DIR__ . '/config.php';
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 $pdo = db();
 $user_id = $_SESSION['uid'] ?? null;
 
@@ -38,10 +42,10 @@ try {
             }
             
             // 投稿取得（親投稿のみ、返信は除外）
-            $offset = intval($_GET['offset'] ?? 0);
-            $limit = intval($_GET['limit'] ?? 50);
+            /*$offset = intval($_GET['offset'] ?? 0);
+            $limit = intval($_GET['limit'] ?? 50);*/
             
-            $stmt = $pdo->prepare("
+            /*$stmt = $pdo->prepare("
                 SELECT 
                     cp.*,
                     u.handle, u.active_frame_id,
@@ -54,7 +58,27 @@ try {
                 ORDER BY cp.created_at DESC
                 LIMIT ? OFFSET ?
             ");
-            $stmt->execute([$user_id, $community_id, $limit, $offset]);
+            $stmt->execute([$user_id, $community_id, $limit, $offset]);*/
+            $limit  = max(1, min(100, intval($_GET['limit'] ?? 50)));
+$offset = max(0, intval($_GET['offset'] ?? 0));
+
+$sql = "
+    SELECT 
+        cp.*,
+        u.handle, u.active_frame_id,
+        (SELECT COUNT(*) FROM community_post_likes WHERE post_id = cp.id) as like_count,
+        (SELECT COUNT(*) FROM community_posts WHERE parent_id = cp.id) as reply_count,
+        (SELECT 1 FROM community_post_likes WHERE post_id = cp.id AND user_id = ?) as user_liked
+    FROM community_posts cp
+    JOIN users u ON u.id = cp.user_id
+    WHERE cp.community_id = ? AND cp.parent_id IS NULL
+    ORDER BY cp.created_at DESC
+    LIMIT $limit OFFSET $offset
+";
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute([$user_id, $community_id]);
+
             $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             echo json_encode(['ok' => true, 'posts' => $posts]);

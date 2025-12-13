@@ -5,6 +5,10 @@
 // ===============================================
 
 require_once __DIR__ . '/config.php';
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 $me = user();
 if (!$me) {
     header('Location: ./');
@@ -348,6 +352,7 @@ async function postReply(postId) {
         formData.append('community_id', COMMUNITY_ID);
         formData.append('content', text);
         formData.append('parent_id', postId);
+        formData.append('is_nsfw', '0');
         
         const res = await fetch('community_api.php', {
             method: 'POST',

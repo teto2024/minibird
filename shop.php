@@ -133,7 +133,7 @@ $active = (int)($me['active_frame_id'] ?? 0);
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    background: #f7fafc;
+    /*background: #f7fafc;*/
     position: relative;
 }
 .frame-name {

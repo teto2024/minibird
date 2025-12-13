@@ -3,8 +3,10 @@
 // community_members.php
 // コミュニティメンバー管理ページ
 // ===============================================
-
 require_once __DIR__ . '/config.php';
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 $me = user();
 if (!$me) {
     header('Location: ./');
@@ -47,7 +49,7 @@ $stmt = $pdo->prepare("
     FROM community_members cm
     JOIN users u ON u.id = cm.user_id
     WHERE cm.community_id = ?
-    ORDER BY cm.joined_at DESC
+    ORDER BY joined_at DESC
 ");
 $stmt->execute([$community_id]);
 $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -71,10 +73,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if (!$stmt->fetch()) {
                     // メンバー追加
                     $stmt = $pdo->prepare("
-                        INSERT INTO community_members (community_id, user_id, role, joined_at)
-                        VALUES (?, ?, 'member', NOW())
-                    ");
-                    $stmt->execute([$community_id, $user['id']]);
+    INSERT INTO community_members (community_id, user_id, role, added_by, created_at)
+    VALUES (?, ?, 'member', ?, NOW())
+");
+$stmt->execute([
+    $community_id,
+    $user['id'],
+    $me['id']   // ← 追加した人
+]);
+
                     header("Location: community_members.php?id=$community_id&success=added");
                     exit;
                 } else {
