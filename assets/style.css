@@ -978,7 +978,7 @@ button {
     /* 操作不可 */
 }
 
-/* 🀀󱁌移動するアニメーション */
+/* 🀀𐀀󱁌򎻕するアニメーション */
 @keyframes flyingTree {
     0% {
         top: 80%;
@@ -1342,7 +1342,235 @@ button {
         opacity: 1;
     }
 }
+
+/* ---------- New Year (新春) ---------- */
+/* ゴージャス＆奇抜・めでたい雰囲気・赤基調 */
+.frame-newyear {
+    position: relative;
+    border: 3px solid #ff0000;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(135deg,
+            #8b0000 0%,
+            #ff0000 25%,
+            #ffd700 50%,
+            #ff0000 75%,
+            #8b0000 100%);
+    background-size: 400% 400%;
+    color: #fff5e6;
+    font-weight: bold;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.6),
+        0 0 40px rgba(255, 215, 0, 0.4),
+        inset 0 0 30px rgba(255, 215, 0, 0.2);
+    animation: newyearBg 8s ease-in-out infinite;
+}
+
+/* 金色の輝き */
+.frame-newyear::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle at 20% 30%,
+            rgba(255, 215, 0, 0.4) 0%,
+            transparent 50%),
+        radial-gradient(circle at 80% 70%,
+            rgba(255, 255, 100, 0.3) 0%,
+            transparent 50%);
+    animation: newyearSparkle 3s ease-in-out infinite alternate;
+    pointer-events: none;
+}
+
+/* 舞う絵文字（🎊と🎉） */
+.frame-newyear::after {
+    content: "🎊";
+    position: absolute;
+    font-size: 32px;
+    top: -10%;
+    right: -5%;
+    animation: newyearFloat 6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+    z-index: 3;
+}
+
+@keyframes newyearBg {
+
+    0%,
+    100% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+}
+
+@keyframes newyearSparkle {
+    0% {
+        opacity: 0.5;
+        transform: scale(1) rotate(0deg);
+    }
+
+    50% {
+        opacity: 0.9;
+        transform: scale(1.15) rotate(180deg);
+    }
+
+    100% {
+        opacity: 0.5;
+        transform: scale(1) rotate(360deg);
+    }
+}
+
+@keyframes newyearFloat {
+    0% {
+        top: -10%;
+        right: -5%;
+        transform: rotate(0deg) scale(1);
+        opacity: 1;
+    }
+
+    25% {
+        top: 30%;
+        right: 20%;
+        transform: rotate(90deg) scale(1.3);
+        opacity: 0.8;
+    }
+
+    50% {
+        top: 60%;
+        right: 50%;
+        transform: rotate(180deg) scale(1.1);
+        opacity: 0.9;
+    }
+
+    75% {
+        top: 30%;
+        right: 80%;
+        transform: rotate(270deg) scale(1.4);
+        opacity: 0.7;
+    }
+
+    100% {
+        top: 110%;
+        right: 95%;
+        transform: rotate(360deg) scale(0.8);
+        opacity: 0;
+    }
+}
+
+/* 価格: コイン 80,000 / クリスタル 8（期間限定：1月限定） */
+
+
+/* ---------- Arctic Freeze (極寒) ---------- */
+/* 凍り付くようなエフェクト・白基調・透明感 */
+.frame-arctic {
+    position: relative;
+    border: 2px solid rgba(200, 230, 255, 0.5);
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(135deg,
+            rgba(230, 245, 255, 0.15) 0%,
+            rgba(200, 230, 255, 0.25) 25%,
+            rgba(180, 220, 255, 0.2) 50%,
+            rgba(200, 230, 255, 0.25) 75%,
+            rgba(230, 245, 255, 0.15) 100%);
+    backdrop-filter: blur(8px);
+    color: #e0f5ff;
+    font-weight: bold;
+    overflow: hidden;
+    box-shadow: 0 0 16px rgba(180, 220, 255, 0.4),
+        0 0 32px rgba(200, 230, 255, 0.2),
+        inset 0 0 40px rgba(255, 255, 255, 0.1);
+    animation: arcticShimmer 5s ease-in-out infinite;
+}
+
+/* 氷の結晶エフェクト */
+.frame-arctic::before {
+    content: '❄';
+    position: absolute;
+    font-size: 80px;
+    color: rgba(220, 240, 255, 0.2);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: arcticCrystal 8s linear infinite;
+    text-shadow: 0 0 20px rgba(180, 220, 255, 0.6),
+        0 0 40px rgba(200, 230, 255, 0.4);
+    pointer-events: none;
+}
+
+/* 凍り付く波紋 */
+.frame-arctic::after {
+    content: '';
+    position: absolute;
+    inset: -20%;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+            rgba(255, 255, 255, 0.3) 0%,
+            rgba(200, 230, 255, 0.15) 30%,
+            transparent 70%);
+    animation: arcticFreeze 6s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes arcticShimmer {
+
+    0%,
+    100% {
+        box-shadow: 0 0 16px rgba(180, 220, 255, 0.4),
+            0 0 32px rgba(200, 230, 255, 0.2),
+            inset 0 0 40px rgba(255, 255, 255, 0.1);
+    }
+
+    50% {
+        box-shadow: 0 0 24px rgba(180, 220, 255, 0.6),
+            0 0 48px rgba(200, 230, 255, 0.4),
+            inset 0 0 60px rgba(255, 255, 255, 0.2);
+    }
+}
+
+@keyframes arcticCrystal {
+    0% {
+        transform: translate(-50%, -50%) rotate(0deg) scale(1);
+        opacity: 0.2;
+    }
+
+    50% {
+        transform: translate(-50%, -50%) rotate(180deg) scale(1.2);
+        opacity: 0.4;
+    }
+
+    100% {
+        transform: translate(-50%, -50%) rotate(360deg) scale(1);
+        opacity: 0.2;
+    }
+}
+
+@keyframes arcticFreeze {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+
+    50% {
+        transform: scale(1.5);
+        opacity: 0.4;
+    }
+
+    100% {
+        transform: scale(2. 2);
+        opacity: 0;
+    }
+}
+
+/* 価格: コイン 60,000 / クリスタル 6（期間限定：冬季限定） */
 /*フレームここまで*/
+
+
+
+
 
 /* フルスクリーン用*/
 .fullscreen-fallback {

@@ -5,28 +5,29 @@ if (!$me){ header('Location: ./'); exit; }
 $pdo = db();
 
 // Seed sample frames if none
-// Seed sample frames if none
 $cnt = (int)$pdo->query("SELECT COUNT(*) FROM frames")->fetchColumn();
 if ($cnt===0){
-  $pdo->exec("INSERT INTO frames(name,css_token,price_coins,price_crystals,preview_css) VALUES
-  ('クラシック','frame-classic',200,0,''),
-  ('ネオン','frame-neon',800,2,''),
-  ('サクラ','frame-sakura',500,1,''),
-  ('花火','frame-fireworks',600,1,''),
-  ('サイバーパンク','frame-cyberpunk',900,3,''),
-  ('ネオン文字','frame-neon-text',850,2,''),
-  ('VIP','frame-vip',2000,5,''),
-  ('パープル','frame-purple',700,1,''),
-  ('星空','frame-stars',50000,5,''),
-  ('ラブリー','frame-lovely',30000,3,''),
-  ('炎','frame-flame',40000,4,''),
-  ('クリスマス','frame-christmas',30000,50,''),
-  ('冬','frame-winter',5000,50,''),
-  ('サクラⅡ','frame-sakura-enhanced',10000,60,''),
-  ('オーロラ','frame-aurora',24000,120,''),
-  ('サンタ','frame-santa',39000,100,''),
-  ('ネオン','frame-neon-style',18000,90,''),
-  ('集中マスター','frame-master',100000,10','')"); // 集中マスターはティア10以上限定
+  $pdo->exec("INSERT INTO frames(name,css_token,price_coins,price_crystals,price_diamonds,preview_css) VALUES
+  ('クラシック','frame-classic',200,0,0,''),
+  ('ネオン','frame-neon',800,2,0,''),
+  ('サクラ','frame-sakura',500,1,0,''),
+  ('花火','frame-fireworks',600,1,0,''),
+  ('サイバーパンク','frame-cyberpunk',900,3,0,''),
+  ('ネオン文字','frame-neon-text',850,2,0,''),
+  ('VIP','frame-vip',2000,5,0,''),
+  ('パープル','frame-purple',700,1,0,''),
+  ('星空','frame-stars',50000,5,0,''),
+  ('ラブリー','frame-lovely',30000,3,0,''),
+  ('炎','frame-flame',40000,4,0,''),
+  ('クリスマス','frame-christmas',30000,50,0,''),
+  ('冬','frame-winter',5000,50,0,''),
+  ('サクラⅡ','frame-sakura-enhanced',10000,60,0,''),
+  ('オーロラ','frame-aurora',24000,120,0,''),
+  ('サンタ','frame-santa',39000,100,0,''),
+  ('ネオンⅢ','frame-neon-style',18000,90,0,''),
+  ('新春','frame-newyear',50000,500,5,''),
+  ('極寒','frame-arctic',45000,125,3,''),
+  ('集中マスター','frame-master',100000,10,10,'')");
 }
 
 // POST処理
@@ -34,32 +35,52 @@ if ($_SERVER['REQUEST_METHOD']==='POST'){
   $frame_id = (int)($_POST['frame_id'] ?? 0);
   $act = $_POST['act'] ?? '';
   if ($act==='buy'){
-    $fr = $pdo->prepare("SELECT * FROM frames WHERE id=?"); $fr->execute([$frame_id]); $f = $fr->fetch();
-    if (!$f){ $msg='フレームが見つかりません'; }
-    else {
-        // 集中マスターフレームはティア10以上チェック
+    $fr = $pdo->prepare("SELECT * FROM frames WHERE id=?");
+    $fr->execute([$frame_id]);
+    $f = $fr->fetch();
+    if (!$f){
+        $msg='フレームが見つかりません';
+    } else {
         if ($f['css_token']==='frame-master' && ($me['focus_tier'] ?? 0) < 10){
             $msg = '集中マスターはティア10以上のユーザーのみ購入可能です';
-        } elseif ($me['coins'] >= $f['price_coins'] && $me['crystals'] >= $f['price_crystals']){
-            $pdo->prepare("INSERT IGNORE INTO user_frames(user_id,frame_id) VALUES(?,?)")->execute([$me['id'],$frame_id]);
-            $pdo->prepare("UPDATE users SET coins=coins-?, crystals=crystals-? WHERE id=?")->execute([$f['price_coins'],$f['price_crystals'],$me['id']]);
+        } elseif (
+            $me['coins'] >= $f['price_coins'] &&
+            $me['crystals'] >= $f['price_crystals'] &&
+            $me['diamonds'] >= $f['price_diamonds']
+        ){
+            $pdo->prepare("INSERT IGNORE INTO user_frames(user_id,frame_id) VALUES(?,?)")
+                ->execute([$me['id'],$frame_id]);
+            $pdo->prepare("UPDATE users SET coins=coins-?, crystals=crystals-?, diamonds=diamonds-? WHERE id=?")
+                ->execute([$f['price_coins'],$f['price_crystals'],$f['price_diamonds'],$me['id']]);
             $pdo->prepare("INSERT INTO reward_events(user_id,kind,amount,meta) VALUES(?,?,?,JSON_OBJECT('frame_id',?))")
                 ->execute([$me['id'],'buy_frame',-$f['price_coins'],$frame_id]);
             $msg='購入しました';
-        } else { $msg='残高不足'; }
+        } else {
+            $msg='残高不足';
+        }
     }
   } elseif ($act==='equip'){
-    $own = $pdo->prepare("SELECT 1 FROM user_frames WHERE user_id=? AND frame_id=?"); $own->execute([$me['id'],$frame_id]);
+    $own = $pdo->prepare("SELECT 1 FROM user_frames WHERE user_id=? AND frame_id=? ");
+    $own->execute([$me['id'],$frame_id]);
     if ($own->fetch()){
-      $pdo->prepare("UPDATE users SET active_frame_id=? WHERE id=?")->execute([$frame_id,$me['id']]);
-      $msg='装備しました';
-    } else { $msg='未購入です'; }
+        $pdo->prepare("UPDATE users SET active_frame_id=? WHERE id=?")
+            ->execute([$frame_id,$me['id']]);
+        $msg='装備しました';
+    } else {
+        $msg='未購入です';
+    }
   }
-  header("Location: shop.php?msg=".urlencode($msg)); exit;
+  header('Location: shop.php');
+  exit;
 }
 
+$frames = $pdo->query("
+    SELECT f.*,
+           (SELECT 1 FROM user_frames uf WHERE uf.user_id={$me['id']} AND uf.frame_id=f.id) owned
+    FROM frames f
+    ORDER BY id
+")->fetchAll();
 
-$frames = $pdo->query("SELECT f.*, (SELECT 1 FROM user_frames uf WHERE uf.user_id={$me['id']} AND uf.frame_id=f.id) owned FROM frames f ORDER BY id")->fetchAll();
 $active = (int)($me['active_frame_id'] ?? 0);
 ?>
 <!doctype html>
@@ -271,7 +292,7 @@ $active = (int)($me['active_frame_id'] ?? 0);
 <body>
 <div class="shop-container">
     <a href="./" class="back-link">← フィードに戻る</a>
-    
+
     <div class="shop-header">
         <h1>🛍️ フレームショップ</h1>
         <p style="margin: 10px 0; opacity: 0.9;">投稿を彩る華やかなフレームをゲットしよう！</p>
@@ -284,35 +305,39 @@ $active = (int)($me['active_frame_id'] ?? 0);
                 <span>💎</span>
                 <span><?= number_format($me['crystals']) ?> クリスタル</span>
             </div>
+            <div class="balance-item">
+                <span>💠</span>
+                <span><?= number_format($me['diamonds']) ?> ダイヤモンド</span>
+            </div>
         </div>
     </div>
-    
+
     <?php if(isset($_GET['msg'])): ?>
     <div class="alert <?= strpos($_GET['msg'], '不足') !== false || strpos($_GET['msg'], '失敗') !== false ? 'alert-error' : 'alert-success' ?>">
         <?= htmlspecialchars($_GET['msg']) ?>
     </div>
     <?php endif; ?>
-    
+
     <div class="frame-grid">
     <?php foreach ($frames as $f): ?>
         <div class="frame-card">
             <?php if($active === $f['id']): ?>
-            <span class="equipped-badge">装備中</span>
+                <span class="equipped-badge">装備中</span>
             <?php elseif($f['owned']): ?>
-            <span class="owned-badge">所有済み</span>
+                <span class="owned-badge">所有済み</span>
             <?php endif; ?>
-            
+
             <div class="frame-preview <?= $f['css_token'] ?>">
                 <div class="frame-name"><?= htmlspecialchars($f['name']) ?></div>
                 <p style="margin: 0; color: #718096;">フレームプレビュー</p>
             </div>
-            
+
             <?php if($f['css_token'] === 'frame-master' && ($me['focus_tier'] ?? 0) < 10): ?>
             <div class="special-requirement">
                 ⚠️ 集中タイマー ティア10以上が必要
             </div>
             <?php endif; ?>
-            
+
             <div class="frame-price">
                 <?php if($f['price_coins'] > 0): ?>
                 <div class="price-item">
@@ -326,30 +351,40 @@ $active = (int)($me['active_frame_id'] ?? 0);
                     <span><?= number_format($f['price_crystals']) ?></span>
                 </div>
                 <?php endif; ?>
+                <?php if($f['price_diamonds'] > 0): ?>
+                <div class="price-item diamond">
+                    <span>💠</span>
+                    <span><?= number_format($f['price_diamonds']) ?></span>
+                </div>
+                <?php endif; ?>
             </div>
-            
+
             <div class="frame-actions">
                 <?php if($f['owned']): ?>
                     <?php if($active === $f['id']): ?>
-                    <button class="btn-equipped" disabled>✅ 装備中</button>
+                        <button class="btn-equipped" disabled>✅ 装備中</button>
                     <?php else: ?>
-                    <form method="post" style="width: 100%;">
-                        <input type="hidden" name="frame_id" value="<?= $f['id'] ?>">
-                        <input type="hidden" name="act" value="equip">
-                        <button type="submit" class="btn-equip">装備する</button>
-                    </form>
+                        <form method="post" style="width: 100%;">
+                            <input type="hidden" name="frame_id" value="<?= $f['id'] ?>">
+                            <input type="hidden" name="act" value="equip">
+                            <button type="submit" class="btn-equip">装備する</button>
+                        </form>
                     <?php endif; ?>
                 <?php else: ?>
                     <form method="post" style="width: 100%;">
                         <input type="hidden" name="frame_id" value="<?= $f['id'] ?>">
                         <input type="hidden" name="act" value="buy">
-                        <button type="submit" class="btn-buy" 
-                                <?php if($me['coins'] < $f['price_coins'] || $me['crystals'] < $f['price_crystals']): ?>
+                        <button type="submit" class="btn-buy"
+                            <?php if(
+                                $me['coins'] < $f['price_coins'] ||
+                                $me['crystals'] < $f['price_crystals'] ||
+                                $me['diamonds'] < $f['price_diamonds']
+                            ): ?>
                                 disabled title="残高不足"
-                                <?php endif; ?>
-                                <?php if($f['css_token'] === 'frame-master' && ($me['focus_tier'] ?? 0) < 10): ?>
+                            <?php endif; ?>
+                            <?php if($f['css_token'] === 'frame-master' && ($me['focus_tier'] ?? 0) < 10): ?>
                                 disabled title="ティア10以上が必要"
-                                <?php endif; ?>>
+                            <?php endif; ?>>
                             🛒 購入する
                         </button>
                     </form>
