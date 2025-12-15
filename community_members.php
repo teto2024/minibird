@@ -282,6 +282,11 @@ $stmt->execute([
     <div class="actions">
         <a href="community_feed.php?id=<?= $community_id ?>" class="btn btn-secondary">← フィードに戻る</a>
         <a href="communities.php" class="btn btn-secondary">コミュニティ一覧</a>
+        <button id="togglePublicBtn" class="btn <?= $community['is_public'] ? 'btn-primary' : 'btn-secondary' ?>" 
+                data-community-id="<?= $community_id ?>" 
+                data-is-public="<?= $community['is_public'] ?>">
+            <?= $community['is_public'] ? '🌐 公開中' : '🔒 非公開' ?>
+        </button>
     </div>
     
     <?php if (isset($_GET['success'])): ?>
@@ -343,5 +348,38 @@ $stmt->execute([
         <?php endif; ?>
     </div>
 </div>
+
+<script>
+// 公開設定トグル
+document.getElementById('togglePublicBtn').addEventListener('click', async function() {
+    const communityId = this.dataset.communityId;
+    const isPublic = this.dataset.isPublic === '1';
+    const message = isPublic 
+        ? 'コミュニティを非公開に変更しますか？' 
+        : 'コミュニティを公開に変更しますか？\n公開すると誰でもコミュニティに参加できるようになります。';
+    
+    if (!confirm(message)) return;
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'toggle_public');
+        formData.append('community_id', communityId);
+        
+        const res = await fetch('community_manage.php', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            location.reload();
+        } else {
+            alert('エラー: ' + data.error);
+        }
+    } catch (err) {
+        alert('ネットワークエラー');
+    }
+});
+</script>
 </body>
 </html>

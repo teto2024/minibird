@@ -215,6 +215,11 @@ $msg = $_GET['msg'] ?? '';
     <div class="communities-header">
         <h1>🏘️ コミュニティ</h1>
         <p>プライベートなグループでコミュニケーションを楽しもう</p>
+        <div style="margin-top: 15px;">
+            <a href="community_public_list.php" style="background: rgba(255,255,255,0.2); color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; display: inline-block;">
+                🌐 公開コミュニティ一覧を見る
+            </a>
+        </div>
     </div>
 
     <!-- コミュニティ作成 -->
