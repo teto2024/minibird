@@ -15,7 +15,9 @@ if (!$me) {
     exit;
 }
 
-$action = $_POST['action'] ?? $_GET['action'] ?? '';
+// JSON または POST/GET パラメータから action を取得
+$input = json_decode(file_get_contents('php://input'), true) ?: [];
+$action = $input['action'] ?? $_POST['action'] ?? $_GET['action'] ?? '';
 
 if ($action === 'reset_relay') {
     $success = reset_relay_quests($me['id']);

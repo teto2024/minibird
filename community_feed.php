@@ -277,11 +277,28 @@ async function loadPosts() {
 // 投稿レンダリング
 function renderPosts(posts) {
     const container = document.getElementById('posts');
-    container.innerHTML = posts.map(post => `
-        <div class="community-post" data-post-id="${post.id}">
+    container.innerHTML = posts.map(post => {
+        const displayName = post.display_name || post.handle || 'unknown';
+        const icon = post.icon || '/uploads/icons/default_icon.png';
+        const frameClass = post.frame_class || '';
+        const titleHtml = post.title_text && post.title_css ? 
+            `<span class="user-title ${post.title_css}">${post.title_text}</span>` : '';
+        const vipHtml = post.vip_level && post.vip_level > 0 ? 
+            `<span class="vip-label">👑VIP${post.vip_level}</span>` : '';
+        
+        return `
+        <div class="community-post ${frameClass}" data-post-id="${post.id}">
             <div class="post-header">
-                <span class="post-author">@${post.handle}</span>
-                <span class="post-time">${formatTime(post.created_at)}</span>
+                <img src="${icon}" alt="${displayName}" class="avatar" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px;">
+                <div>
+                    <div>
+                        <a href="profile.php?id=${post.user_id}" class="post-author">${displayName}</a>
+                        @${post.handle}
+                        ${titleHtml}
+                        ${vipHtml}
+                    </div>
+                    <span class="post-time">${formatTime(post.created_at)}</span>
+                </div>
             </div>
             <div class="post-content">${escapeHtml(post.content)}</div>
             ${post.media_path ? `<img src="${post.media_path}" style="max-width: 100%; border-radius: 6px; margin-top: 10px;">` : ''}
@@ -289,20 +306,13 @@ function renderPosts(posts) {
                 <button class="post-action-btn ${post.user_liked ? 'liked' : ''}" onclick="toggleLike(${post.id})">
                     ❤️ <span class="like-count">${post.like_count || 0}</span>
                 </button>
-                <button class="post-action-btn" onclick="toggleReplyForm(${post.id})">
+                <button class="post-action-btn" onclick="location.href='community_replies.php?post_id=${post.id}'">
                     💬 返信 <span class="reply-count">${post.reply_count || 0}</span>
                 </button>
-                <button class="post-action-btn" onclick="loadReplies(${post.id})">
-                    👁️ 返信を見る
-                </button>
             </div>
-            <div class="reply-form" id="replyForm-${post.id}">
-                <textarea placeholder="返信を入力..." id="replyText-${post.id}"></textarea>
-                <button onclick="postReply(${post.id})">返信する</button>
-            </div>
-            <div class="replies-section" id="replies-${post.id}"></div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 // いいね切り替え
@@ -332,68 +342,6 @@ async function toggleLike(postId) {
         }
     } catch (err) {
         console.error('いいねエラー', err);
-    }
-}
-
-// 返信フォーム表示切り替え
-function toggleReplyForm(postId) {
-    const form = document.getElementById(`replyForm-${postId}`);
-    form.style.display = form.style.display === 'none' ? 'block' : 'none';
-}
-
-// 返信投稿
-async function postReply(postId) {
-    const text = document.getElementById(`replyText-${postId}`).value.trim();
-    if (!text) return;
-    
-    try {
-        const formData = new FormData();
-        formData.append('action', 'create_post');
-        formData.append('community_id', COMMUNITY_ID);
-        formData.append('content', text);
-        formData.append('parent_id', postId);
-        formData.append('is_nsfw', '0');
-        
-        const res = await fetch('community_api.php', {
-            method: 'POST',
-            body: formData
-        });
-        const data = await res.json();
-        
-        if (data.ok) {
-            document.getElementById(`replyText-${postId}`).value = '';
-            loadReplies(postId);
-        }
-    } catch (err) {
-        console.error('返信エラー', err);
-    }
-}
-
-// 返信読み込み
-async function loadReplies(postId) {
-    try {
-        const res = await fetch(`community_api.php?action=get_replies&post_id=${postId}`);
-        const data = await res.json();
-        
-        if (data.ok) {
-            const container = document.getElementById(`replies-${postId}`);
-            container.innerHTML = data.replies.map(reply => `
-                <div class="community-post" style="margin-bottom: 10px;">
-                    <div class="post-header">
-                        <span class="post-author">@${reply.handle}</span>
-                        <span class="post-time">${formatTime(reply.created_at)}</span>
-                    </div>
-                    <div class="post-content">${escapeHtml(reply.content)}</div>
-                    <div class="post-actions">
-                        <button class="post-action-btn ${reply.user_liked ? 'liked' : ''}" onclick="toggleLike(${reply.id})">
-                            ❤️ <span class="like-count">${reply.like_count || 0}</span>
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-        }
-    } catch (err) {
-        console.error('返信読み込みエラー', err);
     }
 }
 

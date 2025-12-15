@@ -42,42 +42,35 @@ try {
             }
             
             // 投稿取得（親投稿のみ、返信は除外）
-            /*$offset = intval($_GET['offset'] ?? 0);
-            $limit = intval($_GET['limit'] ?? 50);*/
-            
-            /*$stmt = $pdo->prepare("
+            $limit  = max(1, min(100, intval($_GET['limit'] ?? 50)));
+            $offset = max(0, intval($_GET['offset'] ?? 0));
+
+            $sql = "
                 SELECT 
                     cp.*,
-                    u.handle, u.active_frame_id,
+                    u.handle, 
+                    u.display_name,
+                    u.icon,
+                    u.vip_level,
+                    u.active_frame_id,
+                    f.css_token AS frame_class,
+                    tp.title_text, 
+                    tp.title_css,
                     (SELECT COUNT(*) FROM community_post_likes WHERE post_id = cp.id) as like_count,
                     (SELECT COUNT(*) FROM community_posts WHERE parent_id = cp.id) as reply_count,
                     (SELECT 1 FROM community_post_likes WHERE post_id = cp.id AND user_id = ?) as user_liked
                 FROM community_posts cp
                 JOIN users u ON u.id = cp.user_id
+                LEFT JOIN frames f ON f.id = u.active_frame_id
+                LEFT JOIN user_titles ut ON ut.user_id = u.id AND ut.is_equipped = TRUE
+                LEFT JOIN title_packages tp ON tp.id = ut.title_id
                 WHERE cp.community_id = ? AND cp.parent_id IS NULL
                 ORDER BY cp.created_at DESC
-                LIMIT ? OFFSET ?
-            ");
-            $stmt->execute([$user_id, $community_id, $limit, $offset]);*/
-            $limit  = max(1, min(100, intval($_GET['limit'] ?? 50)));
-$offset = max(0, intval($_GET['offset'] ?? 0));
+                LIMIT $limit OFFSET $offset
+            ";
 
-$sql = "
-    SELECT 
-        cp.*,
-        u.handle, u.active_frame_id,
-        (SELECT COUNT(*) FROM community_post_likes WHERE post_id = cp.id) as like_count,
-        (SELECT COUNT(*) FROM community_posts WHERE parent_id = cp.id) as reply_count,
-        (SELECT 1 FROM community_post_likes WHERE post_id = cp.id AND user_id = ?) as user_liked
-    FROM community_posts cp
-    JOIN users u ON u.id = cp.user_id
-    WHERE cp.community_id = ? AND cp.parent_id IS NULL
-    ORDER BY cp.created_at DESC
-    LIMIT $limit OFFSET $offset
-";
-
-$stmt = $pdo->prepare($sql);
-$stmt->execute([$user_id, $community_id]);
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$user_id, $community_id]);
 
             $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
@@ -237,12 +230,22 @@ $stmt->execute([$user_id, $community_id]);
             $stmt = $pdo->prepare("
                 SELECT 
                     cp.*,
-                    u.handle, u.active_frame_id,
+                    u.handle,
+                    u.display_name,
+                    u.icon,
+                    u.vip_level,
+                    u.active_frame_id,
+                    f.css_token AS frame_class,
+                    tp.title_text,
+                    tp.title_css,
                     (SELECT COUNT(*) FROM community_post_likes WHERE post_id = cp.id) as like_count,
                     (SELECT COUNT(*) FROM community_posts WHERE parent_id = cp.id) as reply_count,
                     (SELECT 1 FROM community_post_likes WHERE post_id = cp.id AND user_id = ?) as user_liked
                 FROM community_posts cp
                 JOIN users u ON u.id = cp.user_id
+                LEFT JOIN frames f ON f.id = u.active_frame_id
+                LEFT JOIN user_titles ut ON ut.user_id = u.id AND ut.is_equipped = TRUE
+                LEFT JOIN title_packages tp ON tp.id = ut.title_id
                 WHERE cp.parent_id = ?
                 ORDER BY cp.created_at ASC
             ");

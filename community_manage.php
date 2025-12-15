@@ -297,6 +297,84 @@ try {
             ]);
             break;
 
+        // ===============================================
+        // 公開設定変更
+        // ===============================================
+        case 'toggle_public':
+            $community_id = intval($_POST['community_id'] ?? 0);
+            
+            if (!$community_id) {
+                throw new Exception('Community ID required');
+            }
+            
+            // オーナーチェック
+            $stmt = $pdo->prepare("SELECT owner_id, is_public FROM communities WHERE id=?");
+            $stmt->execute([$community_id]);
+            $community = $stmt->fetch();
+            
+            if (!$community) {
+                throw new Exception('Community not found');
+            }
+            
+            if ($community['owner_id'] != $user_id) {
+                throw new Exception('Only owner can change public setting');
+            }
+            
+            // 公開設定を反転
+            $new_is_public = $community['is_public'] ? 0 : 1;
+            $stmt = $pdo->prepare("UPDATE communities SET is_public=?, updated_at=NOW() WHERE id=?");
+            $stmt->execute([$new_is_public, $community_id]);
+            
+            echo json_encode([
+                'ok' => true,
+                'is_public' => $new_is_public,
+                'message' => $new_is_public ? 'Community is now public' : 'Community is now private'
+            ]);
+            break;
+
+        // ===============================================
+        // コミュニティに参加
+        // ===============================================
+        case 'join_community':
+            $community_id = intval($_POST['community_id'] ?? 0);
+            
+            if (!$community_id) {
+                throw new Exception('Community ID required');
+            }
+            
+            // コミュニティの公開設定チェック
+            $stmt = $pdo->prepare("SELECT is_public FROM communities WHERE id=?");
+            $stmt->execute([$community_id]);
+            $community = $stmt->fetch();
+            
+            if (!$community) {
+                throw new Exception('Community not found');
+            }
+            
+            if (!$community['is_public']) {
+                throw new Exception('This community is private');
+            }
+            
+            // 既にメンバーかチェック
+            $stmt = $pdo->prepare("SELECT 1 FROM community_members WHERE community_id=? AND user_id=?");
+            $stmt->execute([$community_id, $user_id]);
+            if ($stmt->fetch()) {
+                throw new Exception('You are already a member');
+            }
+            
+            // メンバー追加
+            $stmt = $pdo->prepare("
+                INSERT INTO community_members (community_id, user_id, added_by, role, created_at)
+                VALUES (?, ?, ?, 'member', NOW())
+            ");
+            $stmt->execute([$community_id, $user_id, $user_id]);
+            
+            echo json_encode([
+                'ok' => true,
+                'message' => 'Joined community'
+            ]);
+            break;
+
         default:
             throw new Exception('Invalid action');
     }

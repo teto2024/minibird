@@ -513,8 +513,11 @@ async function loadNotifications() {
     feed.innerHTML = data.map(n => {
         const actorIcon = n.actor?.icon || '/default_icon.png';
         const message = n.message || '';
+        const postLink = n.post && n.post.id ? `replies.php?post_id=${n.post.id}` : '#';
+        const clickable = n.post && n.post.id ? 'style="cursor: pointer;"' : '';
+        const onClick = n.post && n.post.id ? `onclick="location.href='${postLink}'"` : '';
         return `
-        <div class="notification ${n.highlight ? "highlight" : ""}">
+        <div class="notification ${n.highlight ? "highlight" : ""}" ${clickable} ${onClick}>
             <img src="${actorIcon}" alt="アイコン" class="avatar">
             <div>
                 <p>${message}</p>
@@ -534,8 +537,11 @@ notificationBtn?.addEventListener("click", async () => {
     notificationList.innerHTML = data.map(n => {
         const actorIcon = n.actor?.icon || '/default_icon.png';
         const message = n.message || '';
+        const postLink = n.post && n.post.id ? `replies.php?post_id=${n.post.id}` : '#';
+        const clickable = n.post && n.post.id ? 'style="cursor: pointer;"' : '';
+        const onClick = n.post && n.post.id ? `onclick="location.href='${postLink}'"` : '';
         return `
-        <li class="${n.highlight ? "highlight" : ""}">
+        <li class="${n.highlight ? "highlight" : ""}" ${clickable} ${onClick}>
             <img src="${actorIcon}" class="avatar" alt="アイコン">
             <span>${message}</span>
         </li>`;
