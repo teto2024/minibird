@@ -1,0 +1,2429 @@
+:root {
+    --bg: #0f1419;
+    --card: #15202b;
+    --text: #e6e6e6;
+    --muted: #8899a6;
+    --blue: #1d9bf0;
+    --red: #f91880;
+    --green: #00ba7c;
+    --border: #22303c;
+    --nsfw-blur: 12px;
+    --gradient-anim: linear-gradient(270deg, #1d9bf0, #ff7aa2, #00ba7c, #f91880);
+}
+
+* {
+    box-sizing: border-box
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans JP, sans-serif;
+    line-height: 1.5;
+}
+
+.topbar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card);
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    z-index: 10;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.logo {
+    font-weight: 700;
+    background: linear-gradient(90deg, #1d9bf0, #ff7aa2, #00ba7c);
+    -webkit-background-clip: text;
+    color: transparent;
+    animation: hueRotate 8s linear infinite;
+}
+
+@keyframes hueRotate {
+    0% {
+        filter: hue-rotate(0deg)
+    }
+
+    100% {
+        filter: hue-rotate(360deg)
+    }
+}
+
+.layout {
+    display: grid;
+    grid-template-columns: 260px 1fr 320px;
+    gap: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 16px;
+}
+
+@media (max-width:1024px) {
+    .layout {
+        grid-template-columns: 1fr;
+        padding: 12px
+    }
+
+    .left,
+    .right {
+        display: none
+    }
+}
+
+.left nav button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    color: var(--text);
+    padding: 10px;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.left nav button:hover {
+    background: #1c2731;
+    transform: translateX(4px);
+}
+
+.center {
+    min-height: 80vh
+}
+
+#composer {
+    background: var(--card);
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+#composer textarea {
+    width: 100%;
+    height: 110px;
+    background: #0b1116;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+    transition: border-color 0.3s;
+}
+
+#composer textarea:focus {
+    border-color: var(--blue);
+    outline: none
+}
+
+.row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px
+}
+
+.feed-tabs {
+    display: flex;
+    gap: 8px;
+    margin: 10px 0
+}
+
+.feedTab {
+    background: #1c2731;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 20px;
+    transition: all 0.3s;
+}
+
+.feedTab.active {
+    background: var(--blue);
+    box-shadow: 0 0 12px var(--blue);
+}
+
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+}
+
+.post {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: 8px;
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.3s;
+}
+
+.post:hover {
+    background: rgba(29, 155, 240, 0.05)
+}
+
+.avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #334;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 18px;
+    color: #fff;
+}
+
+.content .meta {
+    color: var(--muted);
+    font-size: 12px;
+    margin-bottom: 6px;
+    transition: color 0.3s;
+}
+
+.buttons button {
+    background: transparent;
+    border: 0;
+    color: var(--muted);
+    margin-right: 8px;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.buttons button:hover {
+    color: var(--blue)
+}
+
+.buttons button.liked {
+    color: var(--red)
+}
+
+.buttons button.reposted {
+    color: var(--green)
+}
+
+.media {
+    margin-top: 8px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    transition: filter 0.3s;
+}
+
+.media img,
+.media video {
+    max-width: 100%;
+    display: block
+}
+
+.nsfw .media {
+    filter: blur(var(--nsfw-blur));
+    cursor: pointer;
+    transition: filter 0.3s
+}
+
+.notice {
+    padding: 10px 12px;
+    background: #1c2731;
+    border-radius: 8px
+}
+
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 16px;
+    border-radius: 12px;
+    width: 420px;
+    max-width: 90%;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px)
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0)
+    }
+}
+
+.hidden {
+    display: none
+}
+
+button {
+    cursor: pointer
+}
+
+.link {
+    color: var(--blue)
+}
+
+.content .body {
+    display: block;
+    white-space: normal;
+    word-break: break-word
+}
+
+.quote {
+    border-left: 2px solid #ccc;
+    padding-left: 8px;
+    margin-bottom: 6px;
+    font-size: 0.9em;
+    color: #555
+}
+
+.quote-body {
+    margin-top: 2px
+}
+
+.nsfw-blur {
+    filter: blur(10px);
+    cursor: pointer;
+    color: #888;
+    background: #0002;
+    padding: 8px;
+    border-radius: 6px
+}
+
+.nsfw-blur:hover {
+    filter: none;
+    color: inherit;
+    background: inherit
+}
+
+/* モバイル用ハンバーガーメニュー */
+@media (max-width: 768px) {
+    .left {
+        position: fixed;
+        top: 0;
+        left: -260px;
+        /* 初期は隠す */
+        width: 240px;
+        height: 100%;
+        background: var(--card);
+        border-right: 1px solid var(--border);
+        padding: 16px;
+        transition: left 0.3s ease;
+        z-index: 200;
+        overflow-y: auto;
+        display: block;
+        /* ← これで常に表示扱いにする */
+    }
+
+    .left.open {
+        left: 0 !important;
+        display: block !important;
+        /* ← これで display:none を打ち消す */
+    }
+
+    .menu-toggle {
+        display: block;
+        background: transparent;
+        border: none;
+        font-size: 24px;
+        color: var(--text);
+        cursor: pointer;
+        margin-right: 8px;
+    }
+
+    .close-menu {
+        display: block;
+        background: transparent;
+        border: none;
+        font-size: 24px;
+        color: var(--text);
+        cursor: pointer;
+        position: absolute;
+        top: 12px;
+        right: 12px;
+    }
+
+    .right {
+        display: none;
+    }
+}
+
+/* PCではハンバーガー隠す */
+@media (min-width: 769px) {
+    .menu-toggle {
+        display: none;
+    }
+}
+
+/* PCではクローンを非表示 */
+.mobile-only {
+    display: none;
+}
+
+/* スマホではクローンを表示 */
+@media (max-width: 768px) {
+    .mobile-only {
+        display: block;
+        margin-top: 1rem;
+    }
+}
+
+/* スマホでは右サイドバーを非表示 */
+@media (max-width: 768px) {
+    aside.right {
+        display: none;
+    }
+}
+
+/* Frames */
+.frame-classic {
+    border: 1px solid #2d3e50;
+    border-radius: 12px;
+    padding: 8px;
+    transition: all 0.3s;
+    position: relative;
+}
+
+/* 桜フレーム（擬似要素でふわっと光る） */
+.frame-sakura {
+    border: 2px solid #ff5caa;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(90deg, rgba(255, 92, 170, 0.12), rgba(255, 122, 162, 0.18));
+    color: #ff66aa;
+    position: relative;
+    overflow: hidden;
+}
+
+.frame-sakura::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 0 12px rgba(255, 92, 170, 0.5), 0 0 24px rgba(255, 122, 162, 0.4);
+    animation: sakuraGlowSmooth 6s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes sakuraGlowSmooth {
+
+    0%,
+    100% {
+        box-shadow: 0 0 12px rgba(255, 92, 170, 0.5), 0 0 24px rgba(255, 122, 162, 0.4);
+    }
+
+    25% {
+        box-shadow: 0 0 16px rgba(255, 92, 170, 0.6), 0 0 32px rgba(255, 122, 162, 0.5);
+    }
+
+    50% {
+        box-shadow: 0 0 20px rgba(255, 92, 170, 0.65), 0 0 40px rgba(255, 122, 162, 0.55);
+    }
+
+    75% {
+        box-shadow: 0 0 16px rgba(255, 92, 170, 0.6), 0 0 32px rgba(255, 122, 162, 0.5);
+    }
+}
+
+/* ネオンフレーム（擬似要素でほわほわ光＋背景グラデーション） */
+.frame-neon {
+    border: 2px solid #0ff;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(45deg,
+            rgba(0, 255, 255, 0.25),
+            rgba(29, 155, 240, 0.2),
+            rgba(255, 122, 162, 0.2),
+            rgba(0, 186, 124, 0.2));
+    color: #33ffff;
+    position: relative;
+    overflow: hidden;
+}
+
+.frame-neon::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 0 12px #0ff, 0 0 24px #1d9bf0, 0 0 36px #ff7aa2;
+    animation: neonGlowSmooth 12s ease-in-out infinite, neonGradientShift 20s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes neonGlowSmooth {
+
+    0%,
+    100% {
+        box-shadow: 0 0 12px #0ff, 0 0 24px #1d9bf0, 0 0 36px #ff7aa2;
+    }
+
+    25% {
+        box-shadow: 0 0 14px #0ff, 0 0 28px #1d9bf0, 0 0 42px #ff7aa2;
+    }
+
+    50% {
+        box-shadow: 0 0 16px #0ff, 0 0 32px #1d9bf0, 0 0 48px #ff7aa2;
+    }
+
+    75% {
+        box-shadow: 0 0 14px #0ff, 0 0 28px #1d9bf0, 0 0 42px #ff7aa2;
+    }
+}
+
+@keyframes neonGradientShift {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* 花火フレーム（夜空に打ち上がる花火イメージ） */
+.frame-fireworks {
+    position: relative;
+    border: 2px solid #fff5;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(to bottom, #0a0f20 0%, #1b1b3a 100%);
+    color: #ffeedd;
+}
+
+.frame-fireworks::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    background: radial-gradient(circle, rgba(255, 255, 200, 0.3) 0%, transparent 70%);
+    animation: fireworksBurst 3s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes fireworksBurst {
+
+    0%,
+    100% {
+        opacity: 0;
+        transform: scale(0.8) rotate(0deg);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.2) rotate(360deg);
+    }
+}
+
+
+/* ネオン文字（文字にグラデーション・背景もネオンぽく） */
+/* ネオン文字（文字にグラデーション・背景もネオンぽく） */
+.frame-neon-text {
+    position: relative;
+    border: 2px solid #0ff;
+    border-radius: 16px;
+    padding: 12px;
+    /* 背景グラデーションの色味を薄く調整 */
+    background: linear-gradient(45deg, rgba(0, 255, 255, 0.05), rgba(29, 155, 240, 0.05));
+    color: #0ff;
+    font-weight: bold;
+}
+
+.frame-neon-text::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    /* グラデーション色味を薄めに */
+    background: linear-gradient(90deg, rgba(0, 255, 255, 0.4), rgba(29, 155, 240, 0.4), rgba(255, 122, 162, 0.4), rgba(0, 186, 124, 0.4));
+    background-size: 400% 400%;
+    mix-blend-mode: screen;
+    animation: neonTextShift 8s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes neonTextShift {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* VIP（ゴージャス・高級感＋文字ネオン） */
+.frame-vip {
+    position: relative;
+    border: 2px solid gold;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(135deg, #1a1a1a, #333, #555);
+    color: gold;
+    font-weight: bold;
+    text-shadow:
+        0 0 4px gold,
+        0 0 8px gold,
+        0 0 12px goldenrod,
+        0 0 16px gold;
+}
+
+.frame-vip::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.2) 0%, transparent 80%);
+    animation: vipGlow 5s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes vipGlow {
+
+    0%,
+    100% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.6;
+        transform: scale(1.05);
+    }
+}
+
+/* サイバーパンク（虹色・ペンキ風） */
+.frame-cyberpunk {
+    position: relative;
+    border: 2px solid #ffd700;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(45deg,
+            rgba(255, 0, 255, 0.15),
+            rgba(255, 255, 0, 0.15),
+            rgba(0, 255, 255, 0.15),
+            rgba(255, 140, 0, 0.15));
+    color: #fff100;
+}
+
+.frame-cyberpunk::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
+    animation: cyberGlow 5s ease-in-out infinite;
+    pointer-events: none;
+}
+
+/* パープル（紫系・優しいイメージ、背景濃さ維持） */
+.frame-purple {
+    position: relative;
+    border: 2px solid #cfa0ff;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(45deg,
+            rgba(128, 0, 128, 0.25),
+            rgba(147, 112, 219, 0.25),
+            rgba(186, 85, 211, 0.25));
+    color: #a050ff;
+    /* 文字を濃く */
+}
+
+.frame-purple::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, transparent 70%);
+    animation: purpleGlow 6s ease-in-out infinite;
+    pointer-events: none;
+}
+
+/* 星空フレーム（黄色・星が浮かぶ・二重線） */
+.frame-stars {
+    position: relative;
+    border: 3px double #ffd700;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(135deg, #1a1a40, #2b2b60);
+    color: #fff8b0;
+    overflow: hidden;
+}
+
+.frame-stars::before {
+    content: '★';
+    position: absolute;
+    font-size: 24px;
+    color: rgba(255, 255, 150, 0.3);
+    animation: starMove 6s linear infinite;
+}
+
+@keyframes starMove {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+
+    25% {
+        transform: translate(50px, 20px) rotate(45deg);
+    }
+
+    50% {
+        transform: translate(100px, 0) rotate(90deg);
+    }
+
+    75% {
+        transform: translate(50px, -20px) rotate(135deg);
+    }
+
+    100% {
+        transform: translate(0, 0) rotate(180deg);
+    }
+}
+
+/* 価格: コイン 50,000 / クリスタル 5 */
+
+.frame-lovely {
+    position: relative;
+    border: 2px solid #ff69b4;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(45deg, #ffe6f0, #ffb6d5, #ff80bf);
+    color: #ff007f;
+    font-family: 'M PLUS Rounded 1c', 'うずらフォント', 'Comic Sans MS', cursive, sans-serif;
+    font-weight: bold;
+    overflow: hidden;
+    animation: lovelyPulse 3s ease-in-out infinite alternate;
+}
+
+.frame-lovely::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3), transparent 70%);
+    animation: lovelyGlow 5s linear infinite alternate;
+    pointer-events: none;
+}
+
+@keyframes lovelyPulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.02) rotate(-1deg);
+    }
+
+    100% {
+        transform: scale(1.04) rotate(1deg);
+    }
+}
+
+@keyframes lovelyGlow {
+    0% {
+        background-position: 0% 0%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 100%;
+    }
+}
+
+
+/* 炎フレーム（赤系・燃えるアニメーション） */
+.frame-flame {
+    position: relative;
+    border: 2px solid #ff7f50;
+    /* 柔らかめのコーラル色 */
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(45deg, #ffb380, #ff7f50, #ff6347, #ffa07a);
+    /* 優しいオレンジ〜赤トーン */
+    color: #fff8f0;
+    /* 温かみのある文字色 */
+    font-weight: bold;
+    overflow: hidden;
+    animation: flameWave 4s linear infinite;
+}
+
+.frame-flame::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+    animation: flameFlicker 1s ease-in-out infinite alternate;
+    pointer-events: none;
+}
+
+@keyframes flameWave {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+@keyframes flameFlicker {
+    0% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
+
+    50% {
+        transform: scale(1.05);
+        opacity: 0.85;
+    }
+
+    /* 少し抑えた明るさ */
+    100% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
+}
+
+
+/* 価格: コイン 40,000 / クリスタル 4 */
+
+/* 集中マスターフレーム（緑系・ティア10以上条件） */
+.frame-master {
+    position: relative;
+    border: 2px solid #00ba7c;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(45deg, #00ff90, #00ba7c, #007f50);
+    color: #e6ffe6;
+    font-weight: bold;
+    overflow: hidden;
+    animation: masterShift 6s ease-in-out infinite alternate;
+}
+
+.frame-master::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 80%);
+    animation: masterGlow 4s ease-in-out infinite alternate;
+    pointer-events: none;
+}
+
+@keyframes masterShift {
+    0% {
+        background-position: 0% 50%;
+        transform: rotate(0deg);
+    }
+
+    50% {
+        background-position: 100% 50%;
+        transform: rotate(1deg);
+    }
+
+    100% {
+        background-position: 0% 50%;
+        transform: rotate(0deg);
+    }
+}
+
+@keyframes masterGlow {
+    0% {
+        opacity: 0.5;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.8;
+        transform: scale(1.03);
+    }
+
+    100% {
+        opacity: 0.5;
+        transform: scale(1);
+    }
+}
+
+
+/* 価格: コイン 100,000 / クリスタル 10（ティア10以上限定） */
+
+
+/* Seasonal & Themed Frames for MiniBird */
+
+/* Seasonal & Themed Frames for MiniBird */
+
+/* 共通: フレームのベーススタイル */
+.frame-seasonal {
+    position: relative;
+    border-radius: 16px;
+    padding: 12px;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* ---------- Winter (Snow) ---------- */
+.frame-winter {
+    background: linear-gradient(180deg, #071427 0%, #0b2740 100%);
+    color: #e6f6ff;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 6px 18px rgba(5, 20, 35, 0.6);
+    position: relative;
+    overflow: hidden;
+}
+
+.frame-winter::before {
+    content: "❄";
+    position: absolute;
+    font-size: 64px;
+    color: rgba(255, 255, 255, 0.2);
+    top: -20%;
+    left: -10%;
+    animation: snowFall 10s linear infinite;
+}
+
+@keyframes snowFall {
+    0% {
+        transform: translate(0, 0);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(200px, 400px);
+        opacity: 0;
+    }
+}
+
+/* ---------- Christmas (Flying Tree Animation) ---------- */
+.frame-christmas {
+    background: linear-gradient(135deg, #0b2616 0%, #0e3a1e 50%, #163d29 100%);
+    color: #fffbe6;
+    border: 3px solid rgba(255, 215, 0, 0.3);
+    /* ゴールド風の縁取り */
+    border-radius: 16px;
+    padding: 12px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.2), 0 0 24px rgba(0, 150, 0, 0.3);
+}
+
+/* 🎄のアニメーション */
+.frame-christmas::before {
+    content: "🎄";
+    position: absolute;
+    font-size: 24px;
+    top: 50%;
+    /* 初期位置を中央 */
+    left: 50%;
+    transform: translate(-50%, -50%);
+    /* 中心に配置 */
+    animation: flyingTree 6s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+    z-index: 2;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.7), 0 0 12px rgba(0, 255, 0, 0.6);
+}
+
+/* 軌跡のアニメーション */
+.frame-christmas::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100px;
+    height: 100px;
+    background: radial-gradient(circle, rgba(0, 255, 0, 0.3), transparent 70%);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: treeTrail 6s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+    z-index: 1;
+    pointer-events: none;
+    /* 操作不可 */
+}
+
+/* 🀀𐀀𐀀󱁌򎻕𦒋アニメーション */
+@keyframes flyingTree {
+    0% {
+        top: 80%;
+        /* スタート: フレームの下部 */
+        left: 10%;
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+
+    25% {
+        top: 20%;
+        left: 30%;
+        transform: translate(-50%, -50%) scale(1.2);
+        /* 少し大きく */
+        opacity: 0.8;
+    }
+
+    50% {
+        top: 10%;
+        /* フレームの上部 */
+        left: 70%;
+        transform: translate(-50%, -50%) scale(1.5);
+        opacity: 0.6;
+    }
+
+    75% {
+        top: 50%;
+        left: 90%;
+        transform: translate(-50%, -50%) scale(1.2);
+        /* 元のサイズに戻る */
+        opacity: 0.8;
+    }
+
+    100% {
+        top: 80%;
+        left: 10%;
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+}
+
+/* 軌跡のアニメーション */
+@keyframes treeTrail {
+    0% {
+        top: 80%;
+        /* 🎄と同期 */
+        left: 10%;
+        width: 20px;
+        height: 20px;
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.8;
+    }
+
+    25% {
+        top: 20%;
+        left: 30%;
+        width: 50px;
+        height: 50px;
+        transform: translate(-50%, -50%) scale(1.2);
+        /* 軌跡も拡大 */
+        opacity: 0.6;
+    }
+
+    50% {
+        top: 10%;
+        left: 70%;
+        width: 80px;
+        height: 80px;
+        transform: translate(-50%, -50%) scale(1.5);
+        opacity: 0.3;
+    }
+
+    75% {
+        top: 50%;
+        left: 90%;
+        width: 50px;
+        height: 50px;
+        transform: translate(-50%, -50%) scale(1.2);
+        /* 縮小 */
+        opacity: 0.2;
+    }
+
+    100% {
+        top: 80%;
+        left: 10%;
+        width: 20px;
+        height: 20px;
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0;
+    }
+}
+
+/* ---------- Sakura (Cherry Blossom) ---------- */
+.frame-sakura-enhanced {
+    border: 2px solid #ff9ccf;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(180deg, rgba(255, 240, 246, 0.04), rgba(255, 230, 240, 0.02));
+    color: #ffeef8;
+    position: relative;
+    overflow: hidden;
+}
+
+.frame-sakura-enhanced::before {
+    content: "🌸";
+    position: absolute;
+    font-size: 18px;
+    color: rgba(255, 192, 203, 0.5);
+    top: -15%;
+    left: 25%;
+    animation: sakuraFloat 8s linear infinite;
+}
+
+@keyframes sakuraFloat {
+    0% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+
+    50% {
+        transform: translate(50px, 20px) rotate(180deg);
+    }
+
+    100% {
+        transform: translate(0, 0) rotate(360deg);
+    }
+}
+
+/* ---------- Aurora (Northern Lights) ---------- */
+.frame-aurora {
+    border: 2px solid rgba(255, 255, 255, 0.04);
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(180deg, #041023 0%, #081a2b 100%);
+    color: #e6fff9;
+    position: relative;
+    overflow: hidden;
+}
+
+.frame-aurora::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(29, 155, 240, 0.3), rgba(0, 186, 124, 0.3), rgba(255, 122, 162, 0.3));
+    animation: auroraShift 6s ease-in-out infinite;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+@keyframes auroraShift {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    100% {
+        background-position: 100% 50%;
+    }
+}
+
+/* ---------- Santa (Rich and Stylish Theme) ---------- */
+.frame-santa {
+    background: linear-gradient(180deg, #3a0b0b 0%, #9b1212 100%);
+    color: #fff5f5;
+    border-radius: 16px;
+    /* 曲線で柔らかさを演出 */
+    padding: 12px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 12px rgba(255, 0, 0, 0.4), 0 0 24px rgba(150, 0, 0, 0.3);
+}
+
+/* 外側のスタイリッシュな枠と光の流れ */
+.frame-santa::before {
+    content: "";
+    position: absolute;
+    inset: -4px;
+    /* フレームの外枠の位置 */
+    border-radius: inherit;
+    /* フレームのカーブを引き継ぐ */
+    border: 4px solid transparent;
+    /* 初期状態では透明 */
+    background: linear-gradient(90deg, rgba(255, 0, 0, 0.5), rgba(255, 255, 255, 0.3), rgba(255, 0, 0, 0.5));
+    background-size: 200% 200%;
+    /* アニメーションで光を循環させるためのサイズ */
+    animation: glowingBorder 6s linear infinite;
+    /* 光のアニメーション */
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* サンタの絵文字 🎅 */
+.frame-santa::after {
+    content: "🎅";
+    position: absolute;
+    font-size: 32px;
+    /* 少し大きめに設定 */
+    color: rgba(255, 192, 203, 0.9);
+    top: 12px;
+    left: 16px;
+    animation: santaBounce 5s ease-in-out infinite;
+    /* バウンドする動き */
+    z-index: 2;
+}
+
+/* 光のアニメーション */
+@keyframes glowingBorder {
+    0% {
+        background-position: 0% 0%;
+        /* 左上 */
+    }
+
+    25% {
+        background-position: 100% 0%;
+        /* 右上 */
+    }
+
+    50% {
+        background-position: 100% 100%;
+        /* 右下 */
+    }
+
+    75% {
+        background-position: 0% 100%;
+        /* 左下 */
+    }
+
+    100% {
+        background-position: 0% 0%;
+        /* 左上（元に戻る） */
+    }
+}
+
+/* サンタのバウンドアニメーション */
+@keyframes santaBounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+        /* 初期状態 */
+    }
+
+    50% {
+        transform: translateY(30px);
+        /* 下に動く */
+    }
+}
+
+/* ---------- Neon Style (Enhanced) ---------- */
+.frame-neon-style {
+    border: 2px solid rgba(29, 155, 240, 0.5);
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(10, 10, 30, 0.7), rgba(5, 5, 20, 0.9));
+    color: #e6faff;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 12px rgba(29, 155, 240, 0.3), 0 0 20px rgba(255, 122, 162, 0.2);
+}
+
+.frame-neon-style::before {
+    content: "";
+    position: absolute;
+    inset: -4px;
+    /* Offset to ensure border inclusion */
+    background: linear-gradient(45deg, rgba(29, 155, 240, 0.4), rgba(255, 122, 162, 0.3), rgba(0, 186, 124, 0.3));
+    border-radius: 18px;
+    /* Slight inset for smooth edge */
+    box-shadow: 0 0 20px rgba(29, 155, 240, 0.5), 0 0 30px rgba(255, 122, 162, 0.4);
+    opacity: 0.7;
+    animation: neonGlow 5s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.frame-neon-style::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at top left, rgba(29, 155, 240, 0.2), transparent 70%),
+        radial-gradient(circle at bottom right, rgba(255, 122, 162, 0.2), transparent 70%);
+    mix-blend-mode: overlay;
+    opacity: 0.5;
+    animation: shineEffect 8s linear infinite;
+    pointer-events: none;
+}
+
+/* Additional sparkles along the edge */
+.frame-neon-style .sparkle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 1), transparent);
+    border-radius: 50%;
+    animation: sparkleBlink 3s ease-in-out infinite;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.8), 0 0 12px rgba(29, 155, 240, 0.6);
+}
+
+.frame-neon-style .sparkle:nth-child(1) {
+    top: 10%;
+    left: 15%;
+    animation-delay: 0s;
+}
+
+.frame-neon-style .sparkle:nth-child(2) {
+    top: 50%;
+    left: 80%;
+    animation-delay: 1s;
+}
+
+.frame-neon-style .sparkle:nth-child(3) {
+    top: 85%;
+    left: 30%;
+    animation-delay: 2s;
+}
+
+.frame-neon-style .sparkle:nth-child(4) {
+    top: 70%;
+    left: 60%;
+    animation-delay: 0.5s;
+}
+
+.frame-neon-style .sparkle:nth-child(5) {
+    top: 40%;
+    left: 20%;
+    animation-delay: 3s;
+}
+
+/* Keyframes for animations */
+@keyframes neonGlow {
+
+    0%,
+    100% {
+        opacity: 0.7;
+        filter: blur(6px);
+    }
+
+    50% {
+        opacity: 1;
+        filter: blur(10px);
+    }
+}
+
+@keyframes shineEffect {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    100% {
+        background-position: 100% 50%;
+    }
+}
+
+@keyframes sparkleBlink {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+
+    50% {
+        transform: scale(1.5);
+        opacity: 1;
+    }
+}
+
+/* ---------- New Year (新春) ---------- */
+/* ゴージャス＆奇抜・めでたい雰囲気・赤基調 */
+.frame-newyear {
+    position: relative;
+    border: 3px solid #ff0000;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(135deg,
+            #8b0000 0%,
+            #ff0000 25%,
+            #ffd700 50%,
+            #ff0000 75%,
+            #8b0000 100%);
+    background-size: 400% 400%;
+    color: #fff5e6;
+    font-weight: bold;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.6),
+        0 0 40px rgba(255, 215, 0, 0.4),
+        inset 0 0 30px rgba(255, 215, 0, 0.2);
+    animation: newyearBg 8s ease-in-out infinite;
+}
+
+/* 金色の輝き */
+.frame-newyear::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle at 20% 30%,
+            rgba(255, 215, 0, 0.4) 0%,
+            transparent 50%),
+        radial-gradient(circle at 80% 70%,
+            rgba(255, 255, 100, 0.3) 0%,
+            transparent 50%);
+    animation: newyearSparkle 3s ease-in-out infinite alternate;
+    pointer-events: none;
+}
+
+/* 舞う絵文字（🎊と🎉） */
+.frame-newyear::after {
+    content: "🎊";
+    position: absolute;
+    font-size: 32px;
+    top: -10%;
+    right: -5%;
+    animation: newyearFloat 6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+    z-index: 3;
+}
+
+@keyframes newyearBg {
+
+    0%,
+    100% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+}
+
+@keyframes newyearSparkle {
+    0% {
+        opacity: 0.5;
+        transform: scale(1) rotate(0deg);
+    }
+
+    50% {
+        opacity: 0.9;
+        transform: scale(1.15) rotate(180deg);
+    }
+
+    100% {
+        opacity: 0.5;
+        transform: scale(1) rotate(360deg);
+    }
+}
+
+@keyframes newyearFloat {
+    0% {
+        top: -10%;
+        right: -5%;
+        transform: rotate(0deg) scale(1);
+        opacity: 1;
+    }
+
+    25% {
+        top: 30%;
+        right: 20%;
+        transform: rotate(90deg) scale(1.3);
+        opacity: 0.8;
+    }
+
+    50% {
+        top: 60%;
+        right: 50%;
+        transform: rotate(180deg) scale(1.1);
+        opacity: 0.9;
+    }
+
+    75% {
+        top: 30%;
+        right: 80%;
+        transform: rotate(270deg) scale(1.4);
+        opacity: 0.7;
+    }
+
+    100% {
+        top: 110%;
+        right: 95%;
+        transform: rotate(360deg) scale(0.8);
+        opacity: 0;
+    }
+}
+
+/* 価格: コイン 80,000 / クリスタル 8（期間限定：1月限定） */
+
+
+/* ---------- Arctic Freeze (極寒) ---------- */
+/* 凍り付くようなエフェクト・白基調・透明感 */
+.frame-arctic {
+    position: relative;
+    border: 2px solid rgba(200, 230, 255, 0.5);
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(135deg,
+            rgba(230, 245, 255, 0.15) 0%,
+            rgba(200, 230, 255, 0.25) 25%,
+            rgba(180, 220, 255, 0.2) 50%,
+            rgba(200, 230, 255, 0.25) 75%,
+            rgba(230, 245, 255, 0.15) 100%);
+    backdrop-filter: blur(8px);
+    color: #e0f5ff;
+    font-weight: bold;
+    overflow: hidden;
+    box-shadow: 0 0 16px rgba(180, 220, 255, 0.4),
+        0 0 32px rgba(200, 230, 255, 0.2),
+        inset 0 0 40px rgba(255, 255, 255, 0.1);
+    animation: arcticShimmer 5s ease-in-out infinite;
+}
+
+/* 氷の結晶エフェクト */
+.frame-arctic::before {
+    content: '❄';
+    position: absolute;
+    font-size: 80px;
+    color: rgba(220, 240, 255, 0.2);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: arcticCrystal 8s linear infinite;
+    text-shadow: 0 0 20px rgba(180, 220, 255, 0.6),
+        0 0 40px rgba(200, 230, 255, 0.4);
+    pointer-events: none;
+}
+
+/* 凍り付く波紋 */
+.frame-arctic::after {
+    content: '';
+    position: absolute;
+    inset: -20%;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+            rgba(255, 255, 255, 0.3) 0%,
+            rgba(200, 230, 255, 0.15) 30%,
+            transparent 70%);
+    animation: arcticFreeze 6s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes arcticShimmer {
+
+    0%,
+    100% {
+        box-shadow: 0 0 16px rgba(180, 220, 255, 0.4),
+            0 0 32px rgba(200, 230, 255, 0.2),
+            inset 0 0 40px rgba(255, 255, 255, 0.1);
+    }
+
+    50% {
+        box-shadow: 0 0 24px rgba(180, 220, 255, 0.6),
+            0 0 48px rgba(200, 230, 255, 0.4),
+            inset 0 0 60px rgba(255, 255, 255, 0.2);
+    }
+}
+
+@keyframes arcticCrystal {
+    0% {
+        transform: translate(-50%, -50%) rotate(0deg) scale(1);
+        opacity: 0.2;
+    }
+
+    50% {
+        transform: translate(-50%, -50%) rotate(180deg) scale(1.2);
+        opacity: 0.4;
+    }
+
+    100% {
+        transform: translate(-50%, -50%) rotate(360deg) scale(1);
+        opacity: 0.2;
+    }
+}
+
+@keyframes arcticFreeze {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+
+    50% {
+        transform: scale(1.5);
+        opacity: 0.4;
+    }
+
+    100% {
+        transform: scale(2. 2);
+        opacity: 0;
+    }
+}
+
+/* 価格: コイン 60,000 / クリスタル 6（期間限定：冬季限定） */
+
+
+/* キャンディーケーンフレーム */
+.frame-candy {
+    position: relative;
+    border-radius: 16px;
+    padding: 16px;
+    background: linear-gradient(135deg, #2a0a0a 0%, #1a0505 100%);
+    color: #ffe6e6;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(255, 0, 0, 0.3);
+}
+
+/* 赤白ストライプのボーダー（固定） */
+.frame-candy::before {
+    content:  '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    padding: 3px;
+    background: repeating-linear-gradient(
+        45deg,
+        #ff3333 0px,
+        #ff3333 12px,
+        #ffffff 12px,
+        #ffffff 24px
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    animation:  candyGlow 3s ease-in-out infinite;
+}
+
+/* 内側の光沢効果（移動するハイライト） */
+.frame-candy::after {
+    content:  '';
+    position: absolute;
+    inset: -50%;
+    border-radius: 16px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        transparent 40%,
+        rgba(255, 255, 255, 0.3) 50%,
+        transparent 60%,
+        transparent 100%
+    );
+    animation: candyShine 4s linear infinite;
+    pointer-events:  none;
+}
+
+/* ボーダーの明るさが変化するアニメーション */
+@keyframes candyGlow {
+    0%, 100% {
+        filter: brightness(1) drop-shadow(0 0 4px rgba(255, 51, 51, 0.3));
+    }
+    50% {
+        filter: brightness(1.2) drop-shadow(0 0 8px rgba(255, 51, 51, 0.6));
+    }
+}
+
+/* 光沢が左から右へ流れるアニメーション */
+@keyframes candyShine {
+    0% {
+        transform: translateX(-100%) rotate(45deg);
+    }
+    100% {
+        transform: translateX(200%) rotate(45deg);
+    }
+}
+
+/* ホバー時の効果 */
+.frame-candy:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(255, 0, 0, 0.4);
+}
+
+/* テキストのシャドウ効果 */
+.frame-candy .content {
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+
+/* ========== パープルカード（紫のネットワーク模様） ========== */
+.frame-purple-card {
+    position: relative;
+    border-radius: 16px;
+    padding: 16px;
+    background: linear-gradient(135deg, #1a0a2e 0%, #2d1555 50%, #4a1a7d 100%);
+    border: 2px solid #8b5cf6;
+    color: #e9d5ff;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+}
+
+/* ネットワーク線のアニメーション */
+.frame-purple-card::before {
+    content: '';
+    position:  absolute;
+    inset: 0;
+    background-image: 
+        linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px);
+    background-size:  30px 30px;
+    animation: purpleGrid 15s linear infinite;
+    pointer-events: none;
+}
+
+/* パルス効果 */
+.frame-purple-card::after {
+    content: '';
+    position: absolute;
+    inset:  0;
+    border-radius: 16px;
+    background: radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.2), transparent 70%);
+    animation: purplePulse 4s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes purpleGrid {
+    0% {
+        transform: translate(0, 0);
+    }
+    100% {
+        transform:  translate(30px, 30px);
+    }
+}
+
+@keyframes purplePulse {
+    0%, 100% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(1.05);
+    }
+}
+
+
+/* ========== ビーチカード（波と太陽） ========== */
+.frame-beach {
+    position: relative;
+    border-radius: 16px;
+    padding: 16px;
+    background: linear-gradient(180deg, #1e3a8a 0%, #0c4a6e 40%, #0e7490 60%, #06b6d4 100%);
+    border: 2px solid #22d3ee;
+    color: #e0f2fe;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(34, 211, 238, 0.4);
+}
+
+/* 太陽（絵文字） */
+.frame-beach::before {
+    content: '☀️';
+    position: absolute;
+    font-size: 32px;
+    top: 10%;
+    right: 10%;
+    animation:  beachSun 8s ease-in-out infinite;
+    filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.8));
+}
+
+/* 波のアニメーション */
+.frame-beach::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left:  0;
+    right: 0;
+    height: 60px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(6, 182, 212, 0.3) 25%, 
+        rgba(34, 211, 238, 0.5) 50%, 
+        rgba(6, 182, 212, 0.3) 75%, 
+        transparent 100%);
+    animation: beachWave 6s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes beachSun {
+    0%, 100% {
+        transform:  translateY(0) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-10px) rotate(180deg);
+    }
+}
+
+@keyframes beachWave {
+    0%, 100% {
+        transform: translateX(-50px);
+        opacity: 0.5;
+    }
+    50% {
+        transform: translateX(50px);
+        opacity: 0.8;
+    }
+}
+
+
+/* ========== ネットランナー（サイバーパンク・データストリーム） ========== */
+.frame-netrunner {
+    position: relative;
+    border-radius: 16px;
+    padding: 16px;
+    background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 50%, #0f1419 100%);
+    border: 2px solid #00ffcc;
+    color: #e0ffff;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 255, 204, 0.4);
+}
+
+/* データストリーム（縦線が流れる） */
+.frame-netrunner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        90deg,
+        transparent 0px,
+        transparent 8px,
+        rgba(0, 255, 204, 0.15) 8px,
+        rgba(0, 255, 204, 0.15) 10px
+    );
+    animation: netrunnerStream 3s linear infinite;
+    pointer-events: none;
+}
+
+/* グリッチエフェクト */
+.frame-netrunner::after {
+    content: '';
+    position:  absolute;
+    inset: 0;
+    border-radius: 16px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 0, 102, 0.1) 25%,
+        rgba(0, 255, 204, 0.1) 50%,
+        rgba(0, 153, 255, 0.1) 75%,
+        transparent 100%
+    );
+    animation: netrunnerGlitch 5s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes netrunnerStream {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(10px);
+    }
+}
+
+@keyframes netrunnerGlitch {
+    0%, 90%, 100% {
+        opacity: 0;
+        transform: translateX(0);
+    }
+    92%, 96% {
+        opacity: 1;
+        transform: translateX(-2px);
+    }
+    94%, 98% {
+        opacity: 1;
+        transform: translateX(2px);
+    }
+}
+
+/* テキストにもサイバーエフェクト */
+.frame-netrunner .content {
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 0 4px rgba(0, 255, 204, 0.5);
+}
+
+
+/* ========== レトロマイアミ（80年代風グラデーション） ========== */
+.frame-retro-miami {
+    position: relative;
+    border-radius: 16px;
+    padding: 16px;
+    background: linear-gradient(135deg, 
+        #ff006e 0%, 
+        #ff4d94 20%, 
+        #ff7aa2 40%, 
+        #ffbe0b 60%, 
+        #fb5607 80%, 
+        #8338ec 100%);
+    border: 2px solid #ffbe0b;
+    color: #fff;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(255, 190, 11, 0.4);
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* グラデーション移動 */
+.frame-retro-miami::before {
+    content: '';
+    position: absolute;
+    inset: -100%;
+    background: linear-gradient(
+        45deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.3) 50%,
+        transparent 70%
+    );
+    animation: miamiShine 4s linear infinite;
+    pointer-events:  none;
+}
+
+/* パームツリーシルエット風（装飾） */
+.frame-retro-miami::after {
+    content: '🌴';
+    position: absolute;
+    font-size: 48px;
+    bottom: -10px;
+    right: -10px;
+    opacity: 0.2;
+    animation: miamiPalm 6s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes miamiShine {
+    0% {
+        transform: translate(-100%, -100%);
+    }
+    100% {
+        transform: translate(100%, 100%);
+    }
+}
+
+@keyframes miamiPalm {
+    0%, 100% {
+        transform: rotate(-5deg) scale(1);
+    }
+    50% {
+        transform: rotate(5deg) scale(1.1);
+    }
+}
+
+/* ホバー時にネオンが強くなる */
+.frame-retro-miami:hover {
+    box-shadow: 0 12px 32px rgba(255, 190, 11, 0.6), 0 0 20px rgba(255, 0, 110, 0.4);
+    transform: translateY(-2px);
+}
+
+
+/* ========== 共通:  テキストのz-index調整 ========== */
+.frame-purple-card .content,
+.frame-beach .content,
+.frame-netrunner .content,
+.frame-retro-miami .content {
+    position: relative;
+    z-index: 1;
+}
+/*フレームここまで*/
+
+
+
+
+
+/* フルスクリーン用*/
+.fullscreen-fallback {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: black;
+    /* 任意 */
+    z-index: 9999;
+}
+
+/*アイコン */
+.user-display-name {
+    font-weight: bold;
+    font-size: 1.2em;
+    margin-bottom: 5px;
+}
+
+.user-bio {
+    font-size: 0.95em;
+    color: #666;
+    margin-bottom: 10px;
+}
+
+/* プロフィールアイコンのサイズ調整 */
+.user-icon {
+    width: 80px;
+    /* 横幅 */
+    height: 80px;
+    /* 高さ */
+    object-fit: cover;
+    /* 画像の縦横比を維持して中央を切り抜き */
+    border-radius: 50%;
+    /* 丸く表示したい場合 */
+    display: block;
+    margin-bottom: 8px;
+    /* 下に余白 */
+}
+
+/* 通知 */
+.notification {
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
+    background: #fafafa;
+    /* 通常背景を薄いグレーに */
+}
+
+.notification.highlight {
+    background: #fff4e5;
+    /* 優しい薄オレンジ */
+    font-weight: bold;
+}
+
+.notification .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* ポップアップ */
+/* 通知ポップアップ（ダークテーマ固定） */
+#notificationPopup {
+    position: absolute;
+    top: 40px;
+    right: 0;
+    width: 320px;
+    background: #1e1e2f;
+    /* ダーク背景 */
+    color: #e6e6e6;
+    /* 文字色を明るめに */
+    border: 1px solid #333;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    z-index: 100;
+    max-height: 400px;
+    overflow-y: auto;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+#notificationPopup.hidden {
+    display: none;
+}
+
+#notificationPopup ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+#notificationPopup li {
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+    border-bottom: 1px solid #333;
+    /* ダークボーダー */
+    align-items: center;
+}
+
+#notificationPopup li.highlight {
+    background: #2a2a40;
+    /* ハイライトは少し明るめの濃紺 */
+    font-weight: bold;
+}
+
+#notificationPopup li .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1px solid #555;
+    /* 輪郭で見やすく */
+}
+
+/* 未読バッジ */
+.badge {
+    display: inline-block;
+    min-width: 16px;
+    padding: 2px 6px;
+    border-radius: 12px;
+    background: #ff5252;
+    /* ダークテーマでも目立つ赤 */
+    color: #fff;
+    font-size: 12px;
+    text-align: center;
+    vertical-align: top;
+    margin-left: 4px;
+}
+
+/* タブボタン用*/
+/* タブボタン共通 */
+.tabBtn {
+    display: inline-block;
+    padding: 6px 12px;
+    margin: 2px;
+    border: none;
+    background: #f0f0f0;
+    color: #333;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    /* aタグ用 */
+    text-align: center;
+}
+
+.tabBtn.block {
+    display: block;
+    width: 100%;
+}
+
+/* hover / 選択時 */
+.tabBtn:hover,
+.tabBtn.active,
+.tabBtn[aria-selected="true"] {
+    background: #1d9bf0;
+    color: #fff;
+}
+
+/* リポストラベル */
+.repost-label {
+    display: inline-block;
+    background-color: #4CAF50;
+    /* 緑色 */
+    color: #fff;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+/* search.css */
+
+body {
+    font-family: 'Helvetica', 'Arial', sans-serif;
+    background: #0f1419;
+    color: #e6e6e6;
+    margin: 0;
+    padding: 0;
+}
+
+a {
+    color: #1d9bf0;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.topbar {
+    display: flex;
+    align-items: center;
+    padding: 10px 20px;
+    background: #15202b;
+    border-bottom: 1px solid #222;
+}
+
+.topbar .logo {
+    font-size: 1.5em;
+    margin-right: 20px;
+}
+
+.topbar .search input {
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: none;
+    outline: none;
+    width: 200px;
+}
+
+.layout {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.center {
+    flex: 1;
+    max-width: 600px;
+}
+
+.feed-tabs {
+    display: flex;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #222;
+}
+
+.feedTab {
+    padding: 8px 16px;
+    cursor: pointer;
+    color: #8899a6;
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+}
+
+.feedTab.active {
+    color: #fff;
+    border-bottom: 3px solid #1d9bf0;
+}
+
+#feed ul {
+    list-style: none;
+    padding: 0;
+}
+
+#feed li {
+    background: #15202b;
+    margin-bottom: 10px;
+    padding: 10px 15px;
+    border-radius: 12px;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+#feed li h4 {
+    margin: 0 0 5px;
+    font-size: 1em;
+    color: #1d9bf0;
+}
+
+#feed li p {
+    margin: 0;
+}
+
+#feed h3 {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    color: #e6e6e6;
+    border-bottom: 1px solid #222;
+    padding-bottom: 5px;
+}
+
+/* -------------------- */
+/* スマホ対応: 縦画面時のレイアウト */
+/* -------------------- */
+@media (max-width: 768px) {
+    main.layout {
+        display: block !important;
+    }
+
+    aside.right {
+        display: block !important;
+        width: 100% !important;
+        margin: 0;
+        padding: 10px;
+        position: relative;
+        z-index: 1;
+    }
+
+    section.center {
+        width: 100% !important;
+        margin: 0;
+        padding: 10px;
+    }
+
+    #follow-btn,
+    #profileForm input,
+    #profileForm textarea,
+    #profileForm button {
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
+
+/* バフ用*/
+/* バフバー全体 */
+.buff-status-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+/* 個々のバフアイコン */
+.buff-icon {
+    position: relative;
+    display: inline-block;
+    width: 100px;
+    height: 100px;
+    text-align: center;
+    font-size: 48px;
+    border-radius: 8px;
+    background: #222;
+    /* ダーク系背景 */
+    color: #fff;
+}
+
+/* 個人バフは枠線で強調 */
+.buff-icon.personal {
+    border: 2px solid #0f0;
+}
+
+/* バフ％表示 */
+.buff-percent {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 24px;
+    color: #ff0;
+    font-weight: bold;
+}
+
+/* 残り時間タイマー */
+.buff-timer {
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 24px;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 1px 3px;
+    border-radius: 3px;
+}
+
+/* バフ発動ボタン */
+.buff-buttons {
+    margin: 10px 0;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.buff-buttons button {
+    padding: 6px 12px;
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    background: #1d9bf0;
+    color: #fff;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+.buff-buttons button:hover {
+    background: #0c7cd5;
+}
+
+.vip-label {
+    background: linear-gradient(90deg, gold, orange);
+    color: black;
+    font-weight: bold;
+    border-radius: 6px;
+    padding: 2px 6px;
+    margin-left: 6px;
+    font-size: 0.85em;
+    box-shadow: 0 0 6px gold;
+    animation: shine 2s infinite linear;
+}
+
+@keyframes shine {
+    0%   { box-shadow: 0 0 6px gold; }
+    50%  { box-shadow: 0 0 14px orange; }
+    100% { box-shadow: 0 0 6px gold; }
+}
+
+/* ===============================================
+   称号スタイル（Title Styles）
+   =============================================== */
+.user-title {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-left: 5px;
+}
+
+.title-beginner {
+    color: #4299e1;
+    background: rgba(66, 153, 225, 0.1);
+}
+
+.title-veteran {
+    color: #ed8936;
+    background: rgba(237, 137, 54, 0.1);
+    text-shadow: 0 0 5px rgba(237, 137, 54, 0.3);
+}
+
+.title-master {
+    color: #9f7aea;
+    background: rgba(159, 122, 234, 0.1);
+    text-shadow: 0 0 10px rgba(159, 122, 234, 0.5);
+}
+
+.title-legend {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    padding: 3px 10px;
+    border: 1px solid #f093fb;
+}
+
+.title-leader {
+    color: #48bb78;
+    background: rgba(72, 187, 120, 0.1);
+    font-weight: bold;
+}
+
+.title-trendsetter {
+    color: #f56565;
+    background: rgba(245, 101, 101, 0.1);
+    animation: title-pulse 2s infinite;
+}
+
+@keyframes title-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* ===============================================
+   リッチデザイン統一
+   =============================================== */
+.card, .post, .community-card, .quest-card {
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover, .post:hover, .community-card:hover, .quest-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+button, .btn {
+    transition: all 0.3s ease;
+}
+
+button:hover, .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* グラデーションボタン */
+.btn-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.btn-gradient:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
