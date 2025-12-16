@@ -10,12 +10,12 @@ if ($cnt===0){
   $pdo->exec("INSERT INTO frames(name,css_token,price_coins,price_crystals,price_diamonds,preview_css) VALUES
   ('クラシック','frame-classic',200,0,0,''),
   ('ネオン','frame-neon',800,2,0,''),
-  ('サクラ','frame-sakura',500,1,0,''),
+  ('サクラⅠ,'frame-sakura',500,1,0,''),
   ('花火','frame-fireworks',600,1,0,''),
   ('サイバーパンク','frame-cyberpunk',900,3,0,''),
   ('ネオン文字','frame-neon-text',850,2,0,''),
   ('VIP','frame-vip',2000,5,0,''),
-  ('パープル','frame-purple',700,1,0,''),
+  ('パープルⅠ','frame-purple',700,1,0,''),
   ('星空','frame-stars',50000,5,0,''),
   ('ラブリー','frame-lovely',30000,3,0,''),
   ('炎','frame-flame',40000,4,0,''),
@@ -27,6 +27,10 @@ if ($cnt===0){
   ('ネオンⅢ','frame-neon-style',18000,90,0,''),
   ('新春','frame-newyear',50000,500,5,''),
   ('極寒','frame-arctic',45000,125,3,''),
+  ('パープルⅡ','frame-purple-card',15000,45,0,''),
+  ('ビーチカード','frame-beach',25000,60,3,''),
+  ('ネットランナー','frame-netrunner',56000,140,2,''),
+  ('マイアミ風','frame-retro-miami',44000,25,0,''),
   ('集中マスター','frame-master',100000,10,10,'')");
 }
 
