@@ -69,7 +69,7 @@ function linkify_handles($content) {
         <ul>
         <?php foreach($posts as $p): ?>
         <li>
-          <a href="/replies_enhanced.php?pid=<?=$p['id']?>" style="text-decoration: none; color: inherit;">
+          <a href="/replies_enhanced.php?post_id=<?=$p['id']?>" style="text-decoration: none; color: inherit;">
             <?=linkify_handles($p['content_md'])?>
           </a>
         </li>

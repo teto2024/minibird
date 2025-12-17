@@ -124,7 +124,8 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
 
       <button id="logoutBtn">ログアウト</button>
     <?php else: ?>
-      <button id="showAuth">ログイン / 登録</button>
+      <a href="/login.php">ログイン</a>
+      <a href="/register.php">登録</a>
     <?php endif; ?>
   </div>
 </header>
@@ -133,6 +134,7 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
   <aside class="left">
   <button class="close-menu" aria-label="メニューを閉じる">✕</button>
     <nav>
+    <a href="password_reset_request.php" class="tabBtn block">パスワードリセット申請</a>
   <button class="tabBtn" data-tab="recommended">おすすめ</button>
   <button class="tabBtn" data-tab="global" aria-selected="true">全体</button>
   <?php if ($me): ?>

@@ -69,7 +69,7 @@ async function loadAllNotifications() {
         }
 
         list.innerHTML = data.map(n => {
-            const postLink = n.post && n.post.id ? `/replies_enhanced.php?pid=${n.post.id}` : '#';
+            const postLink = n.post && n.post.id ? `/replies_enhanced.php?post_id=${n.post.id}` : '#';
             const clickAction = n.post && n.post.id ? `onclick="location.href='${postLink}'" style="cursor: pointer;"` : '';
             return `
             <li class="${n.highlight ? 'highlight' : ''}" ${clickAction}>
