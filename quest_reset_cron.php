@@ -15,54 +15,25 @@ $current_day = $now->format('w'); // 0 (日曜) ~ 6 (土曜)
 try {
     // ====================
     // デイリークエストのリセット
-    // 完了したクエストは期限切れにし、進行中のクエストは削除
     // ====================
-    // まず、完了したクエストを期限切れにする
-    $stmt = $pdo->prepare("
-        UPDATE user_quest_progress 
-        SET status = 'expired', updated_at = NOW()
-        WHERE quest_id IN (SELECT id FROM quests WHERE reset_type = 'daily')
-        AND status = 'completed'
-    ");
-    $stmt->execute();
-    $daily_completed_count = $stmt->rowCount();
-    
-    // 進行中のクエストを削除
     $stmt = $pdo->prepare("
         DELETE FROM user_quest_progress 
         WHERE quest_id IN (SELECT id FROM quests WHERE reset_type = 'daily')
-        AND status != 'expired'
     ");
     $stmt->execute();
-    $daily_active_count = $stmt->rowCount();
-    
-    $daily_reset_count = $daily_completed_count + $daily_active_count;
+    $daily_reset_count = $stmt->rowCount();
     
     // ====================
     // ウィークリークエストのリセット（毎週日曜日）
     // ====================
     $weekly_reset_count = 0;
     if ($current_day == 0) { // 日曜日
-        // まず、完了したクエストを期限切れにする
-        $stmt = $pdo->prepare("
-            UPDATE user_quest_progress 
-            SET status = 'expired', updated_at = NOW()
-            WHERE quest_id IN (SELECT id FROM quests WHERE reset_type = 'weekly')
-            AND status = 'completed'
-        ");
-        $stmt->execute();
-        $weekly_completed_count = $stmt->rowCount();
-        
-        // 進行中のクエストを削除
         $stmt = $pdo->prepare("
             DELETE FROM user_quest_progress 
             WHERE quest_id IN (SELECT id FROM quests WHERE reset_type = 'weekly')
-            AND status != 'expired'
         ");
         $stmt->execute();
-        $weekly_active_count = $stmt->rowCount();
-        
-        $weekly_reset_count = $weekly_completed_count + $weekly_active_count;
+        $weekly_reset_count = $stmt->rowCount();
     }
     
     // ログ出力

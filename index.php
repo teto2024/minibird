@@ -153,7 +153,7 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
     <a href="shop.php" class="tabBtn block">フレーム・ショップ</a>
     <a href="activate_buff.php" class="tabBtn block">バフショップ</a>
     <a href="extended_shop.php" class="tabBtn block">パッケージショップ</a>
-    <a href="quest.php" class="tabBtn block">クエスト</a>
+    <a href="quests.php" class="tabBtn block">クエスト</a>
     <a href="vip_shop.php" class="tabBtn block">VIPショップ</a>
     <a href="admin.php" class="tabBtn block">管理者用</a>
     <!--<a href="darkroom.php" class="tabBtn block">暗い部屋</a>-->

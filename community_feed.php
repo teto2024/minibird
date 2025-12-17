@@ -119,7 +119,7 @@ $is_owner = ($community['owner_id'] == $me['id']);
     cursor: pointer;
 }
 .community-post {
-    background: white;
+    background: transparent;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
     padding: 15px;

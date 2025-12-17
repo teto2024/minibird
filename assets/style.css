@@ -978,7 +978,7 @@ button {
     /* 操作不可 */
 }
 
-/* 🀀𐀀󱁌򎻕するアニメーション */
+/* 🀀𐀀𐀀󱁌򎻕𦒋アニメーション */
 @keyframes flyingTree {
     0% {
         top: 80%;
@@ -1566,6 +1566,369 @@ button {
 }
 
 /* 価格: コイン 60,000 / クリスタル 6（期間限定：冬季限定） */
+
+
+/* キャンディーケーンフレーム */
+.frame-candy {
+    position: relative;
+    border-radius: 16px;
+    padding: 16px;
+    background: linear-gradient(135deg, #2a0a0a 0%, #1a0505 100%);
+    color: #ffe6e6;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(255, 0, 0, 0.3);
+}
+
+/* 赤白ストライプのボーダー（固定） */
+.frame-candy::before {
+    content:  '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    padding: 3px;
+    background: repeating-linear-gradient(
+        45deg,
+        #ff3333 0px,
+        #ff3333 12px,
+        #ffffff 12px,
+        #ffffff 24px
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    animation:  candyGlow 3s ease-in-out infinite;
+}
+
+/* 内側の光沢効果（移動するハイライト） */
+.frame-candy::after {
+    content:  '';
+    position: absolute;
+    inset: -50%;
+    border-radius: 16px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        transparent 40%,
+        rgba(255, 255, 255, 0.3) 50%,
+        transparent 60%,
+        transparent 100%
+    );
+    animation: candyShine 4s linear infinite;
+    pointer-events:  none;
+}
+
+/* ボーダーの明るさが変化するアニメーション */
+@keyframes candyGlow {
+    0%, 100% {
+        filter: brightness(1) drop-shadow(0 0 4px rgba(255, 51, 51, 0.3));
+    }
+    50% {
+        filter: brightness(1.2) drop-shadow(0 0 8px rgba(255, 51, 51, 0.6));
+    }
+}
+
+/* 光沢が左から右へ流れるアニメーション */
+@keyframes candyShine {
+    0% {
+        transform: translateX(-100%) rotate(45deg);
+    }
+    100% {
+        transform: translateX(200%) rotate(45deg);
+    }
+}
+
+/* ホバー時の効果 */
+.frame-candy:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(255, 0, 0, 0.4);
+}
+
+/* テキストのシャドウ効果 */
+.frame-candy .content {
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+
+/* ========== パープルカード（紫のネットワーク模様） ========== */
+.frame-purple-card {
+    position: relative;
+    border-radius: 16px;
+    padding: 16px;
+    background: linear-gradient(135deg, #1a0a2e 0%, #2d1555 50%, #4a1a7d 100%);
+    border: 2px solid #8b5cf6;
+    color: #e9d5ff;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+}
+
+/* ネットワーク線のアニメーション */
+.frame-purple-card::before {
+    content: '';
+    position:  absolute;
+    inset: 0;
+    background-image: 
+        linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px);
+    background-size:  30px 30px;
+    animation: purpleGrid 15s linear infinite;
+    pointer-events: none;
+}
+
+/* パルス効果 */
+.frame-purple-card::after {
+    content: '';
+    position: absolute;
+    inset:  0;
+    border-radius: 16px;
+    background: radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.2), transparent 70%);
+    animation: purplePulse 4s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes purpleGrid {
+    0% {
+        transform: translate(0, 0);
+    }
+    100% {
+        transform:  translate(30px, 30px);
+    }
+}
+
+@keyframes purplePulse {
+    0%, 100% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.6;
+        transform: scale(1.05);
+    }
+}
+
+
+/* ========== ビーチカード（波と太陽） ========== */
+.frame-beach {
+    position: relative;
+    border-radius: 16px;
+    padding: 16px;
+    background: linear-gradient(180deg, #1e3a8a 0%, #0c4a6e 40%, #0e7490 60%, #06b6d4 100%);
+    border: 2px solid #22d3ee;
+    color: #e0f2fe;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(34, 211, 238, 0.4);
+}
+
+/* 太陽（絵文字） */
+.frame-beach::before {
+    content: '☀️';
+    position: absolute;
+    font-size: 32px;
+    top: 10%;
+    right: 10%;
+    animation:  beachSun 8s ease-in-out infinite;
+    filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.8));
+}
+
+/* 波のアニメーション */
+.frame-beach::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left:  0;
+    right: 0;
+    height: 60px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(6, 182, 212, 0.3) 25%, 
+        rgba(34, 211, 238, 0.5) 50%, 
+        rgba(6, 182, 212, 0.3) 75%, 
+        transparent 100%);
+    animation: beachWave 6s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes beachSun {
+    0%, 100% {
+        transform:  translateY(0) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-10px) rotate(180deg);
+    }
+}
+
+@keyframes beachWave {
+    0%, 100% {
+        transform: translateX(-50px);
+        opacity: 0.5;
+    }
+    50% {
+        transform: translateX(50px);
+        opacity: 0.8;
+    }
+}
+
+
+/* ========== ネットランナー（サイバーパンク・データストリーム） ========== */
+.frame-netrunner {
+    position: relative;
+    border-radius: 16px;
+    padding: 16px;
+    background: linear-gradient(135deg, #0a0e1a 0%, #1a1f2e 50%, #0f1419 100%);
+    border: 2px solid #00ffcc;
+    color: #e0ffff;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 255, 204, 0.4);
+}
+
+/* データストリーム（縦線が流れる） */
+.frame-netrunner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        90deg,
+        transparent 0px,
+        transparent 8px,
+        rgba(0, 255, 204, 0.15) 8px,
+        rgba(0, 255, 204, 0.15) 10px
+    );
+    animation: netrunnerStream 3s linear infinite;
+    pointer-events: none;
+}
+
+/* グリッチエフェクト */
+.frame-netrunner::after {
+    content: '';
+    position:  absolute;
+    inset: 0;
+    border-radius: 16px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 0, 102, 0.1) 25%,
+        rgba(0, 255, 204, 0.1) 50%,
+        rgba(0, 153, 255, 0.1) 75%,
+        transparent 100%
+    );
+    animation: netrunnerGlitch 5s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes netrunnerStream {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(10px);
+    }
+}
+
+@keyframes netrunnerGlitch {
+    0%, 90%, 100% {
+        opacity: 0;
+        transform: translateX(0);
+    }
+    92%, 96% {
+        opacity: 1;
+        transform: translateX(-2px);
+    }
+    94%, 98% {
+        opacity: 1;
+        transform: translateX(2px);
+    }
+}
+
+/* テキストにもサイバーエフェクト */
+.frame-netrunner .content {
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 0 4px rgba(0, 255, 204, 0.5);
+}
+
+
+/* ========== レトロマイアミ（80年代風グラデーション） ========== */
+.frame-retro-miami {
+    position: relative;
+    border-radius: 16px;
+    padding: 16px;
+    background: linear-gradient(135deg, 
+        #ff006e 0%, 
+        #ff4d94 20%, 
+        #ff7aa2 40%, 
+        #ffbe0b 60%, 
+        #fb5607 80%, 
+        #8338ec 100%);
+    border: 2px solid #ffbe0b;
+    color: #fff;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(255, 190, 11, 0.4);
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* グラデーション移動 */
+.frame-retro-miami::before {
+    content: '';
+    position: absolute;
+    inset: -100%;
+    background: linear-gradient(
+        45deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.3) 50%,
+        transparent 70%
+    );
+    animation: miamiShine 4s linear infinite;
+    pointer-events:  none;
+}
+
+/* パームツリーシルエット風（装飾） */
+.frame-retro-miami::after {
+    content: '🌴';
+    position: absolute;
+    font-size: 48px;
+    bottom: -10px;
+    right: -10px;
+    opacity: 0.2;
+    animation: miamiPalm 6s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes miamiShine {
+    0% {
+        transform: translate(-100%, -100%);
+    }
+    100% {
+        transform: translate(100%, 100%);
+    }
+}
+
+@keyframes miamiPalm {
+    0%, 100% {
+        transform: rotate(-5deg) scale(1);
+    }
+    50% {
+        transform: rotate(5deg) scale(1.1);
+    }
+}
+
+/* ホバー時にネオンが強くなる */
+.frame-retro-miami:hover {
+    box-shadow: 0 12px 32px rgba(255, 190, 11, 0.6), 0 0 20px rgba(255, 0, 110, 0.4);
+    transform: translateY(-2px);
+}
+
+
+/* ========== 共通:  テキストのz-index調整 ========== */
+.frame-purple-card .content,
+.frame-beach .content,
+.frame-netrunner .content,
+.frame-retro-miami .content {
+    position: relative;
+    z-index: 1;
+}
 /*フレームここまで*/
 
 
