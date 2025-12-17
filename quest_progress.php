@@ -36,14 +36,28 @@ function check_quest_progress($user_id, $action, $count = 1) {
 function reset_relay_quests($user_id) {
     $pdo = db();
     try {
+        $pdo->beginTransaction();
+        
+        // リレークエストの進行状況を削除
         $stmt = $pdo->prepare("
             DELETE FROM user_quest_progress 
             WHERE user_id = ? 
-            AND quest_id IN (SELECT id FROM quests WHERE reset_type = 'relay')
+            AND quest_id IN (SELECT id FROM quests WHERE type = 'relay')
         ");
         $stmt->execute([$user_id]);
+        
+        // リレー進行状況をリセット（current_orderを1に戻す）
+        $stmt = $pdo->prepare("
+            INSERT INTO relay_quest_progress (user_id, current_order, updated_at)
+            VALUES (?, 1, NOW())
+            ON DUPLICATE KEY UPDATE current_order = 1, last_completed_quest_id = NULL, updated_at = NOW()
+        ");
+        $stmt->execute([$user_id]);
+        
+        $pdo->commit();
         return true;
     } catch (Exception $e) {
+        $pdo->rollBack();
         error_log("Relay quest reset error: " . $e->getMessage());
         return false;
     }
@@ -353,4 +367,26 @@ function grant_quest_reward($user_id, $quest) {
             $stmt->execute([$user_id, $diamonds, $quest['id']]);
         }
     }
+}
+
+/**
+ * デイリー・ウィークリークエストの自動リセットチェック
+ * ページ読み込み時に呼び出して、期限切れクエストを自動的にexpiredにマークする
+ * @param int $user_id ユーザーID
+ */
+function auto_reset_quests($user_id) {
+    $pdo = db();
+    
+    // 期限切れのクエストをexpiredに更新
+    $stmt = $pdo->prepare("
+        UPDATE user_quest_progress 
+        SET status = 'expired'
+        WHERE user_id = ? 
+        AND status != 'expired' 
+        AND expired_at IS NOT NULL 
+        AND expired_at < NOW()
+    ");
+    $stmt->execute([$user_id]);
+    
+    return true;
 }

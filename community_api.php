@@ -290,6 +290,46 @@ try {
             echo json_encode(['ok' => true, 'message' => 'Post deleted']);
             break;
 
+        // ===============================================
+        // コミュニティ情報更新（オーナーのみ）
+        // ===============================================
+        case 'update_community':
+            $community_id = intval($_POST['community_id'] ?? 0);
+            $name = trim($_POST['name'] ?? '');
+            $description = trim($_POST['description'] ?? '');
+            
+            if (!$community_id || empty($name)) {
+                throw new Exception('Community ID and name required');
+            }
+            
+            if (mb_strlen($name) > 100) {
+                throw new Exception('Name too long (max 100 chars)');
+            }
+            
+            // オーナーチェック
+            $stmt = $pdo->prepare("SELECT owner_id FROM communities WHERE id=?");
+            $stmt->execute([$community_id]);
+            $community = $stmt->fetch();
+            
+            if (!$community) {
+                throw new Exception('Community not found');
+            }
+            
+            if ($community['owner_id'] != $user_id) {
+                throw new Exception('Only owner can edit community info');
+            }
+            
+            // コミュニティ情報更新
+            $stmt = $pdo->prepare("
+                UPDATE communities 
+                SET name = ?, description = ?, updated_at = NOW()
+                WHERE id = ?
+            ");
+            $stmt->execute([$name, $description, $community_id]);
+            
+            echo json_encode(['ok' => true, 'message' => 'Community updated']);
+            break;
+
         default:
             throw new Exception('Invalid action');
     }

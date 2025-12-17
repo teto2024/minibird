@@ -93,6 +93,98 @@ body {
     transform: translateX(4px);
 }
 
+/* ボタンスタイル統一 */
+button, .btn {
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: inherit;
+}
+
+button:hover:not(:disabled), .btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+button:active:not(:disabled), .btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+button:disabled, .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 通知ベルボタン */
+#notificationBtn {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 18px;
+}
+
+#notificationBtn:hover {
+    background: #1c2731;
+    border-color: var(--blue);
+}
+
+#notificationBtn .badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: var(--red);
+    color: white;
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+/* ファイル選択ボタン */
+input[type="file"] {
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card);
+    color: var(--text);
+    cursor: pointer;
+}
+
+input[type="file"]:hover {
+    border-color: var(--blue);
+    background: #1c2731;
+}
+
+/* ポストボタン */
+#submitPost, .post-button {
+    background: var(--blue);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 15px;
+}
+
+#submitPost:hover, .post-button:hover {
+    background: #1a8cd8;
+}
+
+/* ログアウトボタン */
+#logoutBtn {
+    background: var(--red);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+}
+
+#logoutBtn:hover {
+    background: #e01060;
+}
+
 .center {
     min-height: 80vh
 }
