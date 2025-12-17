@@ -44,21 +44,19 @@ try {
             LEFT JOIN users u_reviewer ON prr.reviewed_by = u_reviewer.id
         ";
         
+        $params = [];
         if ($status !== 'all') {
             if (!in_array($status, ['pending', 'approved', 'rejected'])) {
                 throw new Exception("Invalid status filter: '$status'. Must be pending, approved, rejected, or all");
             }
             $sql .= " WHERE prr.status = ?";
+            $params[] = $status;
         }
         
         $sql .= " ORDER BY prr.requested_at DESC";
         
-        if ($status !== 'all') {
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$status]);
-        } else {
-            $stmt = $pdo->query($sql);
-        }
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
         
         $requests = $stmt->fetchAll();
         

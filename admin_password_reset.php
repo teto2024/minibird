@@ -415,9 +415,7 @@ function displayRequests(requests) {
         const userId = parseInt(req.user_id, 10);
         
         // 申請理由を安全に表示（改行を保持）
-        const reasonDiv = document.createElement('div');
-        reasonDiv.textContent = req.reason;
-        const reasonHtml = reasonDiv.innerHTML.replace(/\n/g, '<br>');
+        const reason = escapeHtml(req.reason).replace(/\n/g, '<br>');
         
         return `
             <div class="request-card">
@@ -431,7 +429,7 @@ function displayRequests(requests) {
                 </div>
                 <div class="request-reason">
                     <strong>申請理由:</strong><br>
-                    ${reasonHtml}
+                    ${reason}
                 </div>
                 ${reviewInfo}
                 ${actionsHTML}
