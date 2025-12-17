@@ -68,7 +68,11 @@ function linkify_handles($content) {
         <h3>投稿</h3>
         <ul>
         <?php foreach($posts as $p): ?>
-        <li><?=linkify_handles($p['content_md'])?></li>
+        <li>
+          <a href="/replies_enhanced.php?pid=<?=$p['id']?>" style="text-decoration: none; color: inherit;">
+            <?=linkify_handles($p['content_md'])?>
+          </a>
+        </li>
         <?php endforeach; ?>
         </ul>
       <?php endif; ?>

@@ -5,6 +5,8 @@
 // ===============================================
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/quest_progress.php';
+
 $me = user();
 if (!$me) {
     header('Location: ./');
@@ -12,6 +14,9 @@ if (!$me) {
 }
 
 $pdo = db();
+
+// ページロード時に自動的に期限切れクエストをリセット
+auto_reset_quests($me['id']);
 
 // クエスト進行状況取得
 $stmt = $pdo->prepare("

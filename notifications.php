@@ -68,15 +68,19 @@ async function loadAllNotifications() {
             return;
         }
 
-        list.innerHTML = data.map(n => `
-            <li class="${n.highlight ? 'highlight' : ''}">
+        list.innerHTML = data.map(n => {
+            const postLink = n.post && n.post.id ? `/replies_enhanced.php?pid=${n.post.id}` : '#';
+            const clickAction = n.post && n.post.id ? `onclick="location.href='${postLink}'" style="cursor: pointer;"` : '';
+            return `
+            <li class="${n.highlight ? 'highlight' : ''}" ${clickAction}>
                 <img src="${n.actor.icon}" alt="">
                 <div>
                     <p>${n.message}</p>
                     <small>${n.created_at}</small>
                 </div>
             </li>
-        `).join("");
+        `;
+        }).join("");
 
         // 既読化
         await fetch("/mark_notifications_read.php", { method: "POST" });
