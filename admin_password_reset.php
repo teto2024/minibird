@@ -360,6 +360,13 @@ async function loadRequests() {
     }
 }
 
+// HTML エスケープ関数
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 // リクエスト表示
 function displayRequests(requests) {
     const listDiv = document.getElementById('requestsList');
@@ -387,14 +394,18 @@ function displayRequests(requests) {
         let reviewInfo = '';
         if (req.reviewed_at) {
             const reviewedAt = new Date(req.reviewed_at).toLocaleString('ja-JP');
+            const reviewerHandle = req.reviewer_handle ? escapeHtml(req.reviewer_handle) : '';
+            const adminComment = req.admin_comment ? escapeHtml(req.admin_comment) : '';
             reviewInfo = `
                 <p><strong>審査日時:</strong> ${reviewedAt}</p>
-                ${req.reviewer_handle ? `<p><strong>審査者:</strong> @${req.reviewer_handle}</p>` : ''}
-                ${req.admin_comment ? `<p><strong>管理者コメント:</strong> ${req.admin_comment}</p>` : ''}
+                ${reviewerHandle ? `<p><strong>審査者:</strong> @${reviewerHandle}</p>` : ''}
+                ${adminComment ? `<p><strong>管理者コメント:</strong> ${adminComment}</p>` : ''}
             `;
         }
         
         const requestedAt = new Date(req.requested_at).toLocaleString('ja-JP');
+        const handle = escapeHtml(req.handle);
+        const reason = escapeHtml(req.reason).replace(/\n/g, '<br>');
         
         return `
             <div class="request-card">
@@ -403,12 +414,12 @@ function displayRequests(requests) {
                     <span class="status-badge ${statusClass}">${statusText}</span>
                 </div>
                 <div class="request-info">
-                    <p><strong>ユーザー:</strong> @${req.handle} (ID: ${req.user_id})</p>
+                    <p><strong>ユーザー:</strong> @${handle} (ID: ${req.user_id})</p>
                     <p><strong>申請日時:</strong> ${requestedAt}</p>
                 </div>
                 <div class="request-reason">
                     <strong>申請理由:</strong><br>
-                    ${req.reason.replace(/\n/g, '<br>')}
+                    ${reason}
                 </div>
                 ${reviewInfo}
                 ${actionsHTML}

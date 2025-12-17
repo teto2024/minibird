@@ -46,7 +46,7 @@ try {
         
         if ($status !== 'all') {
             if (!in_array($status, ['pending', 'approved', 'rejected'])) {
-                throw new Exception('Invalid status filter');
+                throw new Exception("Invalid status filter: '$status'. Must be pending, approved, rejected, or all");
             }
             $sql .= " WHERE prr.status = ?";
         }
@@ -96,6 +96,11 @@ try {
         
         if (!$request['new_password_hash']) {
             throw new Exception('No password hash found');
+        }
+        
+        // パスワードハッシュの形式を検証（bcryptの形式チェック）
+        if (!preg_match('/^\$2[ayb]\$.{56}$/', $request['new_password_hash'])) {
+            throw new Exception('Invalid password hash format');
         }
         
         // トランザクション開始
