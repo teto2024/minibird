@@ -98,8 +98,9 @@ try {
             throw new Exception('No password hash found');
         }
         
-        // パスワードハッシュの形式を検証（bcryptの形式チェック）
-        if (!preg_match('/^\$2[ayb]\$.{56}$/', $request['new_password_hash'])) {
+        // パスワードハッシュの形式を検証
+        $hashInfo = password_get_info($request['new_password_hash']);
+        if ($hashInfo['algo'] === null || $hashInfo['algo'] === 0) {
             throw new Exception('Invalid password hash format');
         }
         

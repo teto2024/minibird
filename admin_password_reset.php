@@ -381,12 +381,19 @@ function displayRequests(requests) {
         const statusText = req.status === 'pending' ? '保留中' : 
                           req.status === 'approved' ? '承認済み' : '却下済み';
         
+        // IDを数値として検証
+        const requestId = parseInt(req.id, 10);
+        if (isNaN(requestId)) {
+            console.error('Invalid request ID:', req.id);
+            return '';
+        }
+        
         let actionsHTML = '';
         if (req.status === 'pending') {
             actionsHTML = `
                 <div class="request-actions">
-                    <button class="btn btn-approve" onclick="showModal('approve', ${req.id})">承認</button>
-                    <button class="btn btn-reject" onclick="showModal('reject', ${req.id})">却下</button>
+                    <button class="btn btn-approve" onclick="showModal('approve', ${requestId})">承認</button>
+                    <button class="btn btn-reject" onclick="showModal('reject', ${requestId})">却下</button>
                 </div>
             `;
         }
@@ -405,21 +412,26 @@ function displayRequests(requests) {
         
         const requestedAt = new Date(req.requested_at).toLocaleString('ja-JP');
         const handle = escapeHtml(req.handle);
-        const reason = escapeHtml(req.reason).replace(/\n/g, '<br>');
+        const userId = parseInt(req.user_id, 10);
+        
+        // 申請理由を安全に表示（改行を保持）
+        const reasonDiv = document.createElement('div');
+        reasonDiv.textContent = req.reason;
+        const reasonHtml = reasonDiv.innerHTML.replace(/\n/g, '<br>');
         
         return `
             <div class="request-card">
                 <div class="request-header">
-                    <span class="request-id">Request #${req.id}</span>
+                    <span class="request-id">Request #${requestId}</span>
                     <span class="status-badge ${statusClass}">${statusText}</span>
                 </div>
                 <div class="request-info">
-                    <p><strong>ユーザー:</strong> @${handle} (ID: ${req.user_id})</p>
+                    <p><strong>ユーザー:</strong> @${handle} (ID: ${userId})</p>
                     <p><strong>申請日時:</strong> ${requestedAt}</p>
                 </div>
                 <div class="request-reason">
                     <strong>申請理由:</strong><br>
-                    ${reason}
+                    ${reasonHtml}
                 </div>
                 ${reviewInfo}
                 ${actionsHTML}
