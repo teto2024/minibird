@@ -38,11 +38,19 @@ function parseMessage(html) {
     // クライアント側では追加のURL自動リンク化のみ実行
     
     // URLを自動リンク化（ただし既にリンクになっているものは除外）
-    html = html.replace(/(?<!href=["'])(?<!src=["'])(https?:\/\/[^\s<]+)/g, (m, url) => {
-        return `<a href="${url}" target="_blank" class="link">${url}</a>`;
+    // より単純な方法: <a タグ内のURLは無視
+    const parts = html.split(/(<a[^>]*>.*?<\/a>)/gi);
+    const result = parts.map((part, i) => {
+        // 偶数インデックスはリンク外、奇数はリンク内
+        if (i % 2 === 0) {
+            return part.replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+                return `<a href="${url}" target="_blank" class="link">${url}</a>`;
+            });
+        }
+        return part;
     });
 
-    return html;
+    return result.join('');
 }
 
 

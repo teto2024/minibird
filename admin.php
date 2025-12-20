@@ -105,6 +105,11 @@ $users = $pdo->query("SELECT id, handle, muted_until, frozen FROM users ORDER BY
     background: #1c2731;
 }
 
+.empty-state {
+    color: var(--muted);
+    font-style: italic;
+}
+
 .admin-table {
     width: 100%;
     border-collapse: collapse;
@@ -215,7 +220,7 @@ $users = $pdo->query("SELECT id, handle, muted_until, frozen FROM users ORDER BY
       <ul class="admin-list">
         <?php 
         if (empty($words)) {
-            echo "<li style='color: var(--muted);'>登録されている禁止語句はありません</li>";
+            echo "<li class='empty-state'>登録されている禁止語句はありません</li>";
         } else {
             foreach($words as $w){ 
                 echo "<li>🚫 ".htmlspecialchars($w['word'])."</li>"; 
