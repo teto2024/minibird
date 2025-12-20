@@ -35,7 +35,7 @@ $msg = $_GET['msg'] ?? '';
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>コミュニティ - MiniBird</title>
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=<?= ASSETS_VERSION ?>">
 <style>
 .communities-container {
     max-width: 900px;

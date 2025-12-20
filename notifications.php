@@ -17,7 +17,7 @@ if (!$me) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>通知 - MiniBird</title>
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=<?= ASSETS_VERSION ?>">
 <style>
   #notificationsList {
       list-style: none;
@@ -27,17 +27,26 @@ if (!$me) {
       display: flex;
       gap: 8px;
       padding: 8px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid var(--border);
       align-items: center;
+      color: var(--text);
+      background: var(--card);
   }
   #notificationsList li.highlight {
-      background: #fffbcc;
+      background: rgba(255, 251, 204, 0.2);
       font-weight: bold;
   }
   #notificationsList li img {
       width: 32px;
       height: 32px;
       border-radius: 50%;
+  }
+  #notificationsList li p {
+      color: var(--text);
+      margin: 0;
+  }
+  #notificationsList li small {
+      color: var(--muted);
   }
 </style>
 </head>

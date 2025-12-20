@@ -152,7 +152,7 @@ $st->execute([5, $post_content_md, $post_content_html]);
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=<?= ASSETS_VERSION ?>">
 <title>バフ発動ページ（Ajax版）</title>
 </head>
 <body>

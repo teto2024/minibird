@@ -8,7 +8,7 @@ $me = user();
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>使い方 - MiniBird</title>
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=<?= ASSETS_VERSION ?>">
 <style>
 .how-to-container {
     max-width: 900px;

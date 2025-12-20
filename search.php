@@ -41,7 +41,7 @@ function linkify_handles($content) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>検索結果 - MiniBird</title>
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=<?= ASSETS_VERSION ?>">
 </head>
 <body>
 <header class="topbar">

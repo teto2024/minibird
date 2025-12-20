@@ -68,7 +68,7 @@ if (!$member) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>返信 - <?= htmlspecialchars($post['community_name']) ?> - MiniBird</title>
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=<?= ASSETS_VERSION ?>">
 <style>
 .community-header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -305,6 +305,12 @@ async function loadReplies() {
                     '<p style="color: #999; font-style: italic;">この投稿は削除されました</p>' :
                     escapeHtml(reply.content);
                 
+                // 削除ボタン（自分の投稿のみ表示）
+                const deleteBtn = reply.user_id === USER_ID ?
+                    `<button class="post-action-btn" onclick="deletePost(${reply.id})" style="color: #e53e3e;">
+                        🗑️ 削除
+                    </button>` : '';
+                
                 return `
                 <div class="community-post ${frameClass}">
                     <div class="post-header">
@@ -324,6 +330,7 @@ async function loadReplies() {
                         <button class="post-action-btn ${reply.user_liked ? 'liked' : ''}" onclick="toggleLike(${reply.id})">
                             ❤️ <span class="like-count">${reply.like_count || 0}</span>
                         </button>
+                        ${deleteBtn}
                     </div>
                 </div>
             `;
@@ -371,6 +378,34 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML.replace(/\n/g, '<br>');
+}
+
+// 投稿削除
+async function deletePost(postId) {
+    if (!confirm('この投稿を削除しますか？\n削除した投稿は「削除されました」と表示されます。')) {
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'delete_post');
+        formData.append('post_id', postId);
+        
+        const res = await fetch('community_api.php', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            alert('投稿を削除しました');
+            loadReplies();
+        } else {
+            alert('削除エラー: ' + data.error);
+        }
+    } catch (err) {
+        alert('ネットワークエラー');
+    }
 }
 
 // 初回読み込み

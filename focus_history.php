@@ -12,7 +12,7 @@ $tasks = $st->fetchAll(PDO::FETCH_ASSOC);
 <head>
 <meta charset="utf-8">
 <title>集中タスク履歴</title>
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=<?= ASSETS_VERSION ?>">
 <style>
 .success { color: green; font-weight: bold; }
 .fail { color: red; font-weight: bold; }

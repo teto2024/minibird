@@ -10,6 +10,10 @@ $DB_PASS = getenv('DB_PASS') ?: 'omatsuteto2025';
 $MAX_UPLOAD_BYTES = 10 * 1024 * 1024;  // 10MB
 $NSFW_BLUR = 12;
 
+// ----- キャッシュバスティング用バージョン -----
+// ファイル更新時にこの値を変更すると、ブラウザキャッシュをクリアできます
+define('ASSETS_VERSION', '1.0.0');
+
 // ----- セッション -----
 session_set_cookie_params([
     'lifetime' => 60*60*24*30,
