@@ -26,11 +26,13 @@ try {
                COALESCE(n.from_user_id, n.actor_id) AS actor_id_resolved,
                a.display_name AS actor_name, a.handle AS actor_handle, a.icon AS actor_icon,
                p.id AS post_id, p.content_md AS post_text,
-               cp.id AS community_post_id, cp.content AS community_post_text
+               cp.id AS community_post_id, cp.content AS community_post_text, cp.community_id,
+               c.name AS community_name
         FROM notifications n
         LEFT JOIN users a ON COALESCE(n.from_user_id, n.actor_id) = a.id
         LEFT JOIN posts p ON n.post_id = p.id
         LEFT JOIN community_posts cp ON n.post_id = cp.id
+        LEFT JOIN communities c ON c.id = cp.community_id
         WHERE n.user_id = ?
     ";
     $params = [$user_id];
@@ -54,20 +56,31 @@ try {
         $displayName = $r['actor_name'] ?: ($r['actor_handle'] ?: '匿名');
 
         // 通知メッセージ
+        $communityName = $r['community_name'] ? htmlspecialchars($r['community_name']) : '';
         switch ($r['type']) {
             case 'like':   $message = "{$displayName} さんがあなたの投稿にいいねしました"; break;
             case 'reply':  $message = "{$displayName} さんがあなたの投稿にリプライしました"; break;
             case 'repost': $message = "{$displayName} さんがあなたの投稿をリポストしました"; break;
             case 'quote':  $message = "{$displayName} さんがあなたの投稿を引用リポストしました"; break;
             case 'follow': $message = "{$displayName} さんがあなたをフォローしました"; break;
-            case 'community_like': $message = "{$displayName} さんがあなたのコミュニティ投稿にいいねしました"; break;
-            case 'community_reply': $message = "{$displayName} さんがあなたのコミュニティ投稿にリプライしました"; break;
+            case 'community_like': 
+                $message = $communityName 
+                    ? "コミュニティ「{$communityName}」で{$displayName}さんがあなたの投稿にいいねしました" 
+                    : "{$displayName} さんがあなたのコミュニティ投稿にいいねしました"; 
+                break;
+            case 'community_reply': 
+                $message = $communityName 
+                    ? "コミュニティ「{$communityName}」で{$displayName}さんがあなたの投稿にリプライしました" 
+                    : "{$displayName} さんがあなたのコミュニティ投稿にリプライしました"; 
+                break;
             default:       $message = "";
         }
         
         // 投稿テキストの決定（通常投稿 or コミュニティ投稿）
         $post_text = $r['post_text'] ?: ($r['community_post_text'] ?: null);
         $actual_post_id = $r['post_id'] ?: ($r['community_post_id'] ?: null);
+        $is_community_post = !empty($r['community_post_id']);
+        $community_id = $r['community_id'] ?: null;
 
         $result[] = [
             "id" => (int)$r['id'],
@@ -79,7 +92,9 @@ try {
             ],
             "post" => $actual_post_id ? [
                 "id" => (int)$actual_post_id,
-                "text" => $post_text
+                "text" => $post_text,
+                "is_community" => $is_community_post,
+                "community_id" => $community_id
             ] : null,
             "created_at" => $r['created_at'],
             "is_read" => (int)$r['is_read'],

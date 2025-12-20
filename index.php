@@ -174,6 +174,7 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
         <div class="row">
           <label><input type="checkbox" id="nsfw"> NSFW</label>
           <input type="file" id="media" accept="image/*,video/*">
+          <label style="margin-left: 10px;"><input type="checkbox" id="enterToPost"> Enterで投稿</label>
           <button id="submitPost">ポスト</button>
         </div>
       <?php else: ?>
