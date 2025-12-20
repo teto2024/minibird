@@ -120,6 +120,7 @@ $is_owner = ($community['owner_id'] == $me['id']);
     border-radius: 6px;
     cursor: pointer;
 }
+/*
 .community-post {
     background: var(--card);
     border: 1px solid var(--border);
@@ -133,6 +134,7 @@ $is_owner = ($community['owner_id'] == $me['id']);
     transform: translateY(-2px);
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
 }
+*/
 /* フレームスタイルを適用可能にする */
 .community-post[class*="frame-"] {
     border: none !important;
