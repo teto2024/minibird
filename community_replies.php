@@ -94,7 +94,6 @@ if (!$member) {
     color: #2d3748;
 }
 .community-post {
-    background: white;
     border: 1px solid #e2e8f0;
     border-radius: 8px;
     padding: 15px;

@@ -56,7 +56,6 @@ if (!$original_post) {
     padding: 20px;
 }
 .original-post {
-    background: white;
     border: 2px solid #e2e8f0;
     border-radius: 12px;
     padding: 20px;
