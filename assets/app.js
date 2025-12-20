@@ -128,6 +128,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Enterで投稿のチェックボックス状態をlocalStorageに保存
+    qs('#enterToPost')?.addEventListener('change', (e) => {
+        localStorage.setItem('enterToPost', e.target.checked ? 'true' : 'false');
+    });
+
+    // ページ読み込み時にlocalStorageから状態を復元
+    const savedEnterToPost = localStorage.getItem('enterToPost');
+    if (savedEnterToPost && qs('#enterToPost')) {
+        qs('#enterToPost').checked = savedEnterToPost === 'true';
+    }
+
 });
 
 
@@ -207,18 +218,6 @@ qs('#postText')?.addEventListener('keydown', (e) => {
         // PCでは Enter のみの場合は何もしない（投稿しない）
         e.preventDefault();
     }
-});
-
-// Enterで投稿のチェックボックス状態をlocalStorageに保存
-qs('#enterToPost')?.addEventListener('change', (e) => {
-    localStorage.setItem('enterToPost', e.target.checked ? 'true' : 'false');
-});
-
-// ページ読み込み時にlocalStorageから状態を復元
-const savedEnterToPost = localStorage.getItem('enterToPost');
-if (savedEnterToPost && qs('#enterToPost')) {
-    qs('#enterToPost').checked = savedEnterToPost === 'true';
-}
 });
 
 // ---------------------
