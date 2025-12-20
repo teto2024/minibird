@@ -380,16 +380,20 @@ if (p.vip_level && p.vip_level > 0) {
         // 引用元があれば別要素で表示
         if (p.quoted_post) {
             const quoteDiv = ce('div', 'quote');
+            // クリックして引用元投稿へ遷移
             quoteDiv.style.cursor = 'pointer';
             quoteDiv.onclick = (e) => {
                 e.stopPropagation();
-                window.location.href = `replies_enhanced.php?post_id=${p.quoted_post.id}`;
+                const quotedPostId = p.quoted_post.id || p.quote_post_id;
+                if (quotedPostId) {
+                    window.location.href = `replies_enhanced.php?post_id=${quotedPostId}`;
+                }
             };
 
             const quoteMeta = ce('div', 'meta');
             const qDisplayName = p.quoted_post.display_name || p.quoted_post.handle || 'unknown';
             const qLink = p.quoted_post.user_id ? `profile.php?id=${p.quoted_post.user_id}` : `profile.php?handle=${encodeURIComponent(p.quoted_post.handle)}`;
-            quoteMeta.innerHTML = `<a href="${qLink}" class="mention" onclick="event.stopPropagation();">${qDisplayName}</a>`;
+            quoteMeta.innerHTML = `<a href="${qLink}" class="mention">${qDisplayName}</a>`;
             quoteDiv.append(quoteMeta);
 
             const quoteBody = ce('div', 'quote-body');
@@ -846,6 +850,15 @@ function renderPost(p, wrap, prepend = false) {
     } else {
         if (p.quoted_post) {
             const quoteDiv = ce('div', 'quote');
+            // クリックして引用元投稿へ遷移
+            quoteDiv.style.cursor = 'pointer';
+            quoteDiv.onclick = (e) => {
+                e.stopPropagation();
+                const quotedPostId = p.quoted_post.id || p.quote_post_id;
+                if (quotedPostId) {
+                    window.location.href = `replies_enhanced.php?post_id=${quotedPostId}`;
+                }
+            };
             const quoteMeta = ce('div', 'meta');
             const qDisplayName = p.quoted_post.display_name || p.quoted_post.handle || 'unknown';
             const qLink = p.quoted_post.user_id ? `profile.php?id=${p.quoted_post.user_id}` : `profile.php?handle=${encodeURIComponent(p.quoted_post.handle)}`;
@@ -993,6 +1006,15 @@ function renderPost(p, wrap, prepend = false) {
     } else {
         if (p.quoted_post) {
             const quoteDiv = ce('div', 'quote');
+            // クリックして引用元投稿へ遷移
+            quoteDiv.style.cursor = 'pointer';
+            quoteDiv.onclick = (e) => {
+                e.stopPropagation();
+                const quotedPostId = p.quoted_post.id || p.quote_post_id;
+                if (quotedPostId) {
+                    window.location.href = `replies_enhanced.php?post_id=${quotedPostId}`;
+                }
+            };
             const quoteMeta = ce('div', 'meta');
             const qDisplayName = p.quoted_post.display_name || p.quoted_post.handle || 'unknown';
             const qLink = p.quoted_post.user_id ? `profile.php?id=${p.quoted_post.user_id}` : `profile.php?handle=${encodeURIComponent(p.quoted_post.handle)}`;
