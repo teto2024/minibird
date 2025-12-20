@@ -65,6 +65,25 @@ function markdown_to_html($md) {
     $safe = preg_replace('/\*(.+?)\*/s', '<em>$1</em>', $safe);
     $safe = preg_replace('/`(.+?)`/s', '<code>$1</code>', $safe);
     $safe = preg_replace('/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/', '<a href="$2" target="_blank" rel="nofollow">$1</a>', $safe);
+    
+    // メンションリンクの処理（@username）
+    $safe = preg_replace_callback(
+        '/@([a-zA-Z0-9_]+)/',
+        function($matches) {
+            $handle = $matches[1];
+            $pdo = db();
+            $stmt = $pdo->prepare("SELECT id FROM users WHERE handle=?");
+            $stmt->execute([$handle]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($user) {
+                $url = "profile.php?id=" . (int)$user['id'];
+                return '<a href="' . $url . '" class="mention">@' . htmlspecialchars($handle) . '</a>';
+            }
+            return '@' . htmlspecialchars($handle);
+        },
+        $safe
+    );
+    
     $safe = nl2br($safe);
     return $safe;
 }

@@ -64,6 +64,8 @@ try {
             case 'repost': $message = "{$displayName} さんがあなたの投稿をリポストしました"; break;
             case 'quote':  $message = "{$displayName} さんがあなたの投稿を引用リポストしました"; break;
             case 'follow': $message = "{$displayName} さんがあなたをフォローしました"; break;
+            case 'boost':  $message = "{$displayName} さんがあなたの投稿をブーストしました"; break;
+            case 'mention': $message = "{$displayName} さんがあなたをメンションしました"; break;
             case 'community_like': 
                 $message = $communityName 
                     ? "コミュニティ「{$communityName}」で{$displayName}さんがあなたの投稿にいいねしました" 

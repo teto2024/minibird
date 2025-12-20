@@ -166,6 +166,25 @@ try {
             check_quest_progress_with_text($_SESSION['uid'], 'post_contains', $content);
         }
 
+        // メンション通知の処理
+        preg_match_all('/@([a-zA-Z0-9_]+)/', $content, $mentions);
+        if (!empty($mentions[1])) {
+            $mentioned_handles = array_unique($mentions[1]);
+            foreach ($mentioned_handles as $handle) {
+                $stmt = $pdo->prepare("SELECT id FROM users WHERE handle=?");
+                $stmt->execute([$handle]);
+                $mentioned_user = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($mentioned_user && $mentioned_user['id'] != $_SESSION['uid']) {
+                    // メンション通知を作成
+                    $stmt = $pdo->prepare("
+                        INSERT INTO notifications (user_id, actor_id, type, post_id, created_at, is_read)
+                        VALUES (?, ?, 'mention', ?, NOW(), 0)
+                    ");
+                    $stmt->execute([$mentioned_user['id'], $_SESSION['uid'], $post_id]);
+                }
+            }
+        }
+
         echo json_encode(['ok'=>true,'id'=>$post_id]); exit;
     }
 
