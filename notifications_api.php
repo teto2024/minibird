@@ -56,7 +56,7 @@ try {
         $displayName = $r['actor_name'] ?: ($r['actor_handle'] ?: '匿名');
 
         // 通知メッセージ
-        $communityName = $r['community_name'] ? htmlspecialchars($r['community_name']) : '';
+        $communityName = $r['community_name'] ? htmlspecialchars($r['community_name'], ENT_QUOTES, 'UTF-8') : '';
         switch ($r['type']) {
             case 'like':   $message = "{$displayName} さんがあなたの投稿にいいねしました"; break;
             case 'reply':  $message = "{$displayName} さんがあなたの投稿にリプライしました"; break;

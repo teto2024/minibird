@@ -1,3 +1,6 @@
+// Mobile breakpoint constant
+const MOBILE_BREAKPOINT = 768;
+
 const state = {
     feed: 'null',
     posts: [],
@@ -197,7 +200,7 @@ qs('#postText')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         // モバイルデバイスでは無効化
-        if (window.innerWidth > 768) {
+        if (window.innerWidth > MOBILE_BREAKPOINT) {
             qs('#submitPost')?.click();
         }
         return;
@@ -206,13 +209,13 @@ qs('#postText')?.addEventListener('keydown', (e) => {
     // Enter のみ: PC では何もしない、モバイルでは改行を許可（チェックボックスがONなら投稿）
     if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
         // モバイルでEnterで投稿がONの場合は投稿
-        if (window.innerWidth <= 768 && enterToPostEnabled) {
+        if (window.innerWidth <= MOBILE_BREAKPOINT && enterToPostEnabled) {
             e.preventDefault();
             qs('#submitPost')?.click();
             return;
         }
         // モバイルでチェックボックスがOFFの場合は改行を許可
-        if (window.innerWidth <= 768) {
+        if (window.innerWidth <= MOBILE_BREAKPOINT) {
             return;
         }
         // PCでは Enter のみの場合は何もしない（投稿しない）

@@ -9,7 +9,9 @@ $pdo = db();
 $user_id = $_SESSION['user_id'] ?? null;
 
 // Check if this is a JSON API request or HTML form submission
-$is_json_request = (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) 
+// Check for XMLHttpRequest header or JSON content type
+$is_json_request = (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+                   || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) 
                    || (isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false);
 
 if (!$is_json_request) {
