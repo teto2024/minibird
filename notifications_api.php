@@ -18,7 +18,7 @@ try {
 
     // パラメータ
     $since_id = isset($_GET['since_id']) ? (int)$_GET['since_id'] : 0;
-    $limit = min(isset($_GET['limit']) ? (int)$_GET['limit'] : 20, 50);
+    $limit = min(isset($_GET['limit']) ? (int)$_GET['limit'] : 50, 100);
 
     // 通知取得SQL（handleも取得、from_user_idも対応）
     $sql = "
@@ -75,6 +75,11 @@ try {
                 $message = $communityName 
                     ? "コミュニティ「{$communityName}」で{$displayName}さんがあなたの投稿にリプライしました" 
                     : "{$displayName} さんがあなたのコミュニティ投稿にリプライしました"; 
+                break;
+            case 'community_mention': 
+                $message = $communityName 
+                    ? "コミュニティ「{$communityName}」で{$displayName}さんがあなたをメンションしました" 
+                    : "{$displayName} さんがコミュニティ投稿であなたをメンションしました"; 
                 break;
             default:       $message = "";
         }

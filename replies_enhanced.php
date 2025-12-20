@@ -228,7 +228,11 @@ if (!$original_post) {
             </div>
         </div>
         <div class="reply-content">
-            <?= $original_post['content_html'] ?>
+            <?php if ($original_post['is_deleted'] || $original_post['deleted_at']): ?>
+                <p style="color: #999; font-style: italic;">この投稿は削除されました</p>
+            <?php else: ?>
+                <?= $original_post['content_html'] ?>
+            <?php endif; ?>
         </div>
         <div class="reply-actions">
             <button class="reply-action-btn <?= $original_post['user_liked'] ? 'liked' : '' ?>" 

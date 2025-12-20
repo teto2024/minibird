@@ -14,7 +14,7 @@ $posts = [];
 
 if ($q !== '') {
     if ($tab === 'users' || $tab === 'all') {
-        $stmt = $pdo->prepare("SELECT id, handle FROM users WHERE handle LIKE :q LIMIT 50");
+        $stmt = $pdo->prepare("SELECT id, handle, display_name FROM users WHERE handle LIKE :q OR display_name LIKE :q LIMIT 50");
         $stmt->execute(['q' => "%$q%"]);
         $users = $stmt->fetchAll();
     }
@@ -81,7 +81,14 @@ function linkify_handles($content) {
         <h3>ユーザー</h3>
         <ul>
         <?php foreach($users as $u): ?>
-          <li><a href="/profile.php?handle=<?=$u['handle']?>">@<?=$u['handle']?></a></li>
+          <li>
+            <a href="/profile.php?handle=<?=$u['handle']?>">
+              @<?=$u['handle']?>
+              <?php if (!empty($u['display_name'])): ?>
+                (<?=htmlspecialchars($u['display_name'])?>)
+              <?php endif; ?>
+            </a>
+          </li>
         <?php endforeach; ?>
         </ul>
       <?php endif; ?>

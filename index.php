@@ -111,7 +111,7 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
 </form>
   <div class="user">
     <?php if ($me): ?>
-      <span>@<?=htmlspecialchars($me['handle'])?></span>
+      <a href="/profile.php?handle=<?=htmlspecialchars($me['handle'])?>" style="text-decoration: none; color: inherit;">@<?=htmlspecialchars($me['handle'])?></a>
       <button id="notificationBtn">
   🔔 <span id="notification-badge" class="badge"></span>
 </button>
@@ -196,27 +196,6 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
     <div id="feed" data-feed="global"></div>
     <div id="loading">読み込み中...</div>
   </section>
-  <aside class="right">
-    <div class="card">
-      <h3>プロフィール</h3>
-      <?php if ($me): ?>
-      <h2>@<?=$me['handle']?></h2>
-
-      <button id="follow-btn" data-user-id="<?=$me['id']?>">フォローする</button>
-      <div>ユーザーハッシュ: <button id="revealHash">表示</button> <code id="userHash" class="hidden"></code></div>
-      <div>コイン: <span id="coins"><?=$me['coins']?></span> / クリスタル: <span id="crystals"><?=$me['crystals']?></span></div>
-      <div class="row"><input id="newPass" type="password" placeholder="新パスワード"><button id="changePass">変更</button></div>
-      <div class="row"><input id="inviteHandle" placeholder="招待者のハンドル（登録時のみ有効）" disabled></div>
-      <?php else: ?>
-      <p>ログインすると詳細が表示されます。</p>
-      <?php endif; ?>
-    </div>
-    <div class="card">
-      <h3>トレンド</h3>
-      <div id="trends"></div>
-    </div>
-</aside>
-
 </main>
 
 <!-- Auth Modal -->
