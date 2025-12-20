@@ -180,7 +180,22 @@ qs('#submitPost')?.addEventListener('click', async () => {
     fd.append('action', 'create_post');
     fd.append('content', qs('#postText').value);
     fd.append('nsfw', qs('#nsfw').checked ? '1' : '0');
-    if (qs('#media').files[0]) fd.append('media', qs('#media').files[0]);
+    
+    // 複数画像対応（最大4枚）
+    const mediaInput = qs('#media');
+    if (mediaInput && mediaInput.files.length > 0) {
+        const files = Array.from(mediaInput.files).slice(0, 4); // 最大4枚
+        if (files.length === 1) {
+            // 単一画像の場合は従来通り
+            fd.append('media', files[0]);
+        } else {
+            // 複数画像の場合
+            files.forEach((file, index) => {
+                fd.append(`media_${index}`, file);
+            });
+        }
+    }
+    
     const r = await fetch('post.php', { method: 'POST', body: fd, credentials: 'include' }).then(r => r.json());
     if (r.ok) { qs('#postText').value = ''; qs('#media').value = null; refreshFeed(true); } else alert('投稿失敗: ' + r.error);
 });
@@ -383,19 +398,62 @@ if (p.vip_level && p.vip_level > 0) {
     }
 
     // -------------------------
-    // メディア表示
+    // メディア表示（複数画像対応）
     // -------------------------
-    if (!p.deleted && p.media_path) {
-        const mediaWrapper = ce('div', 'media');
-        let mediaEl;
-        const ext = p.media_path.split('.').pop().toLowerCase();
-        const mediaSrc = window.location.origin + '/' + p.media_path;
+    if (!p.deleted && (p.media_paths || p.media_path)) {
+        const mediaWrapper = ce('div', 'media-wrapper');
+        
+        // 複数画像がある場合
+        if (p.media_paths && Array.isArray(p.media_paths) && p.media_paths.length > 0) {
+            const mediaGrid = ce('div', 'media-grid');
+            mediaGrid.classList.add(`media-count-${Math.min(p.media_paths.length, 4)}`);
+            
+            p.media_paths.forEach((mediaPath, index) => {
+                const mediaContainer = ce('div', 'media-item');
+                const ext = mediaPath.split('.').pop().toLowerCase();
+                const mediaSrc = window.location.origin + '/' + mediaPath;
+                
+                let mediaEl;
+                if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
+                    mediaEl = ce('img');
+                    mediaEl.loading = 'lazy';
+                } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+                    mediaEl = ce('video');
+                    mediaEl.controls = true;
+                }
+                
+                if (mediaEl) {
+                    mediaEl.src = mediaSrc;
+                    mediaContainer.append(mediaEl);
+                    mediaGrid.append(mediaContainer);
+                }
+            });
+            
+            mediaWrapper.append(mediaGrid);
+            body.append(mediaWrapper);
+        } 
+        // 単一画像の場合（後方互換性）
+        else if (p.media_path) {
+            const mediaContainer = ce('div', 'media');
+            let mediaEl;
+            const ext = p.media_path.split('.').pop().toLowerCase();
+            const mediaSrc = window.location.origin + '/' + p.media_path;
 
-        if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) mediaEl = ce('img');
-        else if (['mp4', 'webm', 'ogg'].includes(ext)) mediaEl = ce('video'), mediaEl.controls = true;
-        if (mediaEl) mediaEl.src = mediaSrc, mediaWrapper.append(mediaEl);
+            if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
+                mediaEl = ce('img');
+            } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+                mediaEl = ce('video');
+                mediaEl.controls = true;
+            }
+            
+            if (mediaEl) {
+                mediaEl.src = mediaSrc;
+                mediaContainer.append(mediaEl);
+            }
 
-        body.append(mediaWrapper);
+            mediaWrapper.append(mediaContainer);
+            body.append(mediaWrapper);
+        }
     }
 
     // -------------------------
@@ -411,11 +469,14 @@ if (p.vip_level && p.vip_level > 0) {
     // -------------------------
     // NSFW メディアぼかし
     // -------------------------
-    if (!p.deleted && p.nsfw && typeof mediaWrapper !== 'undefined') {
-        mediaWrapper.style.filter = 'blur(var(--nsfw-blur))';
-        mediaWrapper.style.cursor = 'pointer';
-        mediaWrapper.title = 'NSFW: クリックで表示';
-        mediaWrapper.addEventListener('click', () => { mediaWrapper.style.filter = ''; });
+    if (!p.deleted && p.nsfw) {
+        const mediaWrapper = body.querySelector('.media-wrapper');
+        if (mediaWrapper) {
+            mediaWrapper.style.filter = 'blur(var(--nsfw-blur))';
+            mediaWrapper.style.cursor = 'pointer';
+            mediaWrapper.title = 'NSFW: クリックで表示';
+            mediaWrapper.addEventListener('click', () => { mediaWrapper.style.filter = ''; });
+        }
     }
 
     // -------------------------

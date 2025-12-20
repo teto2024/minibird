@@ -324,6 +324,61 @@ input[type="file"]:hover {
     display: block
 }
 
+/* 複数画像グリッドレイアウト */
+.media-wrapper {
+    margin-top: 8px;
+}
+
+.media-grid {
+    display: grid;
+    gap: 4px;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* 1枚の場合 */
+.media-grid.media-count-1 {
+    grid-template-columns: 1fr;
+}
+
+/* 2枚の場合 */
+.media-grid.media-count-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* 3枚の場合 */
+.media-grid.media-count-3 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.media-grid.media-count-3 .media-item:first-child {
+    grid-column: 1 / -1;
+}
+
+/* 4枚の場合 */
+.media-grid.media-count-4 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.media-item {
+    position: relative;
+    overflow: hidden;
+    background: var(--border);
+    aspect-ratio: 16 / 9;
+}
+
+.media-item img,
+.media-item video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.media-item video {
+    aspect-ratio: auto;
+}
+
 .nsfw .media {
     filter: blur(var(--nsfw-blur));
     cursor: pointer;
