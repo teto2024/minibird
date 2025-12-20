@@ -98,7 +98,6 @@ $stmt = $pdo->prepare("SELECT id FROM quest_completions WHERE user_id = ? AND co
 $stmt->execute([$me['id'], $completion_key]);
 $relay_reward_claimed = (bool)$stmt->fetch();
 ?>
-?>
 <!doctype html>
 <html lang="ja">
 <head>
