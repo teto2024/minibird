@@ -151,10 +151,15 @@ if ($action === 'delete_post') {
     if ($post_id <= 0) { echo json_encode(['ok'=>false,'error'=>'bad_input']); exit; }
 
     $pdo = db();
-    $st = $pdo->prepare("SELECT user_id, deleted_at FROM posts WHERE id = ?");
+    $st = $pdo->prepare("SELECT user_id, is_deleted, deleted_at FROM posts WHERE id = ?");
     $st->execute([$post_id]);
     $post = $st->fetch(PDO::FETCH_ASSOC);
     if (!$post) { echo json_encode(['ok'=>false,'error'=>'not_found']); exit; }
+    
+    if ($post['is_deleted'] || $post['deleted_at']) {
+        echo json_encode(['ok'=>false,'error'=>'already_deleted']);
+        exit;
+    }
 
     $st2 = $pdo->prepare("SELECT role FROM users WHERE id = ?");
     $st2->execute([$uid]);
@@ -166,7 +171,7 @@ if ($action === 'delete_post') {
     if (!$is_owner && !$is_mod_or_admin) { echo json_encode(['ok'=>false,'error'=>'forbidden']); exit; }
 
     $deleted_by_mod = $is_mod_or_admin && !$is_owner ? 1 : 0;
-    $pdo->prepare("UPDATE posts SET deleted_at = NOW(), deleted_by_mod = ? WHERE id = ?")
+    $pdo->prepare("UPDATE posts SET is_deleted = TRUE, deleted_at = NOW(), deleted_by_mod = ? WHERE id = ?")
         ->execute([$deleted_by_mod, $post_id]);
 
     echo json_encode(['ok'=>true, 'deleted_by_mod'=>$deleted_by_mod]);

@@ -148,6 +148,32 @@ try {
                 }
             }
             
+            // メンション通知の処理
+            if (preg_match_all('/@([a-zA-Z0-9_]+)/', $content, $matches)) {
+                $mentioned_handles = array_unique($matches[1]);
+                foreach ($mentioned_handles as $handle) {
+                    // メンションされたユーザーのIDを取得
+                    $stmt = $pdo->prepare("SELECT id FROM users WHERE handle = ?");
+                    $stmt->execute([$handle]);
+                    $mentioned_user_id = $stmt->fetchColumn();
+                    
+                    // 自分自身へのメンション、存在しないユーザーは除外
+                    if ($mentioned_user_id && $mentioned_user_id != $user_id) {
+                        // コミュニティメンバーかどうか確認
+                        $stmt = $pdo->prepare("SELECT 1 FROM community_members WHERE community_id=? AND user_id=?");
+                        $stmt->execute([$community_id, $mentioned_user_id]);
+                        if ($stmt->fetch()) {
+                            // 通知を送る
+                            $stmt = $pdo->prepare("
+                                INSERT INTO notifications (user_id, type, from_user_id, post_id, created_at)
+                                VALUES (?, 'community_mention', ?, ?, NOW())
+                            ");
+                            $stmt->execute([$mentioned_user_id, $user_id, $post_id]);
+                        }
+                    }
+                }
+            }
+            
             // クエスト進行チェック（投稿アクション）
             include_once __DIR__ . '/quest_progress.php';
             check_quest_progress($user_id, 'post', 1);
@@ -285,7 +311,7 @@ try {
             break;
 
         // ===============================================
-        // 投稿削除
+        // 投稿削除（ソフトデリート）
         // ===============================================
         case 'delete_post':
             $post_id = intval($_POST['post_id'] ?? 0);
@@ -295,7 +321,7 @@ try {
             }
             
             // 投稿の所有者チェック
-            $stmt = $pdo->prepare("SELECT user_id, media_path FROM community_posts WHERE id=?");
+            $stmt = $pdo->prepare("SELECT user_id, is_deleted FROM community_posts WHERE id=?");
             $stmt->execute([$post_id]);
             $post = $stmt->fetch();
             
@@ -307,13 +333,12 @@ try {
                 throw new Exception('Not authorized to delete this post');
             }
             
-            // メディアファイル削除
-            if ($post['media_path'] && file_exists(__DIR__ . '/' . $post['media_path'])) {
-                unlink(__DIR__ . '/' . $post['media_path']);
+            if ($post['is_deleted']) {
+                throw new Exception('Post already deleted');
             }
             
-            // 投稿削除（カスケードで返信、いいねも削除される）
-            $stmt = $pdo->prepare("DELETE FROM community_posts WHERE id=?");
+            // 投稿を削除済みにマーク（ソフトデリート）
+            $stmt = $pdo->prepare("UPDATE community_posts SET is_deleted = TRUE, deleted_at = NOW() WHERE id=?");
             $stmt->execute([$post_id]);
             
             echo json_encode(['ok' => true, 'message' => 'Post deleted']);

@@ -282,10 +282,11 @@ function check_relay_quest_progress($user_id, $action, $count) {
             $status = ($new_progress >= $required) ? 'completed' : 'active';
             
             $stmt = $pdo->prepare("
-                INSERT INTO user_quest_progress (user_id, quest_id, progress, status, started_at)
-                VALUES (?, ?, ?, ?, NOW())
+                INSERT INTO user_quest_progress (user_id, quest_id, progress, status, started_at, completed_at)
+                VALUES (?, ?, ?, ?, NOW(), ?)
             ");
-            $stmt->execute([$user_id, $quest['id'], $new_progress, $status]);
+            $completed_at = ($status === 'completed') ? date('Y-m-d H:i:s') : null;
+            $stmt->execute([$user_id, $quest['id'], $new_progress, $status, $completed_at]);
             
             if ($status === 'completed') {
                 grant_quest_reward($user_id, $quest);
