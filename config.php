@@ -69,9 +69,6 @@ function create_mention_notifications($content, $actor_id, $post_id, $pdo) {
     }
     
     $mentioned_handles = array_unique($mentions[1]);
-    if (empty($mentioned_handles)) {
-        return;
-    }
     
     // バッチクエリで全てのメンションされたユーザーを取得
     $placeholders = implode(',', array_fill(0, count($mentioned_handles), '?'));
@@ -112,7 +109,7 @@ function markdown_to_html($md) {
         // ユーザーハンドルからIDへのマップを作成
         $handle_to_id = [];
         foreach ($users as $user) {
-            $handle_to_id[strtolower($user['handle'])] = $user['id'];
+            $handle_to_id[$user['handle']] = $user['id'];
         }
         
         // メンションをリンクに置換
@@ -120,9 +117,8 @@ function markdown_to_html($md) {
             MENTION_PATTERN,
             function($matches) use ($handle_to_id) {
                 $handle = $matches[1];
-                $handle_lower = strtolower($handle);
-                if (isset($handle_to_id[$handle_lower])) {
-                    $url = "profile.php?id=" . (int)$handle_to_id[$handle_lower];
+                if (isset($handle_to_id[$handle])) {
+                    $url = htmlspecialchars("profile.php?id=" . (int)$handle_to_id[$handle], ENT_QUOTES, 'UTF-8');
                     return '<a href="' . $url . '" class="mention">@' . htmlspecialchars($handle) . '</a>';
                 }
                 return '@' . htmlspecialchars($handle);
