@@ -139,6 +139,7 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
   <button class="tabBtn" data-tab="global" aria-selected="true">全体</button>
   <?php if ($me): ?>
     <button class="tabBtn" data-tab="following">フォロー中</button>
+    <button class="tabBtn" data-tab="boost">ブースト</button>
     <button class="tabBtn" data-tab="bookmarks">ブックマーク</button>
     <!--
     <button class="tabBtn" data-tab="communities">コミュニティ</button>
@@ -157,6 +158,7 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
     <a href="extended_shop.php" class="tabBtn block">パッケージショップ</a>
     <a href="quests.php" class="tabBtn block">クエスト</a>
     <a href="vip_shop.php" class="tabBtn block">VIPショップ</a>
+    <a href="how_to.php" class="tabBtn block">使い方</a>
     <a href="admin.php" class="tabBtn block">管理者/MOD用</a>
     <a href="admin_password_reset.php" class="tabBtn block">管理者用</a>
     <a href="frame_admin.php" class="tabBtn block">管理者用2</a>
@@ -188,6 +190,7 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
       <button class="feedTab" data-feed="recommended">おすすめ</button>
       <button class="feedTab active" data-feed="global">全体</button>
       <?php if ($me): ?><button class="feedTab" data-feed="following">フォロー中</button><?php endif; ?>
+      <?php if ($me): ?><button class="feedTab" data-feed="boost">ブースト</button><?php endif; ?>
     </div>
 
     <div id="feed" data-feed="global"></div>

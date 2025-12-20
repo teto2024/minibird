@@ -105,6 +105,7 @@ function serialize_post($row, $uid, $pdo){
         'like_count'=> (int)($row['like_count'] ?? 0),
         'repost_count'=> (int)($row['repost_count'] ?? 0),
         'reply_count'=> (int)($row['reply_count'] ?? 0),
+        'boost_count'=> (int)($row['boost_count'] ?? 0),
         'liked'=> !empty($row['liked']),
         'reposted'=> !empty($row['reposted']),
         'is_repost_of'=> !empty($row['is_repost_of']) ? (int)$row['is_repost_of'] : null,
@@ -147,6 +148,52 @@ function fetch_feed($sql, $params, $uid, $pdo, $me, $limit){
 if($action === 'fetch' || $action === 'fetch_more'){
     $feed = $input['feed'] ?? ($_GET['feed'] ?? 'global');
     $limit = max(1, min(100, (int)($input['limit'] ?? ($_GET['limit'] ?? 50))));
+
+    // --- boost feed ---
+    if($feed === 'boost'){
+        $sql = "SELECT p.*, u.handle, u.display_name, u.icon, u.vip_level, p.deleted_at, p.deleted_by_mod,
+                  (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
+                  (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
+                  (SELECT COUNT(*) FROM replies rp WHERE rp.post_id=p.id) AS reply_count,
+                  ".($uid?"EXISTS(SELECT 1 FROM likes l2 WHERE l2.post_id=p.id AND l2.user_id=$uid)":"0")." AS liked,
+                  ".($uid?"EXISTS(SELECT 1 FROM reposts r2 WHERE r2.post_id=p.id AND r2.user_id=$uid)":"0")." AS reposted,
+                  (SELECT COUNT(*) FROM post_boosts pb WHERE pb.post_id=p.id AND pb.expires_at > NOW()) AS boost_count,
+                  ou.id AS original_id,
+                  ou.handle AS original_handle,
+                  ou.display_name AS original_display_name,
+                  ou.icon AS original_icon,
+                  ou.vip_level AS original_vip,
+                  f_orig.css_token AS original_frame_class,
+                  ru.id AS reposter_id,
+                  ru.handle AS reposter_handle,
+                  ru.display_name AS reposter_display_name,
+                  ru.icon AS reposter_icon,
+                  f.css_token AS frame_class,
+                  tp.title_text, tp.title_css
+                FROM posts p
+                JOIN users u ON u.id = p.user_id
+                INNER JOIN post_boosts pb ON pb.post_id = p.id AND pb.expires_at > NOW()
+                LEFT JOIN posts op ON op.id = p.is_repost_of
+                LEFT JOIN users ou ON ou.id = op.user_id
+                LEFT JOIN frames f_orig ON f_orig.id = (SELECT active_frame_id FROM users WHERE id=ou.id)
+                LEFT JOIN users ru ON ru.id = p.user_id
+                LEFT JOIN frames f ON f.id = (SELECT active_frame_id FROM users WHERE id=p.user_id)
+                LEFT JOIN user_titles ut ON ut.user_id = u.id AND ut.is_equipped = TRUE
+                LEFT JOIN title_packages tp ON tp.id = ut.title_id
+                WHERE p.deleted_at IS NULL
+                GROUP BY p.id
+                ORDER BY boost_count DESC, p.created_at DESC
+                LIMIT ?";
+        $items = fetch_feed($sql, [], $uid, $pdo, $me, $limit);
+        // Add boost_count to each item
+        foreach($items as &$item) {
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM post_boosts WHERE post_id = ? AND expires_at > NOW()");
+            $stmt->execute([$item['id']]);
+            $item['boost_count'] = (int)$stmt->fetchColumn();
+        }
+        echo json_encode(['ok'=>true,'items'=>$items]);
+        exit;
+    }
 
     // --- bookmarks ---
     if($feed === 'bookmarks'){
@@ -233,6 +280,7 @@ if($action === 'fetch' || $action === 'fetch_more'){
                     (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
                     (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
                     (SELECT COUNT(*) FROM replies rp WHERE rp.post_id=p.id) AS reply_count,
+                    (SELECT COUNT(*) FROM post_boosts pb WHERE pb.post_id=p.id AND pb.expires_at > NOW()) AS boost_count,
                     ".($uid?"EXISTS(SELECT 1 FROM likes l2 WHERE l2.post_id=p.id AND l2.user_id=$uid)":"0")." AS liked,
                     ".($uid?"EXISTS(SELECT 1 FROM reposts r2 WHERE r2.post_id=p.id AND r2.user_id=$uid)":"0")." AS reposted,
                     ou.id AS original_id,
@@ -289,6 +337,7 @@ if($action === 'fetch' || $action === 'fetch_more'){
                 (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
                 (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
                 (SELECT COUNT(*) FROM replies rp WHERE rp.post_id=p.id) AS reply_count,
+                (SELECT COUNT(*) FROM post_boosts pb WHERE pb.post_id=p.id AND pb.expires_at > NOW()) AS boost_count,
                 ".($uid?"EXISTS(SELECT 1 FROM likes l2 WHERE l2.post_id=p.id AND l2.user_id=$uid)":"0")." AS liked,
                 ".($uid?"EXISTS(SELECT 1 FROM reposts r2 WHERE r2.post_id=p.id AND r2.user_id=$uid)":"0")." AS reposted,
                 ou.id AS original_id,

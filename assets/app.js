@@ -1060,6 +1060,24 @@ function renderPost(p, wrap, prepend = false) {
     bm.textContent = '📑';
     bm.onclick = async () => { const r = await api('actions.php', { action: 'toggle_bookmark', post_id: p.id }); if (!r.ok) alert('ブックマーク失敗'); };
 
+    // ブーストボタン
+    const boost = ce('button', 'boost-btn');
+    boost.textContent = '🔥' + (p.boost_count || 0);
+    boost.onclick = async () => {
+        if (!confirm('この投稿をブーストしますか？（コイン200 + クリスタル20）')) return;
+        const r = await api('boost_api.php', { action: 'boost', post_id: p.id });
+        if (r.ok) { 
+            p.boost_count = r.boost_count; 
+            boost.textContent = '🔥' + (p.boost_count || 0);
+            // 通貨表示を更新
+            if (qs('#coins')) qs('#coins').textContent = r.remaining.coins;
+            if (qs('#crystals')) qs('#crystals').textContent = r.remaining.crystals;
+            alert('ブーストしました！');
+        } else {
+            alert('ブースト失敗: ' + (r.error || 'unknown'));
+        }
+    };
+
     const rep = ce('button');
     rep.textContent = '💬' + (p.reply_count || 0);
     rep.onclick = () => { window.location = 'replies.php?post_id=' + p.id; };
@@ -1080,7 +1098,7 @@ function renderPost(p, wrap, prepend = false) {
         };
     }
 
-    buttons.append(like, repost, bm, rep, qt);
+    buttons.append(like, repost, bm, boost, rep, qt);
     if (delBtn) buttons.append(delBtn);
     cnt.append(meta, body, buttons);
     post.append(av, cnt);
