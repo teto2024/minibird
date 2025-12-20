@@ -94,8 +94,8 @@ $is_owner = ($community['owner_id'] == $me['id']);
     color: #2d3748;
 }
 .post-form {
-    background: white;
-    border: 1px solid #e2e8f0;
+    background: var(--card);
+    border: 1px solid var(--border);
     border-radius: 8px;
     padding: 15px;
     margin-bottom: 20px;
@@ -104,7 +104,9 @@ $is_owner = ($community['owner_id'] == $me['id']);
     width: 100%;
     min-height: 80px;
     padding: 10px;
-    border: 1px solid #cbd5e0;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
     border-radius: 6px;
     resize: vertical;
     font-family: inherit;
@@ -112,64 +114,77 @@ $is_owner = ($community['owner_id'] == $me['id']);
 .post-form button {
     margin-top: 10px;
     padding: 8px 20px;
-    background: #667eea;
+    background: var(--blue);
     color: white;
     border: none;
     border-radius: 6px;
     cursor: pointer;
 }
 .community-post {
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
     padding: 15px;
     margin-bottom: 15px;
     position: relative;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+.community-post:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
 }
 /* フレームスタイルを適用可能にする */
 .community-post[class*="frame-"] {
-    background: transparent !important;
+    border: none !important;
 }
 .post-header {
     display: flex;
     align-items: center;
     gap: 10px;
     margin-bottom: 10px;
+    position: relative;
+    z-index: 1;
 }
 .post-author {
     font-weight: bold;
-    color: #2d3748;
+    color: var(--text);
 }
 .post-time {
-    color: #718096;
+    color: var(--muted);
     font-size: 13px;
 }
 .post-content {
     margin: 10px 0;
     line-height: 1.5;
+    color: var(--text);
+    position: relative;
+    z-index: 1;
 }
 .post-actions {
     display: flex;
     gap: 15px;
     margin-top: 10px;
     padding-top: 10px;
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid var(--border);
+    position: relative;
+    z-index: 1;
 }
 .post-action-btn {
     background: none;
     border: none;
-    color: #718096;
+    color: var(--muted);
     cursor: pointer;
     font-size: 14px;
     display: flex;
     align-items: center;
     gap: 5px;
+    transition: color 0.3s;
 }
 .post-action-btn:hover {
-    color: #667eea;
+    color: var(--blue);
 }
 .post-action-btn.liked {
-    color: #e53e3e;
+    color: var(--red);
 }
 .replies-section {
     margin-top: 15px;
@@ -231,7 +246,7 @@ $is_owner = ($community['owner_id'] == $me['id']);
 </style>
 </head>
 <body>
-<div class="container" style="max-width: 800px; margin: 0 auto; padding: 20px;">
+<div class="container" style="max-width: 800px; margin: 0 auto; padding: 20px; background: var(--bg); min-height: 100vh;">
     <div class="community-header">
         <h1><?= htmlspecialchars($community['name']) ?></h1>
         <p><?= htmlspecialchars($community['description']) ?></p>
@@ -243,6 +258,9 @@ $is_owner = ($community['owner_id'] == $me['id']);
         <?php if ($is_owner): ?>
         <button class="btn-primary" onclick="manageMembers()">メンバー管理</button>
         <button class="btn-primary" onclick="showEditCommunity()">コミュニティ編集</button>
+        <button class="btn-danger" onclick="deleteCommunity()" style="background: #e53e3e;">コミュニティ削除</button>
+        <?php else: ?>
+        <button class="btn-danger" onclick="leaveCommunity()" style="background: #f56565;">コミュニティ脱退</button>
         <?php endif; ?>
     </div>
     
@@ -501,6 +519,62 @@ loadPosts();
 
 // 3秒ごとに自動更新
 setInterval(loadPosts, 3000);
+
+// コミュニティ削除
+async function deleteCommunity() {
+    if (!confirm('本当にこのコミュニティを削除しますか？\nこの操作は取り消せません。')) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('action', 'delete_community');
+    formData.append('community_id', COMMUNITY_ID);
+    
+    try {
+        const res = await fetch('community_api.php', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            alert('コミュニティを削除しました');
+            location.href = 'communities.php';
+        } else {
+            alert('削除エラー: ' + data.error);
+        }
+    } catch (err) {
+        alert('ネットワークエラー');
+    }
+}
+
+// コミュニティ脱退
+async function leaveCommunity() {
+    if (!confirm('このコミュニティから脱退しますか？')) {
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('action', 'leave_community');
+    formData.append('community_id', COMMUNITY_ID);
+    
+    try {
+        const res = await fetch('community_api.php', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            alert('コミュニティから脱退しました');
+            location.href = 'communities.php';
+        } else {
+            alert('脱退エラー: ' + data.error);
+        }
+    } catch (err) {
+        alert('ネットワークエラー');
+    }
+}
 </script>
 </body>
 </html>
