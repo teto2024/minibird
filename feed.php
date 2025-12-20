@@ -76,6 +76,15 @@ function serialize_post($row, $uid, $pdo){
         }
     }
 
+    // 複数画像パスの処理
+    $media_paths = null;
+    if (!empty($row['media_paths'])) {
+        $decoded = json_decode($row['media_paths'], true);
+        if (is_array($decoded)) {
+            $media_paths = $decoded;
+        }
+    }
+
     return [
         'id'=> (int)($row['id'] ?? 0),
         'user_id'=> $is_repost ? (int)($row['original_id'] ?? 0) : (int)($row['user_id'] ?? 0),
@@ -92,6 +101,7 @@ function serialize_post($row, $uid, $pdo){
         'nsfw'=> (int)($row['nsfw'] ?? 0)===1,
         'media_path'=> $row['media_path'] ?? null,
         'media_type'=> $row['media_type'] ?? null,
+        'media_paths'=> $media_paths,
         'like_count'=> (int)($row['like_count'] ?? 0),
         'repost_count'=> (int)($row['repost_count'] ?? 0),
         'reply_count'=> (int)($row['reply_count'] ?? 0),

@@ -48,22 +48,48 @@ if ($_SERVER['REQUEST_METHOD']==='POST'){
     if (!$f){
         $msg='フレームが見つかりません';
     } else {
-        if ($f['css_token']==='frame-master' && ($me['focus_tier'] ?? 0) < 10){
-            $msg = '集中マスターはティア10以上のユーザーのみ購入可能です';
-        } elseif (
-            $me['coins'] >= $f['price_coins'] &&
-            $me['crystals'] >= $f['price_crystals'] &&
-            $me['diamonds'] >= $f['price_diamonds']
-        ){
-            $pdo->prepare("INSERT IGNORE INTO user_frames(user_id,frame_id) VALUES(?,?)")
-                ->execute([$me['id'],$frame_id]);
-            $pdo->prepare("UPDATE users SET coins=coins-?, crystals=crystals-?, diamonds=diamonds-? WHERE id=?")
-                ->execute([$f['price_coins'],$f['price_crystals'],$f['price_diamonds'],$me['id']]);
-            $pdo->prepare("INSERT INTO reward_events(user_id,kind,amount,meta) VALUES(?,?,?,JSON_OBJECT('frame_id',?))")
-                ->execute([$me['id'],'buy_frame',-$f['price_coins'],$frame_id]);
-            $msg='購入しました';
+        // 期間限定フレームのチェック
+        $now = new DateTime();
+        if ($f['is_limited']) {
+            if ($f['sale_start_date'] && new DateTime($f['sale_start_date']) > $now) {
+                $msg = 'このフレームはまだ販売開始されていません';
+            } elseif ($f['sale_end_date'] && new DateTime($f['sale_end_date']) < $now) {
+                $msg = 'このフレームの販売期間は終了しました';
+            } elseif ($f['css_token']==='frame-master' && ($me['focus_tier'] ?? 0) < 10){
+                $msg = '集中マスターはティア10以上のユーザーのみ購入可能です';
+            } elseif (
+                $me['coins'] >= $f['price_coins'] &&
+                $me['crystals'] >= $f['price_crystals'] &&
+                $me['diamonds'] >= $f['price_diamonds']
+            ){
+                $pdo->prepare("INSERT IGNORE INTO user_frames(user_id,frame_id) VALUES(?,?)")
+                    ->execute([$me['id'],$frame_id]);
+                $pdo->prepare("UPDATE users SET coins=coins-?, crystals=crystals-?, diamonds=diamonds-? WHERE id=?")
+                    ->execute([$f['price_coins'],$f['price_crystals'],$f['price_diamonds'],$me['id']]);
+                $pdo->prepare("INSERT INTO reward_events(user_id,kind,amount,meta) VALUES(?,?,?,JSON_OBJECT('frame_id',?))")
+                    ->execute([$me['id'],'buy_frame',-$f['price_coins'],$frame_id]);
+                $msg='購入しました';
+            } else {
+                $msg='残高不足';
+            }
         } else {
-            $msg='残高不足';
+            if ($f['css_token']==='frame-master' && ($me['focus_tier'] ?? 0) < 10){
+                $msg = '集中マスターはティア10以上のユーザーのみ購入可能です';
+            } elseif (
+                $me['coins'] >= $f['price_coins'] &&
+                $me['crystals'] >= $f['price_crystals'] &&
+                $me['diamonds'] >= $f['price_diamonds']
+            ){
+                $pdo->prepare("INSERT IGNORE INTO user_frames(user_id,frame_id) VALUES(?,?)")
+                    ->execute([$me['id'],$frame_id]);
+                $pdo->prepare("UPDATE users SET coins=coins-?, crystals=crystals-?, diamonds=diamonds-? WHERE id=?")
+                    ->execute([$f['price_coins'],$f['price_crystals'],$f['price_diamonds'],$me['id']]);
+                $pdo->prepare("INSERT INTO reward_events(user_id,kind,amount,meta) VALUES(?,?,?,JSON_OBJECT('frame_id',?))")
+                    ->execute([$me['id'],'buy_frame',-$f['price_coins'],$frame_id]);
+                $msg='購入しました';
+            } else {
+                $msg='残高不足';
+            }
         }
     }
   } elseif ($act==='equip'){
@@ -83,8 +109,10 @@ if ($_SERVER['REQUEST_METHOD']==='POST'){
 
 $frames = $pdo->query("
     SELECT f.*,
-           (SELECT 1 FROM user_frames uf WHERE uf.user_id={$me['id']} AND uf.frame_id=f.id) owned
+           (SELECT 1 FROM user_frames uf WHERE uf.user_id={$me['id']} AND uf.frame_id=f.id) owned,
+           u.handle as designer_handle
     FROM frames f
+    LEFT JOIN users u ON f.designed_by_user_id = u.id
     ORDER BY id
 ")->fetchAll();
 
@@ -303,6 +331,11 @@ $active = (int)($me['active_frame_id'] ?? 0);
     <div class="shop-header">
         <h1>🛍️ フレームショップ</h1>
         <p style="margin: 10px 0; opacity: 0.9;">投稿を彩る華やかなフレームをゲットしよう！</p>
+        <p style="margin: 10px 0;">
+            <a href="frame_submit.php" style="color: white; text-decoration: underline; font-weight: bold;">
+                🎨 あなたのフレームデザインを提出する
+            </a>
+        </p>
         <div class="balance-display">
             <div class="balance-item">
                 <span>🪙</span>
@@ -337,6 +370,28 @@ $active = (int)($me['active_frame_id'] ?? 0);
             <div class="frame-preview <?= $f['css_token'] ?>">
                 <div class="frame-name"><?= htmlspecialchars($f['name']) ?></div>
                 <p style="margin: 0; color: #718096;">フレームプレビュー</p>
+                
+                <?php if($f['is_limited']): ?>
+                    <?php
+                    $now = new DateTime();
+                    $sale_end = $f['sale_end_date'] ? new DateTime($f['sale_end_date']) : null;
+                    $days_remaining = $sale_end ? (int)$now->diff($sale_end)->format('%a') : 0;
+                    ?>
+                    <div style="margin-top: 10px; padding: 8px 12px; background: #fef3c7; color: #92400e; border-radius: 8px; font-size: 13px; font-weight: bold;">
+                        ⏰ 期間限定
+                        <?php if($sale_end && $sale_end > $now): ?>
+                            （あと<?= $days_remaining ?>日）
+                        <?php elseif($sale_end && $sale_end < $now): ?>
+                            （販売終了）
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+                
+                <?php if($f['is_user_designed'] && $f['designer_handle']): ?>
+                    <div style="margin-top: 10px; padding: 8px 12px; background: #dbeafe; color: #1e40af; border-radius: 8px; font-size: 13px; font-weight: bold;">
+                        👤 ユーザー考案 by @<?= htmlspecialchars($f['designer_handle']) ?>
+                    </div>
+                <?php endif; ?>
             </div>
 
             <?php if($f['css_token'] === 'frame-master' && ($me['focus_tier'] ?? 0) < 10): ?>
@@ -381,16 +436,39 @@ $active = (int)($me['active_frame_id'] ?? 0);
                     <form method="post" style="width: 100%;">
                         <input type="hidden" name="frame_id" value="<?= $f['id'] ?>">
                         <input type="hidden" name="act" value="buy">
+                        <?php
+                        $canBuy = true;
+                        $disableReason = '';
+                        
+                        // 残高チェック
+                        if ($me['coins'] < $f['price_coins'] ||
+                            $me['crystals'] < $f['price_crystals'] ||
+                            $me['diamonds'] < $f['price_diamonds']) {
+                            $canBuy = false;
+                            $disableReason = '残高不足';
+                        }
+                        
+                        // 集中マスター特別条件
+                        if ($f['css_token'] === 'frame-master' && ($me['focus_tier'] ?? 0) < 10) {
+                            $canBuy = false;
+                            $disableReason = 'ティア10以上が必要';
+                        }
+                        
+                        // 期間限定チェック
+                        if ($f['is_limited']) {
+                            $now = new DateTime();
+                            if ($f['sale_start_date'] && new DateTime($f['sale_start_date']) > $now) {
+                                $canBuy = false;
+                                $disableReason = 'まだ販売開始されていません';
+                            } elseif ($f['sale_end_date'] && new DateTime($f['sale_end_date']) < $now) {
+                                $canBuy = false;
+                                $disableReason = '販売期間終了';
+                            }
+                        }
+                        ?>
                         <button type="submit" class="btn-buy"
-                            <?php if(
-                                $me['coins'] < $f['price_coins'] ||
-                                $me['crystals'] < $f['price_crystals'] ||
-                                $me['diamonds'] < $f['price_diamonds']
-                            ): ?>
-                                disabled title="残高不足"
-                            <?php endif; ?>
-                            <?php if($f['css_token'] === 'frame-master' && ($me['focus_tier'] ?? 0) < 10): ?>
-                                disabled title="ティア10以上が必要"
+                            <?php if(!$canBuy): ?>
+                                disabled title="<?= htmlspecialchars($disableReason) ?>"
                             <?php endif; ?>>
                             🛒 購入する
                         </button>

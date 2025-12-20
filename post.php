@@ -35,7 +35,20 @@ try {
         $content = trim($_POST['content'] ?? '');
         $nsfw = ($_POST['nsfw'] ?? '0') === '1' ? 1 : 0;
 
-        if ($content === '' && empty($_FILES['media']['name'])) {
+        // 複数画像の確認（media[]またはmedia[0], media[1]...）
+        $hasMedia = false;
+        if (!empty($_FILES['media']['name'])) {
+            // 単一画像の場合
+            if (is_string($_FILES['media']['name'])) {
+                $hasMedia = true;
+            }
+        }
+        if (!empty($_FILES['media_0']['name']) || !empty($_FILES['media_1']['name']) || 
+            !empty($_FILES['media_2']['name']) || !empty($_FILES['media_3']['name'])) {
+            $hasMedia = true;
+        }
+
+        if ($content === '' && !$hasMedia) {
             echo json_encode(['ok'=>false,'error'=>'empty']); exit;
         }
         if (!pass_banned($content)) { echo json_encode(['ok'=>false,'error'=>'banned_word']); exit; }
@@ -80,8 +93,13 @@ try {
             $content .= " ".$face_str;
         }
 
-        $media_path = null; $media_type = null;
-        if (!empty($_FILES['media']['name'])) {
+        // 複数画像アップロード対応（最大4枚）
+        $media_path = null; 
+        $media_type = null;
+        $media_paths = [];
+
+        // 単一画像の場合（後方互換性）
+        if (!empty($_FILES['media']['name']) && is_string($_FILES['media']['name'])) {
             $size = $_FILES['media']['size'] ?? 0;
             if ($size > $GLOBALS['MAX_UPLOAD_BYTES']) { echo json_encode(['ok'=>false,'error'=>'file_too_large']); exit; }
             $ext = strtolower(pathinfo($_FILES['media']['name'], PATHINFO_EXTENSION));
@@ -92,11 +110,47 @@ try {
             $dest = $dir.'/'.$safe;
             if (!move_uploaded_file($_FILES['media']['tmp_name'], $dest)) { echo json_encode(['ok'=>false,'error'=>'upload_failed']); exit; }
             $media_path = 'uploads/'.$safe;
+            $media_paths[] = $media_path;
         }
 
+        // 複数画像の場合（media_0, media_1, media_2, media_3）
+        for ($i = 0; $i < 4; $i++) {
+            $key = 'media_' . $i;
+            if (!empty($_FILES[$key]['name'])) {
+                $size = $_FILES[$key]['size'] ?? 0;
+                if ($size > $GLOBALS['MAX_UPLOAD_BYTES']) { 
+                    echo json_encode(['ok'=>false,'error'=>'file_too_large', 'file'=>$i]); exit; 
+                }
+                $ext = strtolower(pathinfo($_FILES[$key]['name'], PATHINFO_EXTENSION));
+                $type = in_array($ext, ['mp4','webm']) ? 'video' : 'image';
+                
+                // 最初のメディアタイプを記録
+                if ($media_type === null) {
+                    $media_type = $type;
+                }
+                
+                $safe = bin2hex(random_bytes(12)).'.'.$ext;
+                $dir = __DIR__ . '/uploads';
+                if (!is_dir($dir)) mkdir($dir, 0775, true);
+                $dest = $dir.'/'.$safe;
+                if (!move_uploaded_file($_FILES[$key]['tmp_name'], $dest)) { 
+                    echo json_encode(['ok'=>false,'error'=>'upload_failed', 'file'=>$i]); exit; 
+                }
+                $path = 'uploads/'.$safe;
+                $media_paths[] = $path;
+                
+                // 最初の画像を media_path にも設定（後方互換性）
+                if ($media_path === null) {
+                    $media_path = $path;
+                }
+            }
+        }
+
+        $media_paths_json = !empty($media_paths) ? json_encode($media_paths) : null;
+
         $html = markdown_to_html($content);
-        $pdo->prepare("INSERT INTO posts(user_id,content_md,content_html,nsfw,media_path,media_type,created_at) VALUES(?,?,?,?,?,?,NOW())")
-            ->execute([$_SESSION['uid'],$content,$html,$nsfw,$media_path,$media_type]);
+        $pdo->prepare("INSERT INTO posts(user_id,content_md,content_html,nsfw,media_path,media_type,media_paths,created_at) VALUES(?,?,?,?,?,?,?,NOW())")
+            ->execute([$_SESSION['uid'],$content,$html,$nsfw,$media_path,$media_type,$media_paths_json]);
         $post_id = $pdo->lastInsertId();
 
         // random coin reward
