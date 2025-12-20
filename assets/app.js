@@ -171,6 +171,35 @@ qs('#submitPost')?.addEventListener('click', async () => {
     if (r.ok) { qs('#postText').value = ''; qs('#media').value = null; refreshFeed(true); } else alert('投稿失敗: ' + r.error);
 });
 
+// キーボードショートカット: Shift+Enter で改行、Ctrl+Enter でポスト（PC のみ）
+qs('#postText')?.addEventListener('keydown', (e) => {
+    // Shift+Enter: デフォルト動作（改行）を許可
+    if (e.key === 'Enter' && e.shiftKey) {
+        // デフォルトの改行動作を許可（何もしない）
+        return;
+    }
+    
+    // Ctrl+Enter または Cmd+Enter: ポスト送信（PC のみ）
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        // モバイルデバイスでは無効化
+        if (window.innerWidth > 768) {
+            qs('#submitPost')?.click();
+        }
+        return;
+    }
+    
+    // Enter のみ: デフォルト動作（モバイルでは改行、PCでは何もしない）
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        // モバイルではデフォルトの改行を許可
+        if (window.innerWidth <= 768) {
+            return;
+        }
+        // PCでは Enter のみの場合は何もしない（投稿しない）
+        e.preventDefault();
+    }
+});
+
 // ---------------------
 // Feed switching
 // ---------------------

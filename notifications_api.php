@@ -20,14 +20,17 @@ try {
     $since_id = isset($_GET['since_id']) ? (int)$_GET['since_id'] : 0;
     $limit = min(isset($_GET['limit']) ? (int)$_GET['limit'] : 20, 50);
 
-    // 通知取得SQL（handleも取得）
+    // 通知取得SQL（handleも取得、from_user_idも対応）
     $sql = "
         SELECT n.id, n.type, n.post_id, n.created_at, n.is_read,
-               a.id AS actor_id, a.display_name AS actor_name, a.handle AS actor_handle, a.icon AS actor_icon,
-               p.id AS post_id, p.content_md AS post_text
+               COALESCE(n.from_user_id, n.actor_id) AS actor_id_resolved,
+               a.display_name AS actor_name, a.handle AS actor_handle, a.icon AS actor_icon,
+               p.id AS post_id, p.content_md AS post_text,
+               cp.id AS community_post_id, cp.content AS community_post_text
         FROM notifications n
-        JOIN users a ON n.actor_id = a.id
+        LEFT JOIN users a ON COALESCE(n.from_user_id, n.actor_id) = a.id
         LEFT JOIN posts p ON n.post_id = p.id
+        LEFT JOIN community_posts cp ON n.post_id = cp.id
         WHERE n.user_id = ?
     ";
     $params = [$user_id];
@@ -57,20 +60,26 @@ try {
             case 'repost': $message = "{$displayName} さんがあなたの投稿をリポストしました"; break;
             case 'quote':  $message = "{$displayName} さんがあなたの投稿を引用リポストしました"; break;
             case 'follow': $message = "{$displayName} さんがあなたをフォローしました"; break;
+            case 'community_like': $message = "{$displayName} さんがあなたのコミュニティ投稿にいいねしました"; break;
+            case 'community_reply': $message = "{$displayName} さんがあなたのコミュニティ投稿にリプライしました"; break;
             default:       $message = "";
         }
+        
+        // 投稿テキストの決定（通常投稿 or コミュニティ投稿）
+        $post_text = $r['post_text'] ?: ($r['community_post_text'] ?: null);
+        $actual_post_id = $r['post_id'] ?: ($r['community_post_id'] ?: null);
 
         $result[] = [
             "id" => (int)$r['id'],
             "type" => $r['type'],
             "actor" => [
-                "id" => (int)$r['actor_id'],
+                "id" => (int)$r['actor_id_resolved'],
                 "display_name" => $r['actor_name'] ?: $r['actor_handle'],
                 "icon" => $r['actor_icon'] ?: '/default_icon.png'
             ],
-            "post" => $r['post_id'] ? [
-                "id" => (int)$r['post_id'],
-                "text" => $r['post_text']
+            "post" => $actual_post_id ? [
+                "id" => (int)$actual_post_id,
+                "text" => $post_text
             ] : null,
             "created_at" => $r['created_at'],
             "is_read" => (int)$r['is_read'],

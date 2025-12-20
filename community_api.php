@@ -133,6 +133,21 @@ try {
             $stmt->execute([$community_id, $user_id, $content, $media_path, $is_nsfw, $parent_id]);
             $post_id = $pdo->lastInsertId();
             
+            // リプライの場合、元投稿の投稿者に通知を送る（自分へのリプライは除外）
+            if ($parent_id) {
+                $stmt = $pdo->prepare("SELECT user_id FROM community_posts WHERE id=?");
+                $stmt->execute([$parent_id]);
+                $parent_user_id = $stmt->fetchColumn();
+                
+                if ($parent_user_id && $parent_user_id != $user_id) {
+                    $stmt = $pdo->prepare("
+                        INSERT INTO notifications (user_id, type, from_user_id, post_id, created_at)
+                        VALUES (?, 'community_reply', ?, ?, NOW())
+                    ");
+                    $stmt->execute([$parent_user_id, $user_id, $post_id]);
+                }
+            }
+            
             // クエスト進行チェック（投稿アクション）
             include_once __DIR__ . '/quest_progress.php';
             check_quest_progress($user_id, 'post', 1);
@@ -184,6 +199,20 @@ try {
                 $stmt = $pdo->prepare("INSERT INTO community_post_likes (post_id, user_id, created_at) VALUES (?, ?, NOW())");
                 $stmt->execute([$post_id, $user_id]);
                 $action_taken = 'liked';
+                
+                // 投稿者に通知を送る（自分へのいいねは除外）
+                $stmt = $pdo->prepare("SELECT user_id, community_id FROM community_posts WHERE id=?");
+                $stmt->execute([$post_id]);
+                $post_info = $stmt->fetch();
+                
+                if ($post_info && $post_info['user_id'] != $user_id) {
+                    // 通知テーブルに追加
+                    $stmt = $pdo->prepare("
+                        INSERT INTO notifications (user_id, type, from_user_id, post_id, created_at)
+                        VALUES (?, 'community_like', ?, ?, NOW())
+                    ");
+                    $stmt->execute([$post_info['user_id'], $user_id, $post_id]);
+                }
                 
                 // クエスト進行チェック（いいねアクション）
                 include_once __DIR__ . '/quest_progress.php';
@@ -328,6 +357,81 @@ try {
             $stmt->execute([$name, $description, $community_id]);
             
             echo json_encode(['ok' => true, 'message' => 'Community updated']);
+            break;
+
+        // ===============================================
+        // コミュニティ削除（オーナーのみ）
+        // ===============================================
+        case 'delete_community':
+            $community_id = intval($_POST['community_id'] ?? 0);
+            
+            if (!$community_id) {
+                throw new Exception('Community ID required');
+            }
+            
+            // オーナーチェック
+            $stmt = $pdo->prepare("SELECT owner_id FROM communities WHERE id=?");
+            $stmt->execute([$community_id]);
+            $community = $stmt->fetch();
+            
+            if (!$community) {
+                throw new Exception('Community not found');
+            }
+            
+            if ($community['owner_id'] != $user_id) {
+                throw new Exception('Only owner can delete community');
+            }
+            
+            // コミュニティに属する投稿のメディアファイルを削除
+            $stmt = $pdo->prepare("SELECT media_path FROM community_posts WHERE community_id=? AND media_path IS NOT NULL");
+            $stmt->execute([$community_id]);
+            $media_files = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            foreach ($media_files as $media_path) {
+                if ($media_path && file_exists(__DIR__ . '/' . $media_path)) {
+                    unlink(__DIR__ . '/' . $media_path);
+                }
+            }
+            
+            // コミュニティ削除（カスケードで投稿、メンバー、いいねも削除される）
+            $stmt = $pdo->prepare("DELETE FROM communities WHERE id=?");
+            $stmt->execute([$community_id]);
+            
+            echo json_encode(['ok' => true, 'message' => 'Community deleted']);
+            break;
+
+        // ===============================================
+        // コミュニティ脱退
+        // ===============================================
+        case 'leave_community':
+            $community_id = intval($_POST['community_id'] ?? 0);
+            
+            if (!$community_id) {
+                throw new Exception('Community ID required');
+            }
+            
+            // オーナーチェック（オーナーは脱退できない）
+            $stmt = $pdo->prepare("SELECT owner_id FROM communities WHERE id=?");
+            $stmt->execute([$community_id]);
+            $community = $stmt->fetch();
+            
+            if (!$community) {
+                throw new Exception('Community not found');
+            }
+            
+            if ($community['owner_id'] == $user_id) {
+                throw new Exception('Owner cannot leave community. Please delete it instead.');
+            }
+            
+            // メンバーシップ削除
+            $stmt = $pdo->prepare("DELETE FROM community_members WHERE community_id=? AND user_id=?");
+            $stmt->execute([$community_id, $user_id]);
+            
+            if ($stmt->rowCount() === 0) {
+                throw new Exception('You are not a member of this community');
+            }
+            
+            echo json_encode(['ok' => true, 'message' => 'Left community']);
             break;
 
         default:
