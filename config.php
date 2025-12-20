@@ -58,6 +58,39 @@ function user() {
     return $st->fetch();
 }
 
+// ----- メンション関連の定数と関数 -----
+define('MENTION_PATTERN', '/@([a-zA-Z0-9_]+)/');
+
+// メンションを抽出して通知を作成する共通関数
+function create_mention_notifications($content, $actor_id, $post_id, $pdo) {
+    preg_match_all(MENTION_PATTERN, $content, $mentions);
+    if (empty($mentions[1])) {
+        return;
+    }
+    
+    $mentioned_handles = array_unique($mentions[1]);
+    if (empty($mentioned_handles)) {
+        return;
+    }
+    
+    // バッチクエリで全てのメンションされたユーザーを取得
+    $placeholders = implode(',', array_fill(0, count($mentioned_handles), '?'));
+    $stmt = $pdo->prepare("SELECT id, handle FROM users WHERE handle IN ($placeholders)");
+    $stmt->execute($mentioned_handles);
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // 通知を作成
+    foreach ($users as $user) {
+        if ($user['id'] != $actor_id) {
+            $stmt = $pdo->prepare("
+                INSERT INTO notifications (user_id, actor_id, type, post_id, created_at, is_read)
+                VALUES (?, ?, 'mention', ?, NOW(), 0)
+            ");
+            $stmt->execute([$user['id'], $actor_id, $post_id]);
+        }
+    }
+}
+
 // ----- マークダウン簡易変換 -----
 function markdown_to_html($md) {
     $safe = htmlspecialchars($md, ENT_QUOTES, 'UTF-8');
@@ -66,23 +99,37 @@ function markdown_to_html($md) {
     $safe = preg_replace('/`(.+?)`/s', '<code>$1</code>', $safe);
     $safe = preg_replace('/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/', '<a href="$2" target="_blank" rel="nofollow">$1</a>', $safe);
     
-    // メンションリンクの処理（@username）
-    $safe = preg_replace_callback(
-        '/@([a-zA-Z0-9_]+)/',
-        function($matches) {
-            $handle = $matches[1];
-            $pdo = db();
-            $stmt = $pdo->prepare("SELECT id FROM users WHERE handle=?");
-            $stmt->execute([$handle]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($user) {
-                $url = "profile.php?id=" . (int)$user['id'];
-                return '<a href="' . $url . '" class="mention">@' . htmlspecialchars($handle) . '</a>';
-            }
-            return '@' . htmlspecialchars($handle);
-        },
-        $safe
-    );
+    // メンションリンクの処理（@username）- バッチクエリで最適化
+    preg_match_all(MENTION_PATTERN, $safe, $mentions);
+    if (!empty($mentions[1])) {
+        $mentioned_handles = array_unique($mentions[1]);
+        $pdo = db();
+        $placeholders = implode(',', array_fill(0, count($mentioned_handles), '?'));
+        $stmt = $pdo->prepare("SELECT id, handle FROM users WHERE handle IN ($placeholders)");
+        $stmt->execute($mentioned_handles);
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // ユーザーハンドルからIDへのマップを作成
+        $handle_to_id = [];
+        foreach ($users as $user) {
+            $handle_to_id[strtolower($user['handle'])] = $user['id'];
+        }
+        
+        // メンションをリンクに置換
+        $safe = preg_replace_callback(
+            MENTION_PATTERN,
+            function($matches) use ($handle_to_id) {
+                $handle = $matches[1];
+                $handle_lower = strtolower($handle);
+                if (isset($handle_to_id[$handle_lower])) {
+                    $url = "profile.php?id=" . (int)$handle_to_id[$handle_lower];
+                    return '<a href="' . $url . '" class="mention">@' . htmlspecialchars($handle) . '</a>';
+                }
+                return '@' . htmlspecialchars($handle);
+            },
+            $safe
+        );
+    }
     
     $safe = nl2br($safe);
     return $safe;
