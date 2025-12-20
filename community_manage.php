@@ -8,11 +8,25 @@ require_once __DIR__ . '/config.php';
 $pdo = db();
 $user_id = $_SESSION['user_id'] ?? null;
 
-header('Content-Type: application/json; charset=utf-8');
+// Check if this is a JSON API request or HTML form submission
+// Check for XMLHttpRequest header or JSON content type
+$is_json_request = (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+                   || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) 
+                   || (isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false);
+
+if (!$is_json_request) {
+    // HTML form submission - no JSON header
+} else {
+    header('Content-Type: application/json; charset=utf-8');
+}
 
 if (!$user_id) {
-    http_response_code(403);
-    echo json_encode(['ok' => false, 'error' => 'Not logged in']);
+    if ($is_json_request) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'error' => 'Not logged in']);
+    } else {
+        header('Location: communities.php?msg=' . urlencode('ログインが必要です'));
+    }
     exit;
 }
 
@@ -50,11 +64,16 @@ try {
             ");
             $stmt->execute([$community_id, $user_id, $user_id]);
             
-            echo json_encode([
-                'ok' => true,
-                'community_id' => $community_id,
-                'message' => 'Community created'
-            ]);
+            // Redirect for HTML form, JSON response for API
+            if ($is_json_request) {
+                echo json_encode([
+                    'ok' => true,
+                    'community_id' => $community_id,
+                    'message' => 'Community created'
+                ]);
+            } else {
+                header('Location: communities.php?msg=' . urlencode('コミュニティを作成しました！'));
+            }
             break;
 
         // ===============================================
@@ -380,9 +399,13 @@ try {
     }
     
 } catch (Exception $e) {
-    http_response_code(400);
-    echo json_encode([
-        'ok' => false,
-        'error' => $e->getMessage()
-    ]);
+    if ($is_json_request) {
+        http_response_code(400);
+        echo json_encode([
+            'ok' => false,
+            'error' => $e->getMessage()
+        ]);
+    } else {
+        header('Location: communities.php?msg=' . urlencode('エラー: ' . $e->getMessage()));
+    }
 }

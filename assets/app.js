@@ -1,3 +1,6 @@
+// Mobile breakpoint constant
+const MOBILE_BREAKPOINT = 768;
+
 const state = {
     feed: 'null',
     posts: [],
@@ -128,6 +131,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Enterで投稿のチェックボックス状態をlocalStorageに保存
+    qs('#enterToPost')?.addEventListener('change', (e) => {
+        localStorage.setItem('enterToPost', e.target.checked ? 'true' : 'false');
+    });
+
+    // ページ読み込み時にlocalStorageから状態を復元
+    const savedEnterToPost = localStorage.getItem('enterToPost');
+    if (savedEnterToPost && qs('#enterToPost')) {
+        qs('#enterToPost').checked = savedEnterToPost === 'true';
+    }
+
 });
 
 
@@ -172,33 +186,46 @@ qs('#submitPost')?.addEventListener('click', async () => {
 });
 
 // キーボードショートカット: Shift+Enter で改行、Ctrl+Enter でポスト（PC のみ）
-qs('#postText')?.addEventListener('keydown', (e) => {
-    // Shift+Enter: デフォルト動作（改行）を許可
-    if (e.key === 'Enter' && e.shiftKey) {
-        // デフォルトの改行動作を許可（何もしない）
-        return;
-    }
-    
-    // Ctrl+Enter または Cmd+Enter: ポスト送信（PC のみ）
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        // モバイルデバイスでは無効化
-        if (window.innerWidth > 768) {
-            qs('#submitPost')?.click();
-        }
-        return;
-    }
-    
-    // Enter のみ: デフォルト動作（モバイルでは改行、PCでは何もしない）
-    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-        // モバイルではデフォルトの改行を許可
-        if (window.innerWidth <= 768) {
+// enterToPostCheckbox要素をキャッシュしてパフォーマンス向上
+const postTextArea = qs('#postText');
+if (postTextArea) {
+    const enterToPostCheckbox = qs('#enterToPost');
+    postTextArea.addEventListener('keydown', (e) => {
+        const enterToPostEnabled = enterToPostCheckbox && enterToPostCheckbox.checked;
+        
+        // Shift+Enter: 改行を許可（デフォルト動作）
+        if (e.key === 'Enter' && e.shiftKey) {
+            // デフォルトの改行動作を許可（何もしない）
             return;
         }
-        // PCでは Enter のみの場合は何もしない（投稿しない）
-        e.preventDefault();
-    }
-});
+        
+        // Ctrl+Enter または Cmd+Enter: ポスト送信（PC のみ）
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            // モバイルデバイスでは無効化
+            if (window.innerWidth > MOBILE_BREAKPOINT) {
+                qs('#submitPost')?.click();
+            }
+            return;
+        }
+        
+        // Enter のみ: PC では何もしない、モバイルでは改行を許可（チェックボックスがONなら投稿）
+        if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+            // モバイルでEnterで投稿がONの場合は投稿
+            if (window.innerWidth <= MOBILE_BREAKPOINT && enterToPostEnabled) {
+                e.preventDefault();
+                qs('#submitPost')?.click();
+                return;
+            }
+            // モバイルでチェックボックスがOFFの場合は改行を許可
+            if (window.innerWidth <= MOBILE_BREAKPOINT) {
+                return;
+            }
+            // PCでは Enter のみの場合は何もしない（投稿しない）
+            e.preventDefault();
+        }
+    });
+}
 
 // ---------------------
 // Feed switching
@@ -542,7 +569,11 @@ async function loadNotifications() {
     feed.innerHTML = data.map(n => {
         const actorIcon = n.actor?.icon || '/default_icon.png';
         const message = n.message || '';
-        const postLink = n.post && n.post.id ? `replies.php?post_id=${n.post.id}` : '#';
+        // Check if it's a community post
+        const isCommunityPost = n.post && n.post.is_community;
+        const postLink = n.post && n.post.id 
+            ? (isCommunityPost ? `community_replies.php?post_id=${n.post.id}` : `replies.php?post_id=${n.post.id}`)
+            : '#';
         const clickable = n.post && n.post.id ? 'style="cursor: pointer;"' : '';
         const onClick = n.post && n.post.id ? `onclick="location.href='${postLink}'"` : '';
         return `
@@ -566,7 +597,11 @@ notificationBtn?.addEventListener("click", async () => {
     notificationList.innerHTML = data.map(n => {
         const actorIcon = n.actor?.icon || '/default_icon.png';
         const message = n.message || '';
-        const postLink = n.post && n.post.id ? `replies.php?post_id=${n.post.id}` : '#';
+        // Check if it's a community post
+        const isCommunityPost = n.post && n.post.is_community;
+        const postLink = n.post && n.post.id 
+            ? (isCommunityPost ? `community_replies.php?post_id=${n.post.id}` : `replies.php?post_id=${n.post.id}`)
+            : '#';
         const clickable = n.post && n.post.id ? 'style="cursor: pointer;"' : '';
         const onClick = n.post && n.post.id ? `onclick="location.href='${postLink}'"` : '';
         return `
