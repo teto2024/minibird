@@ -186,42 +186,46 @@ qs('#submitPost')?.addEventListener('click', async () => {
 });
 
 // キーボードショートカット: Shift+Enter で改行、Ctrl+Enter でポスト（PC のみ）
-qs('#postText')?.addEventListener('keydown', (e) => {
+// enterToPostCheckbox要素をキャッシュしてパフォーマンス向上
+const postTextArea = qs('#postText');
+if (postTextArea) {
     const enterToPostCheckbox = qs('#enterToPost');
-    const enterToPostEnabled = enterToPostCheckbox && enterToPostCheckbox.checked;
-    
-    // Shift+Enter: 改行を許可（デフォルト動作）
-    if (e.key === 'Enter' && e.shiftKey) {
-        // デフォルトの改行動作を許可（何もしない）
-        return;
-    }
-    
-    // Ctrl+Enter または Cmd+Enter: ポスト送信（PC のみ）
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        // モバイルデバイスでは無効化
-        if (window.innerWidth > MOBILE_BREAKPOINT) {
-            qs('#submitPost')?.click();
+    postTextArea.addEventListener('keydown', (e) => {
+        const enterToPostEnabled = enterToPostCheckbox && enterToPostCheckbox.checked;
+        
+        // Shift+Enter: 改行を許可（デフォルト動作）
+        if (e.key === 'Enter' && e.shiftKey) {
+            // デフォルトの改行動作を許可（何もしない）
+            return;
         }
-        return;
-    }
-    
-    // Enter のみ: PC では何もしない、モバイルでは改行を許可（チェックボックスがONなら投稿）
-    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-        // モバイルでEnterで投稿がONの場合は投稿
-        if (window.innerWidth <= MOBILE_BREAKPOINT && enterToPostEnabled) {
+        
+        // Ctrl+Enter または Cmd+Enter: ポスト送信（PC のみ）
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
-            qs('#submitPost')?.click();
+            // モバイルデバイスでは無効化
+            if (window.innerWidth > MOBILE_BREAKPOINT) {
+                qs('#submitPost')?.click();
+            }
             return;
         }
-        // モバイルでチェックボックスがOFFの場合は改行を許可
-        if (window.innerWidth <= MOBILE_BREAKPOINT) {
-            return;
+        
+        // Enter のみ: PC では何もしない、モバイルでは改行を許可（チェックボックスがONなら投稿）
+        if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+            // モバイルでEnterで投稿がONの場合は投稿
+            if (window.innerWidth <= MOBILE_BREAKPOINT && enterToPostEnabled) {
+                e.preventDefault();
+                qs('#submitPost')?.click();
+                return;
+            }
+            // モバイルでチェックボックスがOFFの場合は改行を許可
+            if (window.innerWidth <= MOBILE_BREAKPOINT) {
+                return;
+            }
+            // PCでは Enter のみの場合は何もしない（投稿しない）
+            e.preventDefault();
         }
-        // PCでは Enter のみの場合は何もしない（投稿しない）
-        e.preventDefault();
-    }
-});
+    });
+}
 
 // ---------------------
 // Feed switching

@@ -52,8 +52,9 @@ try {
     $result = [];
 
     foreach ($rows as $r) {
-        // 表示名が空なら handle にフォールバック
-        $displayName = $r['actor_name'] ?: ($r['actor_handle'] ?: '匿名');
+        // 表示名が空なら handle にフォールバック (エスケープ処理)
+        $rawDisplayName = $r['actor_name'] ?: ($r['actor_handle'] ?: '匿名');
+        $displayName = htmlspecialchars($rawDisplayName, ENT_QUOTES, 'UTF-8');
 
         // 通知メッセージ
         $communityName = $r['community_name'] ? htmlspecialchars($r['community_name'], ENT_QUOTES, 'UTF-8') : '';
