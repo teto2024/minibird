@@ -48,6 +48,55 @@ $relay_quests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 // クエスト種類別に分類
 $daily_quests = array_filter($quests, fn($q) => $q['type'] === 'daily');
 $weekly_quests = array_filter($quests, fn($q) => $q['type'] === 'weekly');
+
+// コンプリート状態チェック
+$today = date('Y-m-d');
+$week_key = date('Y-W');
+
+// デイリーコンプリート状態
+$stmt = $pdo->prepare("
+    SELECT COUNT(*) as total,
+           SUM(CASE WHEN uqp.status = 'completed' THEN 1 ELSE 0 END) as completed
+    FROM quests q
+    LEFT JOIN user_quest_progress uqp ON uqp.quest_id = q.id AND uqp.user_id = ? 
+        AND DATE(uqp.started_at) = ?
+    WHERE q.type = 'daily' AND q.is_active = TRUE
+");
+$stmt->execute([$me['id'], $today]);
+$daily_completion = $stmt->fetch(PDO::FETCH_ASSOC);
+$daily_all_completed = ($daily_completion['total'] > 0 && $daily_completion['completed'] == $daily_completion['total']);
+
+$stmt = $pdo->prepare("SELECT id FROM quest_completions WHERE user_id = ? AND completion_type = 'daily' AND period_key = ?");
+$stmt->execute([$me['id'], $today]);
+$daily_reward_claimed = (bool)$stmt->fetch();
+
+// ウィークリーコンプリート状態
+$stmt = $pdo->prepare("
+    SELECT COUNT(*) as total,
+           SUM(CASE WHEN uqp.status = 'completed' THEN 1 ELSE 0 END) as completed
+    FROM quests q
+    LEFT JOIN user_quest_progress uqp ON uqp.quest_id = q.id AND uqp.user_id = ? 
+        AND YEARWEEK(uqp.started_at, 1) = YEARWEEK(NOW(), 1)
+    WHERE q.type = 'weekly' AND q.is_active = TRUE
+");
+$stmt->execute([$me['id']]);
+$weekly_completion = $stmt->fetch(PDO::FETCH_ASSOC);
+$weekly_all_completed = ($weekly_completion['total'] > 0 && $weekly_completion['completed'] == $weekly_completion['total']);
+
+$stmt = $pdo->prepare("SELECT id FROM quest_completions WHERE user_id = ? AND completion_type = 'weekly' AND period_key = ?");
+$stmt->execute([$me['id'], $week_key]);
+$weekly_reward_claimed = (bool)$stmt->fetch();
+
+// リレーコンプリート状態
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM quests WHERE type = 'relay' AND is_active = TRUE");
+$stmt->execute();
+$total_relay = (int)$stmt->fetchColumn();
+$relay_all_completed = ($current_relay_order > $total_relay);
+
+$completion_key = 'relay_' . date('Y-m-d');
+$stmt = $pdo->prepare("SELECT id FROM quest_completions WHERE user_id = ? AND completion_type = 'relay' AND period_key = ?");
+$stmt->execute([$me['id'], $completion_key]);
+$relay_reward_claimed = (bool)$stmt->fetch();
 ?>
 <!doctype html>
 <html lang="ja">
@@ -188,6 +237,36 @@ $weekly_quests = array_filter($quests, fn($q) => $q['type'] === 'weekly');
     font-size: 12px;
     margin-left: 10px;
 }
+.completion-bonus {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    border: 3px solid #ff9800;
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 15px;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(255, 152, 0, 0.3);
+}
+.completion-bonus.claimed {
+    background: linear-gradient(135deg, #c0c0c0 0%, #e0e0e0 100%);
+    border-color: #999;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+.completion-bonus h3 {
+    margin: 0 0 10px 0;
+    font-size: 20px;
+    color: #333;
+}
+.completion-bonus .bonus-rewards {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 10px;
+}
+.completion-bonus .bonus-rewards .reward-item {
+    background: white;
+    padding: 8px 16px;
+    font-size: 16px;
+}
 </style>
 </head>
 <body>
@@ -246,6 +325,16 @@ $weekly_quests = array_filter($quests, fn($q) => $q['type'] === 'weekly');
             </div>
         </div>
         <?php endforeach; ?>
+        
+        <!-- デイリーコンプリートボーナス -->
+        <div class="completion-bonus <?= $daily_reward_claimed ? 'claimed' : '' ?>">
+            <h3>🎉 全クリア達成ボーナス</h3>
+            <p><?= $daily_all_completed ? ($daily_reward_claimed ? '本日のボーナスを受け取りました！' : '全てのデイリークエストをクリア！') : "進捗: {$daily_completion['completed']} / {$daily_completion['total']}" ?></p>
+            <div class="bonus-rewards">
+                <div class="reward-item">🪙 3,000</div>
+                <div class="reward-item">💎 15</div>
+            </div>
+        </div>
     </div>
 
     <!-- ウィークリークエスト -->
@@ -283,6 +372,17 @@ $weekly_quests = array_filter($quests, fn($q) => $q['type'] === 'weekly');
             </div>
         </div>
         <?php endforeach; ?>
+        
+        <!-- ウィークリーコンプリートボーナス -->
+        <div class="completion-bonus <?= $weekly_reward_claimed ? 'claimed' : '' ?>">
+            <h3>🎉 全クリア達成ボーナス</h3>
+            <p><?= $weekly_all_completed ? ($weekly_reward_claimed ? '今週のボーナスを受け取りました！' : '全てのウィークリークエストをクリア！') : "進捗: {$weekly_completion['completed']} / {$weekly_completion['total']}" ?></p>
+            <div class="bonus-rewards">
+                <div class="reward-item">🪙 10,000</div>
+                <div class="reward-item">💎 50</div>
+                <div class="reward-item">💠 2</div>
+            </div>
+        </div>
     </div>
 
     <!-- リレークエスト -->
@@ -339,6 +439,16 @@ $weekly_quests = array_filter($quests, fn($q) => $q['type'] === 'weekly');
         <div class="relay-arrow">⬇️</div>
         <?php endif; ?>
         <?php endforeach; ?>
+        </div>
+        
+        <!-- リレーコンプリートボーナス -->
+        <div class="completion-bonus <?= $relay_reward_claimed ? 'claimed' : '' ?>">
+            <h3>🎉 全クリア達成ボーナス</h3>
+            <p><?= $relay_all_completed ? ($relay_reward_claimed ? '本日のボーナスを受け取りました！' : '全てのリレークエストをクリア！') : "進捗: " . ($current_relay_order - 1) . " / {$total_relay}" ?></p>
+            <div class="bonus-rewards">
+                <div class="reward-item">🪙 2,000</div>
+                <div class="reward-item">💠 1</div>
+            </div>
         </div>
     </div>
 

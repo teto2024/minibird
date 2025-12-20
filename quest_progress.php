@@ -367,6 +367,16 @@ function grant_quest_reward($user_id, $quest) {
             $stmt->execute([$user_id, $diamonds, $quest['id']]);
         }
     }
+    
+    // クエスト完了チェック
+    $quest_type = $quest['type'] ?? '';
+    if ($quest_type === 'daily') {
+        check_daily_quest_completion($user_id);
+    } elseif ($quest_type === 'weekly') {
+        check_weekly_quest_completion($user_id);
+    } elseif ($quest_type === 'relay') {
+        check_relay_quest_completion($user_id);
+    }
 }
 
 /**
@@ -389,4 +399,182 @@ function auto_reset_quests($user_id) {
     $stmt->execute([$user_id]);
     
     return true;
+}
+
+/**
+ * デイリークエスト全完了チェックと報酬付与
+ * @param int $user_id ユーザーID
+ */
+function check_daily_quest_completion($user_id) {
+    $pdo = db();
+    $today = date('Y-m-d');
+    
+    // 今日のデイリークエスト全完了チェック
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) as total,
+               SUM(CASE WHEN uqp.status = 'completed' THEN 1 ELSE 0 END) as completed
+        FROM quests q
+        LEFT JOIN user_quest_progress uqp ON uqp.quest_id = q.id AND uqp.user_id = ? 
+            AND DATE(uqp.started_at) = ?
+        WHERE q.type = 'daily' AND q.is_active = TRUE
+    ");
+    $stmt->execute([$user_id, $today]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($result['total'] > 0 && $result['completed'] == $result['total']) {
+        // すでに報酬を受け取っているかチェック
+        $stmt = $pdo->prepare("
+            SELECT id FROM quest_completions 
+            WHERE user_id = ? AND completion_type = 'daily' AND period_key = ?
+        ");
+        $stmt->execute([$user_id, $today]);
+        
+        if (!$stmt->fetch()) {
+            // 報酬付与
+            $coins = 3000;
+            $crystals = 15;
+            
+            $pdo->beginTransaction();
+            try {
+                $stmt = $pdo->prepare("
+                    INSERT INTO quest_completions (user_id, completion_type, period_key, reward_coins, reward_crystals)
+                    VALUES (?, 'daily', ?, ?, ?)
+                ");
+                $stmt->execute([$user_id, $today, $coins, $crystals]);
+                
+                $stmt = $pdo->prepare("
+                    UPDATE users 
+                    SET coins = coins + ?, crystals = crystals + ?, daily_quest_completions = daily_quest_completions + 1
+                    WHERE id = ?
+                ");
+                $stmt->execute([$coins, $crystals, $user_id]);
+                
+                $pdo->commit();
+                return true;
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                error_log("Daily quest completion error: " . $e->getMessage());
+            }
+        }
+    }
+    return false;
+}
+
+/**
+ * ウィークリークエスト全完了チェックと報酬付与
+ * @param int $user_id ユーザーID
+ */
+function check_weekly_quest_completion($user_id) {
+    $pdo = db();
+    $week_key = date('Y-W'); // 年-週番号
+    
+    // 今週のウィークリークエスト全完了チェック
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) as total,
+               SUM(CASE WHEN uqp.status = 'completed' THEN 1 ELSE 0 END) as completed
+        FROM quests q
+        LEFT JOIN user_quest_progress uqp ON uqp.quest_id = q.id AND uqp.user_id = ? 
+            AND YEARWEEK(uqp.started_at, 1) = YEARWEEK(NOW(), 1)
+        WHERE q.type = 'weekly' AND q.is_active = TRUE
+    ");
+    $stmt->execute([$user_id]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($result['total'] > 0 && $result['completed'] == $result['total']) {
+        // すでに報酬を受け取っているかチェック
+        $stmt = $pdo->prepare("
+            SELECT id FROM quest_completions 
+            WHERE user_id = ? AND completion_type = 'weekly' AND period_key = ?
+        ");
+        $stmt->execute([$user_id, $week_key]);
+        
+        if (!$stmt->fetch()) {
+            // 報酬付与
+            $coins = 10000;
+            $crystals = 50;
+            $diamonds = 2;
+            
+            $pdo->beginTransaction();
+            try {
+                $stmt = $pdo->prepare("
+                    INSERT INTO quest_completions (user_id, completion_type, period_key, reward_coins, reward_crystals, reward_diamonds)
+                    VALUES (?, 'weekly', ?, ?, ?, ?)
+                ");
+                $stmt->execute([$user_id, $week_key, $coins, $crystals, $diamonds]);
+                
+                $stmt = $pdo->prepare("
+                    UPDATE users 
+                    SET coins = coins + ?, crystals = crystals + ?, diamonds = diamonds + ?, weekly_quest_completions = weekly_quest_completions + 1
+                    WHERE id = ?
+                ");
+                $stmt->execute([$coins, $crystals, $diamonds, $user_id]);
+                
+                $pdo->commit();
+                return true;
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                error_log("Weekly quest completion error: " . $e->getMessage());
+            }
+        }
+    }
+    return false;
+}
+
+/**
+ * リレークエスト全完了チェックと報酬付与
+ * @param int $user_id ユーザーID
+ */
+function check_relay_quest_completion($user_id) {
+    $pdo = db();
+    
+    // リレークエストの総数取得
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM quests WHERE type = 'relay' AND is_active = TRUE");
+    $stmt->execute();
+    $total_relay = (int)$stmt->fetchColumn();
+    
+    // 現在のリレー進行状況
+    $stmt = $pdo->prepare("SELECT current_order FROM relay_quest_progress WHERE user_id = ?");
+    $stmt->execute([$user_id]);
+    $progress = $stmt->fetch();
+    
+    if ($progress && $progress['current_order'] > $total_relay) {
+        // 全リレークエスト完了
+        $completion_key = 'relay_' . date('Y-m-d'); // 1日1回のみ
+        
+        // すでに報酬を受け取っているかチェック
+        $stmt = $pdo->prepare("
+            SELECT id FROM quest_completions 
+            WHERE user_id = ? AND completion_type = 'relay' AND period_key = ?
+        ");
+        $stmt->execute([$user_id, $completion_key]);
+        
+        if (!$stmt->fetch()) {
+            // 報酬付与
+            $coins = 2000;
+            $diamonds = 1;
+            
+            $pdo->beginTransaction();
+            try {
+                $stmt = $pdo->prepare("
+                    INSERT INTO quest_completions (user_id, completion_type, period_key, reward_coins, reward_diamonds)
+                    VALUES (?, 'relay', ?, ?, ?)
+                ");
+                $stmt->execute([$user_id, $completion_key, $coins, $diamonds]);
+                
+                $stmt = $pdo->prepare("
+                    UPDATE users 
+                    SET coins = coins + ?, diamonds = diamonds + ?, relay_quest_completions = relay_quest_completions + 1
+                    WHERE id = ?
+                ");
+                $stmt->execute([$coins, $diamonds, $user_id]);
+                
+                $pdo->commit();
+                return true;
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                error_log("Relay quest completion error: " . $e->getMessage());
+            }
+        }
+    }
+    return false;
 }

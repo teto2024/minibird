@@ -29,25 +29,45 @@ function can_upgrade_vip($user) {
 
     $next_level = $user['vip_level'] + 1;
     $need_minutes = 100 * $next_level;
-    $need_invites = 2 * $next_level; // ★修正点
+    $need_invites = 2 * $next_level;
+    $need_crystals = 100 * $next_level;
+    $need_coins = $need_crystals * 100; // クリスタルの100倍
+    
+    // デイリークエストコンプリート回数（2回から倍増）
+    $need_daily_completions = 2 * $next_level;
+    
+    // ウィークリークエストコンプリート回数（1回から2回ずつ増加）
+    $need_weekly_completions = 1 + (2 * ($next_level - 1));
+    
+    // リレークエストコンプリート回数（1回から倍増）
+    $need_relay_completions = 1 * $next_level;
 
-    return ($invite_count >= $need_invites && $total_minutes >= $need_minutes);
+    return (
+        $invite_count >= $need_invites && 
+        $total_minutes >= $need_minutes &&
+        $user['crystals'] >= $need_crystals &&
+        $user['coins'] >= $need_coins &&
+        $user['daily_quest_completions'] >= $need_daily_completions &&
+        $user['weekly_quest_completions'] >= $need_weekly_completions &&
+        $user['relay_quest_completions'] >= $need_relay_completions
+    );
 }
 
 // --- VIP昇格処理 ---
 $message = null;
 if (isset($_POST['upgrade'])) {
     $next_level = $me['vip_level'] + 1;
-    $cost = 100 * $next_level;
+    $cost_crystals = 100 * $next_level;
+    $cost_coins = $cost_crystals * 100;
 
     if (!can_upgrade_vip($me)) {
         $message = "⚠️ VIP昇格条件を満たしていません。";
-    } elseif ($me['crystals'] < $cost) {
-        $message = "⚠️ クリスタルが足りません。";
+    } elseif ($me['crystals'] < $cost_crystals || $me['coins'] < $cost_coins) {
+        $message = "⚠️ コインまたはクリスタルが足りません。";
     } else {
         $pdo->beginTransaction();
-        $stmt = $pdo->prepare("UPDATE users SET crystals = crystals - ?, vip_level = vip_level + 1, vip_since = NOW() WHERE id = ?");
-        $stmt->execute([$cost, $me['id']]);
+        $stmt = $pdo->prepare("UPDATE users SET coins = coins - ?, crystals = crystals - ?, vip_level = vip_level + 1, vip_since = NOW() WHERE id = ?");
+        $stmt->execute([$cost_coins, $cost_crystals, $me['id']]);
         $pdo->commit();
         $message = "🎉 VIPレベル{$next_level}になりました！";
 
@@ -64,11 +84,20 @@ $invite_count = (int)$stmt->fetchColumn();
 // 累計集中時間
 $total_minutes = (int)$me['total_focus_time'];
 
+// クエストコンプリート回数
+$daily_completions = (int)($me['daily_quest_completions'] ?? 0);
+$weekly_completions = (int)($me['weekly_quest_completions'] ?? 0);
+$relay_completions = (int)($me['relay_quest_completions'] ?? 0);
+
 // 次のVIP条件
 $next_level = $me['vip_level'] + 1;
 $need_minutes = 100 * $next_level;
-$need_invites = 2 * $next_level; // ★追加
-$cost = 100 * $next_level;
+$need_invites = 2 * $next_level;
+$cost_crystals = 100 * $next_level;
+$cost_coins = $cost_crystals * 100;
+$need_daily_completions = 2 * $next_level;
+$need_weekly_completions = 1 + (2 * ($next_level - 1));
+$need_relay_completions = 1 * $next_level;
 ?>
 <!doctype html>
 <html lang="ja">
@@ -133,22 +162,27 @@ $cost = 100 * $next_level;
 
     <?php
     $next_level = $me['vip_level'] + 1;
-    $cost = 100 * $next_level;
+    $cost_crystals = 100 * $next_level;
+    $cost_coins = $cost_crystals * 100;
     ?>
-    <p>次のVIPレベル: VIP<?= $next_level ?> (必要クリスタル: <?= $cost ?>)</p>
+    <p>次のVIPレベル: VIP<?= $next_level ?> (必要クリスタル: <?= $cost_crystals ?> / 必要コイン: <?= $cost_coins ?>)</p>
 
 <div class="vip-conditions">
     <h3>次のVIP昇格条件</h3>
     <ul>
         <li><?= ($invite_count >= $need_invites ? "✅" : "❌") ?> 招待人数: <?= $invite_count ?> / <?= $need_invites ?>人</li>
         <li><?= ($total_minutes >= $need_minutes ? "✅" : "❌") ?> 累計集中時間: <?= $total_minutes ?>分 / <?= $need_minutes ?>分</li>
-        <li><?= ($me['crystals'] >= $cost ? "✅" : "❌") ?> クリスタル: <?= (int)$me['crystals'] ?> / <?= $cost ?></li>
+        <li><?= ($me['crystals'] >= $cost_crystals ? "✅" : "❌") ?> クリスタル: <?= (int)$me['crystals'] ?> / <?= $cost_crystals ?></li>
+        <li><?= ($me['coins'] >= $cost_coins ? "✅" : "❌") ?> コイン: <?= (int)$me['coins'] ?> / <?= $cost_coins ?></li>
+        <li><?= ($daily_completions >= $need_daily_completions ? "✅" : "❌") ?> デイリークエストコンプリート: <?= $daily_completions ?> / <?= $need_daily_completions ?>回</li>
+        <li><?= ($weekly_completions >= $need_weekly_completions ? "✅" : "❌") ?> ウィークリークエストコンプリート: <?= $weekly_completions ?> / <?= $need_weekly_completions ?>回</li>
+        <li><?= ($relay_completions >= $need_relay_completions ? "✅" : "❌") ?> リレークエストコンプリート: <?= $relay_completions ?> / <?= $need_relay_completions ?>回</li>
     </ul>
 </div>
 
     <form method="post">
         <button type="submit" name="upgrade" class="vip-button"
-            <?php if (!can_upgrade_vip($me) || $me['crystals'] < $cost): ?>disabled<?php endif; ?>>
+            <?php if (!can_upgrade_vip($me) || $me['crystals'] < $cost_crystals || $me['coins'] < $cost_coins): ?>disabled<?php endif; ?>>
             VIP<?= $next_level ?> に昇格する
         </button>
     </form>
