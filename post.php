@@ -35,17 +35,17 @@ try {
         $content = trim($_POST['content'] ?? '');
         $nsfw = ($_POST['nsfw'] ?? '0') === '1' ? 1 : 0;
 
-        // 複数画像の確認（media[]またはmedia[0], media[1]...）
+        // 複数画像の確認（media[]またはmedia_0, media_1...）
         $hasMedia = false;
-        if (!empty($_FILES['media']['name'])) {
-            // 単一画像の場合
-            if (is_string($_FILES['media']['name'])) {
-                $hasMedia = true;
-            }
-        }
-        if (!empty($_FILES['media_0']['name']) || !empty($_FILES['media_1']['name']) || 
-            !empty($_FILES['media_2']['name']) || !empty($_FILES['media_3']['name'])) {
+        if (!empty($_FILES['media']['name']) && is_string($_FILES['media']['name'])) {
             $hasMedia = true;
+        }
+        // media_0からmedia_3までチェック
+        for ($i = 0; $i < 4; $i++) {
+            if (!empty($_FILES["media_$i"]['name'])) {
+                $hasMedia = true;
+                break;
+            }
         }
 
         if ($content === '' && !$hasMedia) {

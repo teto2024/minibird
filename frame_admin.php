@@ -254,6 +254,12 @@ h1, h2 {
     color: #2d3748;
 }
 </style>
+<script>
+function toggleReviewForm(id) {
+    const form = document.getElementById('review-' + id);
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+</script>
 </head>
 <body>
 <div class="container">
@@ -302,7 +308,7 @@ h1, h2 {
                     </p>
                 </div>
                 
-                <button class="toggle-form" onclick="document.getElementById('review-<?= $sub['id'] ?>').style.display = document.getElementById('review-<?= $sub['id'] ?>').style.display === 'none' ? 'block' : 'none'">
+                <button class="toggle-form" onclick="toggleReviewForm(<?= $sub['id'] ?>)">
                     審査フォームを表示
                 </button>
                 

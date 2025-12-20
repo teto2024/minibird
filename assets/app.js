@@ -1,5 +1,6 @@
 // Mobile breakpoint constant
 const MOBILE_BREAKPOINT = 768;
+const MAX_MEDIA_FILES = 4; // 最大画像アップロード数
 
 const state = {
     feed: 'null',
@@ -181,10 +182,10 @@ qs('#submitPost')?.addEventListener('click', async () => {
     fd.append('content', qs('#postText').value);
     fd.append('nsfw', qs('#nsfw').checked ? '1' : '0');
     
-    // 複数画像対応（最大4枚）
+    // 複数画像対応（最大MAX_MEDIA_FILES枚）
     const mediaInput = qs('#media');
     if (mediaInput && mediaInput.files.length > 0) {
-        const files = Array.from(mediaInput.files).slice(0, 4); // 最大4枚
+        const files = Array.from(mediaInput.files).slice(0, MAX_MEDIA_FILES);
         if (files.length === 1) {
             // 単一画像の場合は従来通り
             fd.append('media', files[0]);
@@ -406,7 +407,7 @@ if (p.vip_level && p.vip_level > 0) {
         // 複数画像がある場合
         if (p.media_paths && Array.isArray(p.media_paths) && p.media_paths.length > 0) {
             const mediaGrid = ce('div', 'media-grid');
-            mediaGrid.classList.add(`media-count-${Math.min(p.media_paths.length, 4)}`);
+            mediaGrid.classList.add(`media-count-${Math.min(p.media_paths.length, MAX_MEDIA_FILES)}`);
             
             p.media_paths.forEach((mediaPath, index) => {
                 const mediaContainer = ce('div', 'media-item');

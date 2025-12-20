@@ -48,15 +48,17 @@ if ($_SERVER['REQUEST_METHOD']==='POST'){
     if (!$f){
         $msg='フレームが見つかりません';
     } else {
+        // 特別条件チェック（共通）
+        if ($f['css_token']==='frame-master' && ($me['focus_tier'] ?? 0) < 10){
+            $msg = '集中マスターはティア10以上のユーザーのみ購入可能です';
+        } 
         // 期間限定フレームのチェック
-        $now = new DateTime();
-        if ($f['is_limited']) {
+        elseif ($f['is_limited']) {
+            $now = new DateTime();
             if ($f['sale_start_date'] && new DateTime($f['sale_start_date']) > $now) {
                 $msg = 'このフレームはまだ販売開始されていません';
             } elseif ($f['sale_end_date'] && new DateTime($f['sale_end_date']) < $now) {
                 $msg = 'このフレームの販売期間は終了しました';
-            } elseif ($f['css_token']==='frame-master' && ($me['focus_tier'] ?? 0) < 10){
-                $msg = '集中マスターはティア10以上のユーザーのみ購入可能です';
             } elseif (
                 $me['coins'] >= $f['price_coins'] &&
                 $me['crystals'] >= $f['price_crystals'] &&
@@ -72,24 +74,22 @@ if ($_SERVER['REQUEST_METHOD']==='POST'){
             } else {
                 $msg='残高不足';
             }
+        } 
+        // 通常フレーム
+        elseif (
+            $me['coins'] >= $f['price_coins'] &&
+            $me['crystals'] >= $f['price_crystals'] &&
+            $me['diamonds'] >= $f['price_diamonds']
+        ){
+            $pdo->prepare("INSERT IGNORE INTO user_frames(user_id,frame_id) VALUES(?,?)")
+                ->execute([$me['id'],$frame_id]);
+            $pdo->prepare("UPDATE users SET coins=coins-?, crystals=crystals-?, diamonds=diamonds-? WHERE id=?")
+                ->execute([$f['price_coins'],$f['price_crystals'],$f['price_diamonds'],$me['id']]);
+            $pdo->prepare("INSERT INTO reward_events(user_id,kind,amount,meta) VALUES(?,?,?,JSON_OBJECT('frame_id',?))")
+                ->execute([$me['id'],'buy_frame',-$f['price_coins'],$frame_id]);
+            $msg='購入しました';
         } else {
-            if ($f['css_token']==='frame-master' && ($me['focus_tier'] ?? 0) < 10){
-                $msg = '集中マスターはティア10以上のユーザーのみ購入可能です';
-            } elseif (
-                $me['coins'] >= $f['price_coins'] &&
-                $me['crystals'] >= $f['price_crystals'] &&
-                $me['diamonds'] >= $f['price_diamonds']
-            ){
-                $pdo->prepare("INSERT IGNORE INTO user_frames(user_id,frame_id) VALUES(?,?)")
-                    ->execute([$me['id'],$frame_id]);
-                $pdo->prepare("UPDATE users SET coins=coins-?, crystals=crystals-?, diamonds=diamonds-? WHERE id=?")
-                    ->execute([$f['price_coins'],$f['price_crystals'],$f['price_diamonds'],$me['id']]);
-                $pdo->prepare("INSERT INTO reward_events(user_id,kind,amount,meta) VALUES(?,?,?,JSON_OBJECT('frame_id',?))")
-                    ->execute([$me['id'],'buy_frame',-$f['price_coins'],$frame_id]);
-                $msg='購入しました';
-            } else {
-                $msg='残高不足';
-            }
+            $msg='残高不足';
         }
     }
   } elseif ($act==='equip'){

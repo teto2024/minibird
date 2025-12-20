@@ -25,8 +25,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $price_crystals = max(0, (int)($_POST['price_crystals'] ?? 0));
     $price_diamonds = max(0, (int)($_POST['price_diamonds'] ?? 0));
     
+    // サーバー側でのバリデーション
     if (empty($name) || empty($css_token)) {
         $msg = ['error' => 'フレーム名とCSSトークンは必須です'];
+    } elseif (!preg_match('/^frame-[a-z0-9-]+$/', $css_token)) {
+        $msg = ['error' => 'CSSトークンは「frame-」で始まり、英小文字・数字・ハイフンのみ使用できます'];
     } else {
         // css_tokenの重複チェック
         $check = $pdo->prepare("SELECT 1 FROM frames WHERE css_token = ?");
