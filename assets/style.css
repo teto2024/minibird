@@ -1435,124 +1435,6 @@ button {
     }
 }
 
-/* ---------- New Year (新春) ---------- */
-/* ゴージャス＆奇抜・めでたい雰囲気・赤基調 */
-.frame-newyear {
-    position: relative;
-    border: 3px solid #ff0000;
-    border-radius: 16px;
-    padding: 12px;
-    background: linear-gradient(135deg,
-            #8b0000 0%,
-            #ff0000 25%,
-            #ffd700 50%,
-            #ff0000 75%,
-            #8b0000 100%);
-    background-size: 400% 400%;
-    color: #fff5e6;
-    font-weight: bold;
-    overflow: hidden;
-    box-shadow: 0 0 20px rgba(255, 0, 0, 0.6),
-        0 0 40px rgba(255, 215, 0, 0.4),
-        inset 0 0 30px rgba(255, 215, 0, 0.2);
-    animation: newyearBg 8s ease-in-out infinite;
-}
-
-/* 金色の輝き */
-.frame-newyear::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: radial-gradient(circle at 20% 30%,
-            rgba(255, 215, 0, 0.4) 0%,
-            transparent 50%),
-        radial-gradient(circle at 80% 70%,
-            rgba(255, 255, 100, 0.3) 0%,
-            transparent 50%);
-    animation: newyearSparkle 3s ease-in-out infinite alternate;
-    pointer-events: none;
-}
-
-/* 舞う絵文字（🎊と🎉） */
-.frame-newyear::after {
-    content: "🎊";
-    position: absolute;
-    font-size: 32px;
-    top: -10%;
-    right: -5%;
-    animation: newyearFloat 6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
-    text-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
-    z-index: 3;
-}
-
-@keyframes newyearBg {
-
-    0%,
-    100% {
-        background-position: 0% 50%;
-    }
-
-    50% {
-        background-position: 100% 50%;
-    }
-}
-
-@keyframes newyearSparkle {
-    0% {
-        opacity: 0.5;
-        transform: scale(1) rotate(0deg);
-    }
-
-    50% {
-        opacity: 0.9;
-        transform: scale(1.15) rotate(180deg);
-    }
-
-    100% {
-        opacity: 0.5;
-        transform: scale(1) rotate(360deg);
-    }
-}
-
-@keyframes newyearFloat {
-    0% {
-        top: -10%;
-        right: -5%;
-        transform: rotate(0deg) scale(1);
-        opacity: 1;
-    }
-
-    25% {
-        top: 30%;
-        right: 20%;
-        transform: rotate(90deg) scale(1.3);
-        opacity: 0.8;
-    }
-
-    50% {
-        top: 60%;
-        right: 50%;
-        transform: rotate(180deg) scale(1.1);
-        opacity: 0.9;
-    }
-
-    75% {
-        top: 30%;
-        right: 80%;
-        transform: rotate(270deg) scale(1.4);
-        opacity: 0.7;
-    }
-
-    100% {
-        top: 110%;
-        right: 95%;
-        transform: rotate(360deg) scale(0.8);
-        opacity: 0;
-    }
-}
-
-/* 価格: コイン 80,000 / クリスタル 8（期間限定：1月限定） */
 
 
 /* ---------- Arctic Freeze (極寒) ---------- */
@@ -1941,85 +1823,335 @@ button {
 }
 
 
-/* ========== レトロマイアミ（80年代風グラデーション） ========== */
-.frame-retro-miami {
+/* ---------- New Year (新春) - 改良版 ---------- */
+.frame-newyear {
     position: relative;
+    border: 2px solid #d4af37;
     border-radius: 16px;
-    padding: 16px;
-    background: linear-gradient(135deg, 
-        #ff006e 0%, 
-        #ff4d94 20%, 
-        #ff7aa2 40%, 
-        #ffbe0b 60%, 
-        #fb5607 80%, 
-        #8338ec 100%);
-    border: 2px solid #ffbe0b;
-    color: #fff;
-    overflow: hidden;
-    box-shadow: 0 8px 24px rgba(255, 190, 11, 0.4);
+    padding: 12px;
+    background: linear-gradient(135deg,
+            rgba(255, 240, 245, 0.15) 0%,
+            rgba(255, 215, 0, 0.12) 50%,
+            rgba(220, 20, 60, 0.15) 100%);
+    color: #ffebb3;
+    /* より明るい金色の文字 */
     font-weight: bold;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
 }
 
-/* グラデーション移動 */
-.frame-retro-miami::before {
-    content: '';
+.frame-newyear::before {
+    content: '🎍';
     position: absolute;
-    inset: -100%;
-    background: linear-gradient(
-        45deg,
-        transparent 30%,
-        rgba(255, 255, 255, 0.3) 50%,
-        transparent 70%
-    );
-    animation: miamiShine 4s linear infinite;
-    pointer-events:  none;
-}
-
-/* パームツリーシルエット風（装飾） */
-.frame-retro-miami::after {
-    content: '🌴';
-    position: absolute;
-    font-size: 48px;
-    bottom: -10px;
-    right: -10px;
-    opacity: 0.2;
-    animation: miamiPalm 6s ease-in-out infinite;
+    font-size: 40px;
+    top: 5%;
+    left: 5%;
+    animation: newyearFloat 6s ease-in-out infinite;
+    opacity: 0.25;
+    /* 透明度を下げて読みやすく */
     pointer-events: none;
 }
 
-@keyframes miamiShine {
-    0% {
-        transform: translate(-100%, -100%);
-    }
+.frame-newyear::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle at 70% 30%,
+            rgba(255, 215, 0, 0.15) 0%,
+            transparent 60%);
+    animation: newyearShine 8s ease-in-out infinite alternate;
+    pointer-events: none;
+}
+
+@keyframes newyearFloat {
+
+    0%,
     100% {
-        transform: translate(100%, 100%);
+        transform: translateY(0) rotate(0deg);
     }
-}
 
-@keyframes miamiPalm {
-    0%, 100% {
-        transform: rotate(-5deg) scale(1);
-    }
     50% {
-        transform: rotate(5deg) scale(1.1);
+        transform: translateY(-10px) rotate(10deg);
     }
 }
 
-/* ホバー時にネオンが強くなる */
-.frame-retro-miami:hover {
-    box-shadow: 0 12px 32px rgba(255, 190, 11, 0.6), 0 0 20px rgba(255, 0, 110, 0.4);
-    transform: translateY(-2px);
+@keyframes newyearShine {
+    0% {
+        opacity: 0.4;
+        transform: scale(1);
+    }
+
+    100% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
 }
 
-
-/* ========== 共通:  テキストのz-index調整 ========== */
-.frame-purple-card .content,
-.frame-beach .content,
-.frame-netrunner .content,
-.frame-retro-miami .content {
+/* ---------- Miami (マイアミ) - 改良版 ---------- */
+.frame-miami {
     position: relative;
+    border: 2px solid #ff6ec7;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(135deg,
+            rgba(255, 110, 199, 0.15) 0%,
+            rgba(0, 191, 255, 0.12) 50%,
+            rgba(255, 215, 0, 0.12) 100%);
+    color: #fff5e1;
+    /* より明るいクリーム色 */
+    font-weight: bold;
+    overflow: hidden;
+    animation: miamiWave 8s linear infinite;
+}
+
+.frame-miami::before {
+    content: '🌴';
+    position: absolute;
+    font-size: 36px;
+    top: 8%;
+    right: 8%;
+    animation: miamiSway 5s ease-in-out infinite;
+    opacity: 0.25;
+    /* 透明度を下げて邪魔にならないように */
+    pointer-events: none;
+}
+
+.frame-miami::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(45deg,
+            rgba(255, 110, 199, 0.1),
+            rgba(0, 191, 255, 0.08),
+            rgba(255, 215, 0, 0.08));
+    background-size: 300% 300%;
+    animation: miamiGradient 12s ease infinite;
+    pointer-events: none;
+}
+
+@keyframes miamiWave {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+@keyframes miamiSway {
+
+    0%,
+    100% {
+        transform: rotate(0deg) translateX(0);
+    }
+
+    25% {
+        transform: rotate(5deg) translateX(3px);
+    }
+
+    75% {
+        transform: rotate(-5deg) translateX(-3px);
+    }
+}
+
+@keyframes miamiGradient {
+
+    0%,
+    100% {
+        background-position: 0% 50%;
+        opacity: 0.5;
+    }
+
+    50% {
+        background-position: 100% 50%;
+        opacity: 0.7;
+    }
+}
+
+/* ---------- Clover (クローバー) ---------- */
+.frame-clover {
+    position: relative;
+    border: 2px solid #2d8659;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(135deg, #1a4d2e 0%, #2d8659 50%, #4caf79 100%);
+    color: #e8f5e9;
+    font-weight: bold;
+    overflow: hidden;
+}
+
+.frame-clover::before {
+    content: '🍀';
+    position: absolute;
+    font-size: 32px;
+    top: 10%;
+    left: 10%;
+    animation: cloverSway 4s ease-in-out infinite;
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.frame-clover::after {
+    content: '🍀';
+    position: absolute;
+    font-size: 28px;
+    bottom: 15%;
+    right: 15%;
+    animation: cloverSway 5s ease-in-out infinite reverse;
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+@keyframes cloverSway {
+
+    0%,
+    100% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+
+    25% {
+        transform: translate(5px, -3px) rotate(5deg);
+    }
+
+    50% {
+        transform: translate(0, -5px) rotate(0deg);
+    }
+
+    75% {
+        transform: translate(-5px, -3px) rotate(-5deg);
+    }
+}
+
+/* ---------- Obsidian (漆黒) ---------- */
+.frame-obsidian {
+    position: relative;
+    border: 2px solid #1a1a1a;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(135deg, #000000 0%, #1a1a1a 25%, #2d2d2d 50%, #1a1a1a 75%, #000000 100%);
+    background-size: 200% 200%;
+    color: #c0c0c0;
+    font-weight: bold;
+    overflow: hidden;
+    animation: obsidianShift 8s ease-in-out infinite;
+}
+
+.frame-obsidian::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    background: linear-gradient(45deg,
+            rgba(64, 64, 64, 0.3) 0%,
+            rgba(128, 128, 128, 0.2) 25%,
+            rgba(160, 160, 160, 0.25) 50%,
+            rgba(128, 128, 128, 0.2) 75%,
+            rgba(64, 64, 64, 0.3) 100%);
+    background-size: 400% 400%;
+    animation: obsidianGloss 6s linear infinite;
+    pointer-events: none;
     z-index: 1;
+}
+
+.frame-obsidian>* {
+    position: relative;
+    z-index: 2;
+}
+
+@keyframes obsidianShift {
+
+    0%,
+    100% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+}
+
+@keyframes obsidianGloss {
+    0% {
+        background-position: 0% 50%;
+        opacity: 0.5;
+    }
+
+    50% {
+        background-position: 100% 50%;
+        opacity: 0.8;
+    }
+
+    100% {
+        background-position: 0% 50%;
+        opacity: 0.5;
+    }
+}
+
+/* ---------- Sunset (夕日) ---------- */
+.frame-sunset {
+    position: relative;
+    border: 2px solid #ff8c42;
+    border-radius: 16px;
+    padding: 12px;
+    background: linear-gradient(180deg,
+            #ff6b35 0%,
+            #ff8c42 25%,
+            #ffa726 50%,
+            #ffb74d 75%,
+            #ffd54f 100%);
+    background-size: 100% 200%;
+    color: #3d2817;
+    font-weight: bold;
+    overflow: hidden;
+    animation: sunsetGlow 10s ease-in-out infinite;
+    box-shadow: 0 0 20px rgba(255, 140, 66, 0.4);
+}
+
+.frame-sunset::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle at 50% 30%,
+            rgba(255, 235, 59, 0.3) 0%,
+            rgba(255, 152, 0, 0.2) 40%,
+            transparent 70%);
+    animation: sunsetPulse 5s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes sunsetGlow {
+
+    0%,
+    100% {
+        background-position: 0% 0%;
+        box-shadow: 0 0 20px rgba(255, 140, 66, 0.4);
+    }
+
+    50% {
+        background-position: 0% 100%;
+        box-shadow: 0 0 30px rgba(255, 152, 0, 0.6), 0 0 40px rgba(255, 193, 7, 0.3);
+    }
+}
+
+@keyframes sunsetPulse {
+
+    0%,
+    100% {
+        opacity: 0.6;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.85;
+        transform: scale(1.05);
+    }
 }
 /*フレームここまで*/
 

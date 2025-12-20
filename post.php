@@ -100,7 +100,7 @@ try {
         $post_id = $pdo->lastInsertId();
 
         // random coin reward
-        $coins = random_int(10,70);
+        $coins = random_int(70,130);
         $pdo->prepare("UPDATE users SET coins = coins + ? WHERE id=?")->execute([$coins,$_SESSION['uid']]);
         $pdo->prepare("INSERT INTO reward_events(user_id,kind,amount,meta) VALUES(?,?,?,JSON_OBJECT('post_id',?))")
             ->execute([$_SESSION['uid'],'post_reward',$coins,$post_id]);
