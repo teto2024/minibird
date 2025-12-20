@@ -34,15 +34,11 @@ function updateLikeUI(p) {
 //persemessage
 //----------------
 function parseMessage(html) {
-    // メンション @username を IDベースのリンクに変換
-    html = html.replace(/@([a-zA-Z0-9_]+)/g, (m, user) => {
-        const id = window.userMap?.[user];
-        if (id) return `<a href="profile.php?id=${id}" class="link">@${user}</a>`;
-        return '@' + user; // ユーザーが存在しない場合はリンクなし
-    });
-
-    // URLを自動リンク化
-    html = html.replace(/(https?:\/\/[^\s]+)/g, (m, url) => {
+    // メンションは既にサーバー側（feed.php）で変換済みなので、
+    // クライアント側では追加のURL自動リンク化のみ実行
+    
+    // URLを自動リンク化（ただし既にリンクになっているものは除外）
+    html = html.replace(/(?<!href=["'])(?<!src=["'])(https?:\/\/[^\s<]+)/g, (m, url) => {
         return `<a href="${url}" target="_blank" class="link">${url}</a>`;
     });
 
@@ -1004,18 +1000,54 @@ function renderPost(p, wrap, prepend = false) {
         body.append(myBody);
     }
 
-    // メディア
-    if (!p.deleted && p.media_path) {
-        const mediaWrapper = ce('div', 'media');
-        let mediaEl;
-        const ext = p.media_path.split('.').pop().toLowerCase();
-        const mediaSrc = window.location.origin + '/' + p.media_path;
+    // メディア（複数画像対応）
+    if (!p.deleted && (p.media_paths || p.media_path)) {
+        const mediaWrapper = ce('div', 'media-wrapper');
+        
+        // 複数画像がある場合
+        if (p.media_paths && Array.isArray(p.media_paths) && p.media_paths.length > 0) {
+            const mediaGrid = ce('div', 'media-grid');
+            mediaGrid.classList.add(`media-count-${Math.min(p.media_paths.length, MAX_MEDIA_FILES)}`);
+            
+            p.media_paths.forEach((mediaPath, index) => {
+                if (index >= MAX_MEDIA_FILES) return; // 最大4枚まで
+                const mediaContainer = ce('div', 'media-item');
+                const ext = mediaPath.split('.').pop().toLowerCase();
+                const mediaSrc = window.location.origin + '/' + mediaPath;
+                
+                let mediaEl;
+                if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
+                    mediaEl = ce('img');
+                    mediaEl.loading = 'lazy';
+                } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+                    mediaEl = ce('video');
+                    mediaEl.controls = true;
+                }
+                
+                if (mediaEl) {
+                    mediaEl.src = mediaSrc;
+                    mediaContainer.append(mediaEl);
+                    mediaGrid.append(mediaContainer);
+                }
+            });
+            
+            mediaWrapper.append(mediaGrid);
+            body.append(mediaWrapper);
+        } 
+        // 単一画像の場合（後方互換性）
+        else if (p.media_path) {
+            const mediaContainer = ce('div', 'media');
+            let mediaEl;
+            const ext = p.media_path.split('.').pop().toLowerCase();
+            const mediaSrc = window.location.origin + '/' + p.media_path;
 
-        if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) mediaEl = ce('img');
-        else if (['mp4', 'webm', 'ogg'].includes(ext)) mediaEl = ce('video'), mediaEl.controls = true;
-        if (mediaEl) mediaEl.src = mediaSrc, mediaWrapper.append(mediaEl);
+            if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) mediaEl = ce('img');
+            else if (['mp4', 'webm', 'ogg'].includes(ext)) mediaEl = ce('video'), mediaEl.controls = true;
+            if (mediaEl) mediaEl.src = mediaSrc, mediaContainer.append(mediaEl);
 
-        body.append(mediaWrapper);
+            mediaWrapper.append(mediaContainer);
+            body.append(mediaWrapper);
+        }
     }
 
     // NSFW 本文・メディアぼかし
