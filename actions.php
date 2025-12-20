@@ -95,10 +95,10 @@ if ($action === 'toggle_repost') {
         $pdo->prepare("INSERT INTO reposts(user_id, post_id) VALUES(?, ?)")
             ->execute([$_SESSION['uid'], $post_id]);
 
-        // タイムライン用にコピー作成
+        // タイムライン用にコピー作成（nsfw、media_path、media_type、media_pathsもコピー）
         $pdo->prepare("
-            INSERT INTO posts(user_id, content_md, content_html, is_repost_of, created_at)
-            SELECT ?, content_md, content_html, id, NOW()
+            INSERT INTO posts(user_id, content_md, content_html, nsfw, media_path, media_type, media_paths, is_repost_of, created_at)
+            SELECT ?, content_md, content_html, nsfw, media_path, media_type, media_paths, id, NOW()
             FROM posts
             WHERE id=?
         ")->execute([$_SESSION['uid'], $post_id]);
