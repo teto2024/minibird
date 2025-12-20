@@ -166,6 +166,9 @@ try {
             check_quest_progress_with_text($_SESSION['uid'], 'post_contains', $content);
         }
 
+        // メンション通知の処理
+        create_mention_notifications($content, $_SESSION['uid'], $post_id, $pdo);
+
         echo json_encode(['ok'=>true,'id'=>$post_id]); exit;
     }
 

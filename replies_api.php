@@ -76,6 +76,9 @@ if ($action==='create'){
         $st->execute([$post_owner_id, $_SESSION['uid'], $post_id]);
     }
 
+    // メンション通知の処理
+    create_mention_notifications($content, $_SESSION['uid'], $post_id, $pdo);
+
     echo json_encode(['ok'=>true]); 
     exit;
 }

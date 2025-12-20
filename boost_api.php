@@ -72,6 +72,15 @@ if ($action === 'boost') {
         ");
         $stmt->execute([$coins_cost, $crystals_cost, $me['id']]);
         
+        // 投稿者に通知を送る（自分の投稿は除く）
+        if ($post['user_id'] != $me['id']) {
+            $stmt = $pdo->prepare("
+                INSERT INTO notifications (user_id, actor_id, type, post_id, created_at, is_read)
+                VALUES (?, ?, 'boost', ?, NOW(), 0)
+            ");
+            $stmt->execute([$post['user_id'], $me['id'], $post_id]);
+        }
+        
         $pdo->commit();
         
         // ブースト数を取得
