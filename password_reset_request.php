@@ -8,7 +8,7 @@ require_once __DIR__ . '/config.php';
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>パスワードリセット申請 - MiniBird</title>
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=<?= ASSETS_VERSION ?>">
 <style>
 .reset-container {
     max-width: 500px;

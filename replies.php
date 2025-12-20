@@ -18,7 +18,7 @@ if (!$p){ http_response_code(404); echo "not found"; exit; }
 <html lang="ja"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>返信 - MiniBird</title>
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=<?= ASSETS_VERSION ?>">
 </head><body>
 <header class="topbar"><div class="logo"><a class="link" href="./">← 戻る</a></div></header>
 <main class="layout">

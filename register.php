@@ -13,7 +13,7 @@ if (user()) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>新規登録 - MiniBird</title>
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=<?= ASSETS_VERSION ?>">
 <style>
 body {
     background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);

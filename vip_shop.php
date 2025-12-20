@@ -104,7 +104,7 @@ $need_relay_completions = 1 * $next_level;
 <head>
 <meta charset="utf-8">
 <title>VIPショップ - MiniBird</title>
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=<?= ASSETS_VERSION ?>">
 <style>
 .vip-badge {
     background: linear-gradient(90deg, gold, orange);

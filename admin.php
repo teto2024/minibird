@@ -24,7 +24,7 @@ $words = $pdo->query("SELECT * FROM banned_words ORDER BY id DESC")->fetchAll();
 $users = $pdo->query("SELECT id, handle, muted_until, frozen FROM users ORDER BY id DESC LIMIT 100")->fetchAll();
 ?>
 <!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>管理 - MiniBird</title>
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=<?= ASSETS_VERSION ?>">
 <style>
 /* 管理ページ専用スタイル */
 .admin-container {

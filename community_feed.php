@@ -56,7 +56,7 @@ $is_owner = ($community['owner_id'] == $me['id']);
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= htmlspecialchars($community['name']) ?> - MiniBird</title>
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=<?= ASSETS_VERSION ?>">
 <style>
 .community-header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -374,6 +374,15 @@ async function loadPosts() {
 function renderPosts(posts) {
     const container = document.getElementById('posts');
     container.innerHTML = posts.map(post => {
+        // 削除済み投稿の処理
+        if (post.is_deleted || post.deleted_at) {
+            return `
+            <div class="community-post" data-post-id="${post.id}" style="opacity: 0.6;">
+                <div class="post-content" style="color: #999; font-style: italic;">この投稿は削除されました</div>
+            </div>
+            `;
+        }
+        
         const displayName = post.display_name || post.handle || 'unknown';
         const icon = post.icon || '/uploads/icons/default_icon.png';
         const frameClass = post.frame_class || '';
@@ -396,6 +405,12 @@ function renderPosts(posts) {
                 mediaHtml = `<div class="${nsfwClass}" onclick="if(this.classList.contains('nsfw-blur')){this.classList.add('revealed');}"><img src="${post.media_path}" style="max-width: 100%; border-radius: 6px; margin-top: 10px;"></div>`;
             }
         }
+        
+        // 削除ボタン（自分の投稿のみ表示）
+        const deleteBtn = post.user_id === USER_ID ? 
+            `<button class="post-action-btn" onclick="deletePost(${post.id})" style="color: #e53e3e;">
+                🗑️ 削除
+            </button>` : '';
         
         return `
         <div class="community-post ${frameClass}" data-post-id="${post.id}">
@@ -420,6 +435,7 @@ function renderPosts(posts) {
                 <button class="post-action-btn" onclick="location.href='community_replies.php?post_id=${post.id}'">
                     💬 返信 <span class="reply-count">${post.reply_count || 0}</span>
                 </button>
+                ${deleteBtn}
             </div>
         </div>
     `;
@@ -515,6 +531,34 @@ document.getElementById('editCommunityForm').addEventListener('submit', async (e
         alert('ネットワークエラー');
     }
 });
+
+// 投稿削除
+async function deletePost(postId) {
+    if (!confirm('この投稿を削除しますか？\n削除した投稿は「削除されました」と表示されます。')) {
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'delete_post');
+        formData.append('post_id', postId);
+        
+        const res = await fetch('community_api.php', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            alert('投稿を削除しました');
+            loadPosts();
+        } else {
+            alert('削除エラー: ' + data.error);
+        }
+    } catch (err) {
+        alert('ネットワークエラー');
+    }
+}
 
 // 初回読み込み
 loadPosts();

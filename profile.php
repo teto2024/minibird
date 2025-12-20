@@ -41,7 +41,7 @@ if ($me) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>@<?=htmlspecialchars($user['handle'])?> のプロフィール</title>
-<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/style.css?v=<?= ASSETS_VERSION ?>">
 <style>
 /* プロフィールページのレスポンシブデザイン */
 .profile-header {
@@ -359,6 +359,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 </script>
-<script src="assets/app.js"></script>
+<script src="assets/app.js?v=<?= ASSETS_VERSION ?>"></script>
 </body>
 </html>
