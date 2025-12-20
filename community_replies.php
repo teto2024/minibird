@@ -222,7 +222,13 @@ if (!$member) {
                 <span class="post-time"><?= htmlspecialchars($post['created_at']) ?></span>
             </div>
         </div>
-        <div class="post-content"><?= nl2br(htmlspecialchars($post['content'])) ?></div>
+        <div class="post-content">
+            <?php if ($post['is_deleted'] || $post['deleted_at']): ?>
+                <p style="color: #999; font-style: italic;">この投稿は削除されました</p>
+            <?php else: ?>
+                <?= nl2br(htmlspecialchars($post['content'])) ?>
+            <?php endif; ?>
+        </div>
         <?php if ($post['media_path']): ?>
             <img src="<?= htmlspecialchars($post['media_path']) ?>" style="max-width: 100%; border-radius: 6px; margin-top: 10px;">
         <?php endif; ?>
@@ -294,6 +300,11 @@ async function loadReplies() {
                 const vipHtml = reply.vip_level && reply.vip_level > 0 ? 
                     `<span class="vip-label">👑VIP${reply.vip_level}</span>` : '';
                 
+                // 削除済み投稿の処理
+                const contentHtml = (reply.is_deleted || reply.deleted_at) ?
+                    '<p style="color: #999; font-style: italic;">この投稿は削除されました</p>' :
+                    escapeHtml(reply.content);
+                
                 return `
                 <div class="community-post ${frameClass}">
                     <div class="post-header">
@@ -308,7 +319,7 @@ async function loadReplies() {
                             <span class="post-time">${formatTime(reply.created_at)}</span>
                         </div>
                     </div>
-                    <div class="post-content">${escapeHtml(reply.content)}</div>
+                    <div class="post-content">${contentHtml}</div>
                     <div class="post-actions">
                         <button class="post-action-btn ${reply.user_liked ? 'liked' : ''}" onclick="toggleLike(${reply.id})">
                             ❤️ <span class="like-count">${reply.like_count || 0}</span>

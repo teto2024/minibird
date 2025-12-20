@@ -493,7 +493,15 @@ button {
     padding-left: 8px;
     margin-bottom: 6px;
     font-size: 0.9em;
-    color: #555
+    color: #555;
+    transition: all 0.3s;
+}
+
+.quote:hover {
+    border-left-color: var(--blue);
+    background: rgba(29, 155, 240, 0.05);
+    border-radius: 4px;
+    padding: 8px;
 }
 
 .quote-body {

@@ -380,11 +380,16 @@ if (p.vip_level && p.vip_level > 0) {
         // 引用元があれば別要素で表示
         if (p.quoted_post) {
             const quoteDiv = ce('div', 'quote');
+            quoteDiv.style.cursor = 'pointer';
+            quoteDiv.onclick = (e) => {
+                e.stopPropagation();
+                window.location.href = `replies_enhanced.php?post_id=${p.quoted_post.id}`;
+            };
 
             const quoteMeta = ce('div', 'meta');
             const qDisplayName = p.quoted_post.display_name || p.quoted_post.handle || 'unknown';
             const qLink = p.quoted_post.user_id ? `profile.php?id=${p.quoted_post.user_id}` : `profile.php?handle=${encodeURIComponent(p.quoted_post.handle)}`;
-            quoteMeta.innerHTML = `<a href="${qLink}" class="mention">${qDisplayName}</a>`;
+            quoteMeta.innerHTML = `<a href="${qLink}" class="mention" onclick="event.stopPropagation();">${qDisplayName}</a>`;
             quoteDiv.append(quoteMeta);
 
             const quoteBody = ce('div', 'quote-body');
