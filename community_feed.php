@@ -219,11 +219,14 @@ $is_owner = ($community['owner_id'] == $me['id']);
 .nsfw-blur {
     position: relative;
     cursor: pointer;
+    display: inline-block;
+    min-height: 100px;
 }
 .nsfw-blur img,
 .nsfw-blur video {
     filter: blur(20px);
     transition: filter 0.3s;
+    display: block;
 }
 .nsfw-blur::after {
     content: '🔞 NSFW - クリックして表示';
@@ -237,6 +240,7 @@ $is_owner = ($community['owner_id'] == $me['id']);
     border-radius: 8px;
     font-weight: bold;
     pointer-events: none;
+    white-space: nowrap;
 }
 .nsfw-blur.revealed img,
 .nsfw-blur.revealed video {
@@ -349,7 +353,9 @@ document.getElementById('postForm').addEventListener('submit', async (e) => {
             loadPosts();
         } else {
             if (data.error === 'muted') {
-                showMutePopup(data.remaining_time, data.muted_until);
+                const remainingTime = data.remaining_time || '不明';
+                const mutedUntil = data.muted_until || '不明';
+                showMutePopup(remainingTime, mutedUntil);
             } else {
                 alert('投稿エラー: ' + data.error);
             }

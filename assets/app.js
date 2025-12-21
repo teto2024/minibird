@@ -208,7 +208,9 @@ qs('#submitPost')?.addEventListener('click', async () => {
         refreshFeed(true); 
     } else {
         if (r.error === 'muted') {
-            showMutePopup(r.remaining_time, r.muted_until);
+            const remainingTime = r.remaining_time || '不明';
+            const mutedUntil = r.muted_until || '不明';
+            showMutePopup(remainingTime, mutedUntil);
         } else {
             alert('投稿失敗: ' + r.error);
         }
@@ -678,23 +680,32 @@ async function loadNotifications() {
 notificationBtn?.addEventListener("click", async () => {
     notificationPopup?.classList.toggle("hidden");
 
-    const data = await fetchJSON("/notifications_api.php?limit=5");
-    notificationList.innerHTML = data.map(n => {
-        const actorIcon = n.actor?.icon || '/default_icon.png';
-        const message = n.message || '';
-        // Check if it's a community post
-        const isCommunityPost = n.post && n.post.is_community;
-        const postLink = n.post && n.post.id 
-            ? (isCommunityPost ? `community_replies.php?post_id=${n.post.id}` : `replies.php?post_id=${n.post.id}`)
-            : '#';
-        const clickable = n.post && n.post.id ? 'style="cursor: pointer;"' : '';
-        const onClick = n.post && n.post.id ? `onclick="location.href='${postLink}'"` : '';
-        return `
-        <li class="${n.highlight ? "highlight" : ""}" ${clickable} ${onClick}>
-            <img src="${actorIcon}" class="avatar" alt="アイコン">
-            <span>${message}</span>
-        </li>`;
-    }).join("");
+    if (!notificationPopup?.classList.contains("hidden")) {
+        const data = await fetchJSON("/notifications_api.php?limit=5");
+        if (!notificationList) return;
+        
+        if (data.length === 0) {
+            notificationList.innerHTML = '<li style="padding: 10px; color: var(--muted);">通知はありません</li>';
+            return;
+        }
+        
+        notificationList.innerHTML = data.map(n => {
+            const actorIcon = n.actor?.icon || '/default_icon.png';
+            const message = n.message || '通知';
+            // Check if it's a community post
+            const isCommunityPost = n.post && n.post.is_community;
+            const postLink = n.post && n.post.id 
+                ? (isCommunityPost ? `community_replies.php?post_id=${n.post.id}` : `replies.php?post_id=${n.post.id}`)
+                : '#';
+            const clickable = n.post && n.post.id ? 'style="cursor: pointer;"' : '';
+            const onClick = n.post && n.post.id ? `onclick="location.href='${postLink}'"` : '';
+            return `
+            <li class="${n.highlight ? "highlight" : ""}" ${clickable} ${onClick}>
+                <img src="${actorIcon}" class="avatar" alt="アイコン">
+                <span style="color: var(--text);">${message}</span>
+            </li>`;
+        }).join("");
+    }
 });
 
 // 定期的に新着通知チェック
