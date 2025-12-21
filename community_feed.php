@@ -394,7 +394,7 @@ function renderPosts(posts) {
         // NSFW画像処理
         let mediaHtml = '';
         if (post.media_path) {
-            const isNsfw = post.is_nsfw == 1 || post.is_nsfw === true;
+            const isNsfw = post.is_nsfw == 1 || post.is_nsfw === true || post.is_nsfw === '1';
             const nsfwClass = isNsfw ? 'nsfw-blur' : '';
             const mediaExt = post.media_path.split('.').pop().toLowerCase();
             const isVideo = ['mp4', 'webm'].includes(mediaExt);

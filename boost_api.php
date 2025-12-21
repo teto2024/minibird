@@ -38,6 +38,16 @@ if ($action === 'boost') {
         exit;
     }
     
+    // 投稿から2日経過チェック
+    $post_created = new DateTime($post['created_at']);
+    $now = new DateTime();
+    $boost_deadline = (clone $post_created)->modify('+2 days');
+    
+    if ($now > $boost_deadline) {
+        echo json_encode(['ok' => false, 'error' => 'boost_expired', 'message' => 'ブースト期限を過ぎているためブーストできません']);
+        exit;
+    }
+    
     // コインとクリスタルのチェック
     $coins_cost = 200;
     $crystals_cost = 20;
@@ -51,8 +61,7 @@ if ($action === 'boost') {
     }
     
     // 期限計算：投稿日から2日後
-    $post_created = new DateTime($post['created_at']);
-    $expires_at = (clone $post_created)->modify('+2 days')->format('Y-m-d H:i:s');
+    $expires_at = $boost_deadline->format('Y-m-d H:i:s');
     
     try {
         $pdo->beginTransaction();

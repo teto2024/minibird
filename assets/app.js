@@ -1141,7 +1141,11 @@ function renderPost(p, wrap, prepend = false) {
             if (qs('#crystals')) qs('#crystals').textContent = r.remaining.crystals;
             alert('ブーストしました！');
         } else {
-            alert('ブースト失敗: ' + (r.error || 'unknown'));
+            if (r.error === 'boost_expired') {
+                alert('ブースト期限を過ぎているためブーストできません');
+            } else {
+                alert('ブースト失敗: ' + (r.message || r.error || 'unknown'));
+            }
         }
     };
 

@@ -2482,6 +2482,8 @@ button {
     word-break: break-word;
     overflow-wrap: break-word;
     min-width: 0;
+    color: #e6e6e6;
+    /* 明示的に文字色を指定（スマホ・タブレット対応） */
 }
 
 #notificationPopup li.highlight {
