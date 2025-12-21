@@ -86,6 +86,29 @@ try {
             $parent_id = !empty($_POST['parent_id']) ? intval($_POST['parent_id']) : null;
             $is_nsfw = !empty($_POST['is_nsfw']) ? 1 : 0;
             
+            // ミュートチェック
+            $stmt = $pdo->prepare("SELECT muted_until FROM users WHERE id = ?");
+            $stmt->execute([$user_id]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($user && $user['muted_until'] && strtotime($user['muted_until']) > time()) {
+                $remaining_seconds = strtotime($user['muted_until']) - time();
+                $remaining_hours = floor($remaining_seconds / 3600);
+                $remaining_minutes = floor(($remaining_seconds % 3600) / 60);
+                $remaining_time_str = '';
+                if ($remaining_hours > 0) {
+                    $remaining_time_str = "{$remaining_hours}時間{$remaining_minutes}分";
+                } else {
+                    $remaining_time_str = "{$remaining_minutes}分";
+                }
+                echo json_encode([
+                    'ok' => false,
+                    'error' => 'muted',
+                    'muted_until' => $user['muted_until'],
+                    'remaining_time' => $remaining_time_str
+                ]);
+                exit;
+            }
+            
             if (!$community_id || empty($content)) {
                 throw new Exception('Community ID and content required');
             }

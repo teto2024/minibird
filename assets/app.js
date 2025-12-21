@@ -202,7 +202,17 @@ qs('#submitPost')?.addEventListener('click', async () => {
     }
     
     const r = await fetch('post.php', { method: 'POST', body: fd, credentials: 'include' }).then(r => r.json());
-    if (r.ok) { qs('#postText').value = ''; qs('#media').value = null; refreshFeed(true); } else alert('投稿失敗: ' + r.error);
+    if (r.ok) { 
+        qs('#postText').value = ''; 
+        qs('#media').value = null; 
+        refreshFeed(true); 
+    } else {
+        if (r.error === 'muted') {
+            showMutePopup(r.remaining_time, r.muted_until);
+        } else {
+            alert('投稿失敗: ' + r.error);
+        }
+    }
 });
 
 // キーボードショートカット: Shift+Enter で改行、Ctrl+Enter でポスト（PC のみ）
@@ -1141,7 +1151,11 @@ function renderPost(p, wrap, prepend = false) {
             if (qs('#crystals')) qs('#crystals').textContent = r.remaining.crystals;
             alert('ブーストしました！');
         } else {
-            alert('ブースト失敗: ' + (r.error || 'unknown'));
+            if (r.error === 'boost_expired') {
+                alert('ブースト期限を過ぎているためブーストできません');
+            } else {
+                alert('ブースト失敗: ' + (r.message || r.error || 'unknown'));
+            }
         }
     };
 
@@ -1164,8 +1178,15 @@ function renderPost(p, wrap, prepend = false) {
             else alert('削除失敗');
         };
     }
+    
+    // 通報ボタン
+    const reportBtn = ce('button', 'report-btn');
+    reportBtn.textContent = '🚨 通報';
+    reportBtn.onclick = async () => {
+        await showReportDialog(p.id);
+    };
 
-    buttons.append(like, repost, bm, boost, rep, qt);
+    buttons.append(like, repost, bm, boost, rep, qt, reportBtn);
     if (delBtn) buttons.append(delBtn);
     cnt.append(meta, body, buttons);
     post.append(av, cnt);
@@ -1174,8 +1195,176 @@ function renderPost(p, wrap, prepend = false) {
     else wrap.append(post);
 }
 
+// 通報ダイアログを表示
+async function showReportDialog(postId) {
+    const reasons = [
+        'スパム',
+        'ハラスメント・いじめ',
+        '暴力的な内容',
+        'ヘイトスピーチ',
+        '性的なコンテンツ',
+        '誤情報',
+        '著作権侵害',
+        'その他'
+    ];
+    
+    let reasonHtml = '';
+    reasons.forEach((r, i) => {
+        reasonHtml += `<option value="${r}">${r}</option>`;
+    });
+    
+    const dialog = document.createElement('div');
+    dialog.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+    dialog.innerHTML = `
+        <div style="background: var(--card); border-radius: 12px; padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <h3 style="margin: 0 0 20px 0; color: var(--text);">投稿を通報</h3>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: var(--text);">通報理由（必須）</label>
+                <select id="reportReason" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text);">
+                    ${reasonHtml}
+                </select>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: var(--text);">詳細（任意）</label>
+                <textarea id="reportDetails" rows="4" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); resize: vertical;" placeholder="詳細な説明を入力してください（任意）"></textarea>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="reportCancel" style="padding: 10px 20px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); cursor: pointer;">キャンセル</button>
+                <button id="reportSubmit" style="padding: 10px 20px; border: none; border-radius: 6px; background: #f56565; color: white; cursor: pointer; font-weight: bold;">通報する</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(dialog);
+    
+    document.getElementById('reportCancel').onclick = () => {
+        document.body.removeChild(dialog);
+    };
+    
+    document.getElementById('reportSubmit').onclick = async () => {
+        const reason = document.getElementById('reportReason').value;
+        const details = document.getElementById('reportDetails').value;
+        
+        if (!reason) {
+            alert('通報理由を選択してください');
+            return;
+        }
+        
+        const r = await api('report_api.php', {
+            action: 'submit_report',
+            post_id: postId,
+            reason: reason,
+            details: details
+        });
+        
+        if (r.ok) {
+            alert('通報を受け付けました');
+            document.body.removeChild(dialog);
+        } else {
+            if (r.error === 'already_reported') {
+                alert('この投稿は既に通報済みです');
+            } else {
+                alert('通報に失敗しました: ' + (r.message || r.error));
+            }
+        }
+    };
+}
 
 
+
+
+// ミュートポップアップを表示
+function showMutePopup(remainingTime, mutedUntil) {
+    const dialog = document.createElement('div');
+    dialog.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+    dialog.innerHTML = `
+        <div style="background: var(--card); border-radius: 12px; padding: 40px; max-width: 500px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.5); border: 2px solid #f56565;">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <div style="font-size: 60px; margin-bottom: 10px;">🚫</div>
+                <h2 style="margin: 0 0 10px 0; color: #f56565; font-size: 24px;">あなたは投稿を制限されています</h2>
+                <p style="color: var(--muted); margin: 5px 0;">投稿が一時的に制限されています</p>
+            </div>
+            
+            <div style="background: var(--bg); border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: var(--text);">残りミュート時間:</strong>
+                    <div style="font-size: 28px; font-weight: bold; color: #f56565; margin-top: 5px;">${remainingTime}</div>
+                </div>
+                <div>
+                    <strong style="color: var(--text);">制限解除予定:</strong>
+                    <div style="color: var(--muted); margin-top: 5px;">${mutedUntil}</div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-bottom: 20px;">
+                <p style="color: var(--text); margin: 10px 0;">この制限に異議がある場合は、異議申し立てを行うことができます</p>
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button id="muteClose" style="padding: 12px 24px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); cursor: pointer; font-weight: bold;">閉じる</button>
+                <button id="appealBtn" style="padding: 12px 24px; border: none; border-radius: 6px; background: #4299e1; color: white; cursor: pointer; font-weight: bold;">異議申し立て</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(dialog);
+    
+    document.getElementById('muteClose').onclick = () => {
+        document.body.removeChild(dialog);
+    };
+    
+    document.getElementById('appealBtn').onclick = () => {
+        document.body.removeChild(dialog);
+        showAppealDialog();
+    };
+}
+
+// 異議申し立てダイアログを表示
+function showAppealDialog() {
+    const dialog = document.createElement('div');
+    dialog.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+    dialog.innerHTML = `
+        <div style="background: var(--card); border-radius: 12px; padding: 30px; max-width: 600px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <h3 style="margin: 0 0 20px 0; color: var(--text);">異議申し立て</h3>
+            <p style="color: var(--text); margin-bottom: 20px;">ミュート措置に対する異議申し立ての理由を詳しく記入してください。管理者が審査します。</p>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: var(--text);">申し立て理由（必須）</label>
+                <textarea id="appealReason" rows="6" style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); resize: vertical; font-family: inherit;" placeholder="なぜミュートが不当だと考えるのか、詳しく説明してください"></textarea>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="appealCancel" style="padding: 10px 20px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); cursor: pointer;">キャンセル</button>
+                <button id="appealSubmit" style="padding: 10px 20px; border: none; border-radius: 6px; background: #4299e1; color: white; cursor: pointer; font-weight: bold;">申し立てる</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(dialog);
+    
+    document.getElementById('appealCancel').onclick = () => {
+        document.body.removeChild(dialog);
+    };
+    
+    document.getElementById('appealSubmit').onclick = async () => {
+        const reason = document.getElementById('appealReason').value.trim();
+        
+        if (!reason) {
+            alert('申し立て理由を入力してください');
+            return;
+        }
+        
+        const r = await api('appeal_api.php', {
+            action: 'submit_appeal',
+            reason: reason
+        });
+        
+        if (r.ok) {
+            alert('異議申し立てを受け付けました。管理者が審査します。');
+            document.body.removeChild(dialog);
+        } else {
+            alert('異議申し立てに失敗しました: ' + (r.message || r.error));
+        }
+    };
+}
 
 
 // 3秒ごとに差分取得
