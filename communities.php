@@ -17,7 +17,8 @@ $pdo = db();
 $stmt = $pdo->prepare("
     SELECT c.*, cm.role, u.handle as owner_handle,
            (SELECT COUNT(*) FROM community_members WHERE community_id = c.id) as member_count,
-           (SELECT COUNT(*) FROM community_posts WHERE community_id = c.id AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as recent_posts
+           (SELECT COUNT(*) FROM community_posts WHERE community_id = c.id) as post_count,
+           (SELECT COUNT(*) FROM community_posts WHERE community_id = c.id AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as posts_24h
     FROM communities c
     JOIN community_members cm ON cm.community_id = c.id
     JOIN users u ON u.id = c.owner_id
@@ -26,6 +27,28 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$me['id']]);
 $communities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// アクティブメーターの段階を計算
+foreach ($communities as &$community) {
+    $posts_24h = (int)$community['posts_24h'];
+    if ($posts_24h >= 20) {
+        $community['active_level'] = 5;
+        $community['active_color'] = 'green';
+    } elseif ($posts_24h >= 15) {
+        $community['active_level'] = 4;
+        $community['active_color'] = 'green';
+    } elseif ($posts_24h >= 10) {
+        $community['active_level'] = 3;
+        $community['active_color'] = 'orange';
+    } elseif ($posts_24h >= 5) {
+        $community['active_level'] = 2;
+        $community['active_color'] = 'orange';
+    } else {
+        $community['active_level'] = 1;
+        $community['active_color'] = 'red';
+    }
+}
+unset($community);
 
 $msg = $_GET['msg'] ?? '';
 ?>
@@ -178,6 +201,32 @@ $msg = $_GET['msg'] ?? '';
     align-items: center;
     gap: 5px;
 }
+.active-meter {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+}
+.active-meter-bars {
+    display: inline-flex;
+    gap: 2px;
+    align-items: flex-end;
+}
+.active-meter-bar {
+    width: 8px;
+    height: 15px;
+    background: #e2e8f0;
+    border-radius: 2px;
+}
+.active-meter-bar.active.green {
+    background: #48bb78;
+}
+.active-meter-bar.active.orange {
+    background: #ed8936;
+}
+.active-meter-bar.active.red {
+    background: #f56565;
+}
 .message {
     background: #48bb78;
     color: white;
@@ -273,7 +322,19 @@ $msg = $_GET['msg'] ?? '';
                     👥 <?= $community['member_count'] ?> メンバー
                 </div>
                 <div class="community-stat-item">
-                    💬 24時間以内に <?= $community['recent_posts'] ?> 投稿
+                    📝 総投稿: <?= $community['post_count'] ?>件
+                </div>
+                <div class="community-stat-item">
+                    ⏰ 24時間: <?= $community['posts_24h'] ?>件
+                </div>
+                <div class="active-meter">
+                    <span>アクティブ:</span>
+                    <div class="active-meter-bars">
+                        <?php for ($i = 1; $i <= 5; $i++): ?>
+                            <div class="active-meter-bar <?= $i <= $community['active_level'] ? 'active ' . $community['active_color'] : '' ?>"></div>
+                        <?php endfor; ?>
+                    </div>
+                    <span>(<?= $community['active_level'] ?>/5)</span>
                 </div>
             </div>
         </div>
