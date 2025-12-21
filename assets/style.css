@@ -2532,6 +2532,7 @@ button {
     #notificationPopup li span {
         font-size: 13px;
         line-height: 1.5;
+        color: #e6e6e6 !important;
     }
 }
 
@@ -2540,6 +2541,10 @@ button {
         width: 95vw;
         right: 2.5%;
         font-size: 13px;
+    }
+    
+    #notificationPopup li span {
+        color: #e6e6e6 !important;
     }
 }
 
