@@ -1,5 +1,23 @@
 <?php
 require_once __DIR__ . '/config.php';
+
+// エラー報告を有効化（デバッグ用）
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+try {
+    // ユーザー確認
+    $me = user();
+    if (!$me) {
+        // ユーザーが未ログインの場合はログインページにリダイレクト
+        header('Location: /login.php');
+        exit;
+    }
+} catch (Exception $e) {
+    // エラーが発生した場合はエラーメッセージを表示
+    die('エラーが発生しました: ' . htmlspecialchars($e->getMessage()));
+}
 ?>
 <!doctype html>
 <html lang="ja">
