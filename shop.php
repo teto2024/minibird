@@ -34,8 +34,9 @@ if ($cnt===0){
   ('クローバー','frame-clover',29000,130,1,''),
   ('漆黒','frame-obsidian',70000,280,2,''),
   ('夕日','frame-sunset',44000,190,6,''),
-  ('集中マスター','frame-master',100000,10,10,'')");
-}
+  ('集中マスター','frame-master',100000,10,10,''),
+  ('クローバーカード','frame-clover-card',700,5,0,''),
+  ('ハート','frame-heart',30000,0,3,'')");
 
 // POST処理
 if ($_SERVER['REQUEST_METHOD']==='POST'){
