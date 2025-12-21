@@ -45,7 +45,8 @@ if ($action === 'submit_appeal') {
         
         echo json_encode(['ok' => true, 'message' => '異議申し立てを受け付けました']);
     } catch (Exception $e) {
-        echo json_encode(['ok' => false, 'error' => 'database_error', 'message' => $e->getMessage()]);
+        error_log('Appeal submission error: ' . $e->getMessage());
+        echo json_encode(['ok' => false, 'error' => 'database_error', 'message' => 'データベースエラーが発生しました']);
     }
     exit;
 }

@@ -2,6 +2,9 @@
 require_once __DIR__ . '/config.php';
 
 
+// 最大ミュート期間（分）
+define('MAX_MUTE_MINUTES', 10080); // 7日間
+
 $me = user();
 if (!$me || !in_array($me['role'], ['mod','admin'])) { http_response_code(403); echo "forbidden"; exit; }
 $pdo = db();
@@ -13,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST'){
   }
   
   if ($action === 'mute_user' && isset($_POST['mute_uid'], $_POST['minutes'])){
-    $minutes = max(1, min(10080, (int)$_POST['minutes'])); // 最大7日間
+    $minutes = max(1, min(MAX_MUTE_MINUTES, (int)$_POST['minutes']));
     $pdo->prepare("UPDATE users SET muted_until = DATE_ADD(NOW(), INTERVAL ? MINUTE) WHERE id=?")
         ->execute([$minutes, (int)$_POST['mute_uid']]);
   }

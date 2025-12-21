@@ -55,7 +55,8 @@ if ($action === 'submit_report') {
         
         echo json_encode(['ok' => true, 'message' => '通報を受け付けました']);
     } catch (Exception $e) {
-        echo json_encode(['ok' => false, 'error' => 'database_error', 'message' => $e->getMessage()]);
+        error_log('Report submission error: ' . $e->getMessage());
+        echo json_encode(['ok' => false, 'error' => 'database_error', 'message' => 'データベースエラーが発生しました']);
     }
     exit;
 }
