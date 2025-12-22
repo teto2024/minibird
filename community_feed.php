@@ -390,6 +390,20 @@ async function loadPosts() {
 // 投稿レンダリング
 function renderPosts(posts) {
     const container = document.getElementById('posts');
+    
+    // 既存の投稿要素とYouTubeのiframeを保持
+    const existingPosts = {};
+    container.querySelectorAll('.community-post').forEach(postEl => {
+        const postId = postEl.dataset.postId;
+        const youtubeIframes = postEl.querySelectorAll('.youtube-embed');
+        if (youtubeIframes.length > 0) {
+            existingPosts[postId] = {
+                element: postEl,
+                iframes: Array.from(youtubeIframes)
+            };
+        }
+    });
+    
     container.innerHTML = posts.map(post => {
         // 削除済み投稿の処理
         if (post.is_deleted || post.deleted_at) {
@@ -509,6 +523,26 @@ function renderPosts(posts) {
         </div>
     `;
     }).join('');
+    
+    // YouTube iframeを復元
+    Object.keys(existingPosts).forEach(postId => {
+        const newPostEl = container.querySelector(`.community-post[data-post-id="${postId}"]`);
+        if (newPostEl) {
+            const newIframes = newPostEl.querySelectorAll('.youtube-embed-wrapper');
+            const oldIframes = existingPosts[postId].iframes;
+            
+            newIframes.forEach((newWrapper, index) => {
+                if (oldIframes[index]) {
+                    // 既存のiframeで置き換える（再生状態を維持）
+                    const oldIframe = oldIframes[index];
+                    const newIframe = newWrapper.querySelector('.youtube-embed');
+                    if (newIframe && oldIframe) {
+                        newIframe.parentNode.replaceChild(oldIframe, newIframe);
+                    }
+                }
+            });
+        }
+    });
 }
 
 // いいね切り替え

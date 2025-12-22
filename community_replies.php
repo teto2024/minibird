@@ -228,7 +228,7 @@ if (!$member) {
                 <span class="post-time"><?= htmlspecialchars($post['created_at']) ?></span>
             </div>
         </div>
-        <div class="post-content">
+        <div class="post-content" id="original-post-content" data-raw-content="<?= htmlspecialchars($post['content'], ENT_QUOTES) ?>">
             <?php if ($post['is_deleted'] || $post['deleted_at']): ?>
                 <p style="color: #999; font-style: italic;">この投稿は削除されました</p>
             <?php else: ?>
@@ -297,6 +297,19 @@ async function loadReplies() {
         if (data.ok) {
             document.getElementById('reply-count').textContent = data.replies.length;
             const container = document.getElementById('replies');
+            
+            // 既存の返信要素とYouTubeのiframeを保持
+            const existingReplies = {};
+            container.querySelectorAll('.community-post').forEach(replyEl => {
+                const replyContent = replyEl.querySelector('.post-content');
+                const youtubeIframes = replyContent ? replyContent.querySelectorAll('.youtube-embed') : [];
+                if (youtubeIframes.length > 0) {
+                    // 返信IDを取得（content内のテキストでキーにする）
+                    const replyText = replyContent.textContent.substring(0, 50);
+                    existingReplies[replyText] = Array.from(youtubeIframes);
+                }
+            });
+            
             container.innerHTML = data.replies.map(reply => {
                 const displayName = reply.display_name || reply.handle || 'unknown';
                 const icon = reply.icon || '/uploads/icons/default_icon.png';
@@ -326,7 +339,7 @@ async function loadReplies() {
                     </button>` : '';
                 
                 return `
-                <div class="community-post ${frameClass}">
+                <div class="community-post ${frameClass}" data-reply-key="${reply.content.substring(0, 50)}">
                     <div class="post-header">
                         <img src="${icon}" alt="${displayName}" class="avatar" style="width: 32px; height: 32px;">
                         <div>
@@ -350,6 +363,27 @@ async function loadReplies() {
                 </div>
             `;
             }).join('');
+            
+            // YouTube iframeを復元
+            Object.keys(existingReplies).forEach(replyKey => {
+                const newReplyEl = container.querySelector(`.community-post[data-reply-key="${replyKey}"]`);
+                if (newReplyEl) {
+                    const newContent = newReplyEl.querySelector('.post-content');
+                    const newIframes = newContent.querySelectorAll('.youtube-embed-wrapper');
+                    const oldIframes = existingReplies[replyKey];
+                    
+                    newIframes.forEach((newWrapper, index) => {
+                        if (oldIframes[index]) {
+                            // 既存のiframeで置き換える（再生状態を維持）
+                            const oldIframe = oldIframes[index];
+                            const newIframe = newWrapper.querySelector('.youtube-embed');
+                            if (newIframe && oldIframe) {
+                                newIframe.parentNode.replaceChild(oldIframe, newIframe);
+                            }
+                        }
+                    });
+                }
+            });
         }
     } catch (err) {
         console.error('返信読み込みエラー', err);
@@ -440,7 +474,19 @@ async function deletePost(postId) {
 // 初回読み込み
 loadReplies();
 
-// 3秒ごとに自動更新
+// YouTube埋め込みを元の投稿に適用（初回のみ）
+document.addEventListener('DOMContentLoaded', function() {
+    const originalPostContent = document.getElementById('original-post-content');
+    if (originalPostContent && !originalPostContent.dataset.youtubeProcessed) {
+        const rawContent = originalPostContent.dataset.rawContent;
+        if (rawContent) {
+            originalPostContent.innerHTML = escapeHtml(rawContent);
+            originalPostContent.dataset.youtubeProcessed = 'true';
+        }
+    }
+});
+
+// 3秒ごとに自動更新（返信のみ更新し、元の投稿は更新しない）
 setInterval(loadReplies, 3000);
 </script>
 </body>
