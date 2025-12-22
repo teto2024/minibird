@@ -3,6 +3,13 @@ require_once __DIR__ . '/config.php';
 require_login();
 $pdo = db();
 
+// 報酬計算用の定数
+define('REWARD_BASE_COINS', 10);
+define('REWARD_BASE_CRYSTALS', 2);
+define('REWARD_COINS_EXP_RATE', 1.04);
+define('REWARD_CRYSTALS_EXP_RATE', 1.015);
+define('REWARD_SERVER_TIME_MULTIPLIER', 1.06); // サーバー側の時間補正
+
 // JSONデータ取得
 $input_raw = file_get_contents('php://input');
 error_log("RAW INPUT: " . $input_raw);
@@ -93,11 +100,11 @@ try {
 
         // --------------------------
     // 成功・失敗ごとのコイン・クリスタル計算
-    // 基礎報酬を増やし、より良い報酬体系に改善
+    // 定数を使用して計算（クライアント側と同期）
     // --------------------------
         if ($status === 'success') {
         // 成功時：改善された指数関数的な時間ボーナス
-        $time_multiplier = pow(1.06, $mins);
+        $time_multiplier = pow(REWARD_SERVER_TIME_MULTIPLIER, $mins);
 
         $final_coins    = (int)floor($coins * $time_multiplier * $total_multiplier);
         $final_crystals = (int)floor($crystals * $time_multiplier * $total_multiplier);
@@ -111,7 +118,7 @@ try {
         $progress_ratio = min(1, $actual_mins / $mins);
 
         // 実施時間に応じた指数補正
-        $time_multiplier = pow(1.06, $actual_mins);
+        $time_multiplier = pow(REWARD_SERVER_TIME_MULTIPLIER, $actual_mins);
 
         // 比率＋指数補正＋各種ボーナスを掛け合わせ
         $final_coins    = (int)floor($coins * $progress_ratio * $time_multiplier * $total_multiplier);

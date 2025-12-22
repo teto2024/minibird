@@ -363,7 +363,14 @@ tr:hover {
           <td><?= date('Y/m/d', strtotime($update['created_at'])) ?></td>
           <td>
             <div class="action-buttons">
-              <button class="btn btn-small btn-secondary" onclick='editUpdate(<?= json_encode($update, JSON_HEX_QUOT | JSON_HEX_APOS) ?>)'>
+              <button class="btn btn-small btn-secondary" 
+                      data-update-id="<?= $update['id'] ?>"
+                      data-update-title="<?= htmlspecialchars($update['title']) ?>"
+                      data-update-content="<?= htmlspecialchars($update['content']) ?>"
+                      data-update-category="<?= htmlspecialchars($update['category']) ?>"
+                      data-update-version="<?= htmlspecialchars($update['version'] ?? '') ?>"
+                      data-update-published="<?= $update['is_published'] ? '1' : '0' ?>"
+                      onclick="editUpdateFromData(this)">
                 編集
               </button>
               <button class="btn btn-small btn-danger" onclick="deleteUpdate(<?= $update['id'] ?>)">
@@ -443,15 +450,15 @@ function showCreateModal() {
   modal.classList.add('active');
 }
 
-function editUpdate(update) {
+function editUpdateFromData(button) {
   isEditMode = true;
   document.getElementById('modalTitle').textContent = 'アップデート情報を編集';
-  document.getElementById('updateId').value = update.id;
-  document.getElementById('title').value = update.title;
-  document.getElementById('content').value = update.content;
-  document.getElementById('category').value = update.category;
-  document.getElementById('version').value = update.version || '';
-  document.getElementById('is_published').checked = update.is_published == 1;
+  document.getElementById('updateId').value = button.dataset.updateId;
+  document.getElementById('title').value = button.dataset.updateTitle;
+  document.getElementById('content').value = button.dataset.updateContent;
+  document.getElementById('category').value = button.dataset.updateCategory;
+  document.getElementById('version').value = button.dataset.updateVersion;
+  document.getElementById('is_published').checked = button.dataset.updatePublished === '1';
   modal.classList.add('active');
 }
 

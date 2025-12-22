@@ -373,9 +373,25 @@ canvas#fireCanvas {
 </main>
 
 <script>
+// 報酬計算用の定数
+const REWARD_CONFIG = {
+  BASE_COINS: 10,
+  BASE_CRYSTALS: 2,
+  COINS_EXP_RATE: 1.04,
+  CRYSTALS_EXP_RATE: 1.015,
+  MAX_MINUTES: 180
+};
+
 let lock=false, t=null, end=0, quoteInterval=null;
 const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 let startTime=null;
+
+// 報酬計算関数
+function calculateRewards(mins) {
+  const coins = Math.floor(REWARD_CONFIG.BASE_COINS * Math.pow(REWARD_CONFIG.COINS_EXP_RATE, mins));
+  const crystals = Math.floor(REWARD_CONFIG.BASE_CRYSTALS * Math.pow(REWARD_CONFIG.CRYSTALS_EXP_RATE, mins));
+  return { coins, crystals };
+}
 
 // 名言リスト
 const quotes = [
@@ -515,10 +531,10 @@ document.getElementById('start').onclick = async ()=>{
 
   const mins = parseInt(document.getElementById('mins').value||'25',10);
   
-  // 最大180分チェック
-  if (mins > 180) {
-    alert("集中時間は最大180分までです");
-    document.getElementById('mins').value = 180;
+  // 最大時間チェック
+  if (mins > REWARD_CONFIG.MAX_MINUTES) {
+    alert(`集中時間は最大${REWARD_CONFIG.MAX_MINUTES}分までです`);
+    document.getElementById('mins').value = REWARD_CONFIG.MAX_MINUTES;
     return;
   }
   
@@ -690,18 +706,12 @@ function success(){
   document.getElementById('abort').style.display = 'none';
   
   const mins = parseInt(document.getElementById('mins').value || '25', 10);
-
-  // --------------------------
-  // 改善された指数関数的報酬計算
-  // 基礎報酬を増やし、時間に応じた指数的ボーナスを追加
-  // --------------------------
-  const coins = Math.floor(10 * Math.pow(1.04, mins));
-  const crystals = Math.floor(2 * Math.pow(1.015, mins));
+  const rewards = calculateRewards(mins);
 
   const task = document.getElementById('task').value.trim();
   const endTime = new Date();
   
-  sendFocusLog(task, startTime, endTime, mins, coins, crystals, "success");
+  sendFocusLog(task, startTime, endTime, mins, rewards.coins, rewards.crystals, "success");
 }
 
 function fail(){
@@ -719,14 +729,9 @@ function fail(){
   const started = startTime ?? endTime;
 
   const mins = parseInt(document.getElementById('mins').value || '25', 10);
+  const rewards = calculateRewards(mins);
 
-  // --------------------------
-  // 失敗時も改善された指数関数的報酬を計算（サーバー側で実際の比率計算）
-  // --------------------------
-  const coins = Math.floor(10 * Math.pow(1.04, mins));
-  const crystals = Math.floor(2 * Math.pow(1.015, mins));
-
-  sendFocusLog(task, started, endTime, mins, coins, crystals, "fail");
+  sendFocusLog(task, started, endTime, mins, rewards.coins, rewards.crystals, "fail");
 }
 
 function enterFullscreen(elem){
