@@ -33,17 +33,18 @@ function updateLikeUI(p) {
 //---------------
 //parseMessage - YouTube embedding support
 //----------------
+// YouTube URL patterns constant
+const YOUTUBE_URL_PATTERNS = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
+];
+
 function extractYouTubeId(url) {
     // YouTube URL patterns:
     // https://www.youtube.com/watch?v=VIDEO_ID
     // https://youtu.be/VIDEO_ID
     // https://www.youtube.com/embed/VIDEO_ID
-    const patterns = [
-        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-        /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
-    ];
-    
-    for (const pattern of patterns) {
+    for (const pattern of YOUTUBE_URL_PATTERNS) {
         const match = url.match(pattern);
         if (match && match[1]) {
             return match[1];
@@ -52,29 +53,26 @@ function extractYouTubeId(url) {
     return null;
 }
 
+function createYouTubeEmbed(videoId) {
+    return `<div class="youtube-embed-wrapper">
+        <iframe class="youtube-embed" 
+                src="https://www.youtube.com/embed/${videoId}" 
+                frameborder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowfullscreen>
+        </iframe>
+    </div>`;
+}
+
 function embedYouTube(html) {
     // Process YouTube URLs and convert them to embeds
     // This function processes both bare URLs and URLs inside anchor tags
     return html.replace(/<a[^>]*href="(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^"]*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})[^"]*)"[^>]*>.*?<\/a>/gi, (match, url, videoId) => {
         // Replace YouTube links with embeds
-        return `<div class="youtube-embed-wrapper">
-            <iframe class="youtube-embed" 
-                    src="https://www.youtube.com/embed/${videoId}" 
-                    frameborder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowfullscreen>
-            </iframe>
-        </div>`;
+        return createYouTubeEmbed(videoId);
     }).replace(/(^|[^">])(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})[^\s<]*)/gi, (match, prefix, url, videoId) => {
         // Replace bare YouTube URLs with embeds
-        return `${prefix}<div class="youtube-embed-wrapper">
-            <iframe class="youtube-embed" 
-                    src="https://www.youtube.com/embed/${videoId}" 
-                    frameborder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowfullscreen>
-            </iframe>
-        </div>`;
+        return prefix + createYouTubeEmbed(videoId);
     });
 }
 
@@ -93,14 +91,7 @@ function parseMessage(html) {
                 const youtubeId = extractYouTubeId(url);
                 if (youtubeId) {
                     // Create YouTube embed
-                    return `<div class="youtube-embed-wrapper">
-                        <iframe class="youtube-embed" 
-                                src="https://www.youtube.com/embed/${youtubeId}" 
-                                frameborder="0" 
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                allowfullscreen>
-                        </iframe>
-                    </div>`;
+                    return createYouTubeEmbed(youtubeId);
                 }
                 return `<a href="${url}" target="_blank" class="link">${url}</a>`;
             });
