@@ -12,7 +12,7 @@ $NSFW_BLUR = 12;
 
 // ----- キャッシュバスティング用バージョン -----
 // ファイル更新時にこの値を変更すると、ブラウザキャッシュをクリアできます
-define('ASSETS_VERSION', '1.0.0');
+define('ASSETS_VERSION', '1.2.1');
 
 // ----- セッション -----
 session_set_cookie_params([

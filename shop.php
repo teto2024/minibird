@@ -6,7 +6,7 @@ $pdo = db();
 
 // Seed sample frames if none
 $cnt = (int)$pdo->query("SELECT COUNT(*) FROM frames")->fetchColumn();
-if ($cnt===0){
+if ($cnt===0)
   $pdo->exec("INSERT INTO frames(name,css_token,price_coins,price_crystals,price_diamonds,preview_css) VALUES
   ('クラシック','frame-classic',200,0,0,''),
   ('ネオン','frame-neon',800,2,0,''),
