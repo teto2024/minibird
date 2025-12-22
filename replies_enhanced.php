@@ -16,19 +16,25 @@ if ($post_id <= 0) {
 
 $pdo = db();
 
-// 元投稿取得（フレーム情報、称号情報も含む）
+// 元投稿取得（フレーム情報、称号情報、引用投稿も含む）
 $stmt = $pdo->prepare("
     SELECT p.*, u.handle, u.display_name, u.icon, u.active_frame_id, u.vip_level,
            f.css_token as frame_class,
            ut.title_id, tp.title_text, tp.title_css,
            (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
            (SELECT COUNT(*) FROM posts WHERE is_repost_of = p.id) as repost_count,
-           (SELECT 1 FROM likes WHERE post_id = p.id AND user_id = ?) as user_liked
+           (SELECT 1 FROM likes WHERE post_id = p.id AND user_id = ?) as user_liked,
+           p.media_path, p.media_type, p.media_paths, p.quote_post_id,
+           qp.id as quoted_id, qp.user_id as quoted_user_id, qp.content_md as quoted_content_md,
+           qp.content_html as quoted_content_html, qu.handle as quoted_handle, 
+           qu.display_name as quoted_display_name, qu.icon as quoted_icon
     FROM posts p
     JOIN users u ON u.id = p.user_id
     LEFT JOIN frames f ON f.id = u.active_frame_id
     LEFT JOIN user_titles ut ON ut.user_id = u.id AND ut.is_equipped = TRUE
     LEFT JOIN title_packages tp ON tp.id = ut.title_id
+    LEFT JOIN posts qp ON qp.id = p.quote_post_id
+    LEFT JOIN users qu ON qu.id = qp.user_id
     WHERE p.id = ?
 ");
 $stmt->execute([$me ? $me['id'] : 0, $post_id]);
@@ -231,7 +237,82 @@ if (!$original_post) {
             <?php if ($original_post['is_deleted'] || $original_post['deleted_at']): ?>
                 <p style="color: #999; font-style: italic;">この投稿は削除されました</p>
             <?php else: ?>
+                <?php if (!empty($original_post['quote_post_id']) && !empty($original_post['quoted_id'])): ?>
+                    <!-- 引用投稿表示 -->
+                    <div style="border: 2px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 15px; background: #f7fafc; cursor: pointer;" 
+                         onclick="location.href='replies_enhanced.php?post_id=<?= (int)$original_post['quoted_id'] ?>'">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <img src="<?= htmlspecialchars($original_post['quoted_icon'] ?? '/uploads/icons/default_icon.png') ?>" 
+                                 style="width: 30px; height: 30px; border-radius: 50%;">
+                            <strong><?= htmlspecialchars($original_post['quoted_display_name'] ?? $original_post['quoted_handle'] ?? 'unknown') ?></strong>
+                            <span style="color: #a0aec0;">@<?= htmlspecialchars($original_post['quoted_handle'] ?? 'unknown') ?></span>
+                        </div>
+                        <div style="color: #4a5568;">
+                            <?= nl2br(htmlspecialchars(mb_substr($original_post['quoted_content_md'] ?? '', 0, 200))) ?>
+                            <?php if (mb_strlen($original_post['quoted_content_md'] ?? '') > 200): ?>...<?php endif; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+                
                 <?= $original_post['content_html'] ?>
+                
+                <?php 
+                // Display media (images, videos, audio)
+                $media_paths = [];
+                if (!empty($original_post['media_paths'])) {
+                    $decoded = json_decode($original_post['media_paths'], true);
+                    if (is_array($decoded)) {
+                        $media_paths = $decoded;
+                    }
+                } elseif (!empty($original_post['media_path'])) {
+                    $media_paths = [$original_post['media_path']];
+                }
+                
+                if (!empty($media_paths)):
+                ?>
+                <div class="media-wrapper" style="margin-top: 15px;">
+                    <?php if (count($media_paths) > 1): ?>
+                    <div class="media-grid" style="display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                        <?php foreach ($media_paths as $index => $mediaPath): 
+                            if ($index >= 4) break; // 最大4枚まで
+                            $ext = strtolower(pathinfo($mediaPath, PATHINFO_EXTENSION));
+                            $mediaSrc = '/' . ltrim($mediaPath, '/');
+                            $imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
+                            $videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv', 'ogg'];
+                            $audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+                        ?>
+                        <div class="media-item">
+                            <?php if (in_array($ext, $imageExts)): ?>
+                                <img src="<?= htmlspecialchars($mediaSrc) ?>" style="max-width: 100%; border-radius: 8px; cursor: pointer;" onclick="openMediaExpand('<?= htmlspecialchars($mediaSrc) ?>', 'image')">
+                            <?php elseif (in_array($ext, $videoExts)): ?>
+                                <video src="<?= htmlspecialchars($mediaSrc) ?>" controls style="max-width: 100%; border-radius: 8px; cursor: pointer;" onclick="openMediaExpand('<?= htmlspecialchars($mediaSrc) ?>', 'video')"></video>
+                            <?php elseif (in_array($ext, $audioExts)): ?>
+                                <audio src="<?= htmlspecialchars($mediaSrc) ?>" controls style="width: 100%;"></audio>
+                            <?php endif; ?>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php else: ?>
+                    <?php 
+                        $mediaPath = $media_paths[0];
+                        $ext = strtolower(pathinfo($mediaPath, PATHINFO_EXTENSION));
+                        $mediaSrc = '/' . ltrim($mediaPath, '/');
+                        $imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
+                        $videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv', 'ogg'];
+                        $audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+                    ?>
+                    <div class="media-single">
+                        <?php if (in_array($ext, $imageExts)): ?>
+                            <img src="<?= htmlspecialchars($mediaSrc) ?>" style="max-width: 100%; border-radius: 8px; cursor: pointer;" onclick="openMediaExpand('<?= htmlspecialchars($mediaSrc) ?>', 'image')">
+                        <?php elseif (in_array($ext, $videoExts)): ?>
+                            <video src="<?= htmlspecialchars($mediaSrc) ?>" controls style="max-width: 100%; border-radius: 8px; cursor: pointer;" onclick="openMediaExpand('<?= htmlspecialchars($mediaSrc) ?>', 'video')"></video>
+                        <?php elseif (in_array($ext, $audioExts)): ?>
+                            <audio src="<?= htmlspecialchars($mediaSrc) ?>" controls style="width: 100%;"></audio>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
         <div class="reply-actions">
@@ -320,6 +401,51 @@ function renderReply(reply) {
             🗑️ 削除
         </button>` : '';
     
+    // Media handling
+    let mediaHtml = '';
+    const media_paths = reply.media_paths || (reply.media_path ? [reply.media_path] : []);
+    
+    if (media_paths.length > 0) {
+        mediaHtml = '<div class="media-wrapper" style="margin-top: 10px;">';
+        
+        if (media_paths.length > 1) {
+            mediaHtml += '<div class="media-grid" style="display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">';
+            media_paths.slice(0, 4).forEach(mediaPath => {
+                const ext = mediaPath.split('.').pop().toLowerCase();
+                const mediaSrc = '/' + mediaPath.replace(/^\//, '');
+                const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
+                const videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv', 'ogg'];
+                const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+                
+                if (imageExts.includes(ext)) {
+                    mediaHtml += `<img src="${mediaSrc}" style="max-width: 100%; border-radius: 6px; cursor: pointer;" onclick="openMediaExpand('${mediaSrc}', 'image')">`;
+                } else if (videoExts.includes(ext)) {
+                    mediaHtml += `<video src="${mediaSrc}" controls style="max-width: 100%; border-radius: 6px; cursor: pointer;" onclick="openMediaExpand('${mediaSrc}', 'video')"></video>`;
+                } else if (audioExts.includes(ext)) {
+                    mediaHtml += `<audio src="${mediaSrc}" controls style="width: 100%;"></audio>`;
+                }
+            });
+            mediaHtml += '</div>';
+        } else {
+            const mediaPath = media_paths[0];
+            const ext = mediaPath.split('.').pop().toLowerCase();
+            const mediaSrc = '/' + mediaPath.replace(/^\//, '');
+            const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
+            const videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv', 'ogg'];
+            const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+            
+            if (imageExts.includes(ext)) {
+                mediaHtml += `<img src="${mediaSrc}" style="max-width: 100%; border-radius: 6px; cursor: pointer;" onclick="openMediaExpand('${mediaSrc}', 'image')">`;
+            } else if (videoExts.includes(ext)) {
+                mediaHtml += `<video src="${mediaSrc}" controls style="max-width: 100%; border-radius: 6px; cursor: pointer;" onclick="openMediaExpand('${mediaSrc}', 'video')"></video>`;
+            } else if (audioExts.includes(ext)) {
+                mediaHtml += `<audio src="${mediaSrc}" controls style="width: 100%;"></audio>`;
+            }
+        }
+        
+        mediaHtml += '</div>';
+    }
+    
     return `
         <div class="reply-item ${frameClass}" data-reply-id="${reply.id}">
             <div class="reply-header">
@@ -336,7 +462,10 @@ function renderReply(reply) {
                     </div>
                 </div>
             </div>
-            <div class="reply-content">${marked.parse(reply.content_md || reply.content_html)}</div>
+            <div class="reply-content">
+                ${marked.parse(reply.content_md || reply.content_html)}
+                ${mediaHtml}
+            </div>
             <div class="reply-actions">
                 <button class="reply-action-btn ${reply.user_liked ? 'liked' : ''}" 
                         onclick="toggleLike(${reply.id}, this)">
@@ -460,6 +589,57 @@ loadReplies();
 
 // 3秒ごとに自動更新
 setInterval(loadReplies, 3000);
+
+// Media Expand Modal Functions
+function openMediaExpand(mediaSrc, mediaType) {
+    const modal = document.getElementById('mediaExpandModal');
+    const content = document.getElementById('mediaExpandContent');
+    
+    content.innerHTML = '';
+    
+    let mediaEl;
+    if (mediaType === 'image') {
+        mediaEl = document.createElement('img');
+    } else if (mediaType === 'video') {
+        mediaEl = document.createElement('video');
+        mediaEl.controls = true;
+        mediaEl.autoplay = true;
+    } else if (mediaType === 'audio') {
+        mediaEl = document.createElement('audio');
+        mediaEl.controls = true;
+        mediaEl.autoplay = true;
+    }
+    
+    if (mediaEl) {
+        mediaEl.src = mediaSrc;
+        mediaEl.onclick = (e) => e.stopPropagation();
+        content.appendChild(mediaEl);
+        modal.classList.add('active');
+    }
+}
+
+function closeMediaExpand() {
+    const modal = document.getElementById('mediaExpandModal');
+    modal.classList.remove('active');
+    document.getElementById('mediaExpandContent').innerHTML = '';
+}
+
+// Close on ESC key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('mediaExpandModal');
+        if (modal.classList.contains('active')) {
+            closeMediaExpand();
+        }
+    }
+});
 </script>
+
+<!-- Media Expand Modal -->
+<div id="mediaExpandModal" class="media-expand-modal" onclick="closeMediaExpand()">
+  <span class="media-expand-close" onclick="closeMediaExpand()">&times;</span>
+  <div id="mediaExpandContent"></div>
+</div>
+
 </body>
 </html>
