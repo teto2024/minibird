@@ -992,8 +992,16 @@ function renderPost(p, wrap, prepend = false) {
     const displayName = (isRepost && orig && (orig.display_name || orig.handle)) || p.display_name || p.handle || 'unknown';
     const userId = (isRepost && orig && orig.user_id) || p.user_id;
     const handle = (isRepost && orig && orig.handle) || p.handle;
+    const userRole = p.role || null;
     const userLink = userId ? `profile.php?id=${userId}` : `profile.php?handle=${encodeURIComponent(handle)}`;
     meta.innerHTML = `<a href="${userLink}" class="mention">${displayName}</a> @${handle}`;
+    
+    // Admin/Moderator badge display
+    if (userRole === 'admin') {
+        meta.innerHTML += ` <span class="role-badge admin-badge">ADMIN</span>`;
+    } else if (userRole === 'mod') {
+        meta.innerHTML += ` <span class="role-badge mod-badge">MOD</span>`;
+    }
     
     // 称号表示
     if (p.title_text && p.title_css) {

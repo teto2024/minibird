@@ -227,7 +227,14 @@ if ($me) {
                      class="user-icon" alt="アイコン">
 
                 <!-- 表示名 -->
-                <div class="user-display-name"><?= htmlspecialchars($user['display_name'] ?? $user['handle']) ?></div>
+                <div class="user-display-name">
+                    <?= htmlspecialchars($user['display_name'] ?? $user['handle']) ?>
+                    <?php if (isset($user['role']) && $user['role'] === 'admin'): ?>
+                        <span class="role-badge admin-badge">ADMIN</span>
+                    <?php elseif (isset($user['role']) && $user['role'] === 'mod'): ?>
+                        <span class="role-badge mod-badge">MOD</span>
+                    <?php endif; ?>
+                </div>
                 <div class="user-handle">@<?= htmlspecialchars($user['handle']) ?></div>
 
                 <!-- 自己紹介 -->

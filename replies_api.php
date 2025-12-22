@@ -11,7 +11,7 @@ if ($action==='list'){
   $me = $uid ? user() : null;
   
   $st = $pdo->prepare("
-    SELECT r.*, u.handle, u.display_name, u.icon, u.active_frame_id,
+    SELECT r.*, u.handle, u.display_name, u.icon, u.active_frame_id, u.role,
            f.css_token as frame_class,
            ut.title_id, tp.title_text, tp.title_css,
            (SELECT COUNT(*) FROM likes WHERE post_id = r.id) as like_count,
@@ -34,6 +34,7 @@ if ($action==='list'){
       'handle'=>$row['handle'],
       'display_name'=>$row['display_name'] ?? $row['handle'],
       'icon'=>$row['icon'] ?? '/uploads/icons/default_icon.png',
+      'role'=>$row['role'] ?? null,
       'frame_class'=>$row['frame_class'],
       'title_text'=>$row['title_text'],
       'title_css'=>$row['title_css'],

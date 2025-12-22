@@ -25,6 +25,7 @@ $stmt = $pdo->prepare("
            CASE WHEN p.is_repost_of IS NOT NULL THEN op_user.icon ELSE u.icon END as icon,
            CASE WHEN p.is_repost_of IS NOT NULL THEN op_user.active_frame_id ELSE u.active_frame_id END as active_frame_id,
            CASE WHEN p.is_repost_of IS NOT NULL THEN op_user.vip_level ELSE u.vip_level END as vip_level,
+           CASE WHEN p.is_repost_of IS NOT NULL THEN op_user.role ELSE u.role END as role,
            CASE WHEN p.is_repost_of IS NOT NULL THEN f_op.css_token ELSE f.css_token END as frame_class,
            CASE WHEN p.is_repost_of IS NOT NULL THEN ut_op.title_id ELSE ut.title_id END as title_id,
            CASE WHEN p.is_repost_of IS NOT NULL THEN tp_op.title_text ELSE tp.title_text END as title_text,
@@ -244,6 +245,11 @@ if (!$original_post) {
                     <span class="reply-author">
                         <?= htmlspecialchars($original_post['display_name'] ?? $original_post['handle']) ?>
                     </span>
+                    <?php if (isset($original_post['role']) && $original_post['role'] === 'admin'): ?>
+                        <span class="role-badge admin-badge">ADMIN</span>
+                    <?php elseif (isset($original_post['role']) && $original_post['role'] === 'mod'): ?>
+                        <span class="role-badge mod-badge">MOD</span>
+                    <?php endif; ?>
                     <?php if ($original_post['title_text']): ?>
                     <span class="reply-title <?= htmlspecialchars($original_post['title_css']) ?>">
                         <?= htmlspecialchars($original_post['title_text']) ?>
@@ -494,6 +500,8 @@ function renderReply(reply) {
                 <div class="reply-meta">
                     <div>
                         <span class="reply-author">${reply.display_name || reply.handle}</span>
+                        ${reply.role === 'admin' ? '<span class="role-badge admin-badge">ADMIN</span>' : ''}
+                        ${reply.role === 'mod' ? '<span class="role-badge mod-badge">MOD</span>' : ''}
                         ${titleHtml}
                     </div>
                     <div class="reply-time">
