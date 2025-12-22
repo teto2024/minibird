@@ -30,7 +30,7 @@ $posts = $stmt->fetchAll();
 function linkify_handles($content) {
     return preg_replace(
         '/@([a-zA-Z0-9_]+)/',
-        '<a href="/profile.php?handle=$1">@$1</a>',
+        '<a href="/profile.php?handle=$1" class="mention">@$1</a>',
         htmlspecialchars($content)
     );
 }
@@ -68,10 +68,8 @@ function linkify_handles($content) {
         <h3>投稿</h3>
         <ul>
         <?php foreach($posts as $p): ?>
-        <li>
-          <a href="/replies_enhanced.php?post_id=<?=$p['id']?>" style="text-decoration: none; color: inherit;">
-            <?=linkify_handles($p['content_md'])?>
-          </a>
+        <li style="cursor: pointer;" onclick="handlePostClick(event, <?=$p['id']?>)">
+          <?=linkify_handles($p['content_md'])?>
         </li>
         <?php endforeach; ?>
         </ul>
@@ -99,5 +97,19 @@ function linkify_handles($content) {
     </div>
   </section>
 </main>
+
+<script>
+function handlePostClick(event, postId) {
+  // メンションリンクをクリックした場合は、そのリンクを優先
+  if (event.target.tagName === 'A' && event.target.classList.contains('mention')) {
+    return; // メンションリンクのデフォルト動作を実行
+  }
+  
+  // それ以外の場合は投稿の詳細ページに遷移
+  if (event.target.tagName !== 'A') {
+    window.location.href = '/replies_enhanced.php?post_id=' + postId;
+  }
+}
+</script>
 </body>
 </html>
