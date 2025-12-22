@@ -25,6 +25,7 @@ $stmt = $pdo->prepare("
            CASE WHEN p.is_repost_of IS NOT NULL THEN op_user.icon ELSE u.icon END as icon,
            CASE WHEN p.is_repost_of IS NOT NULL THEN op_user.active_frame_id ELSE u.active_frame_id END as active_frame_id,
            CASE WHEN p.is_repost_of IS NOT NULL THEN op_user.vip_level ELSE u.vip_level END as vip_level,
+           CASE WHEN p.is_repost_of IS NOT NULL THEN op_user.role ELSE u.role END as role,
            CASE WHEN p.is_repost_of IS NOT NULL THEN f_op.css_token ELSE f.css_token END as frame_class,
            CASE WHEN p.is_repost_of IS NOT NULL THEN ut_op.title_id ELSE ut.title_id END as title_id,
            CASE WHEN p.is_repost_of IS NOT NULL THEN tp_op.title_text ELSE tp.title_text END as title_text,
@@ -244,6 +245,11 @@ if (!$original_post) {
                     <span class="reply-author">
                         <?= htmlspecialchars($original_post['display_name'] ?? $original_post['handle']) ?>
                     </span>
+                    <?php if (isset($original_post['role']) && $original_post['role'] === 'admin'): ?>
+                        <span class="role-badge admin-badge">ADMIN</span>
+                    <?php elseif (isset($original_post['role']) && $original_post['role'] === 'mod'): ?>
+                        <span class="role-badge mod-badge">MOD</span>
+                    <?php endif; ?>
                     <?php if ($original_post['title_text']): ?>
                     <span class="reply-title <?= htmlspecialchars($original_post['title_css']) ?>">
                         <?= htmlspecialchars($original_post['title_text']) ?>
@@ -387,6 +393,36 @@ const POST_ID = <?= $post_id ?>;
 const USER_ID = <?= $me ? $me['id'] : 0 ?>;
 let replies = [];
 
+// YouTube helper functions
+function extractYouTubeId(url) {
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
+    ];
+    
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+            return match[1];
+        }
+    }
+    return null;
+}
+
+function embedYouTube(html) {
+    // Replace YouTube URLs with embeds
+    return html.replace(/(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g, function(match, fullUrl, videoId) {
+        return `<div class="youtube-embed-wrapper">
+            <iframe class="youtube-embed" 
+                    src="https://www.youtube.com/embed/${videoId}" 
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+            </iframe>
+        </div>`;
+    });
+}
+
 // 返信読み込み
 async function loadReplies() {
     try {
@@ -494,6 +530,8 @@ function renderReply(reply) {
                 <div class="reply-meta">
                     <div>
                         <span class="reply-author">${reply.display_name || reply.handle}</span>
+                        ${reply.role === 'admin' ? '<span class="role-badge admin-badge">ADMIN</span>' : ''}
+                        ${reply.role === 'mod' ? '<span class="role-badge mod-badge">MOD</span>' : ''}
                         ${titleHtml}
                     </div>
                     <div class="reply-time">
@@ -502,7 +540,7 @@ function renderReply(reply) {
                 </div>
             </div>
             <div class="reply-content">
-                ${marked.parse(reply.content_md || reply.content_html)}
+                ${embedYouTube(marked.parse(reply.content_md || reply.content_html))}
                 ${mediaHtml}
             </div>
             <div class="reply-actions">

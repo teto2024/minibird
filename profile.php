@@ -227,7 +227,14 @@ if ($me) {
                      class="user-icon" alt="アイコン">
 
                 <!-- 表示名 -->
-                <div class="user-display-name"><?= htmlspecialchars($user['display_name'] ?? $user['handle']) ?></div>
+                <div class="user-display-name">
+                    <?= htmlspecialchars($user['display_name'] ?? $user['handle']) ?>
+                    <?php if (isset($user['role']) && $user['role'] === 'admin'): ?>
+                        <span class="role-badge admin-badge">ADMIN</span>
+                    <?php elseif (isset($user['role']) && $user['role'] === 'mod'): ?>
+                        <span class="role-badge mod-badge">MOD</span>
+                    <?php endif; ?>
+                </div>
                 <div class="user-handle">@<?= htmlspecialchars($user['handle']) ?></div>
 
                 <!-- 自己紹介 -->
@@ -246,6 +253,48 @@ if ($me) {
                     <div class="stat-item">
                         <span class="stat-label">ダイヤモンド</span>
                         <span class="stat-value">💠<?=$user['diamonds'] ?? 0?></span>
+                    </div>
+                </div>
+                
+                <!-- トークン情報 -->
+                <div class="token-stats">
+                    <h4 style="text-align: center; margin: 20px 0 15px 0; color: var(--text); font-size: 18px;">🎫 トークン</h4>
+                    <div class="token-grid">
+                        <div class="token-item token-normal">
+                            <span class="token-icon">⚪</span>
+                            <span class="token-label">ノーマル</span>
+                            <span class="token-count"><?=$user['normal_tokens'] ?? 0?></span>
+                        </div>
+                        <div class="token-item token-rare">
+                            <span class="token-icon">🟢</span>
+                            <span class="token-label">レア</span>
+                            <span class="token-count"><?=$user['rare_tokens'] ?? 0?></span>
+                        </div>
+                        <div class="token-item token-unique">
+                            <span class="token-icon">🔵</span>
+                            <span class="token-label">ユニーク</span>
+                            <span class="token-count"><?=$user['unique_tokens'] ?? 0?></span>
+                        </div>
+                        <div class="token-item token-legend">
+                            <span class="token-icon">🟡</span>
+                            <span class="token-label">レジェンド</span>
+                            <span class="token-count"><?=$user['legend_tokens'] ?? 0?></span>
+                        </div>
+                        <div class="token-item token-epic">
+                            <span class="token-icon">🟣</span>
+                            <span class="token-label">エピック</span>
+                            <span class="token-count"><?=$user['epic_tokens'] ?? 0?></span>
+                        </div>
+                        <div class="token-item token-hero">
+                            <span class="token-icon">🔴</span>
+                            <span class="token-label">ヒーロー</span>
+                            <span class="token-count"><?=$user['hero_tokens'] ?? 0?></span>
+                        </div>
+                        <div class="token-item token-mythic">
+                            <span class="token-icon">🌈</span>
+                            <span class="token-label">ミシック</span>
+                            <span class="token-count"><?=$user['mythic_tokens'] ?? 0?></span>
+                        </div>
                     </div>
                 </div>
 

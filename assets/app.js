@@ -31,8 +31,27 @@ function updateLikeUI(p) {
 }
 
 //---------------
-//persemessage
+//parseMessage - YouTube embedding support
 //----------------
+function extractYouTubeId(url) {
+    // YouTube URL patterns:
+    // https://www.youtube.com/watch?v=VIDEO_ID
+    // https://youtu.be/VIDEO_ID
+    // https://www.youtube.com/embed/VIDEO_ID
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
+    ];
+    
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+            return match[1];
+        }
+    }
+    return null;
+}
+
 function parseMessage(html) {
     // メンションは既にサーバー側（feed.php）で変換済みなので、
     // クライアント側では追加のURL自動リンク化のみ実行
@@ -44,6 +63,19 @@ function parseMessage(html) {
         // 偶数インデックスはリンク外、奇数はリンク内
         if (i % 2 === 0) {
             return part.replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+                // Check if it's a YouTube URL
+                const youtubeId = extractYouTubeId(url);
+                if (youtubeId) {
+                    // Create YouTube embed
+                    return `<div class="youtube-embed-wrapper">
+                        <iframe class="youtube-embed" 
+                                src="https://www.youtube.com/embed/${youtubeId}" 
+                                frameborder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen>
+                        </iframe>
+                    </div>`;
+                }
                 return `<a href="${url}" target="_blank" class="link">${url}</a>`;
             });
         }
@@ -992,8 +1024,16 @@ function renderPost(p, wrap, prepend = false) {
     const displayName = (isRepost && orig && (orig.display_name || orig.handle)) || p.display_name || p.handle || 'unknown';
     const userId = (isRepost && orig && orig.user_id) || p.user_id;
     const handle = (isRepost && orig && orig.handle) || p.handle;
+    const userRole = p.role || null;
     const userLink = userId ? `profile.php?id=${userId}` : `profile.php?handle=${encodeURIComponent(handle)}`;
     meta.innerHTML = `<a href="${userLink}" class="mention">${displayName}</a> @${handle}`;
+    
+    // Admin/Moderator badge display
+    if (userRole === 'admin') {
+        meta.innerHTML += ` <span class="role-badge admin-badge">ADMIN</span>`;
+    } else if (userRole === 'mod') {
+        meta.innerHTML += ` <span class="role-badge mod-badge">MOD</span>`;
+    }
     
     // 称号表示
     if (p.title_text && p.title_css) {

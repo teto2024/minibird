@@ -53,7 +53,7 @@ function serialize_post($row, $uid, $pdo){
     $quoted_post = null;
     if (!empty($row['quote_post_id'])) {
         $q = $pdo->prepare("
-            SELECT posts.id, posts.user_id, u.handle, u.display_name, u.icon, u.vip_level,
+            SELECT posts.id, posts.user_id, u.handle, u.display_name, u.icon, u.vip_level, u.role,
                    posts.content_md, posts.content_html, posts.deleted_at, posts.deleted_by_mod
             FROM posts
             JOIN users u ON u.id = posts.user_id
@@ -85,6 +85,14 @@ function serialize_post($row, $uid, $pdo){
         }
     }
 
+    // Get user role for badge display
+    $user_role = null;
+    if ($is_repost) {
+        $user_role = $row['original_role'] ?? null;
+    } else {
+        $user_role = $row['role'] ?? null;
+    }
+
     return [
         'id'=> (int)($row['id'] ?? 0),
         'user_id'=> $is_repost ? (int)($row['original_id'] ?? 0) : (int)($row['user_id'] ?? 0),
@@ -92,6 +100,7 @@ function serialize_post($row, $uid, $pdo){
         'display_name'=> $display_name,
         'icon'=> $icon,
         'vip_level'=> $vip_level,
+        'role'=> $user_role,
         'title_text'=> $row['title_text'] ?? null,
         'title_css'=> $row['title_css'] ?? null,
         'created_at'=> $row['created_at'] ?? null,
@@ -151,7 +160,7 @@ if($action === 'fetch' || $action === 'fetch_more'){
 
     // --- boost feed ---
     if($feed === 'boost'){
-        $sql = "SELECT p.*, u.handle, u.display_name, u.icon, u.vip_level, p.deleted_at, p.deleted_by_mod,
+        $sql = "SELECT p.*, u.handle, u.display_name, u.icon, u.vip_level, u.role, p.deleted_at, p.deleted_by_mod,
                   (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
                   (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
                   (SELECT COUNT(*) FROM replies rp WHERE rp.post_id=p.id) AS reply_count,
@@ -163,6 +172,7 @@ if($action === 'fetch' || $action === 'fetch_more'){
                   ou.display_name AS original_display_name,
                   ou.icon AS original_icon,
                   ou.vip_level AS original_vip,
+                  ou.role AS original_role,
                   f_orig.css_token AS original_frame_class,
                   ru.id AS reposter_id,
                   ru.handle AS reposter_handle,
@@ -198,7 +208,7 @@ if($action === 'fetch' || $action === 'fetch_more'){
     // --- bookmarks ---
     if($feed === 'bookmarks'){
         if(!$me){ echo json_encode(['ok'=>false,'error'=>'login_required']); exit; }
-        $sql = "SELECT p.*, u.handle, u.display_name, u.icon, u.vip_level, p.deleted_at, p.deleted_by_mod,
+        $sql = "SELECT p.*, u.handle, u.display_name, u.icon, u.vip_level, u.role, p.deleted_at, p.deleted_by_mod,
                   (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
                   (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
                   (SELECT COUNT(*) FROM replies rp WHERE rp.post_id=p.id) AS reply_count,
@@ -237,7 +247,7 @@ if($action === 'fetch' || $action === 'fetch_more'){
     // --- communities ---
     if($feed === 'communities'){
         if(!$me){ echo json_encode(['ok'=>false,'error'=>'login_required']); exit; }
-        $sql = "SELECT p.*, u.handle, u.display_name, u.icon, u.vip_level, p.deleted_at, p.deleted_by_mod,
+        $sql = "SELECT p.*, u.handle, u.display_name, u.icon, u.vip_level, u.role, p.deleted_at, p.deleted_by_mod,
                   (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
                   (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
                   (SELECT COUNT(*) FROM replies rp WHERE rp.post_id=p.id) AS reply_count,
@@ -333,7 +343,7 @@ if($action === 'fetch' || $action === 'fetch_more'){
     if($since_id>0){ $where.=" AND p.id > ?"; $params[]=$since_id; }
     if($max_id>0){ $where.=" AND p.id <= ?"; $params[]=$max_id; }
 
-    $sql = "SELECT p.*, u.handle, u.display_name, u.icon, u.vip_level, p.deleted_at, p.deleted_by_mod,
+    $sql = "SELECT p.*, u.handle, u.display_name, u.icon, u.vip_level, u.role, p.deleted_at, p.deleted_by_mod,
                 (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
                 (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
                 (SELECT COUNT(*) FROM replies rp WHERE rp.post_id=p.id) AS reply_count,
