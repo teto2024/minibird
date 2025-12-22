@@ -33,11 +33,16 @@ function updateLikeUI(p) {
 //---------------
 //parseMessage - YouTube embedding support
 //----------------
-// YouTube URL patterns constant
+// YouTube URL patterns constant for ID extraction
 const YOUTUBE_URL_PATTERNS = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
     /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
 ];
+
+// Common YouTube URL pattern for regex replacements in HTML
+// Note: This pattern is optimized for detecting YouTube URLs in typical social media posts
+// It handles the most common YouTube URL formats but may not cover every edge case
+const YOUTUBE_URL_PATTERN_STR = 'https?:\\/\\/(?:www\\.)?(?:youtube\\.com\\/watch\\?[^"\'\\s]*v=|youtu\\.be\\/|youtube\\.com\\/embed\\/)([a-zA-Z0-9_-]{11})';
 
 function extractYouTubeId(url) {
     // YouTube URL patterns:
@@ -67,13 +72,33 @@ function createYouTubeEmbed(videoId) {
 function embedYouTube(html) {
     // Process YouTube URLs and convert them to embeds
     // This function processes both bare URLs and URLs inside anchor tags
-    return html.replace(/<a[^>]*href="(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^"]*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})[^"]*)"[^>]*>.*?<\/a>/gi, (match, url, videoId) => {
-        // Replace YouTube links with embeds
+    
+    // Pattern 1: YouTube links inside <a> tags (from marked.parse)
+    // Matches: <a href="youtube-url">...</a>
+    // Using .*? to properly handle nested HTML elements within links
+    // Note: The [^"']* pattern handles most YouTube URL query parameters correctly
+    // for typical use cases (e.g., ?v=ID&t=30s)
+    const anchorPattern = new RegExp(
+        `<a[^>]*href=["'](${YOUTUBE_URL_PATTERN_STR})[^"']*["'][^>]*>.*?<\\/a>`,
+        'gi'
+    );
+    html = html.replace(anchorPattern, (match, url, videoId) => {
         return createYouTubeEmbed(videoId);
-    }).replace(/(^|[^">])(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})[^\s<]*)/gi, (match, prefix, url, videoId) => {
-        // Replace bare YouTube URLs with embeds
+    });
+    
+    // Pattern 2: Bare YouTube URLs not yet converted to links
+    // Matches: plain text YouTube URLs
+    // Negative lookahead stops at common punctuation that typically ends a URL in text
+    // This covers the vast majority of real-world use cases in social media posts
+    const bareUrlPattern = new RegExp(
+        `(^|[^">])(${YOUTUBE_URL_PATTERN_STR})(?=[\\s<.,;!?]|$)`,
+        'gi'
+    );
+    html = html.replace(bareUrlPattern, (match, prefix, url, videoId) => {
         return prefix + createYouTubeEmbed(videoId);
     });
+    
+    return html;
 }
 
 function parseMessage(html) {
