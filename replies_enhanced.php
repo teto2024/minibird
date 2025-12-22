@@ -452,9 +452,37 @@ function renderReplies() {
         return;
     }
     
+    // 既存のYouTube iframeを保存
+    const existingReplies = {};
+    container.querySelectorAll('.reply-item').forEach(replyEl => {
+        const replyId = replyEl.dataset.replyId;
+        const youtubeIframes = replyEl.querySelectorAll('.youtube-embed');
+        if (youtubeIframes.length > 0) {
+            existingReplies[replyId] = Array.from(youtubeIframes);
+        }
+    });
+    
     // 親投稿のみをレンダリング（ネスト構造を後で実装）
     const topLevelReplies = replies.filter(r => !r.parent_id || r.parent_id === POST_ID);
     container.innerHTML = topLevelReplies.map(reply => renderReply(reply)).join('');
+    
+    // YouTube iframeを復元（再生状態を維持）
+    Object.keys(existingReplies).forEach(replyId => {
+        const newReplyEl = container.querySelector(`.reply-item[data-reply-id="${replyId}"]`);
+        if (newReplyEl) {
+            const newIframes = newReplyEl.querySelectorAll('.youtube-embed-wrapper');
+            const oldIframes = existingReplies[replyId];
+            
+            newIframes.forEach((newWrapper, index) => {
+                if (oldIframes[index]) {
+                    const newIframe = newWrapper.querySelector('.youtube-embed');
+                    if (newIframe && oldIframes[index]) {
+                        newIframe.parentNode.replaceChild(oldIframes[index], newIframe);
+                    }
+                }
+            });
+        }
+    });
 }
 
 // 単一返信のHTML生成
