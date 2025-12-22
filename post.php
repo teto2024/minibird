@@ -118,7 +118,24 @@ try {
             $size = $_FILES['media']['size'] ?? 0;
             if ($size > $GLOBALS['MAX_UPLOAD_BYTES']) { echo json_encode(['ok'=>false,'error'=>'file_too_large']); exit; }
             $ext = strtolower(pathinfo($_FILES['media']['name'], PATHINFO_EXTENSION));
-            $media_type = in_array($ext, ['mp4','webm']) ? 'video' : 'image';
+            
+            // 動画フォーマット
+            $video_exts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv'];
+            // 画像フォーマット
+            $image_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
+            // 音声フォーマット
+            $audio_exts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+            
+            if (in_array($ext, $video_exts)) {
+                $media_type = 'video';
+            } elseif (in_array($ext, $audio_exts)) {
+                $media_type = 'audio';
+            } elseif (in_array($ext, $image_exts)) {
+                $media_type = 'image';
+            } else {
+                echo json_encode(['ok'=>false,'error'=>'unsupported_file_type']); exit;
+            }
+            
             $safe = bin2hex(random_bytes(12)).'.'.$ext;
             $dir = __DIR__ . '/uploads';
             if (!is_dir($dir)) mkdir($dir, 0775, true);
@@ -137,7 +154,23 @@ try {
                     echo json_encode(['ok'=>false,'error'=>'file_too_large', 'file'=>$i]); exit; 
                 }
                 $ext = strtolower(pathinfo($_FILES[$key]['name'], PATHINFO_EXTENSION));
-                $type = in_array($ext, ['mp4','webm']) ? 'video' : 'image';
+                
+                // 動画フォーマット
+                $video_exts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv'];
+                // 画像フォーマット
+                $image_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
+                // 音声フォーマット
+                $audio_exts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+                
+                if (in_array($ext, $video_exts)) {
+                    $type = 'video';
+                } elseif (in_array($ext, $audio_exts)) {
+                    $type = 'audio';
+                } elseif (in_array($ext, $image_exts)) {
+                    $type = 'image';
+                } else {
+                    echo json_encode(['ok'=>false,'error'=>'unsupported_file_type', 'file'=>$i]); exit;
+                }
                 
                 // 最初のメディアタイプを記録
                 if ($media_type === null) {

@@ -2482,8 +2482,13 @@ button {
     word-break: break-word;
     overflow-wrap: break-word;
     min-width: 0;
-    color: #e6e6e6;
+    color: #e6e6e6 !important;
     /* 明示的に文字色を指定（スマホ・タブレット対応） */
+}
+
+#notificationPopup li span * {
+    color: #e6e6e6 !important;
+    /* すべての子要素にも文字色を強制適用 */
 }
 
 #notificationPopup li.highlight {
@@ -2534,6 +2539,10 @@ button {
         line-height: 1.5;
         color: #e6e6e6 !important;
     }
+    
+    #notificationPopup li span * {
+        color: #e6e6e6 !important;
+    }
 }
 
 @media (max-width: 480px) {
@@ -2544,6 +2553,10 @@ button {
     }
     
     #notificationPopup li span {
+        color: #e6e6e6 !important;
+    }
+    
+    #notificationPopup li span * {
         color: #e6e6e6 !important;
     }
 }
@@ -3022,4 +3035,52 @@ button:hover, .btn:hover {
         transform: translateY(-200%);
         opacity: 0;
     }
+}
+
+/* Media Expand Modal */
+.media-expand-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+}
+
+.media-expand-modal.active {
+    display: flex;
+}
+
+.media-expand-modal img,
+.media-expand-modal video,
+.media-expand-modal audio {
+    max-width: 90%;
+    max-height: 90vh;
+    object-fit: contain;
+    cursor: default;
+}
+
+.media-expand-modal video,
+.media-expand-modal audio {
+    width: auto;
+}
+
+.media-expand-close {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    color: white;
+    font-size: 40px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 10001;
+}
+
+.media-expand-close:hover {
+    color: #ccc;
 }

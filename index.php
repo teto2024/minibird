@@ -176,7 +176,7 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
         <textarea id="postText" maxlength="1024" placeholder="いまどうしてる？（Markdown可、1024文字まで）"></textarea>
         <div class="row">
           <label><input type="checkbox" id="nsfw"> NSFW</label>
-          <input type="file" id="media" accept="image/*,video/*" multiple>
+          <input type="file" id="media" accept="image/*,video/*,audio/*" multiple>
           <small style="color: #666; font-size: 12px; margin-left: 10px;">最大4枚まで</small>
           <label style="margin-left: 10px;"><input type="checkbox" id="enterToPost"> Enterで投稿</label>
           <button id="submitPost">ポスト</button>
@@ -211,6 +211,12 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
       <button id="closeAuth">閉じる</button>
     </div>
   </div>
+</div>
+
+<!-- Media Expand Modal -->
+<div id="mediaExpandModal" class="media-expand-modal">
+  <span class="media-expand-close">&times;</span>
+  <div id="mediaExpandContent"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>

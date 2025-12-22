@@ -1071,17 +1071,36 @@ function renderPost(p, wrap, prepend = false) {
                 const ext = mediaPath.split('.').pop().toLowerCase();
                 const mediaSrc = window.location.origin + '/' + mediaPath;
                 
+                // 画像フォーマット
+                const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
+                // 動画フォーマット
+                const videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv', 'ogg'];
+                // 音声フォーマット
+                const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+                
                 let mediaEl;
-                if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
+                let mediaType;
+                if (imageExts.includes(ext)) {
                     mediaEl = ce('img');
                     mediaEl.loading = 'lazy';
-                } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+                    mediaType = 'image';
+                } else if (videoExts.includes(ext)) {
                     mediaEl = ce('video');
                     mediaEl.controls = true;
+                    mediaType = 'video';
+                } else if (audioExts.includes(ext)) {
+                    mediaEl = ce('audio');
+                    mediaEl.controls = true;
+                    mediaType = 'audio';
                 }
                 
                 if (mediaEl) {
                     mediaEl.src = mediaSrc;
+                    mediaEl.style.cursor = 'pointer';
+                    mediaEl.onclick = (e) => {
+                        e.stopPropagation();
+                        openMediaExpand(mediaSrc, mediaType);
+                    };
                     mediaContainer.append(mediaEl);
                     mediaGrid.append(mediaContainer);
                 }
@@ -1097,9 +1116,36 @@ function renderPost(p, wrap, prepend = false) {
             const ext = p.media_path.split('.').pop().toLowerCase();
             const mediaSrc = window.location.origin + '/' + p.media_path;
 
-            if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) mediaEl = ce('img');
-            else if (['mp4', 'webm', 'ogg'].includes(ext)) mediaEl = ce('video'), mediaEl.controls = true;
-            if (mediaEl) mediaEl.src = mediaSrc, mediaContainer.append(mediaEl);
+            // 画像フォーマット
+            const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
+            // 動画フォーマット
+            const videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv', 'ogg'];
+            // 音声フォーマット
+            const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+
+            let mediaType;
+            if (imageExts.includes(ext)) {
+                mediaEl = ce('img');
+                mediaType = 'image';
+            } else if (videoExts.includes(ext)) {
+                mediaEl = ce('video');
+                mediaEl.controls = true;
+                mediaType = 'video';
+            } else if (audioExts.includes(ext)) {
+                mediaEl = ce('audio');
+                mediaEl.controls = true;
+                mediaType = 'audio';
+            }
+            
+            if (mediaEl) {
+                mediaEl.src = mediaSrc;
+                mediaEl.style.cursor = 'pointer';
+                mediaEl.onclick = (e) => {
+                    e.stopPropagation();
+                    openMediaExpand(mediaSrc, mediaType);
+                };
+                mediaContainer.append(mediaEl);
+            }
 
             mediaWrapper.append(mediaContainer);
             body.append(mediaWrapper);
@@ -1385,6 +1431,58 @@ setInterval(() => refreshFeedPartial(), 3000);
 // Polling
 // ---------------------
 //setInterval(() => refreshFeed(false), 3000);
+
+// ---------------------
+// Media Expand Modal
+// ---------------------
+const mediaExpandModal = document.getElementById('mediaExpandModal');
+const mediaExpandContent = document.getElementById('mediaExpandContent');
+const mediaExpandClose = document.querySelector('.media-expand-close');
+
+function openMediaExpand(mediaSrc, mediaType) {
+    mediaExpandContent.innerHTML = '';
+    
+    let mediaEl;
+    if (mediaType === 'image') {
+        mediaEl = document.createElement('img');
+    } else if (mediaType === 'video') {
+        mediaEl = document.createElement('video');
+        mediaEl.controls = true;
+        mediaEl.autoplay = true;
+    } else if (mediaType === 'audio') {
+        mediaEl = document.createElement('audio');
+        mediaEl.controls = true;
+        mediaEl.autoplay = true;
+    }
+    
+    if (mediaEl) {
+        mediaEl.src = mediaSrc;
+        mediaEl.onclick = (e) => e.stopPropagation(); // クリックで閉じないようにする
+        mediaExpandContent.appendChild(mediaEl);
+        mediaExpandModal.classList.add('active');
+    }
+}
+
+function closeMediaExpand() {
+    mediaExpandModal.classList.remove('active');
+    mediaExpandContent.innerHTML = '';
+}
+
+// Close on click outside
+if (mediaExpandModal) {
+    mediaExpandModal.addEventListener('click', closeMediaExpand);
+}
+
+if (mediaExpandClose) {
+    mediaExpandClose.addEventListener('click', closeMediaExpand);
+}
+
+// Close on ESC key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && mediaExpandModal.classList.contains('active')) {
+        closeMediaExpand();
+    }
+});
 
 // 初回ロード
 //refreshFeed(true);
