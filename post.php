@@ -125,6 +125,8 @@ try {
             $image_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
             // 音声フォーマット
             $audio_exts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+            // ドキュメント・その他のファイルフォーマット
+            $document_exts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip', 'rar', '7z', 'tar', 'gz'];
             
             if (in_array($ext, $video_exts)) {
                 $media_type = 'video';
@@ -132,6 +134,8 @@ try {
                 $media_type = 'audio';
             } elseif (in_array($ext, $image_exts)) {
                 $media_type = 'image';
+            } elseif (in_array($ext, $document_exts)) {
+                $media_type = 'document';
             } else {
                 echo json_encode(['ok'=>false,'error'=>'unsupported_file_type']); exit;
             }
@@ -161,6 +165,8 @@ try {
                 $image_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
                 // 音声フォーマット
                 $audio_exts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+                // ドキュメント・その他のファイルフォーマット
+                $document_exts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip', 'rar', '7z', 'tar', 'gz'];
                 
                 if (in_array($ext, $video_exts)) {
                     $type = 'video';
@@ -168,6 +174,8 @@ try {
                     $type = 'audio';
                 } elseif (in_array($ext, $image_exts)) {
                     $type = 'image';
+                } elseif (in_array($ext, $document_exts)) {
+                    $type = 'document';
                 } else {
                     echo json_encode(['ok'=>false,'error'=>'unsupported_file_type', 'file'=>$i]); exit;
                 }

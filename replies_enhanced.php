@@ -303,6 +303,7 @@ if (!$original_post) {
                             $imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
                             $videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv', 'ogg'];
                             $audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+                            $documentExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip', 'rar', '7z', 'tar', 'gz'];
                         ?>
                         <div class="media-item">
                             <?php if (in_array($ext, $imageExts)): ?>
@@ -311,6 +312,9 @@ if (!$original_post) {
                                 <video src="<?= htmlspecialchars($mediaSrc) ?>" controls style="max-width: 100%; border-radius: 8px; cursor: pointer;" onclick="openMediaExpand('<?= htmlspecialchars($mediaSrc) ?>', 'video')"></video>
                             <?php elseif (in_array($ext, $audioExts)): ?>
                                 <audio src="<?= htmlspecialchars($mediaSrc) ?>" controls style="width: 100%;"></audio>
+                            <?php elseif (in_array($ext, $documentExts)): ?>
+                                <?php $fileName = basename($mediaPath); ?>
+                                <a href="<?= htmlspecialchars($mediaSrc) ?>" download="<?= htmlspecialchars($fileName) ?>" target="_blank" class="document-link">📄 <?= htmlspecialchars($fileName) ?></a>
                             <?php endif; ?>
                         </div>
                         <?php endforeach; ?>
@@ -323,6 +327,7 @@ if (!$original_post) {
                         $imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
                         $videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv', 'ogg'];
                         $audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+                        $documentExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip', 'rar', '7z', 'tar', 'gz'];
                     ?>
                     <div class="media-single">
                         <?php if (in_array($ext, $imageExts)): ?>
@@ -331,6 +336,9 @@ if (!$original_post) {
                             <video src="<?= htmlspecialchars($mediaSrc) ?>" controls style="max-width: 100%; border-radius: 8px; cursor: pointer;" onclick="openMediaExpand('<?= htmlspecialchars($mediaSrc) ?>', 'video')"></video>
                         <?php elseif (in_array($ext, $audioExts)): ?>
                             <audio src="<?= htmlspecialchars($mediaSrc) ?>" controls style="width: 100%;"></audio>
+                        <?php elseif (in_array($ext, $documentExts)): ?>
+                            <?php $fileName = basename($mediaPath); ?>
+                            <a href="<?= htmlspecialchars($mediaSrc) ?>" download="<?= htmlspecialchars($fileName) ?>" target="_blank" class="document-link">📄 <?= htmlspecialchars($fileName) ?></a>
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
@@ -439,6 +447,7 @@ function renderReply(reply) {
                 const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
                 const videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv', 'ogg'];
                 const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+                const documentExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip', 'rar', '7z', 'tar', 'gz'];
                 
                 if (imageExts.includes(ext)) {
                     mediaHtml += `<img src="${mediaSrc}" style="max-width: 100%; border-radius: 6px; cursor: pointer;" onclick="openMediaExpand('${mediaSrc}', 'image')">`;
@@ -446,6 +455,9 @@ function renderReply(reply) {
                     mediaHtml += `<video src="${mediaSrc}" controls style="max-width: 100%; border-radius: 6px; cursor: pointer;" onclick="openMediaExpand('${mediaSrc}', 'video')"></video>`;
                 } else if (audioExts.includes(ext)) {
                     mediaHtml += `<audio src="${mediaSrc}" controls style="width: 100%;"></audio>`;
+                } else if (documentExts.includes(ext)) {
+                    const fileName = mediaPath.split('/').pop();
+                    mediaHtml += `<a href="${mediaSrc}" download="${fileName}" target="_blank" class="document-link">📄 ${fileName}</a>`;
                 }
             });
             mediaHtml += '</div>';
@@ -456,6 +468,7 @@ function renderReply(reply) {
             const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
             const videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv', 'ogg'];
             const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+            const documentExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip', 'rar', '7z', 'tar', 'gz'];
             
             if (imageExts.includes(ext)) {
                 mediaHtml += `<img src="${mediaSrc}" style="max-width: 100%; border-radius: 6px; cursor: pointer;" onclick="openMediaExpand('${mediaSrc}', 'image')">`;
@@ -463,6 +476,9 @@ function renderReply(reply) {
                 mediaHtml += `<video src="${mediaSrc}" controls style="max-width: 100%; border-radius: 6px; cursor: pointer;" onclick="openMediaExpand('${mediaSrc}', 'video')"></video>`;
             } else if (audioExts.includes(ext)) {
                 mediaHtml += `<audio src="${mediaSrc}" controls style="width: 100%;"></audio>`;
+            } else if (documentExts.includes(ext)) {
+                const fileName = mediaPath.split('/').pop();
+                mediaHtml += `<a href="${mediaSrc}" download="${fileName}" target="_blank" class="document-link">📄 ${fileName}</a>`;
             }
         }
         

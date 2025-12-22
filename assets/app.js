@@ -1077,6 +1077,8 @@ function renderPost(p, wrap, prepend = false) {
                 const videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv', 'ogg'];
                 // 音声フォーマット
                 const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+                // ドキュメントフォーマット
+                const documentExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip', 'rar', '7z', 'tar', 'gz'];
                 
                 let mediaEl;
                 let mediaType;
@@ -1092,15 +1094,26 @@ function renderPost(p, wrap, prepend = false) {
                     mediaEl = ce('audio');
                     mediaEl.controls = true;
                     mediaType = 'audio';
+                } else if (documentExts.includes(ext)) {
+                    // ドキュメントファイル用のリンク
+                    mediaEl = ce('a');
+                    mediaEl.href = mediaSrc;
+                    mediaEl.download = mediaPath.split('/').pop();
+                    mediaEl.target = '_blank';
+                    mediaEl.className = 'document-link';
+                    mediaEl.innerHTML = `📄 ${mediaPath.split('/').pop()}`;
+                    mediaType = 'document';
                 }
                 
                 if (mediaEl) {
-                    mediaEl.src = mediaSrc;
-                    mediaEl.style.cursor = 'pointer';
-                    mediaEl.onclick = (e) => {
-                        e.stopPropagation();
-                        openMediaExpand(mediaSrc, mediaType);
-                    };
+                    if (mediaType !== 'document') {
+                        mediaEl.src = mediaSrc;
+                        mediaEl.style.cursor = 'pointer';
+                        mediaEl.onclick = (e) => {
+                            e.stopPropagation();
+                            openMediaExpand(mediaSrc, mediaType);
+                        };
+                    }
                     mediaContainer.append(mediaEl);
                     mediaGrid.append(mediaContainer);
                 }
@@ -1122,6 +1135,8 @@ function renderPost(p, wrap, prepend = false) {
             const videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv', 'ogg'];
             // 音声フォーマット
             const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+            // ドキュメントフォーマット
+            const documentExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip', 'rar', '7z', 'tar', 'gz'];
 
             let mediaType;
             if (imageExts.includes(ext)) {
@@ -1135,15 +1150,26 @@ function renderPost(p, wrap, prepend = false) {
                 mediaEl = ce('audio');
                 mediaEl.controls = true;
                 mediaType = 'audio';
+            } else if (documentExts.includes(ext)) {
+                // ドキュメントファイル用のリンク
+                mediaEl = ce('a');
+                mediaEl.href = mediaSrc;
+                mediaEl.download = p.media_path.split('/').pop();
+                mediaEl.target = '_blank';
+                mediaEl.className = 'document-link';
+                mediaEl.innerHTML = `📄 ${p.media_path.split('/').pop()}`;
+                mediaType = 'document';
             }
             
             if (mediaEl) {
-                mediaEl.src = mediaSrc;
-                mediaEl.style.cursor = 'pointer';
-                mediaEl.onclick = (e) => {
-                    e.stopPropagation();
-                    openMediaExpand(mediaSrc, mediaType);
-                };
+                if (mediaType !== 'document') {
+                    mediaEl.src = mediaSrc;
+                    mediaEl.style.cursor = 'pointer';
+                    mediaEl.onclick = (e) => {
+                        e.stopPropagation();
+                        openMediaExpand(mediaSrc, mediaType);
+                    };
+                }
                 mediaContainer.append(mediaEl);
             }
 
