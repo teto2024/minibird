@@ -67,13 +67,17 @@ function createYouTubeEmbed(videoId) {
 function embedYouTube(html) {
     // Process YouTube URLs and convert them to embeds
     // This function processes both bare URLs and URLs inside anchor tags
-    return html.replace(/<a[^>]*href="(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^"]*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})[^"]*)"[^>]*>.*?<\/a>/gi, (match, url, videoId) => {
+    // First, handle YouTube links that are already in <a> tags (from marked.parse)
+    html = html.replace(/<a[^>]*href=["'](https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^"']*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})[^"']*)["'][^>]*>[^<]*<\/a>/gi, (match, url, videoId) => {
         // Replace YouTube links with embeds
         return createYouTubeEmbed(videoId);
-    }).replace(/(^|[^">])(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})[^\s<]*)/gi, (match, prefix, url, videoId) => {
+    });
+    // Then handle bare YouTube URLs that might have been missed
+    html = html.replace(/(^|[^">])(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})[^\s<]*)/gi, (match, prefix, url, videoId) => {
         // Replace bare YouTube URLs with embeds
         return prefix + createYouTubeEmbed(videoId);
     });
+    return html;
 }
 
 function parseMessage(html) {
