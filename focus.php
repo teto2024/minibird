@@ -83,11 +83,11 @@ canvas#fireCanvas {
 <div id="quote" style="display:none;"></div>
 
 <!-- 完了モーダル -->
-<div id="completionModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; justify-content: center; align-items: center;">
-  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; padding: 40px; max-width: 600px; width: 90%; color: white; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
-    <h2 id="modalTitle" style="text-align: center; font-size: 32px; margin-bottom: 20px;"></h2>
-    <div id="modalContent" style="font-size: 18px; line-height: 1.8;"></div>
-    <button onclick="closeCompletionModal()" style="width: 100%; margin-top: 30px; padding: 15px; background: white; color: #667eea; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer;">閉じる</button>
+<div id="completionModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; justify-content: center; align-items: center; overflow-y: auto; padding: 20px 0;">
+  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; padding: 40px; max-width: 600px; width: 90%; color: white; box-shadow: 0 10px 40px rgba(0,0,0,0.5); margin: auto; max-height: 90vh; overflow-y: auto;">
+    <h2 id="modalTitle" style="text-align: center; font-size: clamp(20px, 5vw, 32px); margin-bottom: 20px;"></h2>
+    <div id="modalContent" style="font-size: clamp(14px, 3vw, 18px); line-height: 1.8;"></div>
+    <button onclick="closeCompletionModal()" style="width: 100%; margin-top: 30px; padding: 15px; background: white; color: #667eea; border: none; border-radius: 10px; font-size: clamp(14px, 3vw, 18px); font-weight: bold; cursor: pointer;">閉じる</button>
   </div>
 </div>
 
@@ -327,56 +327,56 @@ function showCompletionModal(status, data) {
   }
   
   let html = `
-    <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: 20px; margin-bottom: 20px;">
-      <h3 style="margin: 0 0 15px 0;">📊 報酬</h3>
-      <div style="display: flex; gap: 20px; justify-content: center;">
+    <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: clamp(10px, 3vw, 20px); margin-bottom: clamp(10px, 3vw, 20px);">
+      <h3 style="margin: 0 0 15px 0; font-size: clamp(16px, 4vw, 20px);">📊 報酬</h3>
+      <div style="display: flex; gap: clamp(10px, 3vw, 20px); justify-content: center; flex-wrap: wrap;">
         <div style="text-align: center;">
-          <div style="font-size: 36px;">🪙</div>
-          <div style="font-size: 24px; font-weight: bold;">+${data.coins}</div>
+          <div style="font-size: clamp(24px, 6vw, 36px);">🪙</div>
+          <div style="font-size: clamp(18px, 4vw, 24px); font-weight: bold;">+${data.coins}</div>
         </div>
         <div style="text-align: center;">
-          <div style="font-size: 36px;">💎</div>
-          <div style="font-size: 24px; font-weight: bold;">+${data.crystals}</div>
+          <div style="font-size: clamp(24px, 6vw, 36px);">💎</div>
+          <div style="font-size: clamp(18px, 4vw, 24px); font-weight: bold;">+${data.crystals}</div>
         </div>
       </div>
-      ${data.tag_bonus_active ? '<div style="margin-top: 15px; text-align: center; font-size: 16px; color: #ffeb3b;">✨ タッグボーナス！報酬2倍 ✨</div>' : ''}
+      ${data.tag_bonus_active ? '<div style="margin-top: 15px; text-align: center; font-size: clamp(12px, 3vw, 16px); color: #ffeb3b;">✨ タッグボーナス！報酬2倍 ✨</div>' : ''}
     </div>
   `;
   
   if (data.statistics) {
     const stats = data.statistics;
     html += `
-      <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: 20px; margin-bottom: 20px;">
-        <h3 style="margin: 0 0 15px 0;">🔥 連続記録</h3>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+      <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: clamp(10px, 3vw, 20px); margin-bottom: clamp(10px, 3vw, 20px);">
+        <h3 style="margin: 0 0 15px 0; font-size: clamp(16px, 4vw, 20px);">🔥 連続記録</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: clamp(10px, 3vw, 15px);">
           <div style="text-align: center;">
-            <div style="font-size: 14px; opacity: 0.8;">連続成功</div>
-            <div style="font-size: 28px; font-weight: bold;">${stats.consecutive_successes}回</div>
+            <div style="font-size: clamp(12px, 2.5vw, 14px); opacity: 0.8;">連続成功</div>
+            <div style="font-size: clamp(20px, 5vw, 28px); font-weight: bold;">${stats.consecutive_successes}回</div>
           </div>
           <div style="text-align: center;">
-            <div style="font-size: 14px; opacity: 0.8;">連続日数</div>
-            <div style="font-size: 28px; font-weight: bold;">${stats.current_streak}日</div>
+            <div style="font-size: clamp(12px, 2.5vw, 14px); opacity: 0.8;">連続日数</div>
+            <div style="font-size: clamp(20px, 5vw, 28px); font-weight: bold;">${stats.current_streak}日</div>
           </div>
         </div>
       </div>
       
-      <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: 20px;">
-        <h3 style="margin: 0 0 15px 0;">📈 ランキング（上位%）</h3>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+      <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: clamp(10px, 3vw, 20px);">
+        <h3 style="margin: 0 0 15px 0; font-size: clamp(16px, 4vw, 20px);">📈 ランキング（上位%）</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: clamp(8px, 2vw, 15px);">
           <div style="text-align: center;">
-            <div style="font-size: 14px; opacity: 0.8;">本日</div>
-            <div style="font-size: 24px; font-weight: bold;">上位${stats.today_percentile.toFixed(1)}%</div>
-            <div style="font-size: 12px; opacity: 0.6;">${stats.today_total}分</div>
+            <div style="font-size: clamp(11px, 2.5vw, 14px); opacity: 0.8;">本日</div>
+            <div style="font-size: clamp(16px, 4vw, 24px); font-weight: bold;">上位${stats.today_percentile.toFixed(1)}%</div>
+            <div style="font-size: clamp(10px, 2vw, 12px); opacity: 0.6;">${stats.today_total}分</div>
           </div>
           <div style="text-align: center;">
-            <div style="font-size: 14px; opacity: 0.8;">直近1週間</div>
-            <div style="font-size: 24px; font-weight: bold;">上位${stats.week_percentile.toFixed(1)}%</div>
-            <div style="font-size: 12px; opacity: 0.6;">${stats.week_total}分</div>
+            <div style="font-size: clamp(11px, 2.5vw, 14px); opacity: 0.8;">直近1週間</div>
+            <div style="font-size: clamp(16px, 4vw, 24px); font-weight: bold;">上位${stats.week_percentile.toFixed(1)}%</div>
+            <div style="font-size: clamp(10px, 2vw, 12px); opacity: 0.6;">${stats.week_total}分</div>
           </div>
           <div style="text-align: center;">
-            <div style="font-size: 14px; opacity: 0.8;">累計</div>
-            <div style="font-size: 24px; font-weight: bold;">上位${stats.total_percentile.toFixed(1)}%</div>
-            <div style="font-size: 12px; opacity: 0.6;">${stats.total_time}分</div>
+            <div style="font-size: clamp(11px, 2.5vw, 14px); opacity: 0.8;">累計</div>
+            <div style="font-size: clamp(16px, 4vw, 24px); font-weight: bold;">上位${stats.total_percentile.toFixed(1)}%</div>
+            <div style="font-size: clamp(10px, 2vw, 12px); opacity: 0.6;">${stats.total_time}分</div>
           </div>
         </div>
       </div>
