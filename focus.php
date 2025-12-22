@@ -380,7 +380,7 @@ const REWARD_CONFIG = {
   BASE_CRYSTALS: 2,
   COINS_EXP_RATE: 1.04,
   CRYSTALS_EXP_RATE: 1.015,
-  MAX_MINUTES: 180
+  MAX_MINUTES: <?= FOCUS_MAX_MINUTES ?>
 };
 
 let lock=false, t=null, end=0, quoteInterval=null;
