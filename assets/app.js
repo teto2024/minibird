@@ -73,8 +73,9 @@ function embedYouTube(html) {
     
     // Pattern 1: YouTube links inside <a> tags (from marked.parse)
     // Matches: <a href="youtube-url">...</a>
+    // Using .*? instead of [^<]* to properly handle nested HTML elements
     const anchorPattern = new RegExp(
-        `<a[^>]*href=["'](${YOUTUBE_URL_PATTERN_STR})[^"']*["'][^>]*>[^<]*<\\/a>`,
+        `<a[^>]*href=["'](${YOUTUBE_URL_PATTERN_STR})[^"']*["'][^>]*>.*?<\\/a>`,
         'gi'
     );
     html = html.replace(anchorPattern, (match, url, videoId) => {
@@ -83,8 +84,9 @@ function embedYouTube(html) {
     
     // Pattern 2: Bare YouTube URLs not yet converted to links
     // Matches: plain text YouTube URLs
+    // Use negative lookahead to stop before punctuation, whitespace, or HTML tags
     const bareUrlPattern = new RegExp(
-        `(^|[^">])(${YOUTUBE_URL_PATTERN_STR})[^\\s<]*`,
+        `(^|[^">])(${YOUTUBE_URL_PATTERN_STR})(?=[\\s<.,;!?]|$)`,
         'gi'
     );
     html = html.replace(bareUrlPattern, (match, prefix, url, videoId) => {
