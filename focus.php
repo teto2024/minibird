@@ -347,7 +347,8 @@ canvas#fireCanvas {
       
       <div class="form-group">
         <label for="mins">⏱️ 時間（分）</label>
-        <input id="mins" type="number" min="1" max="240" value="25">
+        <input id="mins" type="number" min="1" max="180" value="25">
+        <small style="color: #a0a0c0; font-size: 0.85rem; margin-top: 4px; display: block;">最大180分まで設定可能（チート防止）</small>
       </div>
       
       <div class="form-group">
@@ -361,6 +362,9 @@ canvas#fireCanvas {
       </label>
       
       <button id="start">集中開始！</button>
+      <button id="abort" style="display: none; background: linear-gradient(135deg, #f56565 0%, #c53030 100%); margin-top: 12px;">
+        ⏸️ 中断する（失敗扱い・進捗報酬あり）
+      </button>
     </form>
 
     <div id="timer"></div>
@@ -510,6 +514,14 @@ document.getElementById('start').onclick = async ()=>{
   if(lock) return;
 
   const mins = parseInt(document.getElementById('mins').value||'25',10);
+  
+  // 最大180分チェック
+  if (mins > 180) {
+    alert("集中時間は最大180分までです");
+    document.getElementById('mins').value = 180;
+    return;
+  }
+  
   const task = document.getElementById('task').value.trim();
   const disablePenalty = document.getElementById('disablePenalty').checked;
   if(!task){alert("タスク名を入力してください");return;}
@@ -521,6 +533,11 @@ document.getElementById('start').onclick = async ()=>{
 
   end=Date.now()+mins*60*1000;
   lock=true;
+  
+  // UIの更新
+  document.getElementById('start').style.display = 'none';
+  document.getElementById('abort').style.display = 'block';
+  
   tick();
   t=setInterval(tick,250);
 
@@ -542,6 +559,15 @@ document.getElementById('start').onclick = async ()=>{
 
   // 火アニメーション開始
   initFireCanvas();
+};
+
+// 中断ボタンのハンドラ
+document.getElementById('abort').onclick = ()=>{
+  if(!lock) return;
+  if(!confirm('中断しますか？\n失敗扱いになりますが、ここまでの進捗に応じた報酬がもらえます。')) return;
+  
+  // 中断は失敗として扱う
+  fail();
 };
 
 function tick(){
@@ -658,13 +684,19 @@ function success(){
   clearInterval(t); lock=false;
   clearInterval(quoteInterval);
   exitFullscreen();
+  
+  // UIをリセット
+  document.getElementById('start').style.display = 'block';
+  document.getElementById('abort').style.display = 'none';
+  
   const mins = parseInt(document.getElementById('mins').value || '25', 10);
 
   // --------------------------
-  // 指数関数的報酬計算を JS 側でも統一
+  // 改善された指数関数的報酬計算
+  // 基礎報酬を増やし、時間に応じた指数的ボーナスを追加
   // --------------------------
-  const coins = Math.floor(5 * Math.pow(1.035, mins));
-  const crystals = Math.floor(1 * Math.pow(1.012, mins));
+  const coins = Math.floor(10 * Math.pow(1.04, mins));
+  const crystals = Math.floor(2 * Math.pow(1.015, mins));
 
   const task = document.getElementById('task').value.trim();
   const endTime = new Date();
@@ -677,6 +709,10 @@ function fail(){
   clearInterval(t); lock=false;
   clearInterval(quoteInterval);
   exitFullscreen();
+  
+  // UIをリセット
+  document.getElementById('start').style.display = 'block';
+  document.getElementById('abort').style.display = 'none';
 
   const task = document.getElementById('task').value.trim();
   const endTime = new Date();
@@ -685,10 +721,10 @@ function fail(){
   const mins = parseInt(document.getElementById('mins').value || '25', 10);
 
   // --------------------------
-  // 失敗時も指数関数的報酬を計算（半分はサーバー側で対応）
+  // 失敗時も改善された指数関数的報酬を計算（サーバー側で実際の比率計算）
   // --------------------------
-  const coins = Math.floor(5 * Math.pow(1.035, mins));
-  const crystals = Math.floor(1 * Math.pow(1.012, mins));
+  const coins = Math.floor(10 * Math.pow(1.04, mins));
+  const crystals = Math.floor(2 * Math.pow(1.015, mins));
 
   sendFocusLog(task, started, endTime, mins, coins, crystals, "fail");
 }

@@ -93,10 +93,11 @@ try {
 
         // --------------------------
     // 成功・失敗ごとのコイン・クリスタル計算
+    // 基礎報酬を増やし、より良い報酬体系に改善
     // --------------------------
         if ($status === 'success') {
-        // 成功時：指数関数的な時間ボーナス
-        $time_multiplier = pow(1.05, $mins);
+        // 成功時：改善された指数関数的な時間ボーナス
+        $time_multiplier = pow(1.06, $mins);
 
         $final_coins    = (int)floor($coins * $time_multiplier * $total_multiplier);
         $final_crystals = (int)floor($crystals * $time_multiplier * $total_multiplier);
@@ -110,7 +111,7 @@ try {
         $progress_ratio = min(1, $actual_mins / $mins);
 
         // 実施時間に応じた指数補正
-        $time_multiplier = pow(1.05, $actual_mins);
+        $time_multiplier = pow(1.06, $actual_mins);
 
         // 比率＋指数補正＋各種ボーナスを掛け合わせ
         $final_coins    = (int)floor($coins * $progress_ratio * $time_multiplier * $total_multiplier);
