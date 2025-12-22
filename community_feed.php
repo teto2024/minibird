@@ -408,6 +408,14 @@ function renderPosts(posts) {
         const vipHtml = post.vip_level && post.vip_level > 0 ? 
             `<span class="vip-label">👑VIP${post.vip_level}</span>` : '';
         
+        // Role badge display
+        let roleBadgeHtml = '';
+        if (post.role === 'admin') {
+            roleBadgeHtml = '<span class="role-badge admin-badge">ADMIN</span>';
+        } else if (post.role === 'mod') {
+            roleBadgeHtml = '<span class="role-badge mod-badge">MOD</span>';
+        }
+        
         // NSFW画像処理（複数メディア対応）
         let mediaHtml = '';
         const media_paths = post.media_paths || (post.media_path ? [post.media_path] : []);
@@ -480,6 +488,7 @@ function renderPosts(posts) {
                     <div>
                         <a href="profile.php?id=${post.user_id}" class="post-author">${displayName}</a>
                         @${post.handle}
+                        ${roleBadgeHtml}
                         ${titleHtml}
                         ${vipHtml}
                     </div>
