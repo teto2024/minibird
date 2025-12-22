@@ -334,6 +334,11 @@ $relay_reward_claimed = (bool)$stmt->fetch();
                 <div class="reward-item">🪙 3,000</div>
                 <div class="reward-item">💎 15</div>
             </div>
+            <?php if ($daily_all_completed && !$daily_reward_claimed): ?>
+            <button class="claim-button" onclick="claimReward('daily')" style="margin-top: 15px; padding: 10px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;">
+                報酬を受け取る
+            </button>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -382,6 +387,11 @@ $relay_reward_claimed = (bool)$stmt->fetch();
                 <div class="reward-item">💎 50</div>
                 <div class="reward-item">💠 2</div>
             </div>
+            <?php if ($weekly_all_completed && !$weekly_reward_claimed): ?>
+            <button class="claim-button" onclick="claimReward('weekly')" style="margin-top: 15px; padding: 10px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;">
+                報酬を受け取る
+            </button>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -449,6 +459,11 @@ $relay_reward_claimed = (bool)$stmt->fetch();
                 <div class="reward-item">🪙 2,000</div>
                 <div class="reward-item">💠 1</div>
             </div>
+            <?php if ($relay_all_completed && !$relay_reward_claimed): ?>
+            <button class="claim-button" onclick="claimReward('relay')" style="margin-top: 15px; padding: 10px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;">
+                報酬を受け取る
+            </button>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -460,6 +475,42 @@ $relay_reward_claimed = (bool)$stmt->fetch();
 </div>
 
 <script>
+// クエスト報酬受け取り
+async function claimReward(type) {
+    try {
+        const response = await fetch('quest_claim_api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ type: type })
+        });
+        
+        const data = await response.json();
+        
+        if (data.ok) {
+            let message = '報酬を受け取りました！\n';
+            if (data.coins > 0) message += `🪙 ${data.coins} コイン\n`;
+            if (data.crystals > 0) message += `💎 ${data.crystals} クリスタル\n`;
+            if (data.diamonds > 0) message += `💠 ${data.diamonds} ダイヤモンド\n`;
+            
+            alert(message);
+            location.reload(); // ページをリロードして更新
+        } else {
+            if (data.error === 'not_completed') {
+                alert('全てのクエストをクリアしていません');
+            } else if (data.error === 'already_claimed') {
+                alert('すでに報酬を受け取っています');
+            } else {
+                alert('エラーが発生しました: ' + data.error);
+            }
+        }
+    } catch (error) {
+        console.error('Error claiming reward:', error);
+        alert('ネットワークエラーが発生しました');
+    }
+}
+
 // リレークエストリセット
 document.getElementById('resetRelayBtn')?.addEventListener('click', async () => {
     if (!confirm('リレークエストをリセットしますか？進行状況は最初に戻ります。')) {

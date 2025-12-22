@@ -3084,3 +3084,27 @@ button:hover, .btn:hover {
 .media-expand-close:hover {
     color: #ccc;
 }
+
+/* Document Link Styling */
+.document-link {
+    display: inline-block;
+    padding: 10px 15px;
+    margin: 5px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white !important;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.document-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.media-item .document-link {
+    width: 100%;
+    text-align: center;
+    box-sizing: border-box;
+}

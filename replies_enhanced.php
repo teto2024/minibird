@@ -17,22 +17,36 @@ if ($post_id <= 0) {
 $pdo = db();
 
 // 元投稿取得（フレーム情報、称号情報、引用投稿も含む）
+// リポストの場合は、元投稿の作者情報を表示する
 $stmt = $pdo->prepare("
-    SELECT p.*, u.handle, u.display_name, u.icon, u.active_frame_id, u.vip_level,
-           f.css_token as frame_class,
-           ut.title_id, tp.title_text, tp.title_css,
+    SELECT p.*, 
+           CASE WHEN p.is_repost_of IS NOT NULL THEN op_user.handle ELSE u.handle END as handle,
+           CASE WHEN p.is_repost_of IS NOT NULL THEN op_user.display_name ELSE u.display_name END as display_name,
+           CASE WHEN p.is_repost_of IS NOT NULL THEN op_user.icon ELSE u.icon END as icon,
+           CASE WHEN p.is_repost_of IS NOT NULL THEN op_user.active_frame_id ELSE u.active_frame_id END as active_frame_id,
+           CASE WHEN p.is_repost_of IS NOT NULL THEN op_user.vip_level ELSE u.vip_level END as vip_level,
+           CASE WHEN p.is_repost_of IS NOT NULL THEN f_op.css_token ELSE f.css_token END as frame_class,
+           CASE WHEN p.is_repost_of IS NOT NULL THEN ut_op.title_id ELSE ut.title_id END as title_id,
+           CASE WHEN p.is_repost_of IS NOT NULL THEN tp_op.title_text ELSE tp.title_text END as title_text,
+           CASE WHEN p.is_repost_of IS NOT NULL THEN tp_op.title_css ELSE tp.title_css END as title_css,
            (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
            (SELECT COUNT(*) FROM posts WHERE is_repost_of = p.id) as repost_count,
            (SELECT 1 FROM likes WHERE post_id = p.id AND user_id = ?) as user_liked,
            p.media_path, p.media_type, p.media_paths, p.quote_post_id,
            qp.id as quoted_id, qp.user_id as quoted_user_id, qp.content_md as quoted_content_md,
            qp.content_html as quoted_content_html, qu.handle as quoted_handle, 
-           qu.display_name as quoted_display_name, qu.icon as quoted_icon
+           qu.display_name as quoted_display_name, qu.icon as quoted_icon,
+           u.handle as reposter_handle, u.display_name as reposter_display_name
     FROM posts p
     JOIN users u ON u.id = p.user_id
+    LEFT JOIN posts op ON op.id = p.is_repost_of
+    LEFT JOIN users op_user ON op_user.id = op.user_id
     LEFT JOIN frames f ON f.id = u.active_frame_id
+    LEFT JOIN frames f_op ON f_op.id = op_user.active_frame_id
     LEFT JOIN user_titles ut ON ut.user_id = u.id AND ut.is_equipped = TRUE
     LEFT JOIN title_packages tp ON tp.id = ut.title_id
+    LEFT JOIN user_titles ut_op ON ut_op.user_id = op_user.id AND ut_op.is_equipped = TRUE
+    LEFT JOIN title_packages tp_op ON tp_op.id = ut_op.title_id
     LEFT JOIN posts qp ON qp.id = p.quote_post_id
     LEFT JOIN users qu ON qu.id = qp.user_id
     WHERE p.id = ?
@@ -210,6 +224,15 @@ if (!$original_post) {
 </header>
 
 <div class="replies-container">
+    <!-- リポスト表示 -->
+    <?php if (!empty($original_post['is_repost_of']) && !empty($original_post['reposter_handle'])): ?>
+    <div style="padding: 10px 20px; background: #f7fafc; border-left: 3px solid #667eea; margin-bottom: 10px; border-radius: 8px;">
+        <span style="color: #667eea; font-size: 14px;">
+            🔁 <strong><?= htmlspecialchars($original_post['reposter_display_name'] ?? $original_post['reposter_handle']) ?></strong> がリポストしました
+        </span>
+    </div>
+    <?php endif; ?>
+    
     <!-- 元投稿表示 -->
     <div class="original-post <?= htmlspecialchars($original_post['frame_class'] ?? '') ?>">
         <div class="reply-header">
@@ -280,6 +303,7 @@ if (!$original_post) {
                             $imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
                             $videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv', 'ogg'];
                             $audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+                            $documentExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip', 'rar', '7z', 'tar', 'gz'];
                         ?>
                         <div class="media-item">
                             <?php if (in_array($ext, $imageExts)): ?>
@@ -288,6 +312,9 @@ if (!$original_post) {
                                 <video src="<?= htmlspecialchars($mediaSrc) ?>" controls style="max-width: 100%; border-radius: 8px; cursor: pointer;" onclick="openMediaExpand('<?= htmlspecialchars($mediaSrc) ?>', 'video')"></video>
                             <?php elseif (in_array($ext, $audioExts)): ?>
                                 <audio src="<?= htmlspecialchars($mediaSrc) ?>" controls style="width: 100%;"></audio>
+                            <?php elseif (in_array($ext, $documentExts)): ?>
+                                <?php $fileName = basename($mediaPath); ?>
+                                <a href="<?= htmlspecialchars($mediaSrc) ?>" download="<?= htmlspecialchars($fileName) ?>" target="_blank" class="document-link">📄 <?= htmlspecialchars($fileName) ?></a>
                             <?php endif; ?>
                         </div>
                         <?php endforeach; ?>
@@ -300,6 +327,7 @@ if (!$original_post) {
                         $imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
                         $videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv', 'ogg'];
                         $audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+                        $documentExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip', 'rar', '7z', 'tar', 'gz'];
                     ?>
                     <div class="media-single">
                         <?php if (in_array($ext, $imageExts)): ?>
@@ -308,6 +336,9 @@ if (!$original_post) {
                             <video src="<?= htmlspecialchars($mediaSrc) ?>" controls style="max-width: 100%; border-radius: 8px; cursor: pointer;" onclick="openMediaExpand('<?= htmlspecialchars($mediaSrc) ?>', 'video')"></video>
                         <?php elseif (in_array($ext, $audioExts)): ?>
                             <audio src="<?= htmlspecialchars($mediaSrc) ?>" controls style="width: 100%;"></audio>
+                        <?php elseif (in_array($ext, $documentExts)): ?>
+                            <?php $fileName = basename($mediaPath); ?>
+                            <a href="<?= htmlspecialchars($mediaSrc) ?>" download="<?= htmlspecialchars($fileName) ?>" target="_blank" class="document-link">📄 <?= htmlspecialchars($fileName) ?></a>
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
@@ -416,6 +447,7 @@ function renderReply(reply) {
                 const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
                 const videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv', 'ogg'];
                 const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+                const documentExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip', 'rar', '7z', 'tar', 'gz'];
                 
                 if (imageExts.includes(ext)) {
                     mediaHtml += `<img src="${mediaSrc}" style="max-width: 100%; border-radius: 6px; cursor: pointer;" onclick="openMediaExpand('${mediaSrc}', 'image')">`;
@@ -423,6 +455,9 @@ function renderReply(reply) {
                     mediaHtml += `<video src="${mediaSrc}" controls style="max-width: 100%; border-radius: 6px; cursor: pointer;" onclick="openMediaExpand('${mediaSrc}', 'video')"></video>`;
                 } else if (audioExts.includes(ext)) {
                     mediaHtml += `<audio src="${mediaSrc}" controls style="width: 100%;"></audio>`;
+                } else if (documentExts.includes(ext)) {
+                    const fileName = mediaPath.split('/').pop();
+                    mediaHtml += `<a href="${mediaSrc}" download="${fileName}" target="_blank" class="document-link">📄 ${fileName}</a>`;
                 }
             });
             mediaHtml += '</div>';
@@ -433,6 +468,7 @@ function renderReply(reply) {
             const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
             const videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv', 'ogg'];
             const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+            const documentExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip', 'rar', '7z', 'tar', 'gz'];
             
             if (imageExts.includes(ext)) {
                 mediaHtml += `<img src="${mediaSrc}" style="max-width: 100%; border-radius: 6px; cursor: pointer;" onclick="openMediaExpand('${mediaSrc}', 'image')">`;
@@ -440,6 +476,9 @@ function renderReply(reply) {
                 mediaHtml += `<video src="${mediaSrc}" controls style="max-width: 100%; border-radius: 6px; cursor: pointer;" onclick="openMediaExpand('${mediaSrc}', 'video')"></video>`;
             } else if (audioExts.includes(ext)) {
                 mediaHtml += `<audio src="${mediaSrc}" controls style="width: 100%;"></audio>`;
+            } else if (documentExts.includes(ext)) {
+                const fileName = mediaPath.split('/').pop();
+                mediaHtml += `<a href="${mediaSrc}" download="${fileName}" target="_blank" class="document-link">📄 ${fileName}</a>`;
             }
         }
         

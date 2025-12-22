@@ -82,6 +82,15 @@ canvas#fireCanvas {
 <!-- 名言 -->
 <div id="quote" style="display:none;"></div>
 
+<!-- 完了モーダル -->
+<div id="completionModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; justify-content: center; align-items: center;">
+  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; padding: 40px; max-width: 600px; width: 90%; color: white; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+    <h2 id="modalTitle" style="text-align: center; font-size: 32px; margin-bottom: 20px;"></h2>
+    <div id="modalContent" style="font-size: 18px; line-height: 1.8;"></div>
+    <button onclick="closeCompletionModal()" style="width: 100%; margin-top: 30px; padding: 15px; background: white; color: #667eea; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer;">閉じる</button>
+  </div>
+</div>
+
 <main class="layout">
 <section class="center">
   <div class="card">
@@ -93,6 +102,7 @@ canvas#fireCanvas {
       やること: <input id="task" placeholder="例: 勉強"> <br>
       時間(分): <input id="mins" type="number" min="1" max="240" value="25"><br>
       タッグ（友達のハンドル）: <input id="tagHandle" placeholder="例: friend123"><br>
+      <label><input type="checkbox" id="disablePenalty"> 画面離脱ペナルティを無効化する</label><br>
       <button id="start">開始</button>
     </p>
 
@@ -238,6 +248,7 @@ document.getElementById('start').onclick = async ()=>{
 
   const mins = parseInt(document.getElementById('mins').value||'25',10);
   const task = document.getElementById('task').value.trim();
+  const disablePenalty = document.getElementById('disablePenalty').checked;
   if(!task){alert("タスク名を入力してください");return;}
   startTime=new Date();
 
@@ -250,8 +261,11 @@ document.getElementById('start').onclick = async ()=>{
   tick();
   t=setInterval(tick,250);
 
-  window.onblur = fail;
-  document.onvisibilitychange = ()=>{if(document.visibilityState!=='visible') fail();};
+  // ペナルティが無効化されていない場合のみ、離脱検知を設定
+  if (!disablePenalty) {
+    window.onblur = fail;
+    document.onvisibilitychange = ()=>{if(document.visibilityState!=='visible') fail();};
+  }
 
   // 名言初期表示 & 1分ごとに切り替え
   const quoteEl = document.getElementById("quote");
@@ -294,20 +308,87 @@ function sendFocusLog(task, started_at, ended_at, mins, coins, crystals, status)
       // ティア表示更新
       document.getElementById('currentTier').textContent = `ティア${data.tier}`;
 
-      // 成功・失敗に関わらず報酬表示
-      if(status === "success"){
-        alert(`成功！コイン+${data.coins} / クリスタル+${data.crystals}`);
-      } else {
-        alert(`失敗でも報酬！コイン+${data.coins} / クリスタル+${data.crystals}`);
-      }
-
-      // タッグボーナス表示
-      if(data.tag_bonus_active){
-        alert(`タッグボーナス発生！報酬2倍`);
-      }
+      // 完了モーダルを表示
+      showCompletionModal(status, data);
     }
   })
   .catch(e => console.error("focus_save fetch error:", e));
+}
+
+function showCompletionModal(status, data) {
+  const modal = document.getElementById('completionModal');
+  const title = document.getElementById('modalTitle');
+  const content = document.getElementById('modalContent');
+  
+  if (status === 'success') {
+    title.innerHTML = '🎉 成功！よく頑張りました！';
+  } else {
+    title.innerHTML = '😔 惜しい！次は成功しよう！';
+  }
+  
+  let html = `
+    <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+      <h3 style="margin: 0 0 15px 0;">📊 報酬</h3>
+      <div style="display: flex; gap: 20px; justify-content: center;">
+        <div style="text-align: center;">
+          <div style="font-size: 36px;">🪙</div>
+          <div style="font-size: 24px; font-weight: bold;">+${data.coins}</div>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-size: 36px;">💎</div>
+          <div style="font-size: 24px; font-weight: bold;">+${data.crystals}</div>
+        </div>
+      </div>
+      ${data.tag_bonus_active ? '<div style="margin-top: 15px; text-align: center; font-size: 16px; color: #ffeb3b;">✨ タッグボーナス！報酬2倍 ✨</div>' : ''}
+    </div>
+  `;
+  
+  if (data.statistics) {
+    const stats = data.statistics;
+    html += `
+      <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+        <h3 style="margin: 0 0 15px 0;">🔥 連続記録</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div style="text-align: center;">
+            <div style="font-size: 14px; opacity: 0.8;">連続成功</div>
+            <div style="font-size: 28px; font-weight: bold;">${stats.consecutive_successes}回</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 14px; opacity: 0.8;">連続日数</div>
+            <div style="font-size: 28px; font-weight: bold;">${stats.current_streak}日</div>
+          </div>
+        </div>
+      </div>
+      
+      <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: 20px;">
+        <h3 style="margin: 0 0 15px 0;">📈 ランキング（上位%）</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+          <div style="text-align: center;">
+            <div style="font-size: 14px; opacity: 0.8;">本日</div>
+            <div style="font-size: 24px; font-weight: bold;">上位${stats.today_percentile.toFixed(1)}%</div>
+            <div style="font-size: 12px; opacity: 0.6;">${stats.today_total}分</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 14px; opacity: 0.8;">直近1週間</div>
+            <div style="font-size: 24px; font-weight: bold;">上位${stats.week_percentile.toFixed(1)}%</div>
+            <div style="font-size: 12px; opacity: 0.6;">${stats.week_total}分</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 14px; opacity: 0.8;">累計</div>
+            <div style="font-size: 24px; font-weight: bold;">上位${stats.total_percentile.toFixed(1)}%</div>
+            <div style="font-size: 12px; opacity: 0.6;">${stats.total_time}分</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  content.innerHTML = html;
+  modal.style.display = 'flex';
+}
+
+function closeCompletionModal() {
+  document.getElementById('completionModal').style.display = 'none';
 }
 
 function success(){

@@ -222,7 +222,150 @@ try {
     }
 
     // --------------------------
-    // JSON出力（バフ＋タッグ後の値）
+    // 統計情報の更新と取得
+    // --------------------------
+    $today = date('Y-m-d');
+    
+    // 統計レコードの取得または作成
+    $st = $pdo->prepare("
+        INSERT INTO focus_statistics (user_id, last_success_date, current_streak, consecutive_successes, total_successes, total_failures)
+        VALUES (?, NULL, 0, 0, 0, 0)
+        ON DUPLICATE KEY UPDATE user_id = user_id
+    ");
+    $st->execute([$uid]);
+    
+    $st = $pdo->prepare("SELECT * FROM focus_statistics WHERE user_id = ?");
+    $st->execute([$uid]);
+    $stats = $st->fetch(PDO::FETCH_ASSOC);
+    
+    if ($status === 'success') {
+        // 成功時の統計更新
+        $consecutive_successes = ($stats['consecutive_successes'] ?? 0) + 1;
+        $total_successes = ($stats['total_successes'] ?? 0) + 1;
+        $last_date = $stats['last_success_date'] ?? null;
+        $current_streak = $stats['current_streak'] ?? 0;
+        
+        // 連続日数の更新
+        if ($last_date === null) {
+            // 初回
+            $current_streak = 1;
+        } elseif ($last_date === $today) {
+            // 同じ日の場合はストリークは変わらない
+        } elseif ($last_date === date('Y-m-d', strtotime('-1 day'))) {
+            // 前日の場合はストリーク継続
+            $current_streak++;
+        } else {
+            // 途切れた
+            $current_streak = 1;
+        }
+        
+        $max_streak = max($current_streak, $stats['max_streak'] ?? 0);
+        
+        $st = $pdo->prepare("
+            UPDATE focus_statistics 
+            SET last_success_date = ?, 
+                current_streak = ?, 
+                max_streak = ?,
+                consecutive_successes = ?,
+                total_successes = ?
+            WHERE user_id = ?
+        ");
+        $st->execute([$today, $current_streak, $max_streak, $consecutive_successes, $total_successes, $uid]);
+    } else {
+        // 失敗時の統計更新
+        $consecutive_successes = 0; // リセット
+        $total_failures = ($stats['total_failures'] ?? 0) + 1;
+        $current_streak = $stats['current_streak'] ?? 0;
+        
+        $st = $pdo->prepare("
+            UPDATE focus_statistics 
+            SET consecutive_successes = 0,
+                total_failures = ?
+            WHERE user_id = ?
+        ");
+        $st->execute([$total_failures, $uid]);
+    }
+    
+    // パーセンタイル計算用の統計取得
+    // 本日の累計時間
+    $st = $pdo->prepare("
+        SELECT SUM(minutes) as today_total 
+        FROM focus_tasks 
+        WHERE user_id = ? AND DATE(started_at) = CURDATE() AND status = 'success'
+    ");
+    $st->execute([$uid]);
+    $today_total = (int)($st->fetchColumn() ?? 0);
+    
+    // 直近一週間の累計時間
+    $st = $pdo->prepare("
+        SELECT SUM(minutes) as week_total 
+        FROM focus_tasks 
+        WHERE user_id = ? AND started_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) AND status = 'success'
+    ");
+    $st->execute([$uid]);
+    $week_total = (int)($st->fetchColumn() ?? 0);
+    
+    // 全ユーザーの本日累計時間の分布
+    $st = $pdo->prepare("
+        SELECT SUM(minutes) as total 
+        FROM focus_tasks 
+        WHERE DATE(started_at) = CURDATE() AND status = 'success'
+        GROUP BY user_id
+        ORDER BY total DESC
+    ");
+    $st->execute();
+    $all_today_totals = $st->fetchAll(PDO::FETCH_COLUMN);
+    
+    // パーセンタイル計算
+    $today_percentile = 0;
+    if (count($all_today_totals) > 0) {
+        $rank = 1;
+        foreach ($all_today_totals as $total) {
+            if ($today_total > $total) break;
+            $rank++;
+        }
+        $today_percentile = 100 - (($rank - 1) / count($all_today_totals) * 100);
+    }
+    
+    // 同様に週間と累計のパーセンタイルを計算
+    $st = $pdo->prepare("
+        SELECT SUM(minutes) as total 
+        FROM focus_tasks 
+        WHERE started_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) AND status = 'success'
+        GROUP BY user_id
+        ORDER BY total DESC
+    ");
+    $st->execute();
+    $all_week_totals = $st->fetchAll(PDO::FETCH_COLUMN);
+    
+    $week_percentile = 0;
+    if (count($all_week_totals) > 0) {
+        $rank = 1;
+        foreach ($all_week_totals as $total) {
+            if ($week_total > $total) break;
+            $rank++;
+        }
+        $week_percentile = 100 - (($rank - 1) / count($all_week_totals) * 100);
+    }
+    
+    // 累計時間でのパーセンタイル
+    $st = $pdo->prepare("SELECT total_focus_time FROM users ORDER BY total_focus_time DESC");
+    $st->execute();
+    $all_totals = $st->fetchAll(PDO::FETCH_COLUMN);
+    $user_total = $user['total_focus_time'] ?? 0;
+    
+    $total_percentile = 0;
+    if (count($all_totals) > 0) {
+        $rank = 1;
+        foreach ($all_totals as $total) {
+            if ($user_total > $total) break;
+            $rank++;
+        }
+        $total_percentile = 100 - (($rank - 1) / count($all_totals) * 100);
+    }
+
+    // --------------------------
+    // JSON出力（バフ＋タッグ後の値 + 統計情報）
     // --------------------------
     json_exit([
         'ok' => true,
@@ -231,7 +374,17 @@ try {
         'crystals' => $final_crystals,
         'total_multiplier' => $total_multiplier,
         'start_buff_multiplier' => $start_buff_multiplier,
-        'tag_bonus_active' => $tag_bonus_active
+        'tag_bonus_active' => $tag_bonus_active,
+        'statistics' => [
+            'consecutive_successes' => $status === 'success' ? $consecutive_successes : 0,
+            'current_streak' => $current_streak,
+            'today_total' => $today_total,
+            'week_total' => $week_total,
+            'total_time' => $user_total,
+            'today_percentile' => round($today_percentile, 1),
+            'week_percentile' => round($week_percentile, 1),
+            'total_percentile' => round($total_percentile, 1)
+        ]
     ]);
 
 } catch (Exception $e) {
