@@ -393,6 +393,36 @@ const POST_ID = <?= $post_id ?>;
 const USER_ID = <?= $me ? $me['id'] : 0 ?>;
 let replies = [];
 
+// YouTube helper functions
+function extractYouTubeId(url) {
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
+    ];
+    
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+            return match[1];
+        }
+    }
+    return null;
+}
+
+function embedYouTube(html) {
+    // Replace YouTube URLs with embeds
+    return html.replace(/(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g, function(match, fullUrl, videoId) {
+        return `<div class="youtube-embed-wrapper">
+            <iframe class="youtube-embed" 
+                    src="https://www.youtube.com/embed/${videoId}" 
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+            </iframe>
+        </div>`;
+    });
+}
+
 // 返信読み込み
 async function loadReplies() {
     try {
@@ -510,7 +540,7 @@ function renderReply(reply) {
                 </div>
             </div>
             <div class="reply-content">
-                ${marked.parse(reply.content_md || reply.content_html)}
+                ${embedYouTube(marked.parse(reply.content_md || reply.content_html))}
                 ${mediaHtml}
             </div>
             <div class="reply-actions">
