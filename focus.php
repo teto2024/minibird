@@ -536,7 +536,7 @@ fetch('get_focus_tier.php')
     clearTimeout(tierFetchTimeout);
     const tierEl = document.getElementById('currentTier');
     tierEl.classList.remove('loading');
-    tierEl.textContent='取得エラー';
+    tierEl.textContent='ティア情報取得エラー';
     console.error('Tier fetch error:', error);
   });
 
