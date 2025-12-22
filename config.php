@@ -14,6 +14,9 @@ $NSFW_BLUR = 12;
 // ファイル更新時にこの値を変更すると、ブラウザキャッシュをクリアできます
 define('ASSETS_VERSION', '1.4.1');
 
+// ----- 集中タイマー設定 -----
+define('FOCUS_MAX_MINUTES', 180);
+
 // ----- セッション -----
 session_set_cookie_params([
     'lifetime' => 60*60*24*30,
