@@ -35,39 +35,278 @@ try {
 <style>
 body {
   margin: 0;
-  height: 100vh;
-  background: #0d0d0d;
-  overflow: hidden;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0d0d0d 0%, #1a1a2e 50%, #16213e 100%);
+  overflow-x: hidden;
   position: relative;
   color: #fff;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
+
+/* 背景アニメーション */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(102, 126, 234, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+  animation: bgShift 20s ease-in-out infinite;
+}
+
+@keyframes bgShift {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}
+
 canvas#fireCanvas {
   position: fixed;
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
   pointer-events: none;
-  z-index: 0;
+  z-index: 1;
   width: 400px;
   height: 400px;
+  filter: drop-shadow(0 0 30px rgba(255, 136, 0, 0.5));
 }
 
-/* 名言表示 */
+/* 名言表示 - 改善版 */
 #quote {
   position: fixed;
   top: 15%;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 1.5em;
+  font-size: clamp(1rem, 3vw, 1.5rem);
   font-weight: bold;
   color: #ffdd99;
-  text-shadow: 0 0 10px #ff8800, 0 0 20px #ff6600;
-  padding: 12px 20px;
-  background: rgba(0,0,0,0.4);
-  border-radius: 12px;
-  max-width: 80%;
+  text-shadow: 0 0 15px #ff8800, 0 0 25px #ff6600, 0 2px 4px rgba(0,0,0,0.5);
+  padding: 16px 24px;
+  background: linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(20,20,40,0.8) 100%);
+  border-radius: 16px;
+  max-width: 85%;
   text-align: center;
-  z-index: 1;
+  z-index: 10;
+  border: 2px solid rgba(255, 221, 153, 0.3);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1);
+  animation: quoteFade 1s ease-in-out;
+}
+
+@keyframes quoteFade {
+  from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* カード全体の改善 */
+.focus-card {
+  background: linear-gradient(135deg, rgba(30, 30, 50, 0.95) 0%, rgba(20, 20, 35, 0.95) 100%);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6), 0 0 1px rgba(102, 126, 234, 0.5);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  backdrop-filter: blur(10px);
+  position: relative;
+  z-index: 2;
+  max-width: 600px;
+  margin: 0 auto;
+  animation: cardSlideIn 0.6s ease-out;
+}
+
+@keyframes cardSlideIn {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.focus-card h3 {
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  margin: 0 0 24px 0;
+  text-align: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: bold;
+  text-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+}
+
+/* ティア表示の改善 */
+.tier-display {
+  text-align: center;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+  border-radius: 12px;
+  margin-bottom: 24px;
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+#currentTier {
+  color: #ffd700;
+  font-weight: bold;
+  font-size: 1.2rem;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+/* フォーム要素の改善 */
+.focus-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 0.95rem;
+  color: #a0a0c0;
+  font-weight: 500;
+}
+
+.focus-form input[type="text"],
+.focus-form input[type="number"] {
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  border-radius: 12px;
+  color: #fff;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.focus-form input[type="text"]:focus,
+.focus-form input[type="number"]:focus {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  transform: translateY(-2px);
+}
+
+.focus-form input[type="text"]::placeholder,
+.focus-form input[type="number"]::placeholder {
+  color: #606080;
+}
+
+/* チェックボックスの改善 */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 8px;
+  transition: background 0.2s;
+  font-size: 0.9rem;
+  color: #b0b0d0;
+}
+
+.checkbox-label:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+/* 開始ボタンの改善 */
+#start {
+  padding: 16px 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  margin-top: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+#start::before {
+  content: '🔥';
+  position: absolute;
+  left: 20px;
+  font-size: 1.3rem;
+  animation: fireFlicker 2s ease-in-out infinite;
+}
+
+@keyframes fireFlicker {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+#start:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.6);
+}
+
+#start:active {
+  transform: translateY(-1px);
+}
+
+#start:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* タイマー表示の改善 */
+#timer {
+  font-size: clamp(3rem, 10vw, 5rem);
+  margin-top: 24px;
+  text-align: center;
+  font-weight: bold;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
+  letter-spacing: 0.05em;
+  font-family: 'Courier New', monospace;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+  .focus-card {
+    padding: 24px;
+    margin: 20px;
+  }
+  
+  #quote {
+    max-width: 90%;
+    padding: 12px 16px;
+  }
+  
+  canvas#fireCanvas {
+    width: 300px;
+    height: 300px;
+  }
+}
+
+/* ローディングアニメーション */
+.loading {
+  display: inline-block;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 </style>
 </head>
@@ -83,30 +322,48 @@ canvas#fireCanvas {
 <div id="quote" style="display:none;"></div>
 
 <!-- 完了モーダル -->
-<div id="completionModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; justify-content: center; align-items: center;">
-  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; padding: 40px; max-width: 600px; width: 90%; color: white; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
-    <h2 id="modalTitle" style="text-align: center; font-size: 32px; margin-bottom: 20px;"></h2>
-    <div id="modalContent" style="font-size: 18px; line-height: 1.8;"></div>
-    <button onclick="closeCompletionModal()" style="width: 100%; margin-top: 30px; padding: 15px; background: white; color: #667eea; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer;">閉じる</button>
+<div id="completionModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; justify-content: center; align-items: center; overflow-y: auto; padding: 20px 0;">
+  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; padding: 40px; max-width: 600px; width: 90%; color: white; box-shadow: 0 10px 40px rgba(0,0,0,0.5); margin: auto; max-height: 90vh; overflow-y: auto;">
+    <h2 id="modalTitle" style="text-align: center; font-size: clamp(20px, 5vw, 32px); margin-bottom: 20px;"></h2>
+    <div id="modalContent" style="font-size: clamp(14px, 3vw, 18px); line-height: 1.8;"></div>
+    <button onclick="closeCompletionModal()" style="width: 100%; margin-top: 30px; padding: 15px; background: white; color: #667eea; border: none; border-radius: 10px; font-size: clamp(14px, 3vw, 18px); font-weight: bold; cursor: pointer;">閉じる</button>
   </div>
 </div>
 
 <main class="layout">
 <section class="center">
-  <div class="card">
-    <h3>集中モード</h3>
+  <div class="card focus-card">
+    <h3>🔥 集中モード 🔥</h3>
 
-    <p>現在のティア: <span id="currentTier">読み込み中...</span></p>
+    <div class="tier-display">
+      現在のティア: <span id="currentTier" class="loading">読み込み中...</span>
+    </div>
 
-    <p>
-      やること: <input id="task" placeholder="例: 勉強"> <br>
-      時間(分): <input id="mins" type="number" min="1" max="240" value="25"><br>
-      タッグ（友達のハンドル）: <input id="tagHandle" placeholder="例: friend123"><br>
-      <label><input type="checkbox" id="disablePenalty"> 画面離脱ペナルティを無効化する</label><br>
-      <button id="start">開始</button>
-    </p>
+    <form class="focus-form" onsubmit="return false;">
+      <div class="form-group">
+        <label for="task">📝 やること</label>
+        <input id="task" type="text" placeholder="例: 勉強、読書、プログラミング...">
+      </div>
+      
+      <div class="form-group">
+        <label for="mins">⏱️ 時間（分）</label>
+        <input id="mins" type="number" min="1" max="240" value="25">
+      </div>
+      
+      <div class="form-group">
+        <label for="tagHandle">👥 タッグ（友達のハンドル）</label>
+        <input id="tagHandle" type="text" placeholder="例: friend123">
+      </div>
+      
+      <label class="checkbox-label">
+        <input type="checkbox" id="disablePenalty">
+        <span>画面離脱ペナルティを無効化する</span>
+      </label>
+      
+      <button id="start">集中開始！</button>
+    </form>
 
-    <div id="timer" style="font-size:48px;margin-top:10px"></div>
+    <div id="timer"></div>
   </div>
 </section>
 </main>
@@ -240,8 +497,14 @@ const quotes = [
 fetch('get_focus_tier.php')
   .then(r=>r.json())
   .then(data=>{
-    document.getElementById('currentTier').textContent = data.ok?`ティア${data.tier}`:'不明';
-  }).catch(()=>{document.getElementById('currentTier').textContent='不明';});
+    const tierEl = document.getElementById('currentTier');
+    tierEl.classList.remove('loading');
+    tierEl.textContent = data.ok?`ティア${data.tier}`:'不明';
+  }).catch(()=>{
+    const tierEl = document.getElementById('currentTier');
+    tierEl.classList.remove('loading');
+    tierEl.textContent='不明';
+  });
 
 document.getElementById('start').onclick = async ()=>{
   if(lock) return;
@@ -327,56 +590,56 @@ function showCompletionModal(status, data) {
   }
   
   let html = `
-    <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: 20px; margin-bottom: 20px;">
-      <h3 style="margin: 0 0 15px 0;">📊 報酬</h3>
-      <div style="display: flex; gap: 20px; justify-content: center;">
+    <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: clamp(10px, 3vw, 20px); margin-bottom: clamp(10px, 3vw, 20px);">
+      <h3 style="margin: 0 0 15px 0; font-size: clamp(16px, 4vw, 20px);">📊 報酬</h3>
+      <div style="display: flex; gap: clamp(10px, 3vw, 20px); justify-content: center; flex-wrap: wrap;">
         <div style="text-align: center;">
-          <div style="font-size: 36px;">🪙</div>
-          <div style="font-size: 24px; font-weight: bold;">+${data.coins}</div>
+          <div style="font-size: clamp(24px, 6vw, 36px);">🪙</div>
+          <div style="font-size: clamp(18px, 4vw, 24px); font-weight: bold;">+${data.coins}</div>
         </div>
         <div style="text-align: center;">
-          <div style="font-size: 36px;">💎</div>
-          <div style="font-size: 24px; font-weight: bold;">+${data.crystals}</div>
+          <div style="font-size: clamp(24px, 6vw, 36px);">💎</div>
+          <div style="font-size: clamp(18px, 4vw, 24px); font-weight: bold;">+${data.crystals}</div>
         </div>
       </div>
-      ${data.tag_bonus_active ? '<div style="margin-top: 15px; text-align: center; font-size: 16px; color: #ffeb3b;">✨ タッグボーナス！報酬2倍 ✨</div>' : ''}
+      ${data.tag_bonus_active ? '<div style="margin-top: 15px; text-align: center; font-size: clamp(12px, 3vw, 16px); color: #ffeb3b;">✨ タッグボーナス！報酬2倍 ✨</div>' : ''}
     </div>
   `;
   
   if (data.statistics) {
     const stats = data.statistics;
     html += `
-      <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: 20px; margin-bottom: 20px;">
-        <h3 style="margin: 0 0 15px 0;">🔥 連続記録</h3>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+      <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: clamp(10px, 3vw, 20px); margin-bottom: clamp(10px, 3vw, 20px);">
+        <h3 style="margin: 0 0 15px 0; font-size: clamp(16px, 4vw, 20px);">🔥 連続記録</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: clamp(10px, 3vw, 15px);">
           <div style="text-align: center;">
-            <div style="font-size: 14px; opacity: 0.8;">連続成功</div>
-            <div style="font-size: 28px; font-weight: bold;">${stats.consecutive_successes}回</div>
+            <div style="font-size: clamp(12px, 2.5vw, 14px); opacity: 0.8;">連続成功</div>
+            <div style="font-size: clamp(20px, 5vw, 28px); font-weight: bold;">${stats.consecutive_successes}回</div>
           </div>
           <div style="text-align: center;">
-            <div style="font-size: 14px; opacity: 0.8;">連続日数</div>
-            <div style="font-size: 28px; font-weight: bold;">${stats.current_streak}日</div>
+            <div style="font-size: clamp(12px, 2.5vw, 14px); opacity: 0.8;">連続日数</div>
+            <div style="font-size: clamp(20px, 5vw, 28px); font-weight: bold;">${stats.current_streak}日</div>
           </div>
         </div>
       </div>
       
-      <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: 20px;">
-        <h3 style="margin: 0 0 15px 0;">📈 ランキング（上位%）</h3>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+      <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: clamp(10px, 3vw, 20px);">
+        <h3 style="margin: 0 0 15px 0; font-size: clamp(16px, 4vw, 20px);">📈 ランキング（上位%）</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: clamp(8px, 2vw, 15px);">
           <div style="text-align: center;">
-            <div style="font-size: 14px; opacity: 0.8;">本日</div>
-            <div style="font-size: 24px; font-weight: bold;">上位${stats.today_percentile.toFixed(1)}%</div>
-            <div style="font-size: 12px; opacity: 0.6;">${stats.today_total}分</div>
+            <div style="font-size: clamp(11px, 2.5vw, 14px); opacity: 0.8;">本日</div>
+            <div style="font-size: clamp(16px, 4vw, 24px); font-weight: bold;">上位${stats.today_percentile.toFixed(1)}%</div>
+            <div style="font-size: clamp(10px, 2vw, 12px); opacity: 0.6;">${stats.today_total}分</div>
           </div>
           <div style="text-align: center;">
-            <div style="font-size: 14px; opacity: 0.8;">直近1週間</div>
-            <div style="font-size: 24px; font-weight: bold;">上位${stats.week_percentile.toFixed(1)}%</div>
-            <div style="font-size: 12px; opacity: 0.6;">${stats.week_total}分</div>
+            <div style="font-size: clamp(11px, 2.5vw, 14px); opacity: 0.8;">直近1週間</div>
+            <div style="font-size: clamp(16px, 4vw, 24px); font-weight: bold;">上位${stats.week_percentile.toFixed(1)}%</div>
+            <div style="font-size: clamp(10px, 2vw, 12px); opacity: 0.6;">${stats.week_total}分</div>
           </div>
           <div style="text-align: center;">
-            <div style="font-size: 14px; opacity: 0.8;">累計</div>
-            <div style="font-size: 24px; font-weight: bold;">上位${stats.total_percentile.toFixed(1)}%</div>
-            <div style="font-size: 12px; opacity: 0.6;">${stats.total_time}分</div>
+            <div style="font-size: clamp(11px, 2.5vw, 14px); opacity: 0.8;">累計</div>
+            <div style="font-size: clamp(16px, 4vw, 24px); font-weight: bold;">上位${stats.total_percentile.toFixed(1)}%</div>
+            <div style="font-size: clamp(10px, 2vw, 12px); opacity: 0.6;">${stats.total_time}分</div>
           </div>
         </div>
       </div>
