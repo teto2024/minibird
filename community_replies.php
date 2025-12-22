@@ -392,7 +392,21 @@ function formatTime(datetime) {
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
-    return div.innerHTML.replace(/\n/g, '<br>');
+    let html = div.innerHTML.replace(/\n/g, '<br>');
+    
+    // YouTube URL embedding
+    html = html.replace(/(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g, function(match, fullUrl, videoId) {
+        return `<div class="youtube-embed-wrapper">
+            <iframe class="youtube-embed" 
+                    src="https://www.youtube.com/embed/${videoId}" 
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+            </iframe>
+        </div>`;
+    });
+    
+    return html;
 }
 
 // 投稿削除

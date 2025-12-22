@@ -52,6 +52,32 @@ function extractYouTubeId(url) {
     return null;
 }
 
+function embedYouTube(html) {
+    // Process YouTube URLs and convert them to embeds
+    // This function processes both bare URLs and URLs inside anchor tags
+    return html.replace(/<a[^>]*href="(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^"]*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})[^"]*)"[^>]*>.*?<\/a>/gi, (match, url, videoId) => {
+        // Replace YouTube links with embeds
+        return `<div class="youtube-embed-wrapper">
+            <iframe class="youtube-embed" 
+                    src="https://www.youtube.com/embed/${videoId}" 
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+            </iframe>
+        </div>`;
+    }).replace(/(^|[^">])(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})[^\s<]*)/gi, (match, prefix, url, videoId) => {
+        // Replace bare YouTube URLs with embeds
+        return `${prefix}<div class="youtube-embed-wrapper">
+            <iframe class="youtube-embed" 
+                    src="https://www.youtube.com/embed/${videoId}" 
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+            </iframe>
+        </div>`;
+    });
+}
+
 function parseMessage(html) {
     // メンションは既にサーバー側（feed.php）で変換済みなので、
     // クライアント側では追加のURL自動リンク化のみ実行
@@ -1084,7 +1110,7 @@ function renderPost(p, wrap, prepend = false) {
 
             const quoteBody = ce('div', 'quote-body');
             const quotedMd = p.quoted_post.content_md || p.quoted_post.content_html || '';
-            quoteBody.innerHTML = parseMessage(marked.parse(quotedMd));
+            quoteBody.innerHTML = embedYouTube(parseMessage(marked.parse(quotedMd)));
             quoteDiv.append(quoteBody);
 
             body.append(quoteDiv);
@@ -1092,7 +1118,7 @@ function renderPost(p, wrap, prepend = false) {
 
         const rawContent = p.content_md || p.content_html || '';
         const myBody = ce('div', 'my-body');
-        myBody.innerHTML = parseMessage(marked.parse(rawContent));
+        myBody.innerHTML = embedYouTube(parseMessage(marked.parse(rawContent)));
         body.append(myBody);
     }
 
