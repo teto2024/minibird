@@ -29,6 +29,7 @@ try {
 
 <!-- PWA対応 -->
 <link rel="manifest" href="/manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
@@ -347,8 +348,8 @@ canvas#fireCanvas {
       
       <div class="form-group">
         <label for="mins">⏱️ 時間（分）</label>
-        <input id="mins" type="number" min="1" max="<?= REWARD_CONFIG.MAX_MINUTES ?>" value="25">
-        <small style="color: #a0a0c0; font-size: 0.85rem; margin-top: 4px; display: block;">最大<?= REWARD_CONFIG.MAX_MINUTES ?>分まで設定可能（チート防止）</small>
+        <input id="mins" type="number" min="1" max="<?= FOCUS_MAX_MINUTES ?>" value="25">
+        <small style="color: #a0a0c0; font-size: 0.85rem; margin-top: 4px; display: block;">最大<?= FOCUS_MAX_MINUTES ?>分まで設定可能（チート防止）</small>
       </div>
       
       <div class="form-group">
