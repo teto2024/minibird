@@ -515,17 +515,29 @@ const quotes = [
 ];
 
 
-// ページロード時に現在ティアを取得
+// ページロード時に現在ティアを取得（タイムアウト付き）
+const tierFetchTimeout = setTimeout(() => {
+  const tierEl = document.getElementById('currentTier');
+  if (tierEl.classList.contains('loading')) {
+    tierEl.classList.remove('loading');
+    tierEl.textContent = 'ティア情報取得失敗';
+    console.warn('Tier fetch timed out');
+  }
+}, 5000); // 5秒でタイムアウト
+
 fetch('get_focus_tier.php')
   .then(r=>r.json())
   .then(data=>{
+    clearTimeout(tierFetchTimeout);
     const tierEl = document.getElementById('currentTier');
     tierEl.classList.remove('loading');
     tierEl.textContent = data.ok?`ティア${data.tier}`:'不明';
-  }).catch(()=>{
+  }).catch((error)=>{
+    clearTimeout(tierFetchTimeout);
     const tierEl = document.getElementById('currentTier');
     tierEl.classList.remove('loading');
-    tierEl.textContent='不明';
+    tierEl.textContent='取得エラー';
+    console.error('Tier fetch error:', error);
   });
 
 document.getElementById('start').onclick = async ()=>{

@@ -391,16 +391,13 @@ async function loadPosts() {
 function renderPosts(posts) {
     const container = document.getElementById('posts');
     
-    // 既存の投稿要素とYouTubeのiframeを保持
+    // 既存の投稿要素とYouTubeのiframeを保持（wrapper全体を保存）
     const existingPosts = {};
     container.querySelectorAll('.community-post').forEach(postEl => {
         const postId = postEl.dataset.postId;
         const youtubeWrappers = postEl.querySelectorAll('.youtube-embed-wrapper');
         if (youtubeWrappers.length > 0) {
-            existingPosts[postId] = {
-                element: postEl,
-                wrappers: Array.from(youtubeWrappers)
-            };
+            existingPosts[postId] = Array.from(youtubeWrappers);
         }
     });
     
@@ -524,12 +521,12 @@ function renderPosts(posts) {
     `;
     }).join('');
     
-    // YouTube iframeを復元（再生状態を維持）
+    // YouTube wrapper全体を復元（再生状態を完全に維持）
     Object.keys(existingPosts).forEach(postId => {
         const newPostEl = container.querySelector(`.community-post[data-post-id="${postId}"]`);
         if (newPostEl) {
             const newWrappers = newPostEl.querySelectorAll('.youtube-embed-wrapper');
-            const oldWrappers = existingPosts[postId].wrappers;
+            const oldWrappers = existingPosts[postId];
             
             newWrappers.forEach((newWrapper, index) => {
                 if (oldWrappers[index]) {
