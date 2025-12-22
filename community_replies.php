@@ -301,12 +301,11 @@ async function loadReplies() {
             // 既存の返信要素とYouTubeのiframeを保持
             const existingReplies = {};
             container.querySelectorAll('.community-post').forEach(replyEl => {
+                const replyId = replyEl.dataset.replyId;
                 const replyContent = replyEl.querySelector('.post-content');
                 const youtubeIframes = replyContent ? replyContent.querySelectorAll('.youtube-embed') : [];
-                if (youtubeIframes.length > 0) {
-                    // 返信IDを取得（content内のテキストでキーにする）
-                    const replyText = replyContent.textContent.substring(0, 50);
-                    existingReplies[replyText] = Array.from(youtubeIframes);
+                if (youtubeIframes.length > 0 && replyId) {
+                    existingReplies[replyId] = Array.from(youtubeIframes);
                 }
             });
             
@@ -339,7 +338,7 @@ async function loadReplies() {
                     </button>` : '';
                 
                 return `
-                <div class="community-post ${frameClass}" data-reply-key="${reply.content.substring(0, 50)}">
+                <div class="community-post ${frameClass}" data-reply-id="${reply.id}">
                     <div class="post-header">
                         <img src="${icon}" alt="${displayName}" class="avatar" style="width: 32px; height: 32px;">
                         <div>
@@ -365,12 +364,12 @@ async function loadReplies() {
             }).join('');
             
             // YouTube iframeを復元
-            Object.keys(existingReplies).forEach(replyKey => {
-                const newReplyEl = container.querySelector(`.community-post[data-reply-key="${replyKey}"]`);
+            Object.keys(existingReplies).forEach(replyId => {
+                const newReplyEl = container.querySelector(`.community-post[data-reply-id="${replyId}"]`);
                 if (newReplyEl) {
                     const newContent = newReplyEl.querySelector('.post-content');
                     const newIframes = newContent.querySelectorAll('.youtube-embed-wrapper');
-                    const oldIframes = existingReplies[replyKey];
+                    const oldIframes = existingReplies[replyId];
                     
                     newIframes.forEach((newWrapper, index) => {
                         if (oldIframes[index]) {
