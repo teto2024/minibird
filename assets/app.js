@@ -39,6 +39,9 @@ const YOUTUBE_URL_PATTERNS = [
     /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
 ];
 
+// Common YouTube URL pattern for regex replacements
+const YOUTUBE_URL_PATTERN_STR = 'https?:\\/\\/(?:www\\.)?(?:youtube\\.com\\/watch\\?[^"\'\\s]*v=|youtu\\.be\\/|youtube\\.com\\/embed\\/)([a-zA-Z0-9_-]{11})';
+
 function extractYouTubeId(url) {
     // YouTube URL patterns:
     // https://www.youtube.com/watch?v=VIDEO_ID
@@ -67,16 +70,27 @@ function createYouTubeEmbed(videoId) {
 function embedYouTube(html) {
     // Process YouTube URLs and convert them to embeds
     // This function processes both bare URLs and URLs inside anchor tags
-    // First, handle YouTube links that are already in <a> tags (from marked.parse)
-    html = html.replace(/<a[^>]*href=["'](https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^"']*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})[^"']*)["'][^>]*>[^<]*<\/a>/gi, (match, url, videoId) => {
-        // Replace YouTube links with embeds
+    
+    // Pattern 1: YouTube links inside <a> tags (from marked.parse)
+    // Matches: <a href="youtube-url">...</a>
+    const anchorPattern = new RegExp(
+        `<a[^>]*href=["'](${YOUTUBE_URL_PATTERN_STR})[^"']*["'][^>]*>[^<]*<\\/a>`,
+        'gi'
+    );
+    html = html.replace(anchorPattern, (match, url, videoId) => {
         return createYouTubeEmbed(videoId);
     });
-    // Then handle bare YouTube URLs that might have been missed
-    html = html.replace(/(^|[^">])(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})[^\s<]*)/gi, (match, prefix, url, videoId) => {
-        // Replace bare YouTube URLs with embeds
+    
+    // Pattern 2: Bare YouTube URLs not yet converted to links
+    // Matches: plain text YouTube URLs
+    const bareUrlPattern = new RegExp(
+        `(^|[^">])(${YOUTUBE_URL_PATTERN_STR})[^\\s<]*`,
+        'gi'
+    );
+    html = html.replace(bareUrlPattern, (match, prefix, url, videoId) => {
         return prefix + createYouTubeEmbed(videoId);
     });
+    
     return html;
 }
 
