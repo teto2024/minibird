@@ -222,12 +222,6 @@ $is_owner = ($community['owner_id'] == $me['id']);
     display: inline-block;
     min-height: 100px;
 }
-.nsfw-blur img,
-.nsfw-blur video {
-    filter: blur(20px);
-    transition: filter 0.3s;
-    display: block;
-}
 .nsfw-blur::after {
     content: '🔞 NSFW - クリックして表示';
     position: absolute;
@@ -241,13 +235,7 @@ $is_owner = ($community['owner_id'] == $me['id']);
     font-weight: bold;
     pointer-events: none;
     white-space: nowrap;
-}
-.nsfw-blur.revealed img,
-.nsfw-blur.revealed video {
-    filter: none;
-}
-.nsfw-blur.revealed::after {
-    display: none;
+    z-index: 10;
 }
 </style>
 </head>
@@ -354,7 +342,22 @@ document.getElementById('postForm').addEventListener('submit', async (e) => {
         } else {
             if (data.error === 'muted') {
                 const remainingTime = data.remaining_time || '不明';
-                const mutedUntil = data.muted_until || '不明';
+                // Format muted_until to a readable Japanese format
+                let mutedUntil = '不明';
+                if (data.muted_until) {
+                    try {
+                        const date = new Date(data.muted_until);
+                        mutedUntil = date.toLocaleString('ja-JP', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+                    } catch (e) {
+                        mutedUntil = data.muted_until;
+                    }
+                }
                 showMutePopup(remainingTime, mutedUntil);
             } else {
                 alert('投稿エラー: ' + data.error);
@@ -405,14 +408,21 @@ function renderPosts(posts) {
         let mediaHtml = '';
         if (post.media_path) {
             const isNsfw = post.is_nsfw == 1 || post.is_nsfw === true || post.is_nsfw === '1';
-            const nsfwClass = isNsfw ? 'nsfw-blur' : '';
             const mediaExt = post.media_path.split('.').pop().toLowerCase();
             const isVideo = ['mp4', 'webm'].includes(mediaExt);
             
             if (isVideo) {
-                mediaHtml = `<div class="${nsfwClass}" onclick="if(this.classList.contains('nsfw-blur')){this.classList.add('revealed');}"><video src="${post.media_path}" controls style="max-width: 100%; border-radius: 6px; margin-top: 10px;"></video></div>`;
+                if (isNsfw) {
+                    mediaHtml = `<div class="nsfw-blur" onclick="this.classList.remove('nsfw-blur'); this.querySelector('video').style.filter='none';"><video src="${post.media_path}" controls style="max-width: 100%; border-radius: 6px; margin-top: 10px; filter: blur(20px);"></video></div>`;
+                } else {
+                    mediaHtml = `<video src="${post.media_path}" controls style="max-width: 100%; border-radius: 6px; margin-top: 10px;"></video>`;
+                }
             } else {
-                mediaHtml = `<div class="${nsfwClass}" onclick="if(this.classList.contains('nsfw-blur')){this.classList.add('revealed');}"><img src="${post.media_path}" style="max-width: 100%; border-radius: 6px; margin-top: 10px;"></div>`;
+                if (isNsfw) {
+                    mediaHtml = `<div class="nsfw-blur" onclick="this.classList.remove('nsfw-blur'); this.querySelector('img').style.filter='none';"><img src="${post.media_path}" style="max-width: 100%; border-radius: 6px; margin-top: 10px; filter: blur(20px);"></div>`;
+                } else {
+                    mediaHtml = `<img src="${post.media_path}" style="max-width: 100%; border-radius: 6px; margin-top: 10px;">`;
+                }
             }
         }
         

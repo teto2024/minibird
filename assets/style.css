@@ -2482,8 +2482,13 @@ button {
     word-break: break-word;
     overflow-wrap: break-word;
     min-width: 0;
-    color: #e6e6e6;
+    color: #e6e6e6 !important;
     /* 明示的に文字色を指定（スマホ・タブレット対応） */
+}
+
+#notificationPopup li span * {
+    color: #e6e6e6 !important;
+    /* すべての子要素にも文字色を強制適用 */
 }
 
 #notificationPopup li.highlight {
@@ -2534,6 +2539,10 @@ button {
         line-height: 1.5;
         color: #e6e6e6 !important;
     }
+    
+    #notificationPopup li span * {
+        color: #e6e6e6 !important;
+    }
 }
 
 @media (max-width: 480px) {
@@ -2544,6 +2553,10 @@ button {
     }
     
     #notificationPopup li span {
+        color: #e6e6e6 !important;
+    }
+    
+    #notificationPopup li span * {
         color: #e6e6e6 !important;
     }
 }
