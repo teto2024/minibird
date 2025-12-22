@@ -667,6 +667,14 @@ loadReplies();
 // 3秒ごとに自動更新
 setInterval(loadReplies, 3000);
 
+// Process original post content for YouTube embeds
+document.addEventListener('DOMContentLoaded', function() {
+    const originalPostContent = document.querySelector('.original-post .reply-content');
+    if (originalPostContent) {
+        originalPostContent.innerHTML = embedYouTube(originalPostContent.innerHTML);
+    }
+});
+
 // Media Expand Modal Functions
 function openMediaExpand(mediaSrc, mediaType) {
     const modal = document.getElementById('mediaExpandModal');

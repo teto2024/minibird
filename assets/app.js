@@ -33,23 +33,47 @@ function updateLikeUI(p) {
 //---------------
 //parseMessage - YouTube embedding support
 //----------------
+// YouTube URL patterns constant
+const YOUTUBE_URL_PATTERNS = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
+];
+
 function extractYouTubeId(url) {
     // YouTube URL patterns:
     // https://www.youtube.com/watch?v=VIDEO_ID
     // https://youtu.be/VIDEO_ID
     // https://www.youtube.com/embed/VIDEO_ID
-    const patterns = [
-        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-        /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
-    ];
-    
-    for (const pattern of patterns) {
+    for (const pattern of YOUTUBE_URL_PATTERNS) {
         const match = url.match(pattern);
         if (match && match[1]) {
             return match[1];
         }
     }
     return null;
+}
+
+function createYouTubeEmbed(videoId) {
+    return `<div class="youtube-embed-wrapper">
+        <iframe class="youtube-embed" 
+                src="https://www.youtube.com/embed/${videoId}" 
+                frameborder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowfullscreen>
+        </iframe>
+    </div>`;
+}
+
+function embedYouTube(html) {
+    // Process YouTube URLs and convert them to embeds
+    // This function processes both bare URLs and URLs inside anchor tags
+    return html.replace(/<a[^>]*href="(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^"]*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})[^"]*)"[^>]*>.*?<\/a>/gi, (match, url, videoId) => {
+        // Replace YouTube links with embeds
+        return createYouTubeEmbed(videoId);
+    }).replace(/(^|[^">])(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})[^\s<]*)/gi, (match, prefix, url, videoId) => {
+        // Replace bare YouTube URLs with embeds
+        return prefix + createYouTubeEmbed(videoId);
+    });
 }
 
 function parseMessage(html) {
@@ -67,14 +91,7 @@ function parseMessage(html) {
                 const youtubeId = extractYouTubeId(url);
                 if (youtubeId) {
                     // Create YouTube embed
-                    return `<div class="youtube-embed-wrapper">
-                        <iframe class="youtube-embed" 
-                                src="https://www.youtube.com/embed/${youtubeId}" 
-                                frameborder="0" 
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                allowfullscreen>
-                        </iframe>
-                    </div>`;
+                    return createYouTubeEmbed(youtubeId);
                 }
                 return `<a href="${url}" target="_blank" class="link">${url}</a>`;
             });
@@ -1084,7 +1101,7 @@ function renderPost(p, wrap, prepend = false) {
 
             const quoteBody = ce('div', 'quote-body');
             const quotedMd = p.quoted_post.content_md || p.quoted_post.content_html || '';
-            quoteBody.innerHTML = parseMessage(marked.parse(quotedMd));
+            quoteBody.innerHTML = embedYouTube(parseMessage(marked.parse(quotedMd)));
             quoteDiv.append(quoteBody);
 
             body.append(quoteDiv);
@@ -1092,7 +1109,7 @@ function renderPost(p, wrap, prepend = false) {
 
         const rawContent = p.content_md || p.content_html || '';
         const myBody = ce('div', 'my-body');
-        myBody.innerHTML = parseMessage(marked.parse(rawContent));
+        myBody.innerHTML = embedYouTube(parseMessage(marked.parse(rawContent)));
         body.append(myBody);
     }
 

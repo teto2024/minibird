@@ -219,6 +219,7 @@ if($action === 'fetch' || $action === 'fetch_more'){
                   ou.display_name AS original_display_name,
                   ou.icon AS original_icon,
                   ou.vip_level AS original_vip,
+                  ou.role AS original_role,
                   f_orig.css_token AS original_frame_class,
                   ru.id AS reposter_id,
                   ru.handle AS reposter_handle,
@@ -258,6 +259,7 @@ if($action === 'fetch' || $action === 'fetch_more'){
                   ou.display_name AS original_display_name,
                   ou.icon AS original_icon,
                   ou.vip_level AS original_vip,
+                  ou.role AS original_role,
                   f_orig.css_token AS original_frame_class,
                   ru.id AS reposter_id,
                   ru.handle AS reposter_handle,
@@ -285,7 +287,7 @@ if($action === 'fetch' || $action === 'fetch_more'){
 
     // --- recommended ---
     if($feed === 'recommended'){
-        $sql = "SELECT p.*, u.handle, u.display_name, u.icon, u.vip_level,
+        $sql = "SELECT p.*, u.handle, u.display_name, u.icon, u.vip_level, u.role,
                     p.deleted_at, p.deleted_by_mod,
                     (SELECT COUNT(*) FROM likes l WHERE l.post_id=p.id) AS like_count,
                     (SELECT COUNT(*) FROM reposts r WHERE r.post_id=p.id) AS repost_count,
@@ -298,6 +300,7 @@ if($action === 'fetch' || $action === 'fetch_more'){
                     ou.display_name AS original_display_name,
                     ou.icon AS original_icon,
                     ou.vip_level AS original_vip,
+                    ou.role AS original_role,
                     f_orig.css_token AS original_frame_class,
                     ru.id AS reposter_id,
                     ru.handle AS reposter_handle,
@@ -355,6 +358,7 @@ if($action === 'fetch' || $action === 'fetch_more'){
                 ou.display_name AS original_display_name,
                 ou.icon AS original_icon,
                 ou.vip_level AS original_vip,
+                ou.role AS original_role,
                 f_orig.css_token AS original_frame_class,
                 ru.id AS reposter_id,
                 ru.handle AS reposter_handle,

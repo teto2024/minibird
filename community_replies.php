@@ -31,6 +31,7 @@ $stmt = $pdo->prepare("
         u.display_name,
         u.icon,
         u.vip_level,
+        u.role,
         f.css_token AS frame_class,
         tp.title_text,
         tp.title_css,
@@ -210,6 +211,11 @@ if (!$member) {
                         <?= htmlspecialchars($post['display_name'] ?: $post['handle']) ?>
                     </a>
                     @<?= htmlspecialchars($post['handle']) ?>
+                    <?php if ($post['role'] === 'admin'): ?>
+                        <span class="role-badge admin-badge">ADMIN</span>
+                    <?php elseif ($post['role'] === 'mod'): ?>
+                        <span class="role-badge mod-badge">MOD</span>
+                    <?php endif; ?>
                     <?php if ($post['title_text'] && $post['title_css']): ?>
                         <span class="user-title <?= htmlspecialchars($post['title_css']) ?>">
                             <?= htmlspecialchars($post['title_text']) ?>
@@ -300,6 +306,14 @@ async function loadReplies() {
                 const vipHtml = reply.vip_level && reply.vip_level > 0 ? 
                     `<span class="vip-label">👑VIP${reply.vip_level}</span>` : '';
                 
+                // Role badge display
+                let roleBadgeHtml = '';
+                if (reply.role === 'admin') {
+                    roleBadgeHtml = '<span class="role-badge admin-badge">ADMIN</span>';
+                } else if (reply.role === 'mod') {
+                    roleBadgeHtml = '<span class="role-badge mod-badge">MOD</span>';
+                }
+                
                 // 削除済み投稿の処理
                 const contentHtml = (reply.is_deleted || reply.deleted_at) ?
                     '<p style="color: #999; font-style: italic;">この投稿は削除されました</p>' :
@@ -319,6 +333,7 @@ async function loadReplies() {
                             <div>
                                 <a href="profile.php?id=${reply.user_id}" class="post-author">${displayName}</a>
                                 @${reply.handle}
+                                ${roleBadgeHtml}
                                 ${titleHtml}
                                 ${vipHtml}
                             </div>
@@ -377,7 +392,21 @@ function formatTime(datetime) {
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
-    return div.innerHTML.replace(/\n/g, '<br>');
+    let html = div.innerHTML.replace(/\n/g, '<br>');
+    
+    // YouTube URL embedding
+    html = html.replace(/(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g, function(match, fullUrl, videoId) {
+        return `<div class="youtube-embed-wrapper">
+            <iframe class="youtube-embed" 
+                    src="https://www.youtube.com/embed/${videoId}" 
+                    frameborder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+            </iframe>
+        </div>`;
+    });
+    
+    return html;
 }
 
 // 投稿削除
