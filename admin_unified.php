@@ -9,7 +9,8 @@ if (!$me || !in_array($me['role'], ['mod','admin'])) {
 }
 
 // 管理者かどうかをチェック（frame_admin と admin_password_reset 用）
-$isAdmin = ($me['role'] === 'admin' || (int)$me['id'] === 1);
+// admin role を持つユーザーのみがフレーム審査とパスワード管理にアクセス可能
+$isAdmin = ($me['role'] === 'admin');
 
 $pdo = db();
 
@@ -585,6 +586,29 @@ body {
     box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
+.btn-link-primary {
+    display: inline-block;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.btn-link-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.info-box {
+    background: rgba(102, 126, 234, 0.1);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(102, 126, 234, 0.3);
+}
+
 .status-badge {
     display: inline-block;
     padding: 5px 12px;
@@ -999,9 +1023,9 @@ body {
             <p style="color: var(--muted); margin-bottom: 20px;">
                 この機能は管理者専用です。パスワードリセット申請の管理はAPIを介して行われます。
             </p>
-            <div style="background: rgba(102, 126, 234, 0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(102, 126, 234, 0.3);">
+            <div class="info-box">
                 <p style="margin: 0 0 15px 0;">パスワードリセット管理機能へのアクセス：</p>
-                <a href="admin_password_reset.php" style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: bold; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                <a href="admin_password_reset.php" class="btn-link-primary">
                     パスワードリセット管理画面を開く
                 </a>
             </div>
