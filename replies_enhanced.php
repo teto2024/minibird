@@ -452,13 +452,13 @@ function renderReplies() {
         return;
     }
     
-    // 既存のYouTube iframeを保存
+    // 既存のYouTube iframeをwrapper全体で保存
     const existingReplies = {};
     container.querySelectorAll('.reply-item').forEach(replyEl => {
         const replyId = replyEl.dataset.replyId;
-        const youtubeIframes = replyEl.querySelectorAll('.youtube-embed');
-        if (youtubeIframes.length > 0) {
-            existingReplies[replyId] = Array.from(youtubeIframes);
+        const youtubeWrappers = replyEl.querySelectorAll('.youtube-embed-wrapper');
+        if (youtubeWrappers.length > 0) {
+            existingReplies[replyId] = Array.from(youtubeWrappers);
         }
     });
     
@@ -470,15 +470,13 @@ function renderReplies() {
     Object.keys(existingReplies).forEach(replyId => {
         const newReplyEl = container.querySelector(`.reply-item[data-reply-id="${replyId}"]`);
         if (newReplyEl) {
-            const newIframes = newReplyEl.querySelectorAll('.youtube-embed-wrapper');
-            const oldIframes = existingReplies[replyId];
+            const newWrappers = newReplyEl.querySelectorAll('.youtube-embed-wrapper');
+            const oldWrappers = existingReplies[replyId];
             
-            newIframes.forEach((newWrapper, index) => {
-                if (oldIframes[index]) {
-                    const newIframe = newWrapper.querySelector('.youtube-embed');
-                    if (newIframe && oldIframes[index]) {
-                        newIframe.parentNode.replaceChild(oldIframes[index], newIframe);
-                    }
+            newWrappers.forEach((newWrapper, index) => {
+                if (oldWrappers[index]) {
+                    // wrapper全体を置き換えて再生状態を完全に維持
+                    newWrapper.parentNode.replaceChild(oldWrappers[index], newWrapper);
                 }
             });
         }

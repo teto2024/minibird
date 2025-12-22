@@ -159,6 +159,7 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
     <a href="quests.php" class="tabBtn block">クエスト</a>
     <a href="vip_shop.php" class="tabBtn block">VIPショップ</a>
     <a href="how_to.php" class="tabBtn block">使い方</a>
+    <a href="updates.php" class="tabBtn block">アップデート情報</a>
     <a href="admin_unified.php" class="tabBtn block">管理画面統合版</a>
     <!--<a href="darkroom.php" class="tabBtn block">暗い部屋</a>-->
     <a href="trends.php" class="tabBtn block">トレンド</a>
