@@ -663,7 +663,7 @@ function success(){
   // --------------------------
   // 指数関数的報酬計算を JS 側でも統一
   // --------------------------
-  const coins = Math.floor(3 * Math.pow(1.025, mins));
+  const coins = Math.floor(5 * Math.pow(1.035, mins));
   const crystals = Math.floor(1 * Math.pow(1.012, mins));
 
   const task = document.getElementById('task').value.trim();
@@ -687,7 +687,7 @@ function fail(){
   // --------------------------
   // 失敗時も指数関数的報酬を計算（半分はサーバー側で対応）
   // --------------------------
-  const coins = Math.floor(3 * Math.pow(1.025, mins));
+  const coins = Math.floor(5 * Math.pow(1.035, mins));
   const crystals = Math.floor(1 * Math.pow(1.012, mins));
 
   sendFocusLog(task, started, endTime, mins, coins, crystals, "fail");
