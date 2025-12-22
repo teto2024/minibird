@@ -434,12 +434,36 @@ async function loadReplies() {
         const data = await res.json();
         
         if (data.ok) {
-            replies = data.items || [];
-            renderReplies();
+            const newReplies = data.items || [];
+            // Only re-render if replies count or content changed
+            if (repliesChanged(replies, newReplies)) {
+                replies = newReplies;
+                renderReplies();
+            }
         }
     } catch (err) {
         console.error('返信読み込みエラー', err);
     }
+}
+
+// Check if replies have changed
+function repliesChanged(oldReplies, newReplies) {
+    if (oldReplies.length !== newReplies.length) return true;
+    
+    for (let i = 0; i < oldReplies.length; i++) {
+        const old = oldReplies[i];
+        const newer = newReplies[i];
+        
+        // Check if any important field changed
+        if (old.id !== newer.id || 
+            old.like_count !== newer.like_count ||
+            old.user_liked !== newer.user_liked ||
+            old.content_md !== newer.content_md) {
+            return true;
+        }
+    }
+    
+    return false;
 }
 
 // 返信レンダリング
