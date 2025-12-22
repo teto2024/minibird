@@ -2891,6 +2891,184 @@ a:hover {
 }
 
 /* ===============================================
+   Token System Styles
+   =============================================== */
+.token-stats {
+    margin-top: 25px;
+    width: 100%;
+}
+
+.token-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    padding: 0;
+}
+
+.token-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.token-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.token-item:hover::before {
+    left: 100%;
+}
+
+.token-item:hover {
+    transform: translateY(-5px) scale(1.05);
+}
+
+.token-icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.token-label {
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.token-count {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+/* Individual token colors */
+.token-normal {
+    background: linear-gradient(135deg, #808080, #606060);
+    color: white;
+    box-shadow: 0 4px 12px rgba(128, 128, 128, 0.3);
+}
+
+.token-rare {
+    background: linear-gradient(135deg, #00ff00, #00cc00);
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 255, 0, 0.3);
+    animation: rareGlow 3s infinite ease-in-out;
+}
+
+.token-unique {
+    background: linear-gradient(135deg, #0080ff, #0060cc);
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 128, 255, 0.3);
+    animation: uniqueGlow 3s infinite ease-in-out;
+}
+
+.token-legend {
+    background: linear-gradient(135deg, #ffff00, #ffcc00);
+    color: #333;
+    box-shadow: 0 4px 12px rgba(255, 255, 0, 0.4);
+    animation: legendGlow 3s infinite ease-in-out;
+}
+
+.token-epic {
+    background: linear-gradient(135deg, #cc00ff, #9900cc);
+    color: white;
+    box-shadow: 0 4px 12px rgba(204, 0, 255, 0.4);
+    animation: epicGlow 3s infinite ease-in-out;
+}
+
+.token-hero {
+    background: linear-gradient(135deg, #ff0000, #cc0000);
+    color: white;
+    box-shadow: 0 4px 12px rgba(255, 0, 0, 0.4);
+    animation: heroGlow 3s infinite ease-in-out;
+}
+
+.token-mythic {
+    background: linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
+    background-size: 200% 200%;
+    color: white;
+    box-shadow: 0 4px 16px rgba(255, 255, 255, 0.5);
+    animation: mythicGlow 5s infinite ease-in-out, rainbow 8s infinite linear;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Token glow animations */
+@keyframes rareGlow {
+    0%, 100% { box-shadow: 0 4px 12px rgba(0, 255, 0, 0.3); }
+    50% { box-shadow: 0 8px 24px rgba(0, 255, 0, 0.6); }
+}
+
+@keyframes uniqueGlow {
+    0%, 100% { box-shadow: 0 4px 12px rgba(0, 128, 255, 0.3); }
+    50% { box-shadow: 0 8px 24px rgba(0, 128, 255, 0.6); }
+}
+
+@keyframes legendGlow {
+    0%, 100% { box-shadow: 0 4px 12px rgba(255, 255, 0, 0.4); }
+    50% { box-shadow: 0 8px 24px rgba(255, 255, 0, 0.7); }
+}
+
+@keyframes epicGlow {
+    0%, 100% { box-shadow: 0 4px 12px rgba(204, 0, 255, 0.4); }
+    50% { box-shadow: 0 8px 24px rgba(204, 0, 255, 0.7); }
+}
+
+@keyframes heroGlow {
+    0%, 100% { box-shadow: 0 4px 12px rgba(255, 0, 0, 0.4); }
+    50% { box-shadow: 0 8px 24px rgba(255, 0, 0, 0.7); }
+}
+
+@keyframes mythicGlow {
+    0%, 100% { box-shadow: 0 4px 16px rgba(255, 255, 255, 0.5); }
+    50% { box-shadow: 0 8px 32px rgba(255, 255, 255, 0.8); }
+}
+
+@keyframes rainbow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Mobile responsive for tokens */
+@media (max-width: 768px) {
+    .token-grid {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 8px;
+    }
+    
+    .token-item {
+        padding: 10px;
+    }
+    
+    .token-icon {
+        font-size: 24px;
+    }
+    
+    .token-label {
+        font-size: 10px;
+    }
+    
+    .token-count {
+        font-size: 16px;
+    }
+}
+
+/* ===============================================
    称号スタイル（Title Styles）
    =============================================== */
 .user-title {

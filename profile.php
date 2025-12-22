@@ -255,6 +255,48 @@ if ($me) {
                         <span class="stat-value">💠<?=$user['diamonds'] ?? 0?></span>
                     </div>
                 </div>
+                
+                <!-- トークン情報 -->
+                <div class="token-stats">
+                    <h4 style="text-align: center; margin: 20px 0 15px 0; color: var(--text); font-size: 18px;">🎫 トークン</h4>
+                    <div class="token-grid">
+                        <div class="token-item token-normal">
+                            <span class="token-icon">⚪</span>
+                            <span class="token-label">ノーマル</span>
+                            <span class="token-count"><?=$user['normal_tokens'] ?? 0?></span>
+                        </div>
+                        <div class="token-item token-rare">
+                            <span class="token-icon">🟢</span>
+                            <span class="token-label">レア</span>
+                            <span class="token-count"><?=$user['rare_tokens'] ?? 0?></span>
+                        </div>
+                        <div class="token-item token-unique">
+                            <span class="token-icon">🔵</span>
+                            <span class="token-label">ユニーク</span>
+                            <span class="token-count"><?=$user['unique_tokens'] ?? 0?></span>
+                        </div>
+                        <div class="token-item token-legend">
+                            <span class="token-icon">🟡</span>
+                            <span class="token-label">レジェンド</span>
+                            <span class="token-count"><?=$user['legend_tokens'] ?? 0?></span>
+                        </div>
+                        <div class="token-item token-epic">
+                            <span class="token-icon">🟣</span>
+                            <span class="token-label">エピック</span>
+                            <span class="token-count"><?=$user['epic_tokens'] ?? 0?></span>
+                        </div>
+                        <div class="token-item token-hero">
+                            <span class="token-icon">🔴</span>
+                            <span class="token-label">ヒーロー</span>
+                            <span class="token-count"><?=$user['hero_tokens'] ?? 0?></span>
+                        </div>
+                        <div class="token-item token-mythic">
+                            <span class="token-icon">🌈</span>
+                            <span class="token-label">ミシック</span>
+                            <span class="token-count"><?=$user['mythic_tokens'] ?? 0?></span>
+                        </div>
+                    </div>
+                </div>
 
                 <?php if ($me && $me['id'] !== $targetId): ?>
                     <div class="profile-actions">
