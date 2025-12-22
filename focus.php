@@ -347,8 +347,8 @@ canvas#fireCanvas {
       
       <div class="form-group">
         <label for="mins">⏱️ 時間（分）</label>
-        <input id="mins" type="number" min="1" max="180" value="25">
-        <small style="color: #a0a0c0; font-size: 0.85rem; margin-top: 4px; display: block;">最大180分まで設定可能（チート防止）</small>
+        <input id="mins" type="number" min="1" max="<?= REWARD_CONFIG.MAX_MINUTES ?>" value="25">
+        <small style="color: #a0a0c0; font-size: 0.85rem; margin-top: 4px; display: block;">最大<?= REWARD_CONFIG.MAX_MINUTES ?>分まで設定可能（チート防止）</small>
       </div>
       
       <div class="form-group">
@@ -386,10 +386,12 @@ let lock=false, t=null, end=0, quoteInterval=null;
 const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 let startTime=null;
 
-// 報酬計算関数
+// 報酬計算関数（bounds checking付き）
 function calculateRewards(mins) {
-  const coins = Math.floor(REWARD_CONFIG.BASE_COINS * Math.pow(REWARD_CONFIG.COINS_EXP_RATE, mins));
-  const crystals = Math.floor(REWARD_CONFIG.BASE_CRYSTALS * Math.pow(REWARD_CONFIG.CRYSTALS_EXP_RATE, mins));
+  // 最大値チェック（安全のため）
+  const safeMins = Math.min(mins, REWARD_CONFIG.MAX_MINUTES);
+  const coins = Math.floor(REWARD_CONFIG.BASE_COINS * Math.pow(REWARD_CONFIG.COINS_EXP_RATE, safeMins));
+  const crystals = Math.floor(REWARD_CONFIG.BASE_CRYSTALS * Math.pow(REWARD_CONFIG.CRYSTALS_EXP_RATE, safeMins));
   return { coins, crystals };
 }
 
@@ -533,8 +535,7 @@ document.getElementById('start').onclick = async ()=>{
   
   // 最大時間チェック
   if (mins > REWARD_CONFIG.MAX_MINUTES) {
-    alert(`集中時間は最大${REWARD_CONFIG.MAX_MINUTES}分までです`);
-    document.getElementById('mins').value = REWARD_CONFIG.MAX_MINUTES;
+    alert(`集中時間は最大${REWARD_CONFIG.MAX_MINUTES}分までです。\n入力された値: ${mins}分`);
     return;
   }
   

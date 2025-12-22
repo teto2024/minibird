@@ -9,6 +9,7 @@ define('REWARD_BASE_CRYSTALS', 2);
 define('REWARD_COINS_EXP_RATE', 1.04);
 define('REWARD_CRYSTALS_EXP_RATE', 1.015);
 define('REWARD_SERVER_TIME_MULTIPLIER', 1.06); // サーバー側の時間補正
+define('REWARD_MAX_MINUTES', 180); // 最大時間制限
 
 // JSONデータ取得
 $input_raw = file_get_contents('php://input');
@@ -101,21 +102,23 @@ try {
         // --------------------------
     // 成功・失敗ごとのコイン・クリスタル計算
     // 定数を使用して計算（クライアント側と同期）
+    // 最大値チェックでオーバーフロー防止
     // --------------------------
         if ($status === 'success') {
         // 成功時：改善された指数関数的な時間ボーナス
-        $time_multiplier = pow(REWARD_SERVER_TIME_MULTIPLIER, $mins);
+        $safe_mins = min($mins, REWARD_MAX_MINUTES);
+        $time_multiplier = pow(REWARD_SERVER_TIME_MULTIPLIER, $safe_mins);
 
         $final_coins    = (int)floor($coins * $time_multiplier * $total_multiplier);
         $final_crystals = (int)floor($crystals * $time_multiplier * $total_multiplier);
     } else {
         // 失敗時：実施時間 / 設定時間 の比率で報酬を決定
 
-        // 実施時間（分単位、最低1分保証）
-        $actual_mins = max(1, floor((strtotime($ended_at) - strtotime($started_at)) / 60));
+        // 実施時間（分単位、最低1分保証、最大値制限）
+        $actual_mins = max(1, min(floor((strtotime($ended_at) - strtotime($started_at)) / 60), REWARD_MAX_MINUTES));
 
         // 実施比率（0〜1）
-        $progress_ratio = min(1, $actual_mins / $mins);
+        $progress_ratio = min(1, $actual_mins / min($mins, REWARD_MAX_MINUTES));
 
         // 実施時間に応じた指数補正
         $time_multiplier = pow(REWARD_SERVER_TIME_MULTIPLIER, $actual_mins);

@@ -525,6 +525,13 @@ modal.addEventListener('click', (e) => {
     closeModal();
   }
 });
+
+// ESCキーでモーダルを閉じる
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && modal.classList.contains('active')) {
+    closeModal();
+  }
+});
 </script>
 </body>
 </html>
