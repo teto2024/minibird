@@ -268,8 +268,9 @@ $is_owner = ($community['owner_id'] == $me['id']);
                 </label>
             </div>
             <div style="margin: 10px 0;">
-                <input type="file" name="media" accept="image/*,video/*" 
+                <input type="file" name="media" accept="image/*,video/*,audio/*" multiple
                        style="padding: 5px; border: 1px solid #cbd5e0; border-radius: 6px;">
+                <small style="color: #999; margin-left: 10px;">最大4ファイルまで（画像・動画・音声対応）</small>
             </div>
             <button type="submit" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">投稿する</button>
         </form>
@@ -322,9 +323,12 @@ document.getElementById('postForm').addEventListener('submit', async (e) => {
     formData.append('content', form.content.value);
     formData.append('is_nsfw', form.is_nsfw.checked ? '1' : '0');
     
-    // ファイルがある場合は追加
+    // ファイルがある場合は追加（複数ファイル対応）
     if (form.media.files.length > 0) {
-        formData.append('media', form.media.files[0]);
+        // 最大4ファイルまで
+        for (let i = 0; i < Math.min(form.media.files.length, 4); i++) {
+            formData.append(`media_${i}`, form.media.files[i]);
+        }
     }
     
     try {
@@ -404,24 +408,60 @@ function renderPosts(posts) {
         const vipHtml = post.vip_level && post.vip_level > 0 ? 
             `<span class="vip-label">👑VIP${post.vip_level}</span>` : '';
         
-        // NSFW画像処理
+        // NSFW画像処理（複数メディア対応）
         let mediaHtml = '';
-        if (post.media_path) {
+        const media_paths = post.media_paths || (post.media_path ? [post.media_path] : []);
+        
+        if (media_paths.length > 0) {
             const isNsfw = post.is_nsfw == 1 || post.is_nsfw === true || post.is_nsfw === '1';
-            const mediaExt = post.media_path.split('.').pop().toLowerCase();
-            const isVideo = ['mp4', 'webm'].includes(mediaExt);
+            const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
+            const videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv', 'ogg'];
+            const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
             
-            if (isVideo) {
-                if (isNsfw) {
-                    mediaHtml = `<div class="nsfw-blur" onclick="this.classList.remove('nsfw-blur'); this.querySelector('video').style.filter='none';"><video src="${post.media_path}" controls style="max-width: 100%; border-radius: 6px; margin-top: 10px; filter: blur(20px);"></video></div>`;
-                } else {
-                    mediaHtml = `<video src="${post.media_path}" controls style="max-width: 100%; border-radius: 6px; margin-top: 10px;"></video>`;
-                }
+            if (media_paths.length > 1) {
+                // 複数メディア（グリッド表示）
+                mediaHtml = '<div style="display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-top: 10px;">';
+                media_paths.slice(0, 4).forEach(mediaPath => {
+                    const ext = mediaPath.split('.').pop().toLowerCase();
+                    const mediaSrc = '/' + mediaPath.replace(/^\//, '');
+                    
+                    if (imageExts.includes(ext)) {
+                        if (isNsfw) {
+                            mediaHtml += `<div class="nsfw-blur" onclick="this.classList.remove('nsfw-blur'); this.querySelector('img').style.filter='none';"><img src="${mediaSrc}" style="max-width: 100%; border-radius: 6px; filter: blur(20px);"></div>`;
+                        } else {
+                            mediaHtml += `<img src="${mediaSrc}" style="max-width: 100%; border-radius: 6px;">`;
+                        }
+                    } else if (videoExts.includes(ext)) {
+                        if (isNsfw) {
+                            mediaHtml += `<div class="nsfw-blur" onclick="this.classList.remove('nsfw-blur'); this.querySelector('video').style.filter='none';"><video src="${mediaSrc}" controls style="max-width: 100%; border-radius: 6px; filter: blur(20px);"></video></div>`;
+                        } else {
+                            mediaHtml += `<video src="${mediaSrc}" controls style="max-width: 100%; border-radius: 6px;"></video>`;
+                        }
+                    } else if (audioExts.includes(ext)) {
+                        mediaHtml += `<audio src="${mediaSrc}" controls style="width: 100%;"></audio>`;
+                    }
+                });
+                mediaHtml += '</div>';
             } else {
-                if (isNsfw) {
-                    mediaHtml = `<div class="nsfw-blur" onclick="this.classList.remove('nsfw-blur'); this.querySelector('img').style.filter='none';"><img src="${post.media_path}" style="max-width: 100%; border-radius: 6px; margin-top: 10px; filter: blur(20px);"></div>`;
-                } else {
-                    mediaHtml = `<img src="${post.media_path}" style="max-width: 100%; border-radius: 6px; margin-top: 10px;">`;
+                // 単一メディア
+                const mediaPath = media_paths[0];
+                const ext = mediaPath.split('.').pop().toLowerCase();
+                const mediaSrc = '/' + mediaPath.replace(/^\//, '');
+                
+                if (imageExts.includes(ext)) {
+                    if (isNsfw) {
+                        mediaHtml = `<div class="nsfw-blur" onclick="this.classList.remove('nsfw-blur'); this.querySelector('img').style.filter='none';"><img src="${mediaSrc}" style="max-width: 100%; border-radius: 6px; margin-top: 10px; filter: blur(20px);"></div>`;
+                    } else {
+                        mediaHtml = `<img src="${mediaSrc}" style="max-width: 100%; border-radius: 6px; margin-top: 10px;">`;
+                    }
+                } else if (videoExts.includes(ext)) {
+                    if (isNsfw) {
+                        mediaHtml = `<div class="nsfw-blur" onclick="this.classList.remove('nsfw-blur'); this.querySelector('video').style.filter='none';"><video src="${mediaSrc}" controls style="max-width: 100%; border-radius: 6px; margin-top: 10px; filter: blur(20px);"></video></div>`;
+                    } else {
+                        mediaHtml = `<video src="${mediaSrc}" controls style="max-width: 100%; border-radius: 6px; margin-top: 10px;"></video>`;
+                    }
+                } else if (audioExts.includes(ext)) {
+                    mediaHtml = `<audio src="${mediaSrc}" controls style="width: 100%; margin-top: 10px;"></audio>`;
                 }
             }
         }

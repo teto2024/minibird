@@ -56,6 +56,9 @@ try {
                     f.css_token AS frame_class,
                     tp.title_text, 
                     tp.title_css,
+                    cp.media_path,
+                    cp.media_paths,
+                    cp.media_type,
                     (SELECT COUNT(*) FROM community_post_likes WHERE post_id = cp.id) as like_count,
                     (SELECT COUNT(*) FROM community_posts WHERE parent_id = cp.id) as reply_count,
                     (SELECT 1 FROM community_post_likes WHERE post_id = cp.id AND user_id = ?) as user_liked
@@ -73,6 +76,16 @@ try {
             $stmt->execute([$user_id, $community_id]);
 
             $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Decode media_paths JSON for each post
+            foreach ($posts as &$post) {
+                if (!empty($post['media_paths'])) {
+                    $decoded = json_decode($post['media_paths'], true);
+                    if (is_array($decoded)) {
+                        $post['media_paths'] = $decoded;
+                    }
+                }
+            }
             
             echo json_encode(['ok' => true, 'posts' => $posts]);
             break;
@@ -124,10 +137,19 @@ try {
                 throw new Exception('Not a member of this community');
             }
             
-            // 画像・動画アップロード処理
+            // 画像・動画・音声アップロード処理（最大4つまで）
             $media_path = null;
-            if (!empty($_FILES['media']['name'])) {
-                $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'webm'];
+            $media_type = null;
+            $media_paths = [];
+            
+            // 拡張子リスト
+            $image_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
+            $video_exts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv', 'ogg'];
+            $audio_exts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
+            $allowed = array_merge($image_exts, $video_exts, $audio_exts);
+            
+            // 単一ファイル（後方互換性）
+            if (!empty($_FILES['media']['name']) && is_string($_FILES['media']['name'])) {
                 $ext = strtolower(pathinfo($_FILES['media']['name'], PATHINFO_EXTENSION));
                 
                 if (!in_array($ext, $allowed)) {
@@ -138,6 +160,15 @@ try {
                     throw new Exception('File too large (max 10MB)');
                 }
                 
+                // メディアタイプ判定
+                if (in_array($ext, $video_exts)) {
+                    $media_type = 'video';
+                } elseif (in_array($ext, $audio_exts)) {
+                    $media_type = 'audio';
+                } elseif (in_array($ext, $image_exts)) {
+                    $media_type = 'image';
+                }
+                
                 $filename = uniqid('community_', true) . '.' . $ext;
                 $upload_path = __DIR__ . '/uploads/' . $filename;
                 
@@ -146,14 +177,59 @@ try {
                 }
                 
                 $media_path = 'uploads/' . $filename;
+                $media_paths[] = $media_path;
             }
+            
+            // 複数ファイル（media_0, media_1, media_2, media_3）
+            for ($i = 0; $i < 4; $i++) {
+                $key = 'media_' . $i;
+                if (!empty($_FILES[$key]['name'])) {
+                    $ext = strtolower(pathinfo($_FILES[$key]['name'], PATHINFO_EXTENSION));
+                    
+                    if (!in_array($ext, $allowed)) {
+                        throw new Exception('Invalid file type');
+                    }
+                    
+                    if ($_FILES[$key]['size'] > 10 * 1024 * 1024) { // 10MB
+                        throw new Exception('File too large (max 10MB)');
+                    }
+                    
+                    // メディアタイプ判定（最初のファイルで決定）
+                    if ($media_type === null) {
+                        if (in_array($ext, $video_exts)) {
+                            $media_type = 'video';
+                        } elseif (in_array($ext, $audio_exts)) {
+                            $media_type = 'audio';
+                        } elseif (in_array($ext, $image_exts)) {
+                            $media_type = 'image';
+                        }
+                    }
+                    
+                    $filename = uniqid('community_', true) . '.' . $ext;
+                    $upload_path = __DIR__ . '/uploads/' . $filename;
+                    
+                    if (!move_uploaded_file($_FILES[$key]['tmp_name'], $upload_path)) {
+                        throw new Exception('Upload failed');
+                    }
+                    
+                    $path = 'uploads/' . $filename;
+                    $media_paths[] = $path;
+                    
+                    // 最初のファイルをmedia_pathにも設定（後方互換性）
+                    if ($media_path === null) {
+                        $media_path = $path;
+                    }
+                }
+            }
+            
+            $media_paths_json = !empty($media_paths) ? json_encode($media_paths) : null;
             
             // 投稿作成
             $stmt = $pdo->prepare("
-                INSERT INTO community_posts (community_id, user_id, content, media_path, is_nsfw, parent_id, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, NOW())
+                INSERT INTO community_posts (community_id, user_id, content, media_path, media_paths, media_type, is_nsfw, parent_id, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ");
-            $stmt->execute([$community_id, $user_id, $content, $media_path, $is_nsfw, $parent_id]);
+            $stmt->execute([$community_id, $user_id, $content, $media_path, $media_paths_json, $media_type, $is_nsfw, $parent_id]);
             $post_id = $pdo->lastInsertId();
             
             // リプライの場合、元投稿の投稿者に通知を送る（自分へのリプライは除外）
