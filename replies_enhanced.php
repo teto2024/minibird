@@ -531,7 +531,8 @@ function processYouTubeEmbeds(contentElement, itemId, existingIframes) {
             fullMatch: fullMatch,
             videoId: videoId,
             embedSrc: embedSrc,
-            hasExisting: existingIframes && existingIframes[key]
+            hasExisting: existingIframes && existingIframes[key],
+            index: match.index
         });
     }
     
@@ -557,22 +558,30 @@ function processYouTubeEmbeds(contentElement, itemId, existingIframes) {
             videoId: videoId,
             embedSrc: embedSrc,
             hasExisting: existingIframes && existingIframes[key],
-            prefix: prefix
+            prefix: prefix,
+            index: match.index
         });
     }
     
     if (replacements.length > 0) {
+        // Sort replacements by index in reverse order to replace from end to start
+        // This prevents index shifts when replacing
+        replacements.sort((a, b) => (b.index || 0) - (a.index || 0));
+        
         let newHtml = html;
         replacements.forEach(rep => {
-            const placeholder = `<div class="youtube-placeholder-${rep.videoId}"></div>`;
+            const placeholder = `<div class="youtube-placeholder-${rep.videoId}-${Math.random().toString(36).substr(2, 9)}"></div>`;
+            // Use a more specific replacement - only replace the first occurrence
             newHtml = newHtml.replace(rep.fullMatch, rep.prefix ? rep.prefix + placeholder : placeholder);
+            // Store the placeholder class for later retrieval
+            rep.placeholderClass = placeholder.match(/youtube-placeholder-[a-z0-9-]+/)[0];
         });
         
         contentElement.innerHTML = newHtml;
         
         // プレースホルダーを実際のiframeで置き換え
         replacements.forEach(rep => {
-            const placeholder = contentElement.querySelector(`.youtube-placeholder-${rep.videoId}`);
+            const placeholder = contentElement.querySelector(`.${rep.placeholderClass}`);
             if (placeholder) {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'youtube-embed-wrapper';
