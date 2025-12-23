@@ -298,15 +298,18 @@ async function loadReplies() {
             document.getElementById('reply-count').textContent = data.replies.length;
             const container = document.getElementById('replies');
             
-            // 既存の返信要素とYouTubeのiframeを保持
-            const existingReplies = {};
+            // 既存のYouTube iframeを保存（URL別に保存して再利用）
+            const existingYouTubeIframes = {};
             container.querySelectorAll('.community-post').forEach(replyEl => {
                 const replyId = replyEl.dataset.replyId;
-                const replyContent = replyEl.querySelector('.post-content');
-                const youtubeIframes = replyContent ? replyContent.querySelectorAll('.youtube-embed') : [];
-                if (youtubeIframes.length > 0 && replyId) {
-                    existingReplies[replyId] = Array.from(youtubeIframes);
-                }
+                const youtubeIframes = replyEl.querySelectorAll('.youtube-embed');
+                youtubeIframes.forEach(iframe => {
+                    const src = iframe.getAttribute('src');
+                    if (src && replyId) {
+                        const key = `${replyId}-${src}`;
+                        existingYouTubeIframes[key] = iframe.cloneNode(true);
+                    }
+                });
             });
             
             container.innerHTML = data.replies.map(reply => {
@@ -329,7 +332,7 @@ async function loadReplies() {
                 // 削除済み投稿の処理
                 const contentHtml = (reply.is_deleted || reply.deleted_at) ?
                     '<p style="color: #999; font-style: italic;">この投稿は削除されました</p>' :
-                    escapeHtml(reply.content);
+                    escapeHtml(reply.content, false);
                 
                 // 削除ボタン（自分の投稿のみ表示）
                 const deleteBtn = reply.user_id === USER_ID ?
@@ -363,29 +366,74 @@ async function loadReplies() {
             `;
             }).join('');
             
-            // YouTube iframeを復元
-            Object.keys(existingReplies).forEach(replyId => {
-                const newReplyEl = container.querySelector(`.community-post[data-reply-id="${replyId}"]`);
-                if (newReplyEl) {
-                    const newContent = newReplyEl.querySelector('.post-content');
-                    const newIframes = newContent.querySelectorAll('.youtube-embed-wrapper');
-                    const oldIframes = existingReplies[replyId];
-                    
-                    newIframes.forEach((newWrapper, index) => {
-                        if (oldIframes[index]) {
-                            // 既存のiframeで置き換える（再生状態を維持）
-                            const oldIframe = oldIframes[index];
-                            const newIframe = newWrapper.querySelector('.youtube-embed');
-                            if (newIframe && oldIframe) {
-                                newIframe.parentNode.replaceChild(oldIframe, newIframe);
-                            }
-                        }
-                    });
+            // YouTube埋め込みを処理（既存のiframeを再利用）
+            container.querySelectorAll('.community-post').forEach(replyEl => {
+                const replyId = replyEl.dataset.replyId;
+                const replyContent = replyEl.querySelector('.post-content');
+                if (replyContent && !replyContent.dataset.youtubeProcessed) {
+                    processYouTubeEmbeds(replyContent, replyId, existingYouTubeIframes);
+                    replyContent.dataset.youtubeProcessed = 'true';
                 }
             });
         }
     } catch (err) {
         console.error('返信読み込みエラー', err);
+    }
+}
+
+// YouTube埋め込み処理（既存のiframeを再利用）
+function processYouTubeEmbeds(contentElement, itemId, existingIframes) {
+    const html = contentElement.innerHTML;
+    const youtubePattern = /(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g;
+    
+    let match;
+    const replacements = [];
+    
+    while ((match = youtubePattern.exec(html)) !== null) {
+        const fullUrl = match[0];
+        const videoId = match[2];
+        const embedSrc = `https://www.youtube.com/embed/${videoId}`;
+        const key = `${itemId}-${embedSrc}`;
+        
+        replacements.push({
+            fullUrl: fullUrl,
+            videoId: videoId,
+            embedSrc: embedSrc,
+            hasExisting: existingIframes && existingIframes[key]
+        });
+    }
+    
+    if (replacements.length > 0) {
+        let newHtml = html;
+        replacements.forEach(rep => {
+            newHtml = newHtml.replace(rep.fullUrl, `<div class="youtube-placeholder-${rep.videoId}"></div>`);
+        });
+        
+        contentElement.innerHTML = newHtml;
+        
+        // プレースホルダーを実際のiframeで置き換え
+        replacements.forEach(rep => {
+            const placeholder = contentElement.querySelector(`.youtube-placeholder-${rep.videoId}`);
+            if (placeholder) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'youtube-embed-wrapper';
+                
+                const key = `${itemId}-${rep.embedSrc}`;
+                if (rep.hasExisting && existingIframes[key]) {
+                    wrapper.appendChild(existingIframes[key]);
+                } else {
+                    const iframe = document.createElement('iframe');
+                    iframe.className = 'youtube-embed';
+                    iframe.src = rep.embedSrc;
+                    iframe.setAttribute('frameborder', '0');
+                    iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+                    iframe.setAttribute('allowfullscreen', 'true');
+                    wrapper.appendChild(iframe);
+                }
+                
+                placeholder.parentNode.replaceChild(wrapper, placeholder);
+            }
+        });
     }
 }
 
@@ -422,22 +470,13 @@ function formatTime(datetime) {
     return `${Math.floor(diff / 86400)}日前`;
 }
 
-function escapeHtml(text) {
+function escapeHtml(text, embedYouTube = true) {
     const div = document.createElement('div');
     div.textContent = text;
     let html = div.innerHTML.replace(/\n/g, '<br>');
     
-    // YouTube URL embedding (supports www, m.youtube.com, and short URLs)
-    html = html.replace(/(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g, function(match, fullUrl, videoId) {
-        return `<div class="youtube-embed-wrapper">
-            <iframe class="youtube-embed" 
-                    src="https://www.youtube.com/embed/${videoId}" 
-                    frameborder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowfullscreen>
-            </iframe>
-        </div>`;
-    });
+    // YouTube URL embedding は別途 processYouTubeEmbeds で処理するため、ここでは行わない
+    // embedYouTubeパラメータは下位互換性のため残す
     
     return html;
 }
