@@ -14,7 +14,6 @@ if ($action==='list'){
     SELECT r.*, u.handle, u.display_name, u.icon, u.active_frame_id, u.role,
            f.css_token as frame_class,
            ut.title_id, tp.title_text, tp.title_css,
-           r.nsfw,
            (SELECT COUNT(*) FROM likes WHERE post_id = r.id) as like_count,
            ".($uid ? "EXISTS(SELECT 1 FROM likes WHERE post_id = r.id AND user_id = $uid)" : "0")." as user_liked
     FROM replies r

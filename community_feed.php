@@ -498,7 +498,7 @@ function renderPosts(posts) {
         // NSFW テキストブラー設定
         const nsfwBlurStyle = isNsfw ? 'filter: blur(12px); cursor: pointer;' : '';
         const nsfwOnClick = isNsfw ? `onclick="this.style.filter='none'; this.style.cursor='default';"` : '';
-        const nsfwTitle = isNsfw ? 'title="NSFW: クリックして表示"' : '';
+        const nsfwTitle = isNsfw ? 'title="NSFW: クリックで表示"' : '';
         
         // 削除ボタン（自分の投稿のみ表示）
         const deleteBtn = post.user_id === USER_ID ? 

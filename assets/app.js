@@ -1128,8 +1128,12 @@ function renderPost(p, wrap, prepend = false) {
             const quoteBody = ce('div', 'quote-body');
             // Use content_html first as it already has mention links processed
             const quotedContent = p.quoted_post.content_html || '';
-            const quotedHtml = quotedContent || embedYouTube(parseMessage(marked.parse(p.quoted_post.content_md || '')));
-            quoteBody.innerHTML = quotedHtml;
+            // If content_html exists, use it; otherwise process markdown
+            if (quotedContent) {
+                quoteBody.innerHTML = embedYouTube(quotedContent);
+            } else {
+                quoteBody.innerHTML = embedYouTube(parseMessage(marked.parse(p.quoted_post.content_md || '')));
+            }
             quoteDiv.append(quoteBody);
 
             body.append(quoteDiv);
