@@ -391,13 +391,14 @@ async function loadPosts() {
 function renderPosts(posts) {
     const container = document.getElementById('posts');
     
-    // 既存の投稿要素とYouTubeのiframeを保持（wrapper全体を保存）
+    // 既存の投稿要素とYouTubeのiframeを保持（iframe要素のみを保存）
     const existingPosts = {};
     container.querySelectorAll('.community-post').forEach(postEl => {
         const postId = postEl.dataset.postId;
-        const youtubeWrappers = postEl.querySelectorAll('.youtube-embed-wrapper');
-        if (youtubeWrappers.length > 0) {
-            existingPosts[postId] = Array.from(youtubeWrappers);
+        const postContent = postEl.querySelector('.post-content');
+        const youtubeIframes = postContent ? postContent.querySelectorAll('.youtube-embed') : [];
+        if (youtubeIframes.length > 0 && postId) {
+            existingPosts[postId] = Array.from(youtubeIframes);
         }
     });
     
@@ -521,17 +522,22 @@ function renderPosts(posts) {
     `;
     }).join('');
     
-    // YouTube wrapper全体を復元（再生状態を完全に維持）
+    // YouTube iframeを復元（再生状態を維持）
     Object.keys(existingPosts).forEach(postId => {
         const newPostEl = container.querySelector(`.community-post[data-post-id="${postId}"]`);
         if (newPostEl) {
-            const newWrappers = newPostEl.querySelectorAll('.youtube-embed-wrapper');
-            const oldWrappers = existingPosts[postId];
+            const newContent = newPostEl.querySelector('.post-content');
+            const newWrappers = newContent ? newContent.querySelectorAll('.youtube-embed-wrapper') : [];
+            const oldIframes = existingPosts[postId];
             
             newWrappers.forEach((newWrapper, index) => {
-                if (oldWrappers[index]) {
-                    // 既存のwrapper全体で置き換える（再生状態を完全に維持）
-                    newWrapper.parentNode.replaceChild(oldWrappers[index], newWrapper);
+                if (oldIframes[index]) {
+                    // 既存のiframeで置き換える（再生状態を維持）
+                    const oldIframe = oldIframes[index];
+                    const newIframe = newWrapper.querySelector('.youtube-embed');
+                    if (newIframe && oldIframe) {
+                        newIframe.parentNode.replaceChild(oldIframe, newIframe);
+                    }
                 }
             });
         }
