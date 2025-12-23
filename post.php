@@ -64,25 +64,7 @@ try {
 
     if ($action === 'create_post') {
         require_login();
-        $u = user();
-        if ($u['muted_until'] && strtotime($u['muted_until']) > time()) {
-            $remaining_seconds = strtotime($u['muted_until']) - time();
-            $remaining_hours = floor($remaining_seconds / 3600);
-            $remaining_minutes = floor(($remaining_seconds % 3600) / 60);
-            $remaining_time_str = '';
-            if ($remaining_hours > 0) {
-                $remaining_time_str = "{$remaining_hours}時間{$remaining_minutes}分";
-            } else {
-                $remaining_time_str = "{$remaining_minutes}分";
-            }
-            echo json_encode([
-                'ok' => false,
-                'error' => 'muted',
-                'muted_until' => $u['muted_until'],
-                'remaining_time' => $remaining_time_str
-            ]);
-            exit;
-        }
+        check_mute_and_exit_if_muted();
 
         $content = trim($_POST['content'] ?? '');
         $nsfw = ($_POST['nsfw'] ?? '0') === '1' ? 1 : 0;
@@ -267,6 +249,7 @@ try {
 
     if ($action === 'quote_post') {
         require_login();
+        check_mute_and_exit_if_muted();
         $post_id = (int)($_POST['post_id'] ?? $input['post_id'] ?? 0);
         $content = trim($_POST['content'] ?? $input['content'] ?? '');
         $nsfw = (int)($_POST['nsfw'] ?? $input['nsfw'] ?? 0);

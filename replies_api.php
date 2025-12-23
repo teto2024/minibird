@@ -52,6 +52,7 @@ if ($action==='list'){
 
 if ($action==='create'){
     require_login();
+    check_mute_and_exit_if_muted();
     $post_id = (int)($input['post_id'] ?? 0);
     $content = trim($input['content'] ?? '');
     $nsfw = (int)($input['nsfw'] ?? 0);

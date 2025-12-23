@@ -53,26 +53,53 @@ function serialize_post($row, $uid, $pdo){
     $quoted_post = null;
     if (!empty($row['quote_post_id'])) {
         $q = $pdo->prepare("
-            SELECT posts.id, posts.user_id, u.handle, u.display_name, u.icon, u.vip_level, u.role,
-                   posts.content_md, posts.content_html, posts.deleted_at, posts.deleted_by_mod
+            SELECT posts.id, posts.user_id, posts.is_repost_of, u.handle, u.display_name, u.icon, u.vip_level, u.role,
+                   posts.content_md, posts.content_html, posts.deleted_at, posts.deleted_by_mod,
+                   orig_post.id as original_post_id, orig_post.user_id as original_user_id,
+                   orig_user.handle as original_handle, orig_user.display_name as original_display_name,
+                   orig_user.icon as original_icon, orig_user.vip_level as original_vip_level
             FROM posts
             JOIN users u ON u.id = posts.user_id
+            LEFT JOIN posts orig_post ON orig_post.id = posts.is_repost_of
+            LEFT JOIN users orig_user ON orig_user.id = orig_post.user_id
             WHERE posts.id = ?
         ");
         $q->execute([$row['quote_post_id']]);
         $qp = $q->fetch(PDO::FETCH_ASSOC);
         if ($qp) {
-            $quoted_post = [
-                'id' => (int)($qp['id'] ?? 0),
-                'user_id' => (int)($qp['user_id'] ?? 0),
-                'handle' => $qp['handle'] ?? 'unknown',
-                'display_name' => !empty($qp['display_name']) ? $qp['display_name'] : ($qp['handle'] ?? 'unknown'),
-                'icon' => !empty($qp['icon']) ? '/' . ltrim($qp['icon'], '/') : '/uploads/icons/default_icon.png',
-                'vip_level' => isset($qp['vip_level']) ? (int)$qp['vip_level'] : 0,
-                'content_md' => $qp['content_md'] ?? '',
-                'content_html' => $qp['content_html'] ?? '',
-                'deleted' => !empty($qp['deleted_at'])
-            ];
+            // 引用先がリポストの場合は元投稿者の情報を使用し、リポスターを記録
+            $is_quoted_repost = !empty($qp['is_repost_of']);
+            if ($is_quoted_repost && !empty($qp['original_handle'])) {
+                $quoted_post = [
+                    'id' => (int)($qp['id'] ?? 0),
+                    'user_id' => (int)($qp['original_user_id'] ?? 0),
+                    'handle' => $qp['original_handle'] ?? 'unknown',
+                    'display_name' => !empty($qp['original_display_name']) ? $qp['original_display_name'] : ($qp['original_handle'] ?? 'unknown'),
+                    'icon' => !empty($qp['original_icon']) ? '/' . ltrim($qp['original_icon'], '/') : '/uploads/icons/default_icon.png',
+                    'vip_level' => isset($qp['original_vip_level']) ? (int)$qp['original_vip_level'] : 0,
+                    'content_md' => $qp['content_md'] ?? '',
+                    'content_html' => $qp['content_html'] ?? '',
+                    'deleted' => !empty($qp['deleted_at']),
+                    'is_repost' => true,
+                    'reposter_user_id' => (int)($qp['user_id'] ?? 0),
+                    'reposter_handle' => $qp['handle'] ?? 'unknown',
+                    'reposter_display_name' => !empty($qp['display_name']) ? $qp['display_name'] : ($qp['handle'] ?? 'unknown'),
+                    'reposter_icon' => !empty($qp['icon']) ? '/' . ltrim($qp['icon'], '/') : '/uploads/icons/default_icon.png'
+                ];
+            } else {
+                $quoted_post = [
+                    'id' => (int)($qp['id'] ?? 0),
+                    'user_id' => (int)($qp['user_id'] ?? 0),
+                    'handle' => $qp['handle'] ?? 'unknown',
+                    'display_name' => !empty($qp['display_name']) ? $qp['display_name'] : ($qp['handle'] ?? 'unknown'),
+                    'icon' => !empty($qp['icon']) ? '/' . ltrim($qp['icon'], '/') : '/uploads/icons/default_icon.png',
+                    'vip_level' => isset($qp['vip_level']) ? (int)$qp['vip_level'] : 0,
+                    'content_md' => $qp['content_md'] ?? '',
+                    'content_html' => $qp['content_html'] ?? '',
+                    'deleted' => !empty($qp['deleted_at']),
+                    'is_repost' => false
+                ];
+            }
         }
     }
 

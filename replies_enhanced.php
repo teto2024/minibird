@@ -449,6 +449,23 @@ function embedYouTube(html) {
     });
 }
 
+// ハッシュタグをリンク化
+function parseHashtags(html) {
+    // 既にリンク化されている部分を分離
+    const parts = html.split(/(<a[^>]*>.*?<\/a>)/gi);
+    const result = parts.map((part, i) => {
+        // 偶数インデックスはリンク外、奇数はリンク内
+        if (i % 2 === 0) {
+            // ハッシュタグをリンク化（日本語、英数字、アンダースコアに対応）
+            return part.replace(/#([a-zA-Z0-9_\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]+)/g, (match, tag) => {
+                return `<a href="search.php?q=${encodeURIComponent('#' + tag)}" class="hashtag">#${tag}</a>`;
+            });
+        }
+        return part;
+    });
+    return result.join('');
+}
+
 // 返信読み込み
 async function loadReplies() {
     try {
@@ -694,6 +711,7 @@ function renderReply(reply, embedYouTubeNow = true) {
     
     // コンテンツの処理（embedYouTubeNowがfalseの場合はYouTube埋め込みをしない）
     let contentHtml = marked.parse(reply.content_md || reply.content_html);
+    contentHtml = parseHashtags(contentHtml);
     if (embedYouTubeNow) {
         contentHtml = embedYouTube(contentHtml);
     }
@@ -790,7 +808,13 @@ document.getElementById('sendReply')?.addEventListener('click', async () => {
             document.getElementById('nsfw').checked = false;
             loadReplies();
         } else {
-            alert('返信失敗: ' + data.error);
+            if (data.error === 'muted') {
+                const remainingTime = data.remaining_time || '不明';
+                const mutedUntil = data.muted_until || '不明';
+                showMutePopup(remainingTime, mutedUntil);
+            } else {
+                alert('返信失敗: ' + data.error);
+            }
         }
     } catch (err) {
         alert('ネットワークエラー');
@@ -925,6 +949,108 @@ document.addEventListener('keydown', (e) => {
         }
     }
 });
+
+// ミュートポップアップを表示
+function showMutePopup(remainingTime, mutedUntil) {
+    const dialog = document.createElement('div');
+    dialog.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+    dialog.innerHTML = `
+        <div style="background: var(--card); border-radius: 12px; padding: 40px; max-width: 500px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.5); border: 2px solid #f56565;">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <div style="font-size: 60px; margin-bottom: 10px;">🚫</div>
+                <h2 style="margin: 0 0 10px 0; color: #f56565; font-size: 24px;">あなたは投稿を制限されています</h2>
+                <p style="color: var(--muted); margin: 5px 0;">投稿が一時的に制限されています</p>
+            </div>
+            
+            <div style="background: var(--bg); border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: var(--text);">残りミュート時間:</strong>
+                    <div style="font-size: 28px; font-weight: bold; color: #f56565; margin-top: 5px;">${remainingTime}</div>
+                </div>
+                <div>
+                    <strong style="color: var(--text);">制限解除予定:</strong>
+                    <div style="color: var(--muted); margin-top: 5px;">${mutedUntil}</div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-bottom: 20px;">
+                <p style="color: var(--text); margin: 10px 0;">この制限に異議がある場合は、異議申し立てを行うことができます</p>
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button id="muteClose" style="padding: 12px 24px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); cursor: pointer; font-weight: bold;">閉じる</button>
+                <button id="appealBtn" style="padding: 12px 24px; border: none; border-radius: 6px; background: #4299e1; color: white; cursor: pointer; font-weight: bold;">異議申し立て</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(dialog);
+    
+    document.getElementById('muteClose').onclick = () => {
+        document.body.removeChild(dialog);
+    };
+    
+    document.getElementById('appealBtn').onclick = () => {
+        document.body.removeChild(dialog);
+        showAppealDialog();
+    };
+}
+
+// 異議申し立てダイアログを表示
+function showAppealDialog() {
+    const dialog = document.createElement('div');
+    dialog.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+    dialog.innerHTML = `
+        <div style="background: var(--card); border-radius: 12px; padding: 30px; max-width: 600px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <h3 style="margin: 0 0 20px 0; color: var(--text);">異議申し立て</h3>
+            <p style="color: var(--text); margin-bottom: 20px;">ミュート措置に対する異議申し立ての理由を詳しく記入してください。管理者が審査します。</p>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: var(--text);">申し立て理由（必須）</label>
+                <textarea id="appealReason" rows="6" style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); resize: vertical; font-family: inherit;" placeholder="なぜミュートが不当だと考えるのか、詳しく説明してください"></textarea>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="appealCancel" style="padding: 10px 20px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); cursor: pointer;">キャンセル</button>
+                <button id="appealSubmit" style="padding: 10px 20px; border: none; border-radius: 6px; background: #4299e1; color: white; cursor: pointer; font-weight: bold;">申し立てる</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(dialog);
+    
+    document.getElementById('appealCancel').onclick = () => {
+        document.body.removeChild(dialog);
+    };
+    
+    document.getElementById('appealSubmit').onclick = async () => {
+        const reason = document.getElementById('appealReason').value.trim();
+        
+        if (!reason) {
+            alert('申し立て理由を入力してください');
+            return;
+        }
+        
+        try {
+            const res = await fetch('appeal_api.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    action: 'submit_appeal',
+                    reason: reason
+                })
+            });
+            const data = await res.json();
+            
+            if (data.ok) {
+                alert('異議申し立てを受け付けました。管理者が審査します。');
+                document.body.removeChild(dialog);
+            } else {
+                alert('異議申し立てに失敗しました: ' + (data.message || data.error));
+            }
+        } catch (err) {
+            alert('ネットワークエラー');
+        }
+    };
+}
 </script>
 
 <!-- Media Expand Modal -->

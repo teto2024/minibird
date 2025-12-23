@@ -12,7 +12,7 @@ $NSFW_BLUR = 12;
 
 // ----- キャッシュバスティング用バージョン -----
 // ファイル更新時にこの値を変更すると、ブラウザキャッシュをクリアできます
-define('ASSETS_VERSION', '1.4.2');
+define('ASSETS_VERSION', '1.5.0');
 
 // ----- 集中タイマー設定 -----
 define('FOCUS_MAX_MINUTES', 180);
@@ -63,6 +63,30 @@ function user() {
     $st = $pdo->prepare("SELECT * FROM users WHERE id=?");
     $st->execute([$_SESSION['uid']]);
     return $st->fetch();
+}
+
+// ----- ミュートチェック -----
+// ユーザーがミュート中かどうかをチェックし、ミュート中ならJSONエラーを返して終了
+function check_mute_and_exit_if_muted() {
+    $u = user();
+    if ($u && $u['muted_until'] && strtotime($u['muted_until']) > time()) {
+        $remaining_seconds = strtotime($u['muted_until']) - time();
+        $remaining_hours = floor($remaining_seconds / 3600);
+        $remaining_minutes = floor(($remaining_seconds % 3600) / 60);
+        $remaining_time_str = '';
+        if ($remaining_hours > 0) {
+            $remaining_time_str = "{$remaining_hours}時間{$remaining_minutes}分";
+        } else {
+            $remaining_time_str = "{$remaining_minutes}分";
+        }
+        echo json_encode([
+            'ok' => false,
+            'error' => 'muted',
+            'muted_until' => $u['muted_until'],
+            'remaining_time' => $remaining_time_str
+        ]);
+        exit;
+    }
 }
 
 // ----- メンション関連の定数と関数 -----
@@ -133,6 +157,18 @@ function markdown_to_html($md) {
             $safe
         );
     }
+    
+    // ハッシュタグリンクの処理（#hashtag）
+    // 日本語、英数字、アンダースコアに対応
+    $safe = preg_replace_callback(
+        '/#([a-zA-Z0-9_\p{L}]+)/u',
+        function($matches) {
+            $tag = $matches[1];
+            $url = htmlspecialchars("search.php?q=" . urlencode('#' . $tag), ENT_QUOTES, 'UTF-8');
+            return '<a href="' . $url . '" class="hashtag">#' . htmlspecialchars($tag) . '</a>';
+        },
+        $safe
+    );
     
     $safe = nl2br($safe);
     return $safe;
