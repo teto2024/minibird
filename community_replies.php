@@ -384,7 +384,7 @@ async function loadReplies() {
 // YouTube埋め込み処理（既存のiframeを再利用）
 function processYouTubeEmbeds(contentElement, itemId, existingIframes) {
     const html = contentElement.innerHTML;
-    const youtubePattern = /(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g;
+    const youtubePattern = /(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtube\.com\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g;
     
     let match;
     const replacements = [];
