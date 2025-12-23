@@ -570,7 +570,7 @@ function processYouTubeEmbeds(contentElement, itemId, existingIframes) {
         
         let newHtml = html;
         replacements.forEach(rep => {
-            const placeholder = `<div class="youtube-placeholder-${rep.videoId}-${Math.random().toString(36).substr(2, 9)}"></div>`;
+            const placeholder = `<div class="youtube-placeholder-${rep.videoId}-${Math.random().toString(36).slice(2, 11)}"></div>`;
             // Use a more specific replacement - only replace the first occurrence
             newHtml = newHtml.replace(rep.fullMatch, rep.prefix ? rep.prefix + placeholder : placeholder);
             // Store the placeholder class for later retrieval
