@@ -687,11 +687,12 @@ setInterval(async () => {
         const data = await res.json();
         
         if (data.ok) {
-            // より包括的なハッシュ値を使用（ID、いいね数、返信数、削除状態を検知）
+            // より包括的なハッシュ値を使用（ID、いいね数、返信数、コンテンツ、削除状態を検知）
             const currentData = JSON.stringify(data.posts.map(p => ({
                 id: p.id,
                 like_count: p.like_count,
                 reply_count: p.reply_count,
+                content: p.content,
                 is_deleted: p.is_deleted || p.deleted_at
             })));
             

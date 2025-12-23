@@ -717,11 +717,12 @@ setInterval(async () => {
         const data = await res.json();
         
         if (data.ok) {
-            // より包括的なハッシュ値を使用（ID、いいね数、内容の変更を検知）
+            // より包括的なハッシュ値を使用（ID、いいね数、コンテンツ、削除状態を検知）
             const currentData = JSON.stringify((data.items || []).map(r => ({
                 id: r.id,
                 like_count: r.like_count,
-                content: r.content_md || r.content_html
+                content: r.content_md || r.content_html,
+                is_deleted: r.is_deleted || r.deleted_at
             })));
             
             // データが変わった場合のみ再レンダリング
@@ -739,9 +740,9 @@ setInterval(async () => {
 // Process original post content for YouTube embeds
 document.addEventListener('DOMContentLoaded', function() {
     const originalPostContent = document.querySelector('.original-post .reply-content');
-    if (originalPostContent && !originalPostContent.dataset.youtubeProcessed) {
+    if (originalPostContent && !originalPostContent.dataset.youtubeEmbedded) {
         originalPostContent.innerHTML = embedYouTube(originalPostContent.innerHTML);
-        originalPostContent.dataset.youtubeProcessed = 'true';
+        originalPostContent.dataset.youtubeEmbedded = 'true';
     }
 });
 
