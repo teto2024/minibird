@@ -427,8 +427,8 @@ function escapeHtml(text) {
     div.textContent = text;
     let html = div.innerHTML.replace(/\n/g, '<br>');
     
-    // YouTube URL embedding
-    html = html.replace(/(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g, function(match, fullUrl, videoId) {
+    // YouTube URL embedding (supports www, m.youtube.com, and short URLs)
+    html = html.replace(/(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/|m\.youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g, function(match, fullUrl, videoId) {
         return `<div class="youtube-embed-wrapper">
             <iframe class="youtube-embed" 
                     src="https://www.youtube.com/embed/${videoId}" 
@@ -485,8 +485,27 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// 3秒ごとに自動更新（返信のみ更新し、元の投稿は更新しない）
-setInterval(loadReplies, 3000);
+// 3秒ごとに自動更新（返信のみ更新し、元の投稿は更新しない。変更がある場合のみレンダリング）
+let lastRepliesHash = '';
+setInterval(async () => {
+    try {
+        const res = await fetch(`community_api.php?action=get_replies&post_id=${POST_ID}`);
+        const data = await res.json();
+        
+        if (data.ok) {
+            // 返信のIDといいね数をハッシュとして使用
+            const currentHash = data.replies.map(r => `${r.id}-${r.like_count}`).join(',');
+            
+            // 変更があった場合のみloadRepliesを実行
+            if (currentHash !== lastRepliesHash) {
+                await loadReplies();
+                lastRepliesHash = currentHash;
+            }
+        }
+    } catch (err) {
+        console.error('自動更新エラー', err);
+    }
+}, 3000);
 </script>
 </body>
 </html>
