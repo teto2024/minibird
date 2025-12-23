@@ -570,11 +570,12 @@ function processYouTubeEmbeds(contentElement, itemId, existingIframes) {
         
         let newHtml = html;
         replacements.forEach(rep => {
-            const placeholder = `<div class="youtube-placeholder-${rep.videoId}-${Math.random().toString(36).slice(2, 11)}"></div>`;
+            const placeholderClass = `youtube-placeholder-${rep.videoId}-${Math.random().toString(36).slice(2, 11)}`;
+            const placeholder = `<div class="${placeholderClass}"></div>`;
             // Use a more specific replacement - only replace the first occurrence
             newHtml = newHtml.replace(rep.fullMatch, rep.prefix ? rep.prefix + placeholder : placeholder);
             // Store the placeholder class for later retrieval
-            rep.placeholderClass = placeholder.match(/youtube-placeholder-[a-z0-9-]+/)[0];
+            rep.placeholderClass = placeholderClass;
         });
         
         contentElement.innerHTML = newHtml;
