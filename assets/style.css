@@ -1,6 +1,7 @@
 :root {
     --bg: #0f1419;
     --card: #15202b;
+    --modal-bg: #15202b;
     --text: #e6e6e6;
     --muted: #8899a6;
     --blue: #1d9bf0;
@@ -460,7 +461,7 @@ input[type="file"]:hover {
 }
 
 .modal-content {
-    background: #15202b;
+    background: var(--modal-bg);
     border: 1px solid var(--border);
     padding: 16px;
     border-radius: 12px;
@@ -3361,7 +3362,7 @@ button:hover, .btn:hover {
     max-height: 90vh;
     overflow-y: auto;
     /* Ensure opaque background to prevent frame transparency issues */
-    background: #15202b !important;
+    background: var(--modal-bg);
     position: relative;
     z-index: 1001;
 }
