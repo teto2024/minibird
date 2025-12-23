@@ -406,8 +406,7 @@ function extractYouTubeId(url) {
     const patterns = [
         /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
         /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/,
-        /(?:m\.youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
-        /(?:m\.youtu\.be\/)([a-zA-Z0-9_-]{11})/
+        /(?:m\.youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/
     ];
     
     for (const pattern of patterns) {
@@ -421,7 +420,7 @@ function extractYouTubeId(url) {
 
 function embedYouTube(html) {
     // Replace YouTube URLs with embeds (supports www, m.youtube.com, and short URLs)
-    return html.replace(/(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/|m\.youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g, function(match, fullUrl, videoId) {
+    return html.replace(/(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g, function(match, fullUrl, videoId) {
         return `<div class="youtube-embed-wrapper">
             <iframe class="youtube-embed" 
                     src="https://www.youtube.com/embed/${videoId}" 
@@ -707,7 +706,7 @@ async function deleteReply(replyId) {
 loadReplies();
 
 // 3秒ごとに自動更新（返信のみチェック）
-let lastReplyCount = 0;
+let lastRepliesData = '';
 setInterval(async () => {
     try {
         const res = await fetch('replies_api.php', {
@@ -718,12 +717,18 @@ setInterval(async () => {
         const data = await res.json();
         
         if (data.ok) {
-            const newReplyCount = (data.items || []).length;
-            // 返信数が変わった場合のみ再レンダリング
-            if (newReplyCount !== lastReplyCount) {
+            // より包括的なハッシュ値を使用（ID、いいね数、内容の変更を検知）
+            const currentData = JSON.stringify((data.items || []).map(r => ({
+                id: r.id,
+                like_count: r.like_count,
+                content: r.content_md || r.content_html
+            })));
+            
+            // データが変わった場合のみ再レンダリング
+            if (currentData !== lastRepliesData) {
                 replies = data.items || [];
                 renderReplies();
-                lastReplyCount = newReplyCount;
+                lastRepliesData = currentData;
             }
         }
     } catch (err) {

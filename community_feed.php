@@ -592,7 +592,7 @@ function escapeHtml(text) {
     let html = div.innerHTML.replace(/\n/g, '<br>');
     
     // YouTube URL embedding (supports www, m.youtube.com, and short URLs)
-    html = html.replace(/(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/|m\.youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g, function(match, fullUrl, videoId) {
+    html = html.replace(/(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g, function(match, fullUrl, videoId) {
         return `<div class="youtube-embed-wrapper">
             <iframe class="youtube-embed" 
                     src="https://www.youtube.com/embed/${videoId}" 
@@ -680,20 +680,25 @@ async function deletePost(postId) {
 loadPosts();
 
 // 3秒ごとに自動更新（変更がある場合のみレンダリング）
-let lastPostsHash = '';
+let lastPostsData = '';
 setInterval(async () => {
     try {
         const res = await fetch(`community_api.php?action=get_posts&community_id=${COMMUNITY_ID}&t=${Date.now()}`);
         const data = await res.json();
         
         if (data.ok) {
-            // 投稿のIDリストをハッシュとして使用
-            const currentHash = data.posts.map(p => `${p.id}-${p.like_count}-${p.reply_count}`).join(',');
+            // より包括的なハッシュ値を使用（ID、いいね数、返信数、削除状態を検知）
+            const currentData = JSON.stringify(data.posts.map(p => ({
+                id: p.id,
+                like_count: p.like_count,
+                reply_count: p.reply_count,
+                is_deleted: p.is_deleted || p.deleted_at
+            })));
             
             // 変更があった場合のみ再レンダリング
-            if (currentHash !== lastPostsHash) {
+            if (currentData !== lastPostsData) {
                 renderPosts(data.posts);
-                lastPostsHash = currentHash;
+                lastPostsData = currentData;
             }
         }
     } catch (err) {
