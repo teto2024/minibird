@@ -459,6 +459,13 @@ function embedYouTube(html) {
 
 // ハッシュタグとメンションをリンク化
 function parseHashtags(html) {
+    // HTML特殊文字をエスケープするヘルパー関数
+    function escapeHtml(str) {
+        return str.replace(/[&<>"']/g, function(m) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
+        });
+    }
+    
     // 既にリンク化されている部分を分離
     const parts = html.split(/(<a[^>]*>.*?<\/a>)/gi);
     const result = parts.map((part, i) => {
@@ -466,12 +473,12 @@ function parseHashtags(html) {
         if (i % 2 === 0) {
             // メンションをリンク化（@username）
             let processed = part.replace(/@([a-zA-Z0-9_]+)/g, (match, handle) => {
-                return `<a href="profile.php?handle=${encodeURIComponent(handle)}" class="mention">@${handle}</a>`;
+                return `<a href="profile.php?handle=${encodeURIComponent(handle)}" class="mention">@${escapeHtml(handle)}</a>`;
             });
             
             // ハッシュタグをリンク化（日本語、英数字、アンダースコアに対応）
             processed = processed.replace(/#([a-zA-Z0-9_\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]+)/g, (match, tag) => {
-                return `<a href="search.php?q=${encodeURIComponent('#' + tag)}" class="hashtag">#${tag}</a>`;
+                return `<a href="search.php?q=${encodeURIComponent('#' + tag)}" class="hashtag">#${escapeHtml(tag)}</a>`;
             });
             
             return processed;

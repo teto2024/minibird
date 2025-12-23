@@ -106,6 +106,13 @@ function parseMessage(html) {
     // メンション、URL自動リンク化、ハッシュタグ変換を実行
     // 注意: リンク内のテキストは変換しない
     
+    // HTML特殊文字をエスケープするヘルパー関数
+    function escapeHtml(str) {
+        return str.replace(/[&<>"']/g, function(m) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
+        });
+    }
+    
     // URLを自動リンク化（ただし既にリンクになっているものは除外）
     // より単純な方法: <a タグ内のURLは無視
     const parts = html.split(/(<a[^>]*>.*?<\/a>)/gi);
@@ -115,7 +122,7 @@ function parseMessage(html) {
             // メンションをリンク化（@username）
             // YouTube埋め込みやURL変換の前に処理
             let processed = part.replace(/@([a-zA-Z0-9_]+)/g, (match, handle) => {
-                return `<a href="profile.php?handle=${encodeURIComponent(handle)}" class="mention">@${handle}</a>`;
+                return `<a href="profile.php?handle=${encodeURIComponent(handle)}" class="mention">@${escapeHtml(handle)}</a>`;
             });
             
             // URLを自動リンク化
@@ -126,13 +133,13 @@ function parseMessage(html) {
                     // Create YouTube embed
                     return createYouTubeEmbed(youtubeId);
                 }
-                return `<a href="${url}" target="_blank" class="link">${url}</a>`;
+                return `<a href="${escapeHtml(url)}" target="_blank" class="link">${escapeHtml(url)}</a>`;
             });
             
             // ハッシュタグをリンク化（日本語、英数字、アンダースコアに対応）
             // 既にリンク化されていない#タグのみ対象
             processed = processed.replace(/#([a-zA-Z0-9_\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]+)/g, (match, tag) => {
-                return `<a href="search.php?q=${encodeURIComponent('#' + tag)}" class="hashtag">#${tag}</a>`;
+                return `<a href="search.php?q=${encodeURIComponent('#' + tag)}" class="hashtag">#${escapeHtml(tag)}</a>`;
             });
             
             return processed;
