@@ -34,6 +34,37 @@ if ($me) {
         $isFollowing = (bool)$st->fetchColumn();
     }
 }
+
+// フォロー数・フォロワー数を取得
+$st = $pdo->prepare("SELECT COUNT(*) FROM follows WHERE follower_id = ?");
+$st->execute([$targetId]);
+$followingCount = (int)$st->fetchColumn();
+
+$st = $pdo->prepare("SELECT COUNT(*) FROM follows WHERE followee_id = ?");
+$st->execute([$targetId]);
+$followersCount = (int)$st->fetchColumn();
+
+// フォロー中リストを取得
+$st = $pdo->prepare("
+    SELECT u.id, u.handle, u.display_name, u.icon 
+    FROM follows f 
+    JOIN users u ON f.followee_id = u.id 
+    WHERE f.follower_id = ?
+    ORDER BY f.created_at DESC
+");
+$st->execute([$targetId]);
+$followingList = $st->fetchAll(PDO::FETCH_ASSOC);
+
+// フォロワーリストを取得
+$st = $pdo->prepare("
+    SELECT u.id, u.handle, u.display_name, u.icon 
+    FROM follows f 
+    JOIN users u ON f.follower_id = u.id 
+    WHERE f.followee_id = ?
+    ORDER BY f.created_at DESC
+");
+$st->execute([$targetId]);
+$followersList = $st->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -188,6 +219,150 @@ if ($me) {
     cursor: pointer;
 }
 
+/* フォロー統計 */
+.follow-stats {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin: 20px 0;
+}
+
+.follow-stat-item {
+    text-align: center;
+    cursor: pointer;
+    padding: 10px 20px;
+    border-radius: 8px;
+    transition: background 0.3s;
+}
+
+.follow-stat-item:hover {
+    background: rgba(29, 155, 240, 0.1);
+}
+
+.follow-stat-count {
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--text);
+    display: block;
+}
+
+.follow-stat-label {
+    font-size: 14px;
+    color: var(--muted);
+}
+
+/* フォローリストモーダル */
+.follow-list-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.follow-list-modal.hidden {
+    display: none;
+}
+
+.follow-list-content {
+    background: var(--card);
+    border-radius: 12px;
+    width: 400px;
+    max-width: 90vw;
+    max-height: 80vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.follow-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.follow-list-header h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.follow-list-close {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.follow-list-close:hover {
+    background: var(--border);
+    color: var(--text);
+}
+
+.follow-list-body {
+    overflow-y: auto;
+    padding: 10px 0;
+    flex: 1;
+}
+
+.follow-list-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+}
+
+.follow-user-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    transition: background 0.2s;
+    text-decoration: none;
+    color: inherit;
+}
+
+.follow-user-item:hover {
+    background: rgba(29, 155, 240, 0.1);
+}
+
+.follow-user-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.follow-user-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.follow-user-name {
+    font-weight: bold;
+    color: var(--text);
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.follow-user-handle {
+    color: var(--muted);
+    font-size: 14px;
+}
+
 /* タブレット・モバイル対応 */
 @media (max-width: 768px) {
     .user-icon {
@@ -210,6 +385,18 @@ if ($me) {
     
     .stat-value {
         font-size: 18px;
+    }
+    
+    .follow-stats {
+        gap: 20px;
+    }
+    
+    .follow-stat-count {
+        font-size: 20px;
+    }
+    
+    .follow-list-content {
+        width: 95vw;
     }
 }
 </style>
@@ -239,6 +426,18 @@ if ($me) {
 
                 <!-- 自己紹介 -->
                 <div class="user-bio"><?= nl2br(htmlspecialchars($user['bio'] ?? '')) ?></div>
+
+                <!-- フォロー数・フォロワー数 -->
+                <div class="follow-stats">
+                    <div class="follow-stat-item" id="showFollowing" data-count="<?= $followingCount ?>">
+                        <span class="follow-stat-count"><?= $followingCount ?></span>
+                        <span class="follow-stat-label">フォロー中</span>
+                    </div>
+                    <div class="follow-stat-item" id="showFollowers" data-count="<?= $followersCount ?>">
+                        <span class="follow-stat-count"><?= $followersCount ?></span>
+                        <span class="follow-stat-label">フォロワー</span>
+                    </div>
+                </div>
 
                 <!-- 通貨情報 -->
                 <div class="user-stats">
@@ -337,6 +536,56 @@ if ($me) {
     </section>
 </main>
 
+<!-- フォロー中リストモーダル -->
+<div id="followingModal" class="follow-list-modal hidden">
+    <div class="follow-list-content">
+        <div class="follow-list-header">
+            <h3>フォロー中</h3>
+            <button class="follow-list-close" onclick="closeFollowingModal()">&times;</button>
+        </div>
+        <div class="follow-list-body">
+            <?php if (empty($followingList)): ?>
+                <div class="follow-list-empty">まだ誰もフォローしていません</div>
+            <?php else: ?>
+                <?php foreach ($followingList as $followUser): ?>
+                    <a href="profile.php?id=<?= $followUser['id'] ?>" class="follow-user-item">
+                        <img src="<?= htmlspecialchars($followUser['icon'] ?? 'assets/default_icon.png') ?>" class="follow-user-icon" alt="">
+                        <div class="follow-user-info">
+                            <span class="follow-user-name"><?= htmlspecialchars($followUser['display_name'] ?? $followUser['handle']) ?></span>
+                            <span class="follow-user-handle">@<?= htmlspecialchars($followUser['handle']) ?></span>
+                        </div>
+                    </a>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
+<!-- フォロワーリストモーダル -->
+<div id="followersModal" class="follow-list-modal hidden">
+    <div class="follow-list-content">
+        <div class="follow-list-header">
+            <h3>フォロワー</h3>
+            <button class="follow-list-close" onclick="closeFollowersModal()">&times;</button>
+        </div>
+        <div class="follow-list-body">
+            <?php if (empty($followersList)): ?>
+                <div class="follow-list-empty">まだフォロワーがいません</div>
+            <?php else: ?>
+                <?php foreach ($followersList as $followerUser): ?>
+                    <a href="profile.php?id=<?= $followerUser['id'] ?>" class="follow-user-item">
+                        <img src="<?= htmlspecialchars($followerUser['icon'] ?? 'assets/default_icon.png') ?>" class="follow-user-icon" alt="">
+                        <div class="follow-user-info">
+                            <span class="follow-user-name"><?= htmlspecialchars($followerUser['display_name'] ?? $followerUser['handle']) ?></span>
+                            <span class="follow-user-handle">@<?= htmlspecialchars($followerUser['handle']) ?></span>
+                        </div>
+                    </a>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -404,6 +653,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert('通信エラーが発生しました');
             }
         };
+    }
+});
+
+// フォローリストモーダル制御
+function showFollowingModal() {
+    document.getElementById('followingModal').classList.remove('hidden');
+}
+
+function closeFollowingModal() {
+    document.getElementById('followingModal').classList.add('hidden');
+}
+
+function showFollowersModal() {
+    document.getElementById('followersModal').classList.remove('hidden');
+}
+
+function closeFollowersModal() {
+    document.getElementById('followersModal').classList.add('hidden');
+}
+
+// モーダルの外側クリックで閉じる
+document.getElementById('followingModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'followingModal') closeFollowingModal();
+});
+
+document.getElementById('followersModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'followersModal') closeFollowersModal();
+});
+
+// フォロー数/フォロワー数クリックでモーダル表示
+document.getElementById('showFollowing')?.addEventListener('click', showFollowingModal);
+document.getElementById('showFollowers')?.addEventListener('click', showFollowersModal);
+
+// ESCキーでモーダル閉じる
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeFollowingModal();
+        closeFollowersModal();
     }
 });
 

@@ -642,8 +642,12 @@ button {
         font-size: 13px;
     }
     
-    .topbar .user span {
+    .topbar .user > span {
         display: none;
+    }
+    
+    #notificationPopup li span {
+        display: inline !important;
     }
     
     #notificationBtn {
