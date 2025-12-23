@@ -261,14 +261,14 @@ $is_owner = ($community['owner_id'] == $me['id']);
     <div class="post-form">
         <h3>新規投稿</h3>
         <form id="postForm" enctype="multipart/form-data">
-            <textarea name="content" placeholder="コミュニティに投稿..." required></textarea>
+            <textarea id="content" name="content" placeholder="コミュニティに投稿..." required></textarea>
             <div style="margin: 10px 0;">
                 <label>
-                    <input type="checkbox" name="is_nsfw"> NSFW（成人向けコンテンツ）
+                    <input type="checkbox" id="is_nsfw" name="is_nsfw"> NSFW（成人向けコンテンツ）
                 </label>
             </div>
             <div style="margin: 10px 0;">
-                <input type="file" name="media" accept="image/*,video/*,audio/*" multiple
+                <input type="file" id="media" name="media" accept="image/*,video/*,audio/*" multiple
                        style="padding: 5px; border: 1px solid #cbd5e0; border-radius: 6px;">
                 <small style="color: #999; margin-left: 10px;">最大4ファイルまで（画像・動画・音声対応）</small>
             </div>
@@ -543,29 +543,64 @@ function renderPosts(posts) {
 // YouTube埋め込み処理（既存のiframeを再利用）
 function processYouTubeEmbeds(contentElement, itemId, existingIframes) {
     const html = contentElement.innerHTML;
-    const youtubePattern = /(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g;
+    
+    // Pattern 1: YouTube links inside <a> tags (from marked.parse)
+    // Matches: <a href="youtube-url">...</a>
+    const anchorPattern = /<a[^>]*href=["'](https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s"'<]*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})[^\s"'<]*)["'][^>]*>.*?<\/a>/gi;
+    
+    // Pattern 2: Bare YouTube URLs not in anchor tags
+    const bareUrlPattern = /(^|[^"'>])(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s<"']*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})(?:[^\s<"']*))/gi;
     
     let match;
     const replacements = [];
     
-    while ((match = youtubePattern.exec(html)) !== null) {
-        const fullUrl = match[0];
+    // Find YouTube links in anchor tags
+    while ((match = anchorPattern.exec(html)) !== null) {
+        const fullMatch = match[0];
+        const url = match[1];
         const videoId = match[2];
         const embedSrc = `https://www.youtube.com/embed/${videoId}`;
         const key = `${itemId}-${embedSrc}`;
         
         replacements.push({
-            fullUrl: fullUrl,
+            fullMatch: fullMatch,
             videoId: videoId,
             embedSrc: embedSrc,
             hasExisting: existingIframes && existingIframes[key]
         });
     }
     
+    // Reset lastIndex for the bare URL pattern
+    bareUrlPattern.lastIndex = 0;
+    
+    // Find bare YouTube URLs
+    let tempHtml = html;
+    replacements.forEach(rep => {
+        // Remove already-found anchor tag URLs to avoid duplicate matching
+        tempHtml = tempHtml.replace(rep.fullMatch, '');
+    });
+    
+    while ((match = bareUrlPattern.exec(tempHtml)) !== null) {
+        const prefix = match[1];
+        const url = match[2];
+        const videoId = match[3];
+        const embedSrc = `https://www.youtube.com/embed/${videoId}`;
+        const key = `${itemId}-${embedSrc}`;
+        
+        replacements.push({
+            fullMatch: match[0],
+            videoId: videoId,
+            embedSrc: embedSrc,
+            hasExisting: existingIframes && existingIframes[key],
+            prefix: prefix
+        });
+    }
+    
     if (replacements.length > 0) {
         let newHtml = html;
         replacements.forEach(rep => {
-            newHtml = newHtml.replace(rep.fullUrl, `<div class="youtube-placeholder-${rep.videoId}"></div>`);
+            const placeholder = `<div class="youtube-placeholder-${rep.videoId}"></div>`;
+            newHtml = newHtml.replace(rep.fullMatch, rep.prefix ? rep.prefix + placeholder : placeholder);
         });
         
         contentElement.innerHTML = newHtml;
