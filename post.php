@@ -232,15 +232,51 @@ try {
         require_login();
         $post_id = (int)($_POST['post_id'] ?? $input['post_id'] ?? 0);
         $content = trim($_POST['content'] ?? $input['content'] ?? '');
+        $nsfw = (int)($_POST['nsfw'] ?? $input['nsfw'] ?? 0);
         if ($post_id<=0 || $content===''){ echo json_encode(['ok'=>false,'error'=>'bad_input']); exit; }
         $pdo = db();
         $st = $pdo->prepare("SELECT id, content_md FROM posts WHERE id=?");
         $st->execute([$post_id]);
         $ref = $st->fetch();
         if (!$ref) { echo json_encode(['ok'=>false,'error'=>'not_found']); exit; }
-        $html = markdown_to_html($content."\n\n> 引用: ".$ref['content_md']);
-        $pdo->prepare("INSERT INTO posts(user_id,content_md,content_html,quote_post_id,created_at) VALUES(?,?,?,?,NOW())")
-            ->execute([$_SESSION['uid'],$content,$html,$post_id]);
+        
+        // 引用時は埋め込み表示のみで、引用テキストは不要
+        $html = markdown_to_html($content);
+        
+        // 複数画像の処理
+        $mediaPaths = [];
+        if (!empty($_FILES['media']['name']) && is_string($_FILES['media']['name'])) {
+            // 単一画像
+            $ext = strtolower(pathinfo($_FILES['media']['name'], PATHINFO_EXTENSION));
+            if (in_array($ext,['png','jpg','jpeg','gif','webp','mp4','webm'])) {
+                $name = uniqid().'.'.$ext;
+                move_uploaded_file($_FILES['media']['tmp_name'], 'uploads/'.$name);
+                $mediaPaths[] = 'uploads/'.$name;
+            }
+        } else {
+            // 複数画像 (media_0, media_1, media_2, media_3)
+            for ($i = 0; $i < 4; $i++) {
+                if (!empty($_FILES["media_$i"]['name'])) {
+                    $ext = strtolower(pathinfo($_FILES["media_$i"]['name'], PATHINFO_EXTENSION));
+                    if (in_array($ext,['png','jpg','jpeg','gif','webp','mp4','webm'])) {
+                        $name = uniqid().'.'.$ext;
+                        move_uploaded_file($_FILES["media_$i"]['tmp_name'], 'uploads/'.$name);
+                        $mediaPaths[] = 'uploads/'.$name;
+                    }
+                }
+            }
+        }
+        
+        // 画像がある場合はJSON形式で保存
+        if (count($mediaPaths) > 0) {
+            $mediaJson = json_encode($mediaPaths);
+            $pdo->prepare("INSERT INTO posts(user_id,content_md,content_html,quote_post_id,nsfw,media_paths,created_at) VALUES(?,?,?,?,?,?,NOW())")
+                ->execute([$_SESSION['uid'],$content,$html,$post_id,$nsfw,$mediaJson]);
+        } else {
+            $pdo->prepare("INSERT INTO posts(user_id,content_md,content_html,quote_post_id,nsfw,created_at) VALUES(?,?,?,?,?,NOW())")
+                ->execute([$_SESSION['uid'],$content,$html,$post_id,$nsfw]);
+        }
+        
         echo json_encode(['ok'=>true]);
         exit;
     }

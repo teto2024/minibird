@@ -222,6 +222,76 @@ document.addEventListener('DOMContentLoaded', () => {
         qs('#enterToPost').checked = savedEnterToPost === 'true';
     }
 
+    // Quote modal event listeners
+    qs('#closeQuoteModal')?.addEventListener('click', hideQuoteModal);
+    qs('#cancelQuote')?.addEventListener('click', hideQuoteModal);
+    qs('#submitQuote')?.addEventListener('click', submitQuotePost);
+    
+    // Quote media preview
+    qs('#quoteMedia')?.addEventListener('change', (e) => {
+        const preview = qs('#quoteMediaPreview');
+        preview.innerHTML = '';
+        const files = Array.from(e.target.files).slice(0, MAX_MEDIA_FILES);
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                if (file.type.startsWith('image/')) {
+                    const img = ce('img');
+                    img.src = e.target.result;
+                    preview.append(img);
+                } else if (file.type.startsWith('video/')) {
+                    const video = ce('video');
+                    video.src = e.target.result;
+                    video.controls = true;
+                    preview.append(video);
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+    
+    // Quote Enter to post checkbox
+    qs('#quoteEnterToPost')?.addEventListener('change', (e) => {
+        localStorage.setItem('quoteEnterToPost', e.target.checked ? 'true' : 'false');
+    });
+    
+    // Quote text keyboard shortcuts
+    const quoteTextArea = qs('#quoteText');
+    if (quoteTextArea) {
+        quoteTextArea.addEventListener('keydown', (e) => {
+            const quoteEnterToPost = qs('#quoteEnterToPost')?.checked;
+            
+            // Shift+Enter: allow line break (default behavior)
+            if (e.key === 'Enter' && e.shiftKey) {
+                return;
+            }
+            
+            // Ctrl+Enter or Cmd+Enter: submit quote (PC only)
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                if (window.innerWidth > MOBILE_BREAKPOINT) {
+                    submitQuotePost();
+                }
+                return;
+            }
+            
+            // Enter only: submit on mobile if checkbox is ON
+            if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                if (window.innerWidth <= MOBILE_BREAKPOINT && quoteEnterToPost) {
+                    e.preventDefault();
+                    submitQuotePost();
+                    return;
+                }
+                // On mobile without checkbox, allow line break
+                if (window.innerWidth <= MOBILE_BREAKPOINT) {
+                    return;
+                }
+                // On PC, prevent default (no submission)
+                e.preventDefault();
+            }
+        });
+    }
+
 });
 
 
@@ -632,6 +702,99 @@ function updatePost(p) {
     renderPost(p, wrap);
 }
 
+// Quote modal state
+let currentQuotePostId = null;
+
+// Show quote modal
+function showQuoteModal(post) {
+    currentQuotePostId = post.id;
+    const modal = qs('#quoteModal');
+    const preview = qs('#quotedPostPreview');
+    const quoteText = qs('#quoteText');
+    const quoteNsfw = qs('#quoteNsfw');
+    const quoteMedia = qs('#quoteMedia');
+    const quoteMediaPreview = qs('#quoteMediaPreview');
+    const quoteEnterToPost = qs('#quoteEnterToPost');
+    
+    // Reset form
+    quoteText.value = '';
+    quoteNsfw.checked = false;
+    quoteMedia.value = '';
+    quoteMediaPreview.innerHTML = '';
+    
+    // Load saved Enter to post preference
+    const savedQuoteEnter = localStorage.getItem('quoteEnterToPost');
+    if (savedQuoteEnter) {
+        quoteEnterToPost.checked = savedQuoteEnter === 'true';
+    }
+    
+    // Build preview of quoted post
+    const displayName = post.display_name || post.handle || 'unknown';
+    const userLink = post.user_id ? `profile.php?id=${post.user_id}` : `profile.php?handle=${encodeURIComponent(post.handle)}`;
+    const content = post.content_html || marked.parse(post.content_md || '');
+    
+    preview.innerHTML = `
+        <div class="quote-meta">
+            <a href="${userLink}" class="mention">${displayName}</a> @${post.handle}
+        </div>
+        <div class="quote-body">${content}</div>
+    `;
+    
+    modal.classList.remove('hidden');
+    quoteText.focus();
+}
+
+// Hide quote modal
+function hideQuoteModal() {
+    const modal = qs('#quoteModal');
+    modal.classList.add('hidden');
+    currentQuotePostId = null;
+}
+
+// Submit quote post
+async function submitQuotePost() {
+    const quoteText = qs('#quoteText').value.trim();
+    const quoteNsfw = qs('#quoteNsfw').checked;
+    const quoteMedia = qs('#quoteMedia');
+    
+    if (!quoteText && (!quoteMedia.files || quoteMedia.files.length === 0)) {
+        alert('引用コメントまたは画像を入力してください');
+        return;
+    }
+    
+    const fd = new FormData();
+    fd.append('action', 'quote_post');
+    fd.append('post_id', currentQuotePostId);
+    fd.append('content', quoteText);
+    fd.append('nsfw', quoteNsfw ? '1' : '0');
+    
+    // Add media files
+    if (quoteMedia.files && quoteMedia.files.length > 0) {
+        const files = Array.from(quoteMedia.files).slice(0, MAX_MEDIA_FILES);
+        if (files.length === 1) {
+            fd.append('media', files[0]);
+        } else {
+            files.forEach((file, index) => {
+                fd.append(`media_${index}`, file);
+            });
+        }
+    }
+    
+    const r = await fetch('post.php', { 
+        method: 'POST', 
+        body: fd, 
+        credentials: 'include' 
+    }).then(r => r.json());
+    
+    if (r.ok) {
+        hideQuoteModal();
+        refreshFeed(true);
+    } else {
+        alert('引用失敗: ' + r.error);
+    }
+}
+
+// Old quotePost function for compatibility
 async function quotePost(post_id, text) {
     const r = await api('post.php', { action: 'quote_post', post_id, content: text });
     if (r.ok) refreshFeed(true); else alert('引用失敗: ' + r.error);
@@ -1344,7 +1507,7 @@ function renderPost(p, wrap, prepend = false) {
 
     const qt = ce('button');
     qt.textContent = '❝ 引用';
-    qt.onclick = () => { const t = prompt('引用コメント'); if (t) quotePost(p.id, t); };
+    qt.onclick = () => { showQuoteModal(p); };
 
     let delBtn = null;
     if (p._can_delete && !p.deleted) {

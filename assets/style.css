@@ -3345,3 +3345,190 @@ button:hover, .btn:hover {
     text-align: center;
     box-sizing: border-box;
 }
+
+/* Quote Modal Styles */
+.quote-modal-content {
+    width: 560px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 20px;
+    color: var(--text);
+}
+
+.close-btn {
+    background: transparent;
+    border: none;
+    font-size: 28px;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.close-btn:hover {
+    background: var(--border);
+    color: var(--text);
+}
+
+.quoted-post-preview {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.quoted-post-preview .quote-meta {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 8px;
+}
+
+.quoted-post-preview .quote-body {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.5;
+}
+
+#quoteText {
+    width: 100%;
+    min-height: 100px;
+    padding: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    resize: vertical;
+    margin-bottom: 12px;
+}
+
+#quoteText:focus {
+    outline: none;
+    border-color: var(--blue);
+}
+
+.quote-options {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 12px;
+    align-items: center;
+}
+
+.nsfw-checkbox,
+.enter-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text);
+}
+
+.nsfw-checkbox input,
+.enter-checkbox input {
+    cursor: pointer;
+}
+
+.quote-media-section {
+    margin-bottom: 16px;
+}
+
+.file-label {
+    display: inline-block;
+    padding: 8px 16px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text);
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.file-label:hover {
+    background: var(--border);
+}
+
+.media-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.media-preview img,
+.media-preview video {
+    max-width: 120px;
+    max-height: 120px;
+    border-radius: 6px;
+    object-fit: cover;
+    border: 1px solid var(--border);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+.btn-secondary,
+.btn-primary {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.btn-secondary {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+    background: var(--border);
+}
+
+.btn-primary {
+    background: var(--blue);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #1a8cd8;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(29, 155, 240, 0.3);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
