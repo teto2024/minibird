@@ -43,6 +43,7 @@ if ($action==='list'){
       'created_at'=>$row['created_at'],
       'like_count'=>(int)($row['like_count'] ?? 0),
       'user_liked'=>!empty($row['user_liked']),
+      'nsfw'=>(int)($row['nsfw'] ?? 0) === 1,
       '_can_delete'=>$can_delete
     ];
   }

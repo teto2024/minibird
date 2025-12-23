@@ -109,7 +109,7 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
   <input id="q" name="q" placeholder="検索..." value="<?=htmlspecialchars($q)?>">
   <button>検索</button>
 </form>
-  <div class="user">
+  <div class="user" style="position: relative;">
     <?php if ($me): ?>
       <a href="/profile.php?handle=<?=htmlspecialchars($me['handle'])?>" style="text-decoration: none; color: inherit;">@<?=htmlspecialchars($me['handle'])?></a>
       <button id="notificationBtn">

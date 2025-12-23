@@ -633,6 +633,12 @@ function renderReply(reply, embedYouTubeNow = true) {
             🗑️ 削除
         </button>` : '';
     
+    // NSFW判定
+    const isNsfw = reply.nsfw === true || reply.nsfw === 1 || reply.nsfw === '1';
+    const nsfwBlurStyle = isNsfw ? 'filter: blur(12px); cursor: pointer;' : '';
+    const nsfwOnClick = isNsfw ? `onclick="this.style.filter='none'; this.style.cursor='default';"` : '';
+    const nsfwTitle = isNsfw ? 'title="NSFW: クリックで表示"' : '';
+    
     // Media handling
     let mediaHtml = '';
     const media_paths = reply.media_paths || (reply.media_path ? [reply.media_path] : []);
@@ -710,7 +716,7 @@ function renderReply(reply, embedYouTubeNow = true) {
                     </div>
                 </div>
             </div>
-            <div class="reply-content">
+            <div class="reply-content" style="${nsfwBlurStyle}" ${nsfwOnClick} ${nsfwTitle}>
                 ${contentHtml}
                 ${mediaHtml}
             </div>

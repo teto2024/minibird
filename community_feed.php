@@ -435,12 +435,14 @@ function renderPosts(posts) {
         // Escape post content once and reuse
         const escapedContent = escapeHtml(post.content, false);
         
+        // NSFW判定（テキストとメディア両方で使用）
+        const isNsfw = post.is_nsfw == 1 || post.is_nsfw === true || post.is_nsfw === '1';
+        
         // NSFW画像処理（複数メディア対応）
         let mediaHtml = '';
         const media_paths = post.media_paths || (post.media_path ? [post.media_path] : []);
         
         if (media_paths.length > 0) {
-            const isNsfw = post.is_nsfw == 1 || post.is_nsfw === true || post.is_nsfw === '1';
             const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif'];
             const videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'flv', 'wmv', 'ogv', 'ogg'];
             const audioExts = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma', 'opus'];
@@ -493,6 +495,11 @@ function renderPosts(posts) {
             }
         }
         
+        // NSFW テキストブラー設定
+        const nsfwBlurStyle = isNsfw ? 'filter: blur(12px); cursor: pointer;' : '';
+        const nsfwOnClick = isNsfw ? `onclick="this.style.filter='none'; this.style.cursor='default';"` : '';
+        const nsfwTitle = isNsfw ? 'title="NSFW: クリックで表示"' : '';
+        
         // 削除ボタン（自分の投稿のみ表示）
         const deleteBtn = post.user_id === USER_ID ? 
             `<button class="post-action-btn" onclick="deletePost(${post.id})" style="color: #e53e3e;">
@@ -514,7 +521,7 @@ function renderPosts(posts) {
                     <span class="post-time">${formatTime(post.created_at)}</span>
                 </div>
             </div>
-            <div class="post-content" data-raw-content="${escapedContent.replace(/"/g, '&quot;')}">${escapedContent}</div>
+            <div class="post-content" style="${nsfwBlurStyle}" ${nsfwOnClick} ${nsfwTitle} data-raw-content="${escapedContent.replace(/"/g, '&quot;')}">${escapedContent}</div>
             ${mediaHtml}
             <div class="post-actions">
                 <button class="post-action-btn ${post.user_liked ? 'liked' : ''}" onclick="toggleLike(${post.id})">
