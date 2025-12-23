@@ -591,8 +591,8 @@ function escapeHtml(text) {
     div.textContent = text;
     let html = div.innerHTML.replace(/\n/g, '<br>');
     
-    // YouTube URL embedding
-    html = html.replace(/(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g, function(match, fullUrl, videoId) {
+    // YouTube URL embedding (supports www, m.youtube.com, and short URLs)
+    html = html.replace(/(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g, function(match, fullUrl, videoId) {
         return `<div class="youtube-embed-wrapper">
             <iframe class="youtube-embed" 
                     src="https://www.youtube.com/embed/${videoId}" 
@@ -679,8 +679,33 @@ async function deletePost(postId) {
 // 初回読み込み
 loadPosts();
 
-// 3秒ごとに自動更新
-setInterval(loadPosts, 3000);
+// 3秒ごとに自動更新（変更がある場合のみレンダリング）
+let lastPostsData = '';
+setInterval(async () => {
+    try {
+        const res = await fetch(`community_api.php?action=get_posts&community_id=${COMMUNITY_ID}&t=${Date.now()}`);
+        const data = await res.json();
+        
+        if (data.ok) {
+            // より包括的なハッシュ値を使用（ID、いいね数、返信数、コンテンツ、削除状態を検知）
+            const currentData = JSON.stringify(data.posts.map(p => ({
+                id: p.id,
+                like_count: p.like_count,
+                reply_count: p.reply_count,
+                content: p.content,
+                is_deleted: p.is_deleted || p.deleted_at
+            })));
+            
+            // 変更があった場合のみ再レンダリング
+            if (currentData !== lastPostsData) {
+                renderPosts(data.posts);
+                lastPostsData = currentData;
+            }
+        }
+    } catch (err) {
+        console.error('自動更新エラー', err);
+    }
+}, 3000);
 
 // コミュニティ削除
 async function deleteCommunity() {

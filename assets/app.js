@@ -36,13 +36,14 @@ function updateLikeUI(p) {
 // YouTube URL patterns constant for ID extraction
 const YOUTUBE_URL_PATTERNS = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-    /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
+    /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/,
+    /(?:m\.youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/
 ];
 
 // Common YouTube URL pattern for regex replacements in HTML
 // Note: This pattern is optimized for detecting YouTube URLs in typical social media posts
 // It handles the most common YouTube URL formats but may not cover every edge case
-const YOUTUBE_URL_PATTERN_STR = 'https?:\\/\\/(?:www\\.)?(?:youtube\\.com\\/watch\\?[^"\'\\s]*v=|youtu\\.be\\/|youtube\\.com\\/embed\\/)([a-zA-Z0-9_-]{11})';
+const YOUTUBE_URL_PATTERN_STR = 'https?:\\/\\/(?:www\\.|m\\.)?(?:youtube\\.com\\/watch\\?[^"\'\\s]*v=|youtu\\.be\\/|youtube\\.com\\/embed\\/)([a-zA-Z0-9_-]{11})';
 
 function extractYouTubeId(url) {
     // YouTube URL patterns:

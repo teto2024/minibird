@@ -180,6 +180,10 @@ if (!$original_post) {
     overflow: hidden;
     max-width: 100%;
 }
+.reply-content .youtube-embed-wrapper {
+    max-width: 100%;
+    margin: 12px 0;
+}
 .reply-actions {
     display: flex;
     gap: 15px;
@@ -401,7 +405,8 @@ let replies = [];
 function extractYouTubeId(url) {
     const patterns = [
         /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
-        /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
+        /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/,
+        /(?:m\.youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/
     ];
     
     for (const pattern of patterns) {
@@ -414,8 +419,8 @@ function extractYouTubeId(url) {
 }
 
 function embedYouTube(html) {
-    // Replace YouTube URLs with embeds
-    return html.replace(/(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g, function(match, fullUrl, videoId) {
+    // Replace YouTube URLs with embeds (supports www, m.youtube.com, and short URLs)
+    return html.replace(/(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g, function(match, fullUrl, videoId) {
         return `<div class="youtube-embed-wrapper">
             <iframe class="youtube-embed" 
                     src="https://www.youtube.com/embed/${videoId}" 
@@ -700,14 +705,44 @@ async function deleteReply(replyId) {
 // 初回読み込み
 loadReplies();
 
-// 3秒ごとに自動更新
-setInterval(loadReplies, 3000);
+// 3秒ごとに自動更新（返信のみチェック）
+let lastRepliesData = '';
+setInterval(async () => {
+    try {
+        const res = await fetch('replies_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'list', post_id: POST_ID})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            // より包括的なハッシュ値を使用（ID、いいね数、コンテンツ、削除状態を検知）
+            const currentData = JSON.stringify((data.items || []).map(r => ({
+                id: r.id,
+                like_count: r.like_count,
+                content: r.content_md || r.content_html,
+                is_deleted: r.is_deleted || r.deleted_at
+            })));
+            
+            // データが変わった場合のみ再レンダリング
+            if (currentData !== lastRepliesData) {
+                replies = data.items || [];
+                renderReplies();
+                lastRepliesData = currentData;
+            }
+        }
+    } catch (err) {
+        console.error('自動更新エラー', err);
+    }
+}, 3000);
 
 // Process original post content for YouTube embeds
 document.addEventListener('DOMContentLoaded', function() {
     const originalPostContent = document.querySelector('.original-post .reply-content');
-    if (originalPostContent) {
+    if (originalPostContent && !originalPostContent.dataset.youtubeEmbedded) {
         originalPostContent.innerHTML = embedYouTube(originalPostContent.innerHTML);
+        originalPostContent.dataset.youtubeEmbedded = 'true';
     }
 });
 
