@@ -475,7 +475,7 @@ function renderReplies() {
         return;
     }
     
-    // 既存のYouTube iframeを保存（URL別に保存して再利用）
+    // 既存のYouTube iframeを保存（URL別に保存して再利用）- 実際のDOMノードを保存
     const existingYouTubeIframes = {};
     container.querySelectorAll('.reply-item').forEach(replyEl => {
         const replyId = replyEl.dataset.replyId;
@@ -484,7 +484,8 @@ function renderReplies() {
             const src = iframe.getAttribute('src');
             if (src && replyId) {
                 const key = `${replyId}-${src}`;
-                existingYouTubeIframes[key] = iframe.cloneNode(true);
+                // Save the actual DOM node instead of cloning to preserve playback state
+                existingYouTubeIframes[key] = iframe;
             }
         });
     });

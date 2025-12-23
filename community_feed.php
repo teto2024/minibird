@@ -391,7 +391,7 @@ async function loadPosts() {
 function renderPosts(posts) {
     const container = document.getElementById('posts');
     
-    // 既存のYouTube iframeを保存（URL別に保存して再利用）
+    // 既存のYouTube iframeを保存（URL別に保存して再利用）- 実際のDOMノードを保存
     const existingYouTubeIframes = {};
     container.querySelectorAll('.community-post').forEach(postEl => {
         const postId = postEl.dataset.postId;
@@ -400,7 +400,8 @@ function renderPosts(posts) {
             const src = iframe.getAttribute('src');
             if (src && postId) {
                 const key = `${postId}-${src}`;
-                existingYouTubeIframes[key] = iframe.cloneNode(true);
+                // Save the actual DOM node instead of cloning to preserve playback state
+                existingYouTubeIframes[key] = iframe;
             }
         });
     });

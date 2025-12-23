@@ -717,13 +717,13 @@ body {
                             <input type="hidden" name="action" value="resolve_report">
                             <input type="hidden" name="report_id" value="<?= $report['id'] ?>">
                             <input type="hidden" name="report_action" value="delete_post">
-                            <input name="admin_comment" placeholder="コメント（任意）" style="width: 100%; padding: 6px; margin-bottom: 5px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);">
+                            <input type="text" id="resolve_comment_<?= $report['id'] ?>" name="admin_comment" placeholder="コメント（任意）" style="width: 100%; padding: 6px; margin-bottom: 5px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);">
                             <button type="submit" style="width: 100%; background: #f56565; color: white; padding: 8px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">投稿を削除 & 解決</button>
                         </form>
                         <form method="post" style="flex: 1; min-width: 200px;">
                             <input type="hidden" name="action" value="dismiss_report">
                             <input type="hidden" name="report_id" value="<?= $report['id'] ?>">
-                            <input name="admin_comment" placeholder="コメント（任意）" style="width: 100%; padding: 6px; margin-bottom: 5px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);">
+                            <input type="text" id="dismiss_comment_<?= $report['id'] ?>" name="admin_comment" placeholder="コメント（任意）" style="width: 100%; padding: 6px; margin-bottom: 5px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);">
                             <button type="submit" style="width: 100%; background: var(--muted); color: white; padding: 8px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">却下</button>
                         </form>
                     </div>
@@ -756,13 +756,13 @@ body {
                         <form method="post" style="flex: 1; min-width: 200px;">
                             <input type="hidden" name="action" value="approve_appeal">
                             <input type="hidden" name="appeal_id" value="<?= $appeal['id'] ?>">
-                            <input name="admin_comment" placeholder="コメント（任意）" style="width: 100%; padding: 6px; margin-bottom: 5px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);">
+                            <input type="text" id="approve_comment_<?= $appeal['id'] ?>" name="admin_comment" placeholder="コメント（任意）" style="width: 100%; padding: 6px; margin-bottom: 5px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);">
                             <button type="submit" style="width: 100%; background: #48bb78; color: white; padding: 8px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">承認（ミュート解除）</button>
                         </form>
                         <form method="post" style="flex: 1; min-width: 200px;">
                             <input type="hidden" name="action" value="reject_appeal">
                             <input type="hidden" name="appeal_id" value="<?= $appeal['id'] ?>">
-                            <input name="admin_comment" placeholder="コメント（任意）" style="width: 100%; padding: 6px; margin-bottom: 5px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);">
+                            <input type="text" id="reject_comment_<?= $appeal['id'] ?>" name="admin_comment" placeholder="コメント（任意）" style="width: 100%; padding: 6px; margin-bottom: 5px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text);">
                             <button type="submit" style="width: 100%; background: #f56565; color: white; padding: 8px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">却下</button>
                         </form>
                     </div>
@@ -776,7 +776,7 @@ body {
             <h3>🚫 禁止語句管理</h3>
             <form method="post" class="admin-form">
                 <input type="hidden" name="action" value="add_banword">
-                <input name="banword" placeholder="禁止する単語を入力..." required>
+                <input type="text" id="banword" name="banword" placeholder="禁止する単語を入力..." required>
                 <button type="submit">追加</button>
             </form>
             <ul class="admin-list">
@@ -798,7 +798,7 @@ body {
         <div class="admin-section">
             <h3>🔍 ユーザー検索</h3>
             <form method="get" class="admin-form">
-                <input name="search" placeholder="ユーザーIDまたはハンドルを入力..." value="<?= htmlspecialchars($search_query) ?>">
+                <input type="text" id="search" name="search" placeholder="ユーザーIDまたはハンドルを入力..." value="<?= htmlspecialchars($search_query) ?>">
                 <button type="submit">検索</button>
                 <?php if ($search_query): ?>
                 <a href="admin_unified.php" style="padding: 8px 16px; background: var(--muted); color: white; text-decoration: none; border-radius: 8px;">クリア</a>
@@ -810,13 +810,13 @@ body {
             <h3>👥 ユーザー制御</h3>
             <form method="post" class="admin-form">
                 <input type="hidden" name="action" value="mute_user">
-                <input name="mute_uid" type="number" placeholder="ユーザーID" required min="1">
-                <input name="minutes" type="number" value="30" placeholder="分" required min="1">
+                <input type="number" id="mute_uid" name="mute_uid" placeholder="ユーザーID" required min="1">
+                <input type="number" id="minutes" name="minutes" value="30" placeholder="分" required min="1">
                 <button type="submit">ミュート</button>
             </form>
             <form method="post" class="admin-form">
                 <input type="hidden" name="action" value="freeze_user">
-                <input name="freeze_uid" type="number" placeholder="ユーザーID" required min="1">
+                <input type="number" id="freeze_uid" name="freeze_uid" placeholder="ユーザーID" required min="1">
                 <button type="submit" style="background: var(--red);">凍結</button>
             </form>
             <p style="margin: 16px 0 8px; font-weight: 600; color: var(--blue);">ユーザー一覧：</p>
