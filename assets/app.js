@@ -749,6 +749,28 @@ function hideQuoteModal() {
     const modal = qs('#quoteModal');
     modal.classList.add('hidden');
     currentQuotePostId = null;
+    // Clear any error messages
+    const errorMsg = modal.querySelector('.quote-error-message');
+    if (errorMsg) errorMsg.remove();
+}
+
+// Show error in quote modal
+function showQuoteError(message) {
+    const modal = qs('#quoteModal');
+    const modalContent = modal.querySelector('.quote-modal-content');
+    
+    // Remove existing error message
+    const existingError = modal.querySelector('.quote-error-message');
+    if (existingError) existingError.remove();
+    
+    // Add new error message
+    const errorDiv = ce('div', 'quote-error-message');
+    errorDiv.style.cssText = 'background: #f56565; color: white; padding: 12px; border-radius: 8px; margin-bottom: 12px;';
+    errorDiv.textContent = message;
+    modalContent.insertBefore(errorDiv, modalContent.firstChild);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => errorDiv.remove(), 5000);
 }
 
 // Submit quote post
@@ -758,7 +780,7 @@ async function submitQuotePost() {
     const quoteMedia = qs('#quoteMedia');
     
     if (!quoteText && (!quoteMedia.files || quoteMedia.files.length === 0)) {
-        alert('引用コメントまたは画像を入力してください');
+        showQuoteError('引用コメントまたは画像を入力してください');
         return;
     }
     
@@ -790,7 +812,7 @@ async function submitQuotePost() {
         hideQuoteModal();
         refreshFeed(true);
     } else {
-        alert('引用失敗: ' + r.error);
+        showQuoteError('引用失敗: ' + r.error);
     }
 }
 

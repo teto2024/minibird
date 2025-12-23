@@ -7,6 +7,10 @@ error_reporting(E_ALL);
 require_once __DIR__ . '/config.php';
 header('Content-Type: application/json');
 
+// 定数定義
+define('ALLOWED_MEDIA_EXTENSIONS', ['png','jpg','jpeg','gif','webp','mp4','webm']);
+define('MAX_FILE_SIZE', 10 * 1024 * 1024); // 10MB
+
 try {
 
     if ($_SERVER['CONTENT_TYPE'] && str_starts_with($_SERVER['CONTENT_TYPE'], 'multipart/form-data')) {
@@ -23,6 +27,32 @@ try {
             if ($r['word'] !== '' && mb_stripos($text, $r['word']) !== false) return false;
         }
         return true;
+    }
+    
+    // ファイルアップロード検証関数
+    function validate_and_upload_file($file) {
+        if (!isset($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+            return null;
+        }
+        
+        // ファイルサイズチェック
+        if ($file['size'] > MAX_FILE_SIZE) {
+            return null;
+        }
+        
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, ALLOWED_MEDIA_EXTENSIONS)) {
+            return null;
+        }
+        
+        // より安全なファイル名生成
+        $name = bin2hex(random_bytes(16)) . '.' . $ext;
+        
+        if (move_uploaded_file($file['tmp_name'], 'uploads/' . $name)) {
+            return 'uploads/' . $name;
+        }
+        
+        return null;
     }
 
     if ($action === 'create_post') {
@@ -236,23 +266,19 @@ try {
         
         // 複数画像の処理
         $mediaPaths = [];
-        if (!empty($_FILES['media']['name']) && is_string($_FILES['media']['name'])) {
+        if (!empty($_FILES['media']['name']) && !is_array($_FILES['media']['name'])) {
             // 単一画像
-            $ext = strtolower(pathinfo($_FILES['media']['name'], PATHINFO_EXTENSION));
-            if (in_array($ext,['png','jpg','jpeg','gif','webp','mp4','webm'])) {
-                $name = uniqid().'.'.$ext;
-                move_uploaded_file($_FILES['media']['tmp_name'], 'uploads/'.$name);
-                $mediaPaths[] = 'uploads/'.$name;
+            $uploadedPath = validate_and_upload_file($_FILES['media']);
+            if ($uploadedPath) {
+                $mediaPaths[] = $uploadedPath;
             }
         } else {
             // 複数画像 (media_0, media_1, media_2, media_3)
             for ($i = 0; $i < 4; $i++) {
                 if (!empty($_FILES["media_$i"]['name'])) {
-                    $ext = strtolower(pathinfo($_FILES["media_$i"]['name'], PATHINFO_EXTENSION));
-                    if (in_array($ext,['png','jpg','jpeg','gif','webp','mp4','webm'])) {
-                        $name = uniqid().'.'.$ext;
-                        move_uploaded_file($_FILES["media_$i"]['tmp_name'], 'uploads/'.$name);
-                        $mediaPaths[] = 'uploads/'.$name;
+                    $uploadedPath = validate_and_upload_file($_FILES["media_$i"]);
+                    if ($uploadedPath) {
+                        $mediaPaths[] = $uploadedPath;
                     }
                 }
             }
