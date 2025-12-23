@@ -138,6 +138,8 @@ if (!$original_post) {
     padding-left: 15px;
     margin-bottom: 20px;
     transition: border-color 0.3s;
+    max-width: 100%;
+    overflow: hidden;
 }
 .reply-item:hover {
     border-left-color: #667eea;
@@ -175,6 +177,8 @@ if (!$original_post) {
     margin: 10px 0;
     line-height: 1.6;
     color: #4a5568;
+    overflow: hidden;
+    max-width: 100%;
 }
 .reply-actions {
     display: flex;
@@ -452,13 +456,14 @@ function renderReplies() {
         return;
     }
     
-    // 既存のYouTube iframeをwrapper全体で保存
+    // 既存のYouTube iframeを保存（iframe要素のみを保存）
     const existingReplies = {};
     container.querySelectorAll('.reply-item').forEach(replyEl => {
         const replyId = replyEl.dataset.replyId;
-        const youtubeWrappers = replyEl.querySelectorAll('.youtube-embed-wrapper');
-        if (youtubeWrappers.length > 0) {
-            existingReplies[replyId] = Array.from(youtubeWrappers);
+        const replyContent = replyEl.querySelector('.reply-content');
+        const youtubeIframes = replyContent ? replyContent.querySelectorAll('.youtube-embed') : [];
+        if (youtubeIframes.length > 0 && replyId) {
+            existingReplies[replyId] = Array.from(youtubeIframes);
         }
     });
     
@@ -470,13 +475,18 @@ function renderReplies() {
     Object.keys(existingReplies).forEach(replyId => {
         const newReplyEl = container.querySelector(`.reply-item[data-reply-id="${replyId}"]`);
         if (newReplyEl) {
-            const newWrappers = newReplyEl.querySelectorAll('.youtube-embed-wrapper');
-            const oldWrappers = existingReplies[replyId];
+            const newContent = newReplyEl.querySelector('.reply-content');
+            const newWrappers = newContent ? newContent.querySelectorAll('.youtube-embed-wrapper') : [];
+            const oldIframes = existingReplies[replyId];
             
             newWrappers.forEach((newWrapper, index) => {
-                if (oldWrappers[index]) {
-                    // wrapper全体を置き換えて再生状態を完全に維持
-                    newWrapper.parentNode.replaceChild(oldWrappers[index], newWrapper);
+                if (oldIframes[index]) {
+                    // 既存のiframeで置き換える（再生状態を維持）
+                    const oldIframe = oldIframes[index];
+                    const newIframe = newWrapper.querySelector('.youtube-embed');
+                    if (newIframe && oldIframe) {
+                        newIframe.parentNode.replaceChild(oldIframe, newIframe);
+                    }
                 }
             });
         }
