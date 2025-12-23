@@ -183,6 +183,20 @@ if (!$original_post) {
 .reply-content .youtube-embed-wrapper {
     max-width: 100%;
     margin: 12px 0;
+    /* Constrain YouTube embeds in reply content to prevent overflow */
+    position: relative;
+    padding-bottom: 56.25%;
+    height: 0;
+    overflow: hidden;
+    border-radius: 8px;
+}
+.reply-content .youtube-embed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
 }
 .reply-actions {
     display: flex;
@@ -461,45 +475,115 @@ function renderReplies() {
         return;
     }
     
-    // 既存のYouTube iframeを保存（iframe要素のみを保存）
-    const existingReplies = {};
+    // 既存のYouTube iframeを保存（URL別に保存して再利用）
+    const existingYouTubeIframes = {};
     container.querySelectorAll('.reply-item').forEach(replyEl => {
         const replyId = replyEl.dataset.replyId;
-        const replyContent = replyEl.querySelector('.reply-content');
-        const youtubeIframes = replyContent ? replyContent.querySelectorAll('.youtube-embed') : [];
-        if (youtubeIframes.length > 0 && replyId) {
-            existingReplies[replyId] = Array.from(youtubeIframes);
-        }
+        const youtubeIframes = replyEl.querySelectorAll('.youtube-embed');
+        youtubeIframes.forEach(iframe => {
+            const src = iframe.getAttribute('src');
+            if (src && replyId) {
+                const key = `${replyId}-${src}`;
+                existingYouTubeIframes[key] = iframe.cloneNode(true);
+            }
+        });
     });
     
     // 親投稿のみをレンダリング（ネスト構造を後で実装）
     const topLevelReplies = replies.filter(r => !r.parent_id || r.parent_id === POST_ID);
-    container.innerHTML = topLevelReplies.map(reply => renderReply(reply)).join('');
+    container.innerHTML = topLevelReplies.map(reply => renderReply(reply, false)).join('');
     
-    // YouTube iframeを復元（再生状態を維持）
-    Object.keys(existingReplies).forEach(replyId => {
-        const newReplyEl = container.querySelector(`.reply-item[data-reply-id="${replyId}"]`);
-        if (newReplyEl) {
-            const newContent = newReplyEl.querySelector('.reply-content');
-            const newWrappers = newContent ? newContent.querySelectorAll('.youtube-embed-wrapper') : [];
-            const oldIframes = existingReplies[replyId];
-            
-            newWrappers.forEach((newWrapper, index) => {
-                if (oldIframes[index]) {
-                    // 既存のiframeで置き換える（再生状態を維持）
-                    const oldIframe = oldIframes[index];
-                    const newIframe = newWrapper.querySelector('.youtube-embed');
-                    if (newIframe && oldIframe) {
-                        newIframe.parentNode.replaceChild(oldIframe, newIframe);
-                    }
-                }
-            });
+    // YouTube埋め込みを処理（既存のiframeを再利用）
+    container.querySelectorAll('.reply-item').forEach(replyEl => {
+        const replyId = replyEl.dataset.replyId;
+        const replyContent = replyEl.querySelector('.reply-content');
+        if (replyContent && !replyContent.dataset.youtubeProcessed) {
+            processYouTubeEmbeds(replyContent, replyId, existingYouTubeIframes);
+            replyContent.dataset.youtubeProcessed = 'true';
         }
     });
 }
 
-// 単一返信のHTML生成
-function renderReply(reply) {
+// YouTube埋め込み処理（既存のiframeを再利用）
+function processYouTubeEmbeds(contentElement, itemId, existingIframes) {
+    const html = contentElement.innerHTML;
+    const youtubePattern = /(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g;
+    
+    let match;
+    const replacements = [];
+    
+    while ((match = youtubePattern.exec(html)) !== null) {
+        const fullUrl = match[0];
+        const videoId = match[2];
+        const embedSrc = `https://www.youtube.com/embed/${videoId}`;
+        const key = `${itemId}-${embedSrc}`;
+        
+        replacements.push({
+            fullUrl: fullUrl,
+            videoId: videoId,
+            embedSrc: embedSrc,
+            hasExisting: existingIframes && existingIframes[key]
+        });
+    }
+    
+    if (replacements.length > 0) {
+        let newHtml = html;
+        replacements.forEach(rep => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'youtube-embed-wrapper';
+            
+            const key = `${itemId}-${rep.embedSrc}`;
+            if (rep.hasExisting && existingIframes[key]) {
+                // 既存のiframeを再利用（再生状態を維持）
+                wrapper.appendChild(existingIframes[key]);
+            } else {
+                // 新しいiframeを作成
+                const iframe = document.createElement('iframe');
+                iframe.className = 'youtube-embed';
+                iframe.src = rep.embedSrc;
+                iframe.setAttribute('frameborder', '0');
+                iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+                iframe.setAttribute('allowfullscreen', 'true');
+                wrapper.appendChild(iframe);
+            }
+            
+            const placeholder = document.createElement('div');
+            placeholder.className = 'youtube-placeholder-' + rep.videoId;
+            contentElement.appendChild(placeholder);
+            
+            newHtml = newHtml.replace(rep.fullUrl, `<div class="youtube-placeholder-${rep.videoId}"></div>`);
+        });
+        
+        contentElement.innerHTML = newHtml;
+        
+        // プレースホルダーを実際のiframeで置き換え
+        replacements.forEach(rep => {
+            const placeholder = contentElement.querySelector(`.youtube-placeholder-${rep.videoId}`);
+            if (placeholder) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'youtube-embed-wrapper';
+                
+                const key = `${itemId}-${rep.embedSrc}`;
+                if (rep.hasExisting && existingIframes[key]) {
+                    wrapper.appendChild(existingIframes[key]);
+                } else {
+                    const iframe = document.createElement('iframe');
+                    iframe.className = 'youtube-embed';
+                    iframe.src = rep.embedSrc;
+                    iframe.setAttribute('frameborder', '0');
+                    iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+                    iframe.setAttribute('allowfullscreen', 'true');
+                    wrapper.appendChild(iframe);
+                }
+                
+                placeholder.parentNode.replaceChild(wrapper, placeholder);
+            }
+        });
+    }
+}
+
+// 単一返信のHTML生成（embedYouTubeはfalseの場合は埋め込まない）
+function renderReply(reply, embedYouTubeNow = true) {
     const frameClass = reply.frame_class || '';
     const titleHtml = reply.title_text ? 
         `<span class="reply-title ${reply.title_css}">${reply.title_text}</span>` : '';
@@ -562,6 +646,12 @@ function renderReply(reply) {
         mediaHtml += '</div>';
     }
     
+    // コンテンツの処理（embedYouTubeNowがfalseの場合はYouTube埋め込みをしない）
+    let contentHtml = marked.parse(reply.content_md || reply.content_html);
+    if (embedYouTubeNow) {
+        contentHtml = embedYouTube(contentHtml);
+    }
+    
     return `
         <div class="reply-item ${frameClass}" data-reply-id="${reply.id}">
             <div class="reply-header">
@@ -581,7 +671,7 @@ function renderReply(reply) {
                 </div>
             </div>
             <div class="reply-content">
-                ${embedYouTube(marked.parse(reply.content_md || reply.content_html))}
+                ${contentHtml}
                 ${mediaHtml}
             </div>
             <div class="reply-actions">
