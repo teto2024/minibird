@@ -415,6 +415,14 @@ const POST_ID = <?= $post_id ?>;
 const USER_ID = <?= $me ? $me['id'] : 0 ?>;
 let replies = [];
 
+// marked.jsの設定：単一の改行も<br>として扱う
+if (typeof marked !== 'undefined') {
+    marked.setOptions({
+        breaks: true,  // 単一の改行を<br>に変換
+        gfm: true      // GitHub Flavored Markdown を有効化
+    });
+}
+
 // YouTube helper functions
 function extractYouTubeId(url) {
     const patterns = [
@@ -449,17 +457,31 @@ function embedYouTube(html) {
     });
 }
 
-// ハッシュタグをリンク化
+// ハッシュタグとメンションをリンク化
 function parseHashtags(html) {
+    // HTML特殊文字をエスケープするヘルパー関数
+    function escapeHtml(str) {
+        return str.replace(/[&<>"']/g, function(m) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
+        });
+    }
+    
     // 既にリンク化されている部分を分離
     const parts = html.split(/(<a[^>]*>.*?<\/a>)/gi);
     const result = parts.map((part, i) => {
         // 偶数インデックスはリンク外、奇数はリンク内
         if (i % 2 === 0) {
-            // ハッシュタグをリンク化（日本語、英数字、アンダースコアに対応）
-            return part.replace(/#([a-zA-Z0-9_\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]+)/g, (match, tag) => {
-                return `<a href="search.php?q=${encodeURIComponent('#' + tag)}" class="hashtag">#${tag}</a>`;
+            // メンションをリンク化（@username）
+            let processed = part.replace(/@([a-zA-Z0-9_]+)/g, (match, handle) => {
+                return `<a href="profile.php?handle=${encodeURIComponent(handle)}" class="mention">@${escapeHtml(handle)}</a>`;
             });
+            
+            // ハッシュタグをリンク化（日本語、英数字、アンダースコアに対応）
+            processed = processed.replace(/#([a-zA-Z0-9_\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]+)/g, (match, tag) => {
+                return `<a href="search.php?q=${encodeURIComponent('#' + tag)}" class="hashtag">#${escapeHtml(tag)}</a>`;
+            });
+            
+            return processed;
         }
         return part;
     });

@@ -103,8 +103,15 @@ function embedYouTube(html) {
 }
 
 function parseMessage(html) {
-    // メンションは既にサーバー側（feed.php）で変換済みなので、
-    // クライアント側では追加のURL自動リンク化とハッシュタグ変換を実行
+    // メンション、URL自動リンク化、ハッシュタグ変換を実行
+    // 注意: リンク内のテキストは変換しない
+    
+    // HTML特殊文字をエスケープするヘルパー関数
+    function escapeHtml(str) {
+        return str.replace(/[&<>"']/g, function(m) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
+        });
+    }
     
     // URLを自動リンク化（ただし既にリンクになっているものは除外）
     // より単純な方法: <a タグ内のURLは無視
@@ -112,21 +119,27 @@ function parseMessage(html) {
     const result = parts.map((part, i) => {
         // 偶数インデックスはリンク外、奇数はリンク内
         if (i % 2 === 0) {
+            // メンションをリンク化（@username）
+            // YouTube埋め込みやURL変換の前に処理
+            let processed = part.replace(/@([a-zA-Z0-9_]+)/g, (match, handle) => {
+                return `<a href="profile.php?handle=${encodeURIComponent(handle)}" class="mention">@${escapeHtml(handle)}</a>`;
+            });
+            
             // URLを自動リンク化
-            let processed = part.replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+            processed = processed.replace(/(https?:\/\/[^\s<]+)/g, (url) => {
                 // Check if it's a YouTube URL
                 const youtubeId = extractYouTubeId(url);
                 if (youtubeId) {
                     // Create YouTube embed
                     return createYouTubeEmbed(youtubeId);
                 }
-                return `<a href="${url}" target="_blank" class="link">${url}</a>`;
+                return `<a href="${escapeHtml(url)}" target="_blank" class="link">${escapeHtml(url)}</a>`;
             });
             
             // ハッシュタグをリンク化（日本語、英数字、アンダースコアに対応）
             // 既にリンク化されていない#タグのみ対象
             processed = processed.replace(/#([a-zA-Z0-9_\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]+)/g, (match, tag) => {
-                return `<a href="search.php?q=${encodeURIComponent('#' + tag)}" class="hashtag">#${tag}</a>`;
+                return `<a href="search.php?q=${encodeURIComponent('#' + tag)}" class="hashtag">#${escapeHtml(tag)}</a>`;
             });
             
             return processed;
@@ -167,6 +180,14 @@ async function api(path, data) {
 // DOMContentLoaded (整理版)
 // ---------------------
 document.addEventListener('DOMContentLoaded', () => {
+
+    // marked.jsの設定：単一の改行も<br>として扱う
+    if (typeof marked !== 'undefined') {
+        marked.setOptions({
+            breaks: true,  // 単一の改行を<br>に変換
+            gfm: true      // GitHub Flavored Markdown を有効化
+        });
+    }
 
     // Feed 初期ロード
     const feedEl = document.getElementById('feed');
