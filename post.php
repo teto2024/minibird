@@ -45,11 +45,18 @@ try {
             return null;
         }
         
+        // アップロードディレクトリの確認
+        $uploadDir = 'uploads/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+        
         // より安全なファイル名生成
         $name = bin2hex(random_bytes(16)) . '.' . $ext;
+        $targetPath = $uploadDir . $name;
         
-        if (move_uploaded_file($file['tmp_name'], 'uploads/' . $name)) {
-            return 'uploads/' . $name;
+        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+            return $targetPath;
         }
         
         return null;
