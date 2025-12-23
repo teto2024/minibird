@@ -7,6 +7,10 @@ error_reporting(E_ALL);
 require_once __DIR__ . '/config.php';
 header('Content-Type: application/json');
 
+// 定数定義
+define('ALLOWED_MEDIA_EXTENSIONS', ['png','jpg','jpeg','gif','webp','mp4','webm']);
+define('MAX_FILE_SIZE', 10 * 1024 * 1024); // 10MB
+
 try {
 
     if ($_SERVER['CONTENT_TYPE'] && str_starts_with($_SERVER['CONTENT_TYPE'], 'multipart/form-data')) {
@@ -23,6 +27,39 @@ try {
             if ($r['word'] !== '' && mb_stripos($text, $r['word']) !== false) return false;
         }
         return true;
+    }
+    
+    // ファイルアップロード検証関数
+    function validate_and_upload_file($file) {
+        if (!isset($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+            return null;
+        }
+        
+        // ファイルサイズチェック
+        if ($file['size'] > MAX_FILE_SIZE) {
+            return null;
+        }
+        
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, ALLOWED_MEDIA_EXTENSIONS)) {
+            return null;
+        }
+        
+        // アップロードディレクトリの確認
+        $uploadDir = 'uploads/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+        
+        // より安全なファイル名生成
+        $name = bin2hex(random_bytes(16)) . '.' . $ext;
+        $targetPath = $uploadDir . $name;
+        
+        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+            return $targetPath;
+        }
+        
+        return null;
     }
 
     if ($action === 'create_post') {
@@ -232,15 +269,53 @@ try {
         require_login();
         $post_id = (int)($_POST['post_id'] ?? $input['post_id'] ?? 0);
         $content = trim($_POST['content'] ?? $input['content'] ?? '');
-        if ($post_id<=0 || $content===''){ echo json_encode(['ok'=>false,'error'=>'bad_input']); exit; }
+        $nsfw = (int)($_POST['nsfw'] ?? $input['nsfw'] ?? 0);
+        
+        // 複数画像の処理
+        $mediaPaths = [];
+        if (isset($_FILES['media']) && !empty($_FILES['media']['name']) && !is_array($_FILES['media']['name'])) {
+            // 単一画像
+            $uploadedPath = validate_and_upload_file($_FILES['media']);
+            if ($uploadedPath) {
+                $mediaPaths[] = $uploadedPath;
+            }
+        } else {
+            // 複数画像 (media_0, media_1, media_2, media_3)
+            for ($i = 0; $i < 4; $i++) {
+                if (!empty($_FILES["media_$i"]['name'])) {
+                    $uploadedPath = validate_and_upload_file($_FILES["media_$i"]);
+                    if ($uploadedPath) {
+                        $mediaPaths[] = $uploadedPath;
+                    }
+                }
+            }
+        }
+        
+        // コンテンツまたはメディアが必要
+        if ($post_id<=0 || ($content==='' && count($mediaPaths)===0)){ 
+            echo json_encode(['ok'=>false,'error'=>'bad_input']); 
+            exit; 
+        }
+        
         $pdo = db();
         $st = $pdo->prepare("SELECT id, content_md FROM posts WHERE id=?");
         $st->execute([$post_id]);
         $ref = $st->fetch();
         if (!$ref) { echo json_encode(['ok'=>false,'error'=>'not_found']); exit; }
-        $html = markdown_to_html($content."\n\n> 引用: ".$ref['content_md']);
-        $pdo->prepare("INSERT INTO posts(user_id,content_md,content_html,quote_post_id,created_at) VALUES(?,?,?,?,NOW())")
-            ->execute([$_SESSION['uid'],$content,$html,$post_id]);
+        
+        // 引用時は埋め込み表示のみで、引用テキストは不要
+        $html = markdown_to_html($content);
+        
+        // 画像がある場合はJSON形式で保存
+        if (count($mediaPaths) > 0) {
+            $mediaJson = json_encode($mediaPaths);
+            $pdo->prepare("INSERT INTO posts(user_id,content_md,content_html,quote_post_id,nsfw,media_paths,created_at) VALUES(?,?,?,?,?,?,NOW())")
+                ->execute([$_SESSION['uid'],$content,$html,$post_id,$nsfw,$mediaJson]);
+        } else {
+            $pdo->prepare("INSERT INTO posts(user_id,content_md,content_html,quote_post_id,nsfw,created_at) VALUES(?,?,?,?,?,NOW())")
+                ->execute([$_SESSION['uid'],$content,$html,$post_id,$nsfw]);
+        }
+        
         echo json_encode(['ok'=>true]);
         exit;
     }

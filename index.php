@@ -218,6 +218,39 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
   <div id="mediaExpandContent"></div>
 </div>
 
+<!-- Quote Modal -->
+<div id="quoteModal" class="modal hidden">
+  <div class="modal-content quote-modal-content">
+    <div class="modal-header">
+      <h3>引用投稿</h3>
+      <button id="closeQuoteModal" class="close-btn">&times;</button>
+    </div>
+    <div class="quoted-post-preview" id="quotedPostPreview">
+      <!-- 引用元の投稿プレビューがここに表示されます -->
+    </div>
+    <textarea id="quoteText" placeholder="引用コメントを入力..." rows="4"></textarea>
+    <div class="quote-options">
+      <label class="nsfw-checkbox">
+        <input type="checkbox" id="quoteNsfw">
+        <span>NSFW</span>
+      </label>
+      <label class="enter-checkbox">
+        <input type="checkbox" id="quoteEnterToPost">
+        <span>Enterで投稿</span>
+      </label>
+    </div>
+    <div class="quote-media-section">
+      <label for="quoteMedia" class="file-label">📎 ファイルを添付</label>
+      <input type="file" id="quoteMedia" accept="image/*,video/*" multiple style="display:none">
+      <div id="quoteMediaPreview" class="media-preview"></div>
+    </div>
+    <div class="modal-actions">
+      <button id="cancelQuote" class="btn-secondary">キャンセル</button>
+      <button id="submitQuote" class="btn-primary">引用投稿</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="assets/app.js?v=<?= ASSETS_VERSION ?>"></script>
 </body>
