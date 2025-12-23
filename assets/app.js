@@ -765,7 +765,6 @@ function showQuoteError(message) {
     
     // Add new error message
     const errorDiv = ce('div', 'quote-error-message');
-    errorDiv.style.cssText = 'background: #f56565; color: white; padding: 12px; border-radius: 8px; margin-bottom: 12px;';
     errorDiv.textContent = message;
     modalContent.insertBefore(errorDiv, modalContent.firstChild);
     

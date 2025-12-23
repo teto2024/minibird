@@ -266,7 +266,7 @@ try {
         
         // 複数画像の処理
         $mediaPaths = [];
-        if (!empty($_FILES['media']['name']) && !is_array($_FILES['media']['name'])) {
+        if (isset($_FILES['media']) && !empty($_FILES['media']['name']) && !is_array($_FILES['media']['name'])) {
             // 単一画像
             $uploadedPath = validate_and_upload_file($_FILES['media']);
             if ($uploadedPath) {

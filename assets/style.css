@@ -5,6 +5,7 @@
     --muted: #8899a6;
     --blue: #1d9bf0;
     --red: #f91880;
+    --error: #f56565;
     --green: #00ba7c;
     --border: #22303c;
     --nsfw-blur: 12px;
@@ -3530,5 +3531,15 @@ button:hover, .btn:hover {
 }
 
 .btn-primary:active {
-    transform: translateY(0);
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(29, 155, 240, 0.2);
+}
+
+.quote-error-message {
+    background: var(--error);
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    animation: fadeIn 0.3s ease;
 }

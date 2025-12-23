@@ -266,12 +266,13 @@ if (isset($_GET['ajax']) && isset($_GET['type'])) {
     .loading::after {
         content: '...';
         animation: dots 1.5s infinite;
+        display: inline-block;
     }
     
     @keyframes dots {
-        0%, 20% { content: '.'; }
-        40% { content: '..'; }
-        60%, 100% { content: '...'; }
+        0%, 20% { opacity: 0; }
+        40% { opacity: 0.5; }
+        60%, 100% { opacity: 1; }
     }
     
     @media (max-width: 768px) {
