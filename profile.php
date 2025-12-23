@@ -587,6 +587,7 @@ $followersList = $st->fetchAll(PDO::FETCH_ASSOC);
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="assets/app.js?v=<?= ASSETS_VERSION ?>"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const feedEl = document.getElementById('feed');
@@ -654,6 +655,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
     }
+    
+    // フォロー数/フォロワー数クリックでモーダル表示（DOMContentLoaded内に移動）
+    document.getElementById('showFollowing')?.addEventListener('click', showFollowingModal);
+    document.getElementById('showFollowers')?.addEventListener('click', showFollowersModal);
 });
 
 // フォローリストモーダル制御
@@ -682,10 +687,6 @@ document.getElementById('followersModal')?.addEventListener('click', (e) => {
     if (e.target.id === 'followersModal') closeFollowersModal();
 });
 
-// フォロー数/フォロワー数クリックでモーダル表示
-document.getElementById('showFollowing')?.addEventListener('click', showFollowingModal);
-document.getElementById('showFollowers')?.addEventListener('click', showFollowersModal);
-
 // ESCキーでモーダル閉じる
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -695,6 +696,5 @@ document.addEventListener('keydown', (e) => {
 });
 
 </script>
-<script src="assets/app.js?v=<?= ASSETS_VERSION ?>"></script>
 </body>
 </html>
