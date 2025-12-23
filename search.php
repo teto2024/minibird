@@ -28,11 +28,24 @@ $posts = $stmt->fetchAll();
 }
 
 function linkify_handles($content) {
-    return preg_replace(
+    $html = htmlspecialchars($content);
+    // メンションをリンク化
+    $html = preg_replace(
         '/@([a-zA-Z0-9_]+)/',
         '<a href="/profile.php?handle=$1" class="mention">@$1</a>',
-        htmlspecialchars($content)
+        $html
     );
+    // ハッシュタグをリンク化（日本語対応）
+    $html = preg_replace_callback(
+        '/#([a-zA-Z0-9_\p{L}]+)/u',
+        function($matches) {
+            $tag = $matches[1];
+            $url = htmlspecialchars("search.php?q=" . urlencode('#' . $tag));
+            return '<a href="' . $url . '" class="hashtag">#' . htmlspecialchars($tag) . '</a>';
+        },
+        $html
+    );
+    return $html;
 }
 ?>
 <!doctype html>

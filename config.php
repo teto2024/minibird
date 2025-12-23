@@ -12,7 +12,7 @@ $NSFW_BLUR = 12;
 
 // ----- キャッシュバスティング用バージョン -----
 // ファイル更新時にこの値を変更すると、ブラウザキャッシュをクリアできます
-define('ASSETS_VERSION', '1.4.2');
+define('ASSETS_VERSION', '1.5.0');
 
 // ----- 集中タイマー設定 -----
 define('FOCUS_MAX_MINUTES', 180);
@@ -133,6 +133,18 @@ function markdown_to_html($md) {
             $safe
         );
     }
+    
+    // ハッシュタグリンクの処理（#hashtag）
+    // 日本語、英数字、アンダースコアに対応
+    $safe = preg_replace_callback(
+        '/#([a-zA-Z0-9_\p{L}]+)/u',
+        function($matches) {
+            $tag = $matches[1];
+            $url = htmlspecialchars("search.php?q=" . urlencode('#' . $tag), ENT_QUOTES, 'UTF-8');
+            return '<a href="' . $url . '" class="hashtag">#' . htmlspecialchars($tag) . '</a>';
+        },
+        $safe
+    );
     
     $safe = nl2br($safe);
     return $safe;

@@ -104,7 +104,7 @@ function embedYouTube(html) {
 
 function parseMessage(html) {
     // メンションは既にサーバー側（feed.php）で変換済みなので、
-    // クライアント側では追加のURL自動リンク化のみ実行
+    // クライアント側では追加のURL自動リンク化とハッシュタグ変換を実行
     
     // URLを自動リンク化（ただし既にリンクになっているものは除外）
     // より単純な方法: <a タグ内のURLは無視
@@ -112,7 +112,8 @@ function parseMessage(html) {
     const result = parts.map((part, i) => {
         // 偶数インデックスはリンク外、奇数はリンク内
         if (i % 2 === 0) {
-            return part.replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+            // URLを自動リンク化
+            let processed = part.replace(/(https?:\/\/[^\s<]+)/g, (url) => {
                 // Check if it's a YouTube URL
                 const youtubeId = extractYouTubeId(url);
                 if (youtubeId) {
@@ -121,6 +122,14 @@ function parseMessage(html) {
                 }
                 return `<a href="${url}" target="_blank" class="link">${url}</a>`;
             });
+            
+            // ハッシュタグをリンク化（日本語、英数字、アンダースコアに対応）
+            // 既にリンク化されていない#タグのみ対象
+            processed = processed.replace(/#([a-zA-Z0-9_\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]+)/g, (match, tag) => {
+                return `<a href="search.php?q=${encodeURIComponent('#' + tag)}" class="hashtag">#${tag}</a>`;
+            });
+            
+            return processed;
         }
         return part;
     });
@@ -811,7 +820,14 @@ async function submitQuotePost() {
         hideQuoteModal();
         refreshFeed(true);
     } else {
-        showQuoteError('引用失敗: ' + r.error);
+        if (r.error === 'muted') {
+            hideQuoteModal();
+            const remainingTime = r.remaining_time || '不明';
+            const mutedUntil = r.muted_until || '不明';
+            showMutePopup(remainingTime, mutedUntil);
+        } else {
+            showQuoteError('引用失敗: ' + r.error);
+        }
     }
 }
 
@@ -1306,7 +1322,17 @@ function renderPost(p, wrap, prepend = false) {
             const quoteMeta = ce('div', 'meta');
             const qDisplayName = p.quoted_post.display_name || p.quoted_post.handle || 'unknown';
             const qLink = p.quoted_post.user_id ? `profile.php?id=${p.quoted_post.user_id}` : `profile.php?handle=${encodeURIComponent(p.quoted_post.handle)}`;
-            quoteMeta.innerHTML = `<a href="${qLink}" class="mention">${qDisplayName}</a>`;
+            
+            // 引用先がリポストの場合、リポスター情報を併記
+            if (p.quoted_post.is_repost && p.quoted_post.reposter_handle) {
+                const reposterDisplayName = p.quoted_post.reposter_display_name || p.quoted_post.reposter_handle || 'unknown';
+                const reposterLink = p.quoted_post.reposter_user_id 
+                    ? `profile.php?id=${p.quoted_post.reposter_user_id}` 
+                    : `profile.php?handle=${encodeURIComponent(p.quoted_post.reposter_handle)}`;
+                quoteMeta.innerHTML = `<a href="${qLink}" class="mention">${qDisplayName}</a> <span style="color: var(--muted); font-size: 0.85em;">（<a href="${reposterLink}" class="mention">${reposterDisplayName}</a>がリポスト）</span>`;
+            } else {
+                quoteMeta.innerHTML = `<a href="${qLink}" class="mention">${qDisplayName}</a>`;
+            }
             quoteDiv.append(quoteMeta);
 
             const quoteBody = ce('div', 'quote-body');

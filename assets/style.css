@@ -508,6 +508,23 @@ button {
     color: #4db8ff;
 }
 
+/* ハッシュタグ用スタイル */
+.hashtag {
+    color: var(--blue);
+    text-decoration: none;
+    font-weight: 500;
+    background-color: rgba(29, 155, 240, 0.1);
+    padding: 1px 6px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.hashtag:hover {
+    text-decoration: none;
+    background-color: rgba(29, 155, 240, 0.2);
+    color: #4db8ff;
+}
+
 .content .body {
     display: block;
     white-space: normal;
@@ -3225,62 +3242,139 @@ button:hover, .btn:hover {
     color: #880e4f !important;
 }
 
-/* ハート湧き出しアニメーション */
-@keyframes heartFloat {
+/* 複数のハートが湧き出るアニメーション */
+@keyframes heartBurst1 {
     0% {
-        transform: translateY(0) scale(0.5);
+        transform: translateY(0) translateX(0) scale(0.3) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
         opacity: 1;
     }
     100% {
-        transform: translateY(-150px) scale(1);
+        transform: translateY(-120px) translateX(-30px) scale(1) rotate(-15deg);
         opacity: 0;
     }
+}
+
+@keyframes heartBurst2 {
+    0% {
+        transform: translateY(0) translateX(0) scale(0.3) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-150px) translateX(20px) scale(0.9) rotate(10deg);
+        opacity: 0;
+    }
+}
+
+@keyframes heartBurst3 {
+    0% {
+        transform: translateY(0) translateX(0) scale(0.3) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-100px) translateX(-50px) scale(0.7) rotate(-20deg);
+        opacity: 0;
+    }
+}
+
+@keyframes heartBurst4 {
+    0% {
+        transform: translateY(0) translateX(0) scale(0.3) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-130px) translateX(40px) scale(0.8) rotate(15deg);
+        opacity: 0;
+    }
+}
+
+@keyframes heartBurst5 {
+    0% {
+        transform: translateY(0) translateX(0) scale(0.3) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-140px) translateX(0) scale(1.1) rotate(5deg);
+        opacity: 0;
+    }
+}
+
+/* 下辺から複数ハートが湧き出す - 疑似要素利用 */
+.frame-heart::before {
+    content: '♡ ♡ ♡ ♡ ♡';
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 18px;
+    color: #ff69b4;
+    letter-spacing: 15px;
+    animation: heartBurst1 2.5s ease-out infinite;
+    pointer-events: none;
+    text-shadow: 0 0 5px rgba(255, 105, 180, 0.5);
 }
 
 .frame-heart::after {
-    content: '♡';
+    content: '❤ ❤ ❤';
     position: absolute;
-    bottom: 0;
-    right: 10%;
-    font-size: 25px;
+    bottom: 10px;
+    left: 40%;
+    font-size: 16px;
+    color: #ff1493;
+    letter-spacing: 20px;
+    animation: heartBurst2 2s ease-out infinite 0.5s;
+    pointer-events: none;
+    text-shadow: 0 0 5px rgba(255, 20, 147, 0.5);
+}
+
+/* 追加のハートエフェクト用の内部要素 */
+.frame-heart .content::before {
+    content: '💕';
+    position: absolute;
+    bottom: 15px;
+    right: 20%;
+    font-size: 20px;
+    animation: heartBurst3 2.2s ease-out infinite 0.8s;
+    pointer-events: none;
+}
+
+.frame-heart .content::after {
+    content: '💗';
+    position: absolute;
+    bottom: 8px;
+    left: 25%;
+    font-size: 22px;
+    animation: heartBurst4 2.8s ease-out infinite 0.3s;
+    pointer-events: none;
+}
+
+.frame-heart .avatar {
+    position: relative;
+}
+
+.frame-heart .avatar::after {
+    content: '♥';
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    font-size: 14px;
     color: #ff69b4;
-    animation: heartFloat 3s ease-in infinite;
+    animation: heartBurst5 3s ease-out infinite 1s;
     pointer-events: none;
-}
-
-/* 複数のハートを生成するために疑似要素を追加 */
-.frame-heart::before {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 100%;
-    height: 100%;
-    background-image: 
-        radial-gradient(circle at 15% 100%, transparent 20px, #ff69b4 20px, #ff69b4 22px, transparent 22px),
-        radial-gradient(circle at 30% 100%, transparent 20px, #ff69b4 20px, #ff69b4 22px, transparent 22px),
-        radial-gradient(circle at 45% 100%, transparent 20px, #ff69b4 20px, #ff69b4 22px, transparent 22px),
-        radial-gradient(circle at 60% 100%, transparent 20px, #ff69b4 20px, #ff69b4 22px, transparent 22px),
-        radial-gradient(circle at 75% 100%, transparent 20px, #ff69b4 20px, #ff69b4 22px, transparent 22px);
-    background-size: 20% 30%;
-    background-repeat: no-repeat;
-    animation: heartsContinuous 4s ease-in-out infinite;
-    pointer-events: none;
-    opacity: 0.7;
-}
-
-@keyframes heartsContinuous {
-    0% {
-        transform: translateY(0);
-        opacity: 0;
-    }
-    20% {
-        opacity: 0.7;
-    }
-    100% {
-        transform: translateY(-200%);
-        opacity: 0;
-    }
 }
 
 /* Media Expand Modal */
