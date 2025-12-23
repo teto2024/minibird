@@ -233,15 +233,6 @@ try {
         $post_id = (int)($_POST['post_id'] ?? $input['post_id'] ?? 0);
         $content = trim($_POST['content'] ?? $input['content'] ?? '');
         $nsfw = (int)($_POST['nsfw'] ?? $input['nsfw'] ?? 0);
-        if ($post_id<=0 || $content===''){ echo json_encode(['ok'=>false,'error'=>'bad_input']); exit; }
-        $pdo = db();
-        $st = $pdo->prepare("SELECT id, content_md FROM posts WHERE id=?");
-        $st->execute([$post_id]);
-        $ref = $st->fetch();
-        if (!$ref) { echo json_encode(['ok'=>false,'error'=>'not_found']); exit; }
-        
-        // 引用時は埋め込み表示のみで、引用テキストは不要
-        $html = markdown_to_html($content);
         
         // 複数画像の処理
         $mediaPaths = [];
@@ -266,6 +257,21 @@ try {
                 }
             }
         }
+        
+        // コンテンツまたはメディアが必要
+        if ($post_id<=0 || ($content==='' && count($mediaPaths)===0)){ 
+            echo json_encode(['ok'=>false,'error'=>'bad_input']); 
+            exit; 
+        }
+        
+        $pdo = db();
+        $st = $pdo->prepare("SELECT id, content_md FROM posts WHERE id=?");
+        $st->execute([$post_id]);
+        $ref = $st->fetch();
+        if (!$ref) { echo json_encode(['ok'=>false,'error'=>'not_found']); exit; }
+        
+        // 引用時は埋め込み表示のみで、引用テキストは不要
+        $html = markdown_to_html($content);
         
         // 画像がある場合はJSON形式で保存
         if (count($mediaPaths) > 0) {
