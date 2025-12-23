@@ -18,7 +18,7 @@ $target_id = isset($_POST['target_id']) ? (int)$_POST['target_id'] : (isset($_GE
 try {
     if ($action === 'list_following') {
         // 指定ユーザーがフォローしている一覧
-        $stmt = $pdo->prepare("SELECT u.id, u.handle_name 
+        $stmt = $pdo->prepare("SELECT u.id, u.handle, u.display_name, u.icon 
             FROM follows f 
             JOIN users u ON f.followee_id = u.id 
             WHERE f.follower_id = ?");
@@ -28,7 +28,7 @@ try {
 
     } elseif ($action === 'list_followers') {
         // 指定ユーザーをフォローしている一覧
-        $stmt = $pdo->prepare("SELECT u.id, u.handle_name 
+        $stmt = $pdo->prepare("SELECT u.id, u.handle, u.display_name, u.icon 
             FROM follows f 
             JOIN users u ON f.follower_id = u.id 
             WHERE f.followee_id = ?");
