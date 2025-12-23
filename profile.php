@@ -548,7 +548,7 @@ $followersList = $st->fetchAll(PDO::FETCH_ASSOC);
                 <div class="follow-list-empty">まだ誰もフォローしていません</div>
             <?php else: ?>
                 <?php foreach ($followingList as $followUser): ?>
-                    <a href="profile.php?id=<?= $followUser['id'] ?>" class="follow-user-item">
+                    <a href="profile.php?id=<?= (int)$followUser['id'] ?>" class="follow-user-item">
                         <img src="<?= htmlspecialchars($followUser['icon'] ?? 'assets/default_icon.png') ?>" class="follow-user-icon" alt="">
                         <div class="follow-user-info">
                             <span class="follow-user-name"><?= htmlspecialchars($followUser['display_name'] ?? $followUser['handle']) ?></span>
@@ -573,7 +573,7 @@ $followersList = $st->fetchAll(PDO::FETCH_ASSOC);
                 <div class="follow-list-empty">まだフォロワーがいません</div>
             <?php else: ?>
                 <?php foreach ($followersList as $followerUser): ?>
-                    <a href="profile.php?id=<?= $followerUser['id'] ?>" class="follow-user-item">
+                    <a href="profile.php?id=<?= (int)$followerUser['id'] ?>" class="follow-user-item">
                         <img src="<?= htmlspecialchars($followerUser['icon'] ?? 'assets/default_icon.png') ?>" class="follow-user-icon" alt="">
                         <div class="follow-user-info">
                             <span class="follow-user-name"><?= htmlspecialchars($followerUser['display_name'] ?? $followerUser['handle']) ?></span>
