@@ -65,6 +65,30 @@ function user() {
     return $st->fetch();
 }
 
+// ----- ミュートチェック -----
+// ユーザーがミュート中かどうかをチェックし、ミュート中ならJSONエラーを返して終了
+function check_mute_and_exit_if_muted() {
+    $u = user();
+    if ($u && $u['muted_until'] && strtotime($u['muted_until']) > time()) {
+        $remaining_seconds = strtotime($u['muted_until']) - time();
+        $remaining_hours = floor($remaining_seconds / 3600);
+        $remaining_minutes = floor(($remaining_seconds % 3600) / 60);
+        $remaining_time_str = '';
+        if ($remaining_hours > 0) {
+            $remaining_time_str = "{$remaining_hours}時間{$remaining_minutes}分";
+        } else {
+            $remaining_time_str = "{$remaining_minutes}分";
+        }
+        echo json_encode([
+            'ok' => false,
+            'error' => 'muted',
+            'muted_until' => $u['muted_until'],
+            'remaining_time' => $remaining_time_str
+        ]);
+        exit;
+    }
+}
+
 // ----- メンション関連の定数と関数 -----
 define('MENTION_PATTERN', '/@([a-zA-Z0-9_]+)/');
 

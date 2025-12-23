@@ -973,8 +973,13 @@ function showMutePopup(remainingTime, mutedUntil) {
                 </div>
             </div>
             
-            <div style="text-align: center;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <p style="color: var(--text); margin: 10px 0;">この制限に異議がある場合は、異議申し立てを行うことができます</p>
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: center;">
                 <button id="muteClose" style="padding: 12px 24px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); cursor: pointer; font-weight: bold;">閉じる</button>
+                <button id="appealBtn" style="padding: 12px 24px; border: none; border-radius: 6px; background: #4299e1; color: white; cursor: pointer; font-weight: bold;">異議申し立て</button>
             </div>
         </div>
     `;
@@ -983,6 +988,67 @@ function showMutePopup(remainingTime, mutedUntil) {
     
     document.getElementById('muteClose').onclick = () => {
         document.body.removeChild(dialog);
+    };
+    
+    document.getElementById('appealBtn').onclick = () => {
+        document.body.removeChild(dialog);
+        showAppealDialog();
+    };
+}
+
+// 異議申し立てダイアログを表示
+function showAppealDialog() {
+    const dialog = document.createElement('div');
+    dialog.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+    dialog.innerHTML = `
+        <div style="background: var(--card); border-radius: 12px; padding: 30px; max-width: 600px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <h3 style="margin: 0 0 20px 0; color: var(--text);">異議申し立て</h3>
+            <p style="color: var(--text); margin-bottom: 20px;">ミュート措置に対する異議申し立ての理由を詳しく記入してください。管理者が審査します。</p>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: var(--text);">申し立て理由（必須）</label>
+                <textarea id="appealReason" rows="6" style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); resize: vertical; font-family: inherit;" placeholder="なぜミュートが不当だと考えるのか、詳しく説明してください"></textarea>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="appealCancel" style="padding: 10px 20px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); cursor: pointer;">キャンセル</button>
+                <button id="appealSubmit" style="padding: 10px 20px; border: none; border-radius: 6px; background: #4299e1; color: white; cursor: pointer; font-weight: bold;">申し立てる</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(dialog);
+    
+    document.getElementById('appealCancel').onclick = () => {
+        document.body.removeChild(dialog);
+    };
+    
+    document.getElementById('appealSubmit').onclick = async () => {
+        const reason = document.getElementById('appealReason').value.trim();
+        
+        if (!reason) {
+            alert('申し立て理由を入力してください');
+            return;
+        }
+        
+        try {
+            const res = await fetch('appeal_api.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    action: 'submit_appeal',
+                    reason: reason
+                })
+            });
+            const data = await res.json();
+            
+            if (data.ok) {
+                alert('異議申し立てを受け付けました。管理者が審査します。');
+                document.body.removeChild(dialog);
+            } else {
+                alert('異議申し立てに失敗しました: ' + (data.message || data.error));
+            }
+        } catch (err) {
+            alert('ネットワークエラー');
+        }
     };
 }
 </script>

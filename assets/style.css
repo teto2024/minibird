@@ -3235,6 +3235,7 @@ button:hover, .btn:hover {
     color: #c2185b;
     font-weight: 600;
     overflow: hidden;
+    will-change: transform;
 }
 
 .frame-heart .meta,
