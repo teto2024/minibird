@@ -435,6 +435,9 @@ function extractYouTubeId(url) {
 function embedYouTube(html) {
     // Replace YouTube URLs with embeds (supports www, m.youtube.com, and short URLs)
     return html.replace(/(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g, function(match, fullUrl, videoId) {
+        // Skip if videoId is null or undefined
+        if (!videoId) return match;
+        
         return `<div class="youtube-embed-wrapper">
             <iframe class="youtube-embed" 
                     src="https://www.youtube.com/embed/${videoId}" 
@@ -524,6 +527,10 @@ function processYouTubeEmbeds(contentElement, itemId, existingIframes) {
         const fullMatch = match[0];
         const url = match[1];
         const videoId = match[2];
+        
+        // Skip if videoId is null or undefined
+        if (!videoId) continue;
+        
         const embedSrc = `https://www.youtube.com/embed/${videoId}`;
         const key = `${itemId}-${embedSrc}`;
         
@@ -550,6 +557,10 @@ function processYouTubeEmbeds(contentElement, itemId, existingIframes) {
         const prefix = match[1];
         const url = match[2];
         const videoId = match[3];
+        
+        // Skip if videoId is null or undefined
+        if (!videoId) continue;
+        
         const embedSrc = `https://www.youtube.com/embed/${videoId}`;
         const key = `${itemId}-${embedSrc}`;
         

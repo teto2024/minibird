@@ -392,6 +392,10 @@ function processYouTubeEmbeds(contentElement, itemId, existingIframes) {
     while ((match = youtubePattern.exec(html)) !== null) {
         const fullUrl = match[0];
         const videoId = match[2];
+        
+        // Skip if videoId is null or undefined
+        if (!videoId) continue;
+        
         const embedSrc = `https://www.youtube.com/embed/${videoId}`;
         const key = `${itemId}-${embedSrc}`;
         
@@ -524,6 +528,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const rawContent = originalPostContent.dataset.rawContent;
         if (rawContent) {
             originalPostContent.innerHTML = escapeHtml(rawContent);
+            // Process YouTube embeds for the original post
+            processYouTubeEmbeds(originalPostContent, 'original-post', {});
             originalPostContent.dataset.youtubeProcessed = 'true';
         }
     }
