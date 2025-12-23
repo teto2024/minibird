@@ -431,6 +431,9 @@ function renderPosts(posts) {
             roleBadgeHtml = '<span class="role-badge mod-badge">MOD</span>';
         }
         
+        // Escape post content once and reuse
+        const escapedContent = escapeHtml(post.content, false);
+        
         // NSFW画像処理（複数メディア対応）
         let mediaHtml = '';
         const media_paths = post.media_paths || (post.media_path ? [post.media_path] : []);
@@ -510,7 +513,7 @@ function renderPosts(posts) {
                     <span class="post-time">${formatTime(post.created_at)}</span>
                 </div>
             </div>
-            <div class="post-content" data-raw-content="${escapeHtml(post.content).replace(/"/g, '&quot;')}">${escapeHtml(post.content, false)}</div>
+            <div class="post-content" data-raw-content="${escapedContent.replace(/"/g, '&quot;')}">${escapedContent}</div>
             ${mediaHtml}
             <div class="post-actions">
                 <button class="post-action-btn ${post.user_liked ? 'liked' : ''}" onclick="toggleLike(${post.id})">
@@ -574,22 +577,27 @@ function processYouTubeEmbeds(contentElement, itemId, existingIframes) {
                 wrapper.className = 'youtube-embed-wrapper';
                 
                 const key = `${itemId}-${rep.embedSrc}`;
-                if (rep.hasExisting && existingIframes[key]) {
-                    wrapper.appendChild(existingIframes[key]);
-                } else {
-                    const iframe = document.createElement('iframe');
-                    iframe.className = 'youtube-embed';
-                    iframe.src = rep.embedSrc;
-                    iframe.setAttribute('frameborder', '0');
-                    iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
-                    iframe.setAttribute('allowfullscreen', 'true');
-                    wrapper.appendChild(iframe);
-                }
+                const iframe = createYouTubeIframe(rep.embedSrc, existingIframes ? existingIframes[key] : null);
+                wrapper.appendChild(iframe);
                 
                 placeholder.parentNode.replaceChild(wrapper, placeholder);
             }
         });
     }
+}
+
+// YouTube iframeを作成または既存のものを返す
+function createYouTubeIframe(embedSrc, existingIframe) {
+    if (existingIframe) {
+        return existingIframe;
+    }
+    
+    const iframe = document.createElement('iframe');
+    iframe.className = 'youtube-embed';
+    iframe.src = embedSrc;
+    iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+    iframe.setAttribute('allowfullscreen', 'true');
+    return iframe;
 }
 
 // いいね切り替え

@@ -419,22 +419,27 @@ function processYouTubeEmbeds(contentElement, itemId, existingIframes) {
                 wrapper.className = 'youtube-embed-wrapper';
                 
                 const key = `${itemId}-${rep.embedSrc}`;
-                if (rep.hasExisting && existingIframes[key]) {
-                    wrapper.appendChild(existingIframes[key]);
-                } else {
-                    const iframe = document.createElement('iframe');
-                    iframe.className = 'youtube-embed';
-                    iframe.src = rep.embedSrc;
-                    iframe.setAttribute('frameborder', '0');
-                    iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
-                    iframe.setAttribute('allowfullscreen', 'true');
-                    wrapper.appendChild(iframe);
-                }
+                const iframe = createYouTubeIframe(rep.embedSrc, existingIframes ? existingIframes[key] : null);
+                wrapper.appendChild(iframe);
                 
                 placeholder.parentNode.replaceChild(wrapper, placeholder);
             }
         });
     }
+}
+
+// YouTube iframeを作成または既存のものを返す
+function createYouTubeIframe(embedSrc, existingIframe) {
+    if (existingIframe) {
+        return existingIframe;
+    }
+    
+    const iframe = document.createElement('iframe');
+    iframe.className = 'youtube-embed';
+    iframe.src = embedSrc;
+    iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+    iframe.setAttribute('allowfullscreen', 'true');
+    return iframe;
 }
 
 // いいね切り替え
