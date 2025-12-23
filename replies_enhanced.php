@@ -475,7 +475,7 @@ function renderReplies() {
         return;
     }
     
-    // 既存のYouTube iframeを保存（URL別に保存して再利用）
+    // 既存のYouTube iframeを保存（URL別に保存して再利用）- 実際のDOMノードを保存
     const existingYouTubeIframes = {};
     container.querySelectorAll('.reply-item').forEach(replyEl => {
         const replyId = replyEl.dataset.replyId;
@@ -484,7 +484,8 @@ function renderReplies() {
             const src = iframe.getAttribute('src');
             if (src && replyId) {
                 const key = `${replyId}-${src}`;
-                existingYouTubeIframes[key] = iframe.cloneNode(true);
+                // Save the actual DOM node instead of cloning to preserve playback state
+                existingYouTubeIframes[key] = iframe;
             }
         });
     });
@@ -507,36 +508,80 @@ function renderReplies() {
 // YouTube埋め込み処理（既存のiframeを再利用）
 function processYouTubeEmbeds(contentElement, itemId, existingIframes) {
     const html = contentElement.innerHTML;
-    const youtubePattern = /(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s<]*v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<]*))/g;
+    
+    // Pattern 1: YouTube links inside <a> tags (from marked.parse)
+    // Matches: <a href="youtube-url">...</a>
+    const anchorPattern = /<a[^>]*href=["'](https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s"'<]*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})[^\s"'<]*)["'][^>]*>.*?<\/a>/gi;
+    
+    // Pattern 2: Bare YouTube URLs not in anchor tags
+    const bareUrlPattern = /(^|[^"'>])(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^\s<"']*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})(?:[^\s<"']*))/gi;
     
     let match;
     const replacements = [];
     
-    while ((match = youtubePattern.exec(html)) !== null) {
-        const fullUrl = match[0];
+    // Find YouTube links in anchor tags
+    while ((match = anchorPattern.exec(html)) !== null) {
+        const fullMatch = match[0];
+        const url = match[1];
         const videoId = match[2];
         const embedSrc = `https://www.youtube.com/embed/${videoId}`;
         const key = `${itemId}-${embedSrc}`;
         
         replacements.push({
-            fullUrl: fullUrl,
+            fullMatch: fullMatch,
             videoId: videoId,
             embedSrc: embedSrc,
-            hasExisting: existingIframes && existingIframes[key]
+            hasExisting: existingIframes && existingIframes[key],
+            index: match.index
+        });
+    }
+    
+    // Reset lastIndex for the bare URL pattern
+    bareUrlPattern.lastIndex = 0;
+    
+    // Find bare YouTube URLs
+    let tempHtml = html;
+    replacements.forEach(rep => {
+        // Remove already-found anchor tag URLs to avoid duplicate matching
+        tempHtml = tempHtml.replace(rep.fullMatch, '');
+    });
+    
+    while ((match = bareUrlPattern.exec(tempHtml)) !== null) {
+        const prefix = match[1];
+        const url = match[2];
+        const videoId = match[3];
+        const embedSrc = `https://www.youtube.com/embed/${videoId}`;
+        const key = `${itemId}-${embedSrc}`;
+        
+        replacements.push({
+            fullMatch: match[0],
+            videoId: videoId,
+            embedSrc: embedSrc,
+            hasExisting: existingIframes && existingIframes[key],
+            prefix: prefix,
+            index: match.index
         });
     }
     
     if (replacements.length > 0) {
+        // Sort replacements by index in reverse order to replace from end to start
+        // This prevents index shifts when replacing
+        replacements.sort((a, b) => (b.index || 0) - (a.index || 0));
+        
         let newHtml = html;
         replacements.forEach(rep => {
-            newHtml = newHtml.replace(rep.fullUrl, `<div class="youtube-placeholder-${rep.videoId}"></div>`);
+            const placeholder = `<div class="youtube-placeholder-${rep.videoId}-${Math.random().toString(36).slice(2, 11)}"></div>`;
+            // Use a more specific replacement - only replace the first occurrence
+            newHtml = newHtml.replace(rep.fullMatch, rep.prefix ? rep.prefix + placeholder : placeholder);
+            // Store the placeholder class for later retrieval
+            rep.placeholderClass = placeholder.match(/youtube-placeholder-[a-z0-9-]+/)[0];
         });
         
         contentElement.innerHTML = newHtml;
         
         // プレースホルダーを実際のiframeで置き換え
         replacements.forEach(rep => {
-            const placeholder = contentElement.querySelector(`.youtube-placeholder-${rep.videoId}`);
+            const placeholder = contentElement.querySelector(`.${rep.placeholderClass}`);
             if (placeholder) {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'youtube-embed-wrapper';

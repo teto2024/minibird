@@ -48,7 +48,7 @@ function linkify_handles($content) {
   <a href="/" class="logo">🐦 MiniBird</a>
   <div class="search">
     <form method="get" action="/search.php">
-      <input name="q" placeholder="検索..." value="<?=htmlspecialchars($q)?>">
+      <input id="q" name="q" placeholder="検索..." value="<?=htmlspecialchars($q)?>">
       <button>検索</button>
     </form>
   </div>
