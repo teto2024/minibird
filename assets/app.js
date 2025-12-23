@@ -1126,16 +1126,25 @@ function renderPost(p, wrap, prepend = false) {
             quoteDiv.append(quoteMeta);
 
             const quoteBody = ce('div', 'quote-body');
-            const quotedMd = p.quoted_post.content_md || p.quoted_post.content_html || '';
-            quoteBody.innerHTML = embedYouTube(parseMessage(marked.parse(quotedMd)));
+            // Use content_html first as it already has mention links processed
+            const quotedContent = p.quoted_post.content_html || '';
+            const quotedHtml = quotedContent || embedYouTube(parseMessage(marked.parse(p.quoted_post.content_md || '')));
+            quoteBody.innerHTML = quotedHtml;
             quoteDiv.append(quoteBody);
 
             body.append(quoteDiv);
         }
 
-        const rawContent = p.content_md || p.content_html || '';
+        // Use content_html first as it already has mention links processed by server
+        const contentHtml = p.content_html || '';
         const myBody = ce('div', 'my-body');
-        myBody.innerHTML = embedYouTube(parseMessage(marked.parse(rawContent)));
+        if (contentHtml) {
+            // content_html already has mention links, just add YouTube embeds
+            myBody.innerHTML = embedYouTube(contentHtml);
+        } else {
+            // Fallback to markdown parsing if no content_html
+            myBody.innerHTML = embedYouTube(parseMessage(marked.parse(p.content_md || '')));
+        }
         body.append(myBody);
     }
 

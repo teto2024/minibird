@@ -14,6 +14,7 @@ if ($action==='list'){
     SELECT r.*, u.handle, u.display_name, u.icon, u.active_frame_id, u.role,
            f.css_token as frame_class,
            ut.title_id, tp.title_text, tp.title_css,
+           r.nsfw,
            (SELECT COUNT(*) FROM likes WHERE post_id = r.id) as like_count,
            ".($uid ? "EXISTS(SELECT 1 FROM likes WHERE post_id = r.id AND user_id = $uid)" : "0")." as user_liked
     FROM replies r
@@ -43,6 +44,7 @@ if ($action==='list'){
       'created_at'=>$row['created_at'],
       'like_count'=>(int)($row['like_count'] ?? 0),
       'user_liked'=>!empty($row['user_liked']),
+      'nsfw'=>(int)($row['nsfw'] ?? 0) === 1,
       '_can_delete'=>$can_delete
     ];
   }
