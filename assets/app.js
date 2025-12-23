@@ -1310,28 +1310,30 @@ function renderPost(p, wrap, prepend = false) {
             quoteDiv.append(quoteMeta);
 
             const quoteBody = ce('div', 'quote-body');
-            // Use content_html first as it already has mention links processed
-            const quotedContent = p.quoted_post.content_html || '';
-            // If content_html exists, use it; otherwise process markdown
-            if (quotedContent) {
-                quoteBody.innerHTML = embedYouTube(quotedContent);
+            // Use content_md for markdown parsing if available for quoted posts
+            if (p.quoted_post.content_md) {
+                quoteBody.innerHTML = embedYouTube(parseMessage(marked.parse(p.quoted_post.content_md)));
+            } else if (p.quoted_post.content_html) {
+                quoteBody.innerHTML = embedYouTube(p.quoted_post.content_html);
             } else {
-                quoteBody.innerHTML = embedYouTube(parseMessage(marked.parse(p.quoted_post.content_md || '')));
+                quoteBody.innerHTML = '';
             }
             quoteDiv.append(quoteBody);
 
             body.append(quoteDiv);
         }
 
-        // Use content_html first as it already has mention links processed by server
-        const contentHtml = p.content_html || '';
+        // Use content_md for markdown parsing if available, otherwise fallback to content_html
         const myBody = ce('div', 'my-body');
-        if (contentHtml) {
-            // content_html already has mention links, just add YouTube embeds
-            myBody.innerHTML = embedYouTube(contentHtml);
+        if (p.content_md) {
+            // Always parse markdown when content_md is available
+            // This ensures markdown formatting works in the feed
+            myBody.innerHTML = embedYouTube(parseMessage(marked.parse(p.content_md)));
+        } else if (p.content_html) {
+            // Fallback to content_html if content_md is not available
+            myBody.innerHTML = embedYouTube(p.content_html);
         } else {
-            // Fallback to markdown parsing if no content_html
-            myBody.innerHTML = embedYouTube(parseMessage(marked.parse(p.content_md || '')));
+            myBody.innerHTML = '';
         }
         body.append(myBody);
     }

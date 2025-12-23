@@ -12,7 +12,7 @@ $NSFW_BLUR = 12;
 
 // ----- キャッシュバスティング用バージョン -----
 // ファイル更新時にこの値を変更すると、ブラウザキャッシュをクリアできます
-define('ASSETS_VERSION', '1.4.1');
+define('ASSETS_VERSION', '1.4.2');
 
 // ----- 集中タイマー設定 -----
 define('FOCUS_MAX_MINUTES', 180);
