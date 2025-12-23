@@ -708,6 +708,16 @@ function escapeHtml(text, embedYouTube = true) {
     div.textContent = text;
     let html = div.innerHTML.replace(/\n/g, '<br>');
     
+    // メンションをリンク化（@username）
+    html = html.replace(/@([a-zA-Z0-9_]+)/g, (match, handle) => {
+        return `<a href="profile.php?handle=${encodeURIComponent(handle)}" class="mention">@${handle}</a>`;
+    });
+    
+    // ハッシュタグをリンク化（日本語、英数字、アンダースコアに対応）
+    html = html.replace(/#([a-zA-Z0-9_\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]+)/g, (match, tag) => {
+        return `<a href="search.php?q=${encodeURIComponent('#' + tag)}" class="hashtag">#${tag}</a>`;
+    });
+    
     // YouTube URL embedding は別途 processYouTubeEmbeds で処理するため、ここでは行わない
     // embedYouTubeパラメータは下位互換性のため残す
     
