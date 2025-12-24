@@ -38,6 +38,7 @@ $BUFF_TYPES = [
 ];
 
 $CRAFT_COST_COINS = 10000;
+$UPGRADE_BUFF_INCREASE_RATE = 0.10;  // アップグレード時のバフ上昇率（10%）
 
 // 装備作成のAPI処理
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -246,15 +247,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 throw new Exception($rarity_info['name'] . 'トークンが不足しています（必要: ' . $required_tokens . '個）');
             }
             
-            // トークンを消費（ホワイトリスト検証済みのカラム名を使用）
-            $st = $pdo->prepare("UPDATE users SET {$token_col} = {$token_col} - ? WHERE id = ?");
+            // トークンを消費（switch文で安全にカラム指定）
+            switch ($token_col) {
+                case 'normal_tokens':
+                    $st = $pdo->prepare("UPDATE users SET normal_tokens = normal_tokens - ? WHERE id = ?");
+                    break;
+                case 'rare_tokens':
+                    $st = $pdo->prepare("UPDATE users SET rare_tokens = rare_tokens - ? WHERE id = ?");
+                    break;
+                case 'unique_tokens':
+                    $st = $pdo->prepare("UPDATE users SET unique_tokens = unique_tokens - ? WHERE id = ?");
+                    break;
+                case 'legend_tokens':
+                    $st = $pdo->prepare("UPDATE users SET legend_tokens = legend_tokens - ? WHERE id = ?");
+                    break;
+                case 'epic_tokens':
+                    $st = $pdo->prepare("UPDATE users SET epic_tokens = epic_tokens - ? WHERE id = ?");
+                    break;
+                case 'hero_tokens':
+                    $st = $pdo->prepare("UPDATE users SET hero_tokens = hero_tokens - ? WHERE id = ?");
+                    break;
+                case 'mythic_tokens':
+                    $st = $pdo->prepare("UPDATE users SET mythic_tokens = mythic_tokens - ? WHERE id = ?");
+                    break;
+                default:
+                    throw new Exception('不正なトークンカラムです');
+            }
             $st->execute([$required_tokens, $me['id']]);
             
-            // バフを上昇させる（各バフを10%上昇）
+            // バフを上昇させる（設定した上昇率で上昇）
             $buffs = json_decode($equipment['buffs'], true) ?: [];
             $buff_increase = [];
             foreach ($buffs as $buff_key => $value) {
-                $increase = round($value * 0.1, 2);  // 10%上昇
+                $increase = round($value * $UPGRADE_BUFF_INCREASE_RATE, 2);
                 $buff_increase[$buff_key] = $increase;
                 $buffs[$buff_key] = round($value + $increase, 2);
             }
@@ -738,6 +763,7 @@ $user = $st->fetch();
 <script>
 const RARITIES = <?= json_encode($RARITIES) ?>;
 const CRAFT_COST = <?= $CRAFT_COST_COINS ?>;
+const UPGRADE_BUFF_INCREASE_RATE = <?= $UPGRADE_BUFF_INCREASE_RATE * 100 ?>; // パーセント表示用
 
 let selectedSlot = null;
 let selectedRarity = null;
@@ -867,7 +893,7 @@ document.querySelectorAll('.upgrade-btn').forEach(btn => {
         const requiredTokens = level + 1;
         const rarityInfo = RARITIES[rarity];
         
-        if (!confirm(`「${name}${level > 0 ? ' +' + level : ''}」をアップグレードしますか？\n\n必要: ${rarityInfo.icon} ${rarityInfo.name}トークン ×${requiredTokens}\n効果: 全バフが10%上昇`)) {
+        if (!confirm(`「${name}${level > 0 ? ' +' + level : ''}」をアップグレードしますか？\n\n必要: ${rarityInfo.icon} ${rarityInfo.name}トークン ×${requiredTokens}\n効果: 全バフが${UPGRADE_BUFF_INCREASE_RATE}%上昇`)) {
             return;
         }
         
