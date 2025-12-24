@@ -5,6 +5,7 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/token_drop.php';
 header('Content-Type: application/json');
 
 // 定数定義
@@ -234,6 +235,9 @@ try {
         $pdo->prepare("INSERT INTO reward_events(user_id,kind,amount,meta) VALUES(?,?,?,JSON_OBJECT('post_id',?))")
             ->execute([$_SESSION['uid'],'post_reward',$coins,$post_id]);
 
+        // トークンドロップ（投稿時）
+        drop_tokens($_SESSION['uid'], 'post');
+
         // クエスト進行チェック
         if (file_exists(__DIR__ . '/quest_progress.php')) {
             require_once __DIR__ . '/quest_progress.php';
@@ -298,6 +302,9 @@ try {
             $pdo->prepare("INSERT INTO posts(user_id,content_md,content_html,quote_post_id,nsfw,created_at) VALUES(?,?,?,?,?,NOW())")
                 ->execute([$_SESSION['uid'],$content,$html,$post_id,$nsfw]);
         }
+        
+        // トークンドロップ（引用投稿時）
+        drop_tokens($_SESSION['uid'], 'quote');
         
         echo json_encode(['ok'=>true]);
         exit;

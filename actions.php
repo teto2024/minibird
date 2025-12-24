@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/token_drop.php';
 ob_start();
 require_login();
 
@@ -35,6 +36,11 @@ if ($action === 'toggle_like') {
         // 投稿者に通知
         $post_owner_id = (int)$pdo->query("SELECT user_id FROM posts WHERE id=$post_id")->fetchColumn();
         insertNotification('like', $_SESSION['uid'], $post_owner_id, $post_id);
+        
+        // 投稿者にトークンドロップ（いいねを受け取った側）
+        if ($post_owner_id !== $_SESSION['uid']) {
+            drop_tokens($post_owner_id, 'like');
+        }
         
         // クエスト進行チェック
         if (file_exists(__DIR__ . '/quest_progress.php')) {
@@ -106,6 +112,11 @@ if ($action === 'toggle_repost') {
         // 投稿者に通知
         $original_post_owner_id = (int)$post['user_id'];
         insertNotification('repost', $_SESSION['uid'], $original_post_owner_id, $post_id);
+        
+        // 投稿者にトークンドロップ（リポストを受け取った側）
+        if ($original_post_owner_id !== $_SESSION['uid']) {
+            drop_tokens($original_post_owner_id, 'repost');
+        }
         
         // クエスト進行チェック
         if (file_exists(__DIR__ . '/quest_progress.php')) {

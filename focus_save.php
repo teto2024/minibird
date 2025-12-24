@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/token_drop.php';
 require_login();
 $pdo = db();
 
@@ -201,6 +202,11 @@ try {
             ])
         ]);
 
+        // --------------------------
+        // トークンドロップ（成功時）
+        // --------------------------
+        $token_drops = drop_tokens($uid, 'focus_success', $mins);
+
     } else {
         // --------------------------
         // 失敗時：コイン・クリスタルのみ加算（ティア変更なし）
@@ -230,6 +236,12 @@ try {
                 'tag_bonus_active' => $tag_bonus_active
             ])
         ]);
+
+        // --------------------------
+        // トークンドロップ（失敗時）
+        // --------------------------
+        $actual_mins = max(1, floor((strtotime($ended_at) - strtotime($started_at)) / 60));
+        $token_drops = drop_tokens($uid, 'focus_fail', $actual_mins);
     }
 
     // --------------------------
@@ -376,7 +388,7 @@ try {
     }
 
     // --------------------------
-    // JSON出力（バフ＋タッグ後の値 + 統計情報）
+    // JSON出力（バフ＋タッグ後の値 + 統計情報 + トークンドロップ）
     // --------------------------
     json_exit([
         'ok' => true,
@@ -386,6 +398,7 @@ try {
         'total_multiplier' => $total_multiplier,
         'start_buff_multiplier' => $start_buff_multiplier,
         'tag_bonus_active' => $tag_bonus_active,
+        'token_drops' => $token_drops ?? [],
         'statistics' => [
             'consecutive_successes' => $status === 'success' ? $consecutive_successes : 0,
             'current_streak' => $current_streak,
