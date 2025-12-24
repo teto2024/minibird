@@ -561,15 +561,19 @@ $BUFF_TYPES = [
                             $buffs = json_decode($eq['buffs'], true) ?: [];
                             $rarity = $RARITIES[$eq['rarity']] ?? ['name' => $eq['rarity'], 'color' => '#888'];
                             $slot = $SLOTS[$eq['slot']] ?? ['name' => $eq['slot'], 'icon' => '❓'];
+                            $upgrade_level = (int)($eq['upgrade_level'] ?? 0);
+                            $upgrade_display = $upgrade_level > 0 ? ' +' . $upgrade_level : '';
                         ?>
                         <div style="background: linear-gradient(135deg, #1e1e2f 0%, #2d2d44 100%); border-radius: 10px; padding: 12px; border-left: 3px solid <?= $rarity['color'] === 'rainbow' ? '#cc00ff' : $rarity['color'] ?>;">
                             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                                 <span style="font-size: 20px;"><?= $slot['icon'] ?></span>
-                                <span style="font-size: 14px; font-weight: bold; color: #fff;"><?= htmlspecialchars($eq['name']) ?></span>
+                                <span style="font-size: 14px; font-weight: bold; color: #fff;"><?= htmlspecialchars($eq['name']) ?><?= $upgrade_display ?></span>
                             </div>
                             <div style="font-size: 11px; color: <?= $rarity['color'] === 'rainbow' ? '#cc00ff' : $rarity['color'] ?>; margin-bottom: 5px;"><?= $rarity['name'] ?></div>
-                            <?php foreach ($buffs as $buff_key => $value): ?>
-                            <div style="font-size: 11px; color: #00ff88;">+<?= $value ?> <?= $buff_key ?></div>
+                            <?php foreach ($buffs as $buff_key => $value): 
+                                $buffInfo = $BUFF_TYPES[$buff_key] ?? ['name' => $buff_key, 'icon' => '❓', 'unit' => ''];
+                            ?>
+                            <div style="font-size: 11px; color: #00ff88;"><?= $buffInfo['icon'] ?> +<?= $value ?><?= $buffInfo['unit'] ?? '' ?> <?= htmlspecialchars($buffInfo['name']) ?></div>
                             <?php endforeach; ?>
                         </div>
                         <?php endforeach; ?>
