@@ -40,16 +40,12 @@ $allBuffs = $st->fetchAll(PDO::FETCH_ASSOC);
 
 // --- 表示用ラベル・アイコン ---
 $LABELS = [
-    'task'=>'タスク増額',
-    'word'=>'英単語報酬UP',
-    'chat_festival'=>'チャット祭り',
-    'festival_exempt'=>'個人免除バフ'
+    'task'=>'タスク報酬UP',
+    'chat_festival'=>'チャット祭'
 ];
 $ICONS = [
     'task'=>'✏',
-    'word'=>'🔤',
-    'chat_festival'=>'🎊',
-    'festival_exempt'=>'⚡'
+    'chat_festival'=>'🎊'
 ];
 
 // --- typeごとに「レベル最大 → 残り時間最大」を選択 ---
