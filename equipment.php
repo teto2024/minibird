@@ -56,6 +56,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $rarity_info = $RARITIES[$rarity];
         $token_col = $rarity_info['token_col'];
         
+        // 許可されたカラム名のホワイトリスト
+        $allowed_token_columns = ['normal_tokens', 'rare_tokens', 'unique_tokens', 'legend_tokens', 'epic_tokens', 'hero_tokens', 'mythic_tokens'];
+        if (!in_array($token_col, $allowed_token_columns)) {
+            echo json_encode(['ok' => false, 'error' => '不正なトークンカラムです']);
+            exit;
+        }
+        
         $pdo->beginTransaction();
         try {
             // ユーザー情報を取得
@@ -71,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 throw new Exception('コインが不足しています（必要: ' . number_format($CRAFT_COST_COINS) . '）');
             }
             
-            // 素材を消費
+            // 素材を消費（ホワイトリスト検証済みのカラム名を使用）
             $st = $pdo->prepare("UPDATE users SET {$token_col} = {$token_col} - 1, coins = coins - ? WHERE id = ?");
             $st->execute([$CRAFT_COST_COINS, $me['id']]);
             
@@ -90,11 +97,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 
                 $buffs = [];
                 $rarity_index = array_search($rarity, array_keys($RARITIES));
+                $max_rarity_index = count($RARITIES) - 1;
                 
                 foreach ($selected_buffs as $buff_key) {
                     $buff_info = $BUFF_TYPES[$buff_key];
                     // レアリティに応じて最大値を補間
-                    $max_value = $buff_info['max_normal'] + ($buff_info['max_mythic'] - $buff_info['max_normal']) * ($rarity_index / 6);
+                    $max_value = $buff_info['max_normal'] + ($buff_info['max_mythic'] - $buff_info['max_normal']) * ($rarity_index / $max_rarity_index);
                     $value = round($buff_info['min'] + (mt_rand(0, 100) / 100) * ($max_value - $buff_info['min']), 2);
                     $buffs[$buff_key] = $value;
                 }

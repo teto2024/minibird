@@ -111,24 +111,43 @@ function drop_tokens($user_id, $action, $minutes = 0) {
         return [];
     }
     
+    // 許可されたカラム名のホワイトリスト
+    $allowed_columns = ['normal_tokens', 'rare_tokens', 'unique_tokens', 'legend_tokens', 'epic_tokens', 'hero_tokens', 'mythic_tokens'];
+    
     // トークンを付与
     $update_parts = [];
     $params = [];
     foreach ($drops as $token_col => $amount) {
+        // ホワイトリスト検証
+        if (!in_array($token_col, $allowed_columns)) {
+            continue; // 不正なカラム名はスキップ
+        }
         $update_parts[] = "{$token_col} = {$token_col} + ?";
         $params[] = $amount;
     }
+    
+    if (empty($update_parts)) {
+        return [];
+    }
+    
     $params[] = $user_id;
     
     $sql = "UPDATE users SET " . implode(', ', $update_parts) . " WHERE id = ?";
     $st = $pdo->prepare($sql);
     $st->execute($params);
     
-    // 履歴を記録
-    foreach ($drops as $token_col => $amount) {
-        $token_type = str_replace('_tokens', '', $token_col);
-        $st = $pdo->prepare("INSERT INTO token_history (user_id, token_type, amount, reason) VALUES (?, ?, ?, ?)");
-        $st->execute([$user_id, $token_type, $amount, $action]);
+    // 履歴を記録（テーブルが存在しない場合はスキップ）
+    try {
+        foreach ($drops as $token_col => $amount) {
+            if (!in_array($token_col, $allowed_columns)) {
+                continue;
+            }
+            $token_type = str_replace('_tokens', '', $token_col);
+            $st = $pdo->prepare("INSERT INTO token_history (user_id, token_type, amount, reason) VALUES (?, ?, ?, ?)");
+            $st->execute([$user_id, $token_type, $amount, $action]);
+        }
+    } catch (PDOException $e) {
+        // token_historyテーブルがまだ存在しない場合は無視
     }
     
     return $drops;

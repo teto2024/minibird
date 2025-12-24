@@ -100,15 +100,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $st->execute([$me['id']]);
         $user = $st->fetch();
         
-        // 素材チェック
+        // 素材チェック（安全なカラム名のみ許可）
         $from_col = $recipe['from'];
         $to_col = $recipe['to'];
         
-        if ($user[$from_col] < $recipe['from_amount']) {
+        // 許可されたカラム名のホワイトリスト
+        $allowed_columns = ['crystals', 'normal_tokens', 'rare_tokens', 'unique_tokens', 'legend_tokens', 'epic_tokens', 'hero_tokens', 'mythic_tokens'];
+        if (!in_array($from_col, $allowed_columns) || !in_array($to_col, $allowed_columns)) {
+            throw new Exception('不正なカラム名です');
+        }
+        
+        if (($user[$from_col] ?? 0) < $recipe['from_amount']) {
             throw new Exception($recipe['from_label'] . 'が不足しています');
         }
         
-        // 素材を消費してトークンを生成
+        // 素材を消費してトークンを生成（ホワイトリスト検証済みのカラム名を使用）
         $st = $pdo->prepare("UPDATE users SET {$from_col} = {$from_col} - ?, {$to_col} = {$to_col} + ? WHERE id = ?");
         $st->execute([$recipe['from_amount'], $recipe['to_amount'], $me['id']]);
         
