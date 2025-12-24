@@ -68,13 +68,28 @@ $followersList = $st->fetchAll(PDO::FETCH_ASSOC);
 
 // 装備中の装備を取得
 $equippedItems = [];
+$totalBuffs = [];
 try {
     $st = $pdo->prepare("SELECT * FROM user_equipment WHERE user_id = ? AND is_equipped = 1");
     $st->execute([$targetId]);
     $equippedItems = $st->fetchAll(PDO::FETCH_ASSOC);
+    
+    // 装備中の装備からバフ合計を計算
+    foreach ($equippedItems as $item) {
+        $buffs = json_decode($item['buffs'], true);
+        if ($buffs && is_array($buffs)) {
+            foreach ($buffs as $buffKey => $buffValue) {
+                if (!isset($totalBuffs[$buffKey])) {
+                    $totalBuffs[$buffKey] = 0;
+                }
+                $totalBuffs[$buffKey] += $buffValue;
+            }
+        }
+    }
 } catch (PDOException $e) {
     // テーブルがまだ存在しない場合は無視
     $equippedItems = [];
+    $totalBuffs = [];
 }
 
 // 装備用の定数
@@ -94,6 +109,21 @@ $SLOTS = [
     'shoulder' => ['name' => 'ショルダー', 'icon' => '🎽'],
     'arm' => ['name' => 'アーム', 'icon' => '🧤'],
     'leg' => ['name' => 'レッグ', 'icon' => '👢']
+];
+$BUFF_TYPES = [
+    'attack' => ['name' => '攻撃力', 'icon' => '⚔️'],
+    'armor' => ['name' => 'アーマー', 'icon' => '🛡️'],
+    'health' => ['name' => '体力', 'icon' => '❤️'],
+    'coin_drop' => ['name' => 'コインドロップ', 'icon' => '🪙', 'unit' => '%'],
+    'crystal_drop' => ['name' => 'クリスタルドロップ', 'icon' => '💎', 'unit' => '%'],
+    'diamond_drop' => ['name' => 'ダイヤモンドドロップ', 'icon' => '💠', 'unit' => '%'],
+    'token_normal_drop' => ['name' => 'ノーマルトークンドロップ', 'icon' => '⚪', 'unit' => '%'],
+    'token_rare_drop' => ['name' => 'レアトークンドロップ', 'icon' => '🟢', 'unit' => '%'],
+    'token_unique_drop' => ['name' => 'ユニークトークンドロップ', 'icon' => '🔵', 'unit' => '%'],
+    'token_legend_drop' => ['name' => 'レジェンドトークンドロップ', 'icon' => '🟡', 'unit' => '%'],
+    'token_epic_drop' => ['name' => 'エピックトークンドロップ', 'icon' => '🟣', 'unit' => '%'],
+    'token_hero_drop' => ['name' => 'ヒーロートークンドロップ', 'icon' => '🔴', 'unit' => '%'],
+    'token_mythic_drop' => ['name' => 'ミシックトークンドロップ', 'icon' => '🌈', 'unit' => '%']
 ];
 ?>
 <!DOCTYPE html>
@@ -549,6 +579,28 @@ $SLOTS = [
                         </div>
                         <?php endforeach; ?>
                     </div>
+                    
+                    <!-- バフ合計値 -->
+                    <?php if (!empty($totalBuffs)): ?>
+                    <div style="margin-top: 20px; background: linear-gradient(135deg, rgba(107, 91, 149, 0.15) 0%, rgba(139, 75, 139, 0.15) 100%); border-radius: 12px; padding: 20px; border: 2px solid rgba(107, 91, 149, 0.3);">
+                        <h4 style="text-align: center; margin: 0 0 15px 0; color: var(--text); font-size: 16px; font-weight: bold;">✨ 合計バフ効果</h4>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
+                            <?php foreach ($totalBuffs as $buffKey => $buffValue): 
+                                $buffInfo = $BUFF_TYPES[$buffKey] ?? ['name' => $buffKey, 'icon' => '❓', 'unit' => ''];
+                            ?>
+                            <div style="background: rgba(0, 255, 136, 0.05); border-radius: 8px; padding: 10px; border-left: 3px solid #00ff88;">
+                                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                                    <span style="font-size: 16px;"><?= $buffInfo['icon'] ?></span>
+                                    <span style="font-size: 12px; color: #aaa;"><?= htmlspecialchars($buffInfo['name']) ?></span>
+                                </div>
+                                <div style="font-size: 18px; font-weight: bold; color: #00ff88; text-align: right;">
+                                    +<?= number_format($buffValue, 2) ?><?= $buffInfo['unit'] ?? '' ?>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
 
