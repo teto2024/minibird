@@ -202,6 +202,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
         exit;
     }
+    
+    if ($action === 'upgrade') {
+        $equipment_id = (int)($_POST['equipment_id'] ?? 0);
+        
+        if ($equipment_id <= 0) {
+            echo json_encode(['ok' => false, 'error' => '不正な装備IDです']);
+            exit;
+        }
+        
+        $pdo->beginTransaction();
+        try {
+            // 装備の所有確認と現在の状態を取得
+            $st = $pdo->prepare("SELECT * FROM user_equipment WHERE id = ? AND user_id = ? FOR UPDATE");
+            $st->execute([$equipment_id, $me['id']]);
+            $equipment = $st->fetch();
+            
+            if (!$equipment) {
+                throw new Exception('装備が見つかりません');
+            }
+            
+            $current_level = (int)($equipment['upgrade_level'] ?? 0);
+            $rarity = $equipment['rarity'];
+            $rarity_info = $RARITIES[$rarity];
+            $token_col = $rarity_info['token_col'];
+            
+            // 許可されたカラム名のホワイトリスト
+            $allowed_token_columns = ['normal_tokens', 'rare_tokens', 'unique_tokens', 'legend_tokens', 'epic_tokens', 'hero_tokens', 'mythic_tokens'];
+            if (!in_array($token_col, $allowed_token_columns)) {
+                throw new Exception('不正なトークンカラムです');
+            }
+            
+            // 必要トークン数を計算（アップグレードレベル + 1）
+            $required_tokens = $current_level + 1;
+            
+            // ユーザー情報を取得
+            $st = $pdo->prepare("SELECT * FROM users WHERE id=? FOR UPDATE");
+            $st->execute([$me['id']]);
+            $user = $st->fetch();
+            
+            // トークンをチェック
+            if (($user[$token_col] ?? 0) < $required_tokens) {
+                throw new Exception($rarity_info['name'] . 'トークンが不足しています（必要: ' . $required_tokens . '個）');
+            }
+            
+            // トークンを消費（ホワイトリスト検証済みのカラム名を使用）
+            $st = $pdo->prepare("UPDATE users SET {$token_col} = {$token_col} - ? WHERE id = ?");
+            $st->execute([$required_tokens, $me['id']]);
+            
+            // バフを上昇させる（各バフを10%上昇）
+            $buffs = json_decode($equipment['buffs'], true) ?: [];
+            $buff_increase = [];
+            foreach ($buffs as $buff_key => $value) {
+                $increase = round($value * 0.1, 2);  // 10%上昇
+                $buff_increase[$buff_key] = $increase;
+                $buffs[$buff_key] = round($value + $increase, 2);
+            }
+            
+            $new_level = $current_level + 1;
+            
+            // 装備を更新
+            $st = $pdo->prepare("UPDATE user_equipment SET buffs = ?, upgrade_level = ? WHERE id = ?");
+            $st->execute([json_encode($buffs), $new_level, $equipment_id]);
+            
+            // 履歴を記録
+            $st = $pdo->prepare("
+                INSERT INTO equipment_upgrade_history (user_id, equipment_id, from_level, to_level, token_used, token_amount, buff_increase)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ");
+            $st->execute([$me['id'], $equipment_id, $current_level, $new_level, $token_col, $required_tokens, json_encode($buff_increase)]);
+            
+            $pdo->commit();
+            
+            echo json_encode([
+                'ok' => true,
+                'message' => '装備をアップグレードしました！（+' . $new_level . '）',
+                'new_level' => $new_level,
+                'new_buffs' => $buffs,
+                'buff_increase' => $buff_increase
+            ]);
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
 }
 
 // ユーザーの装備一覧を取得
@@ -502,6 +587,36 @@ $user = $st->fetch();
     padding: 40px;
     color: #666;
 }
+
+.upgrade-info {
+    margin-bottom: 10px;
+    padding: 8px;
+    background: rgba(255, 215, 0, 0.1);
+    border-radius: 6px;
+    text-align: center;
+}
+
+.upgrade-cost {
+    font-size: 12px;
+    color: #ffcc00;
+}
+
+.upgrade-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+    color: #333;
+}
+
+.upgrade-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+}
 </style>
 </head>
 <body>
@@ -578,10 +693,13 @@ $user = $st->fetch();
             <?php foreach ($equipments as $eq): 
                 $buffs = json_decode($eq['buffs'], true) ?: [];
                 $rarity_info = $RARITIES[$eq['rarity']];
+                $upgrade_level = (int)($eq['upgrade_level'] ?? 0);
+                $upgrade_display = $upgrade_level > 0 ? ' +' . $upgrade_level : '';
+                $required_tokens = $upgrade_level + 1;
             ?>
             <div class="equipment-card <?= $eq['is_equipped'] ? 'equipped' : '' ?> rarity-<?= $eq['rarity'] ?>">
                 <div class="equipment-card-header">
-                    <span class="equipment-name"><?= htmlspecialchars($eq['name']) ?></span>
+                    <span class="equipment-name"><?= htmlspecialchars($eq['name']) ?><?= $upgrade_display ?></span>
                     <span class="equipment-rarity" style="background: <?= $rarity_info['color'] === 'rainbow' ? 'linear-gradient(90deg, red, orange, yellow, green, blue, violet)' : $rarity_info['color'] ?>;">
                         <?= $rarity_info['name'] ?>
                     </span>
@@ -599,12 +717,16 @@ $user = $st->fetch();
                     </div>
                     <?php endforeach; ?>
                 </div>
+                <div class="upgrade-info">
+                    <span class="upgrade-cost"><?= $rarity_info['icon'] ?> ×<?= $required_tokens ?> で強化</span>
+                </div>
                 <div class="equipment-actions">
                     <?php if ($eq['is_equipped']): ?>
                     <button class="unequip-btn" data-id="<?= $eq['id'] ?>">外す</button>
                     <?php else: ?>
                     <button class="equip-btn" data-id="<?= $eq['id'] ?>">装備する</button>
                     <?php endif; ?>
+                    <button class="upgrade-btn" data-id="<?= $eq['id'] ?>" data-rarity="<?= $eq['rarity'] ?>" data-level="<?= $upgrade_level ?>" data-name="<?= htmlspecialchars($eq['name']) ?>">⬆️ 強化</button>
                 </div>
             </div>
             <?php endforeach; ?>
@@ -725,6 +847,40 @@ document.querySelectorAll('.equip-btn, .unequip-btn').forEach(btn => {
             const data = await res.json();
             
             if (data.ok) {
+                location.reload();
+            } else {
+                alert('❌ ' + data.error);
+            }
+        } catch (e) {
+            alert('❌ 通信エラーが発生しました');
+        }
+    });
+});
+
+// アップグレード
+document.querySelectorAll('.upgrade-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const rarity = btn.dataset.rarity;
+        const level = parseInt(btn.dataset.level) || 0;
+        const name = btn.dataset.name;
+        const requiredTokens = level + 1;
+        const rarityInfo = RARITIES[rarity];
+        
+        if (!confirm(`「${name}${level > 0 ? ' +' + level : ''}」をアップグレードしますか？\n\n必要: ${rarityInfo.icon} ${rarityInfo.name}トークン ×${requiredTokens}\n効果: 全バフが10%上昇`)) {
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('action', 'upgrade');
+        formData.append('equipment_id', id);
+        
+        try {
+            const res = await fetch('', {method: 'POST', body: formData});
+            const data = await res.json();
+            
+            if (data.ok) {
+                alert(`✅ ${data.message}`);
                 location.reload();
             } else {
                 alert('❌ ' + data.error);
