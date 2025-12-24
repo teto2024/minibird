@@ -2571,10 +2571,14 @@ button {
 /* モバイル・タブレット対応の通知ポップアップ */
 @media (max-width: 768px) {
     #notificationPopup {
+        position: fixed;
         width: 90vw;
         max-width: 320px;
-        right: 5%;
-        left: auto;
+        left: 50%;
+        right: auto;
+        top: 60px;
+        transform: translateX(-50%);
+        z-index: 1000;
     }
     
     #notificationPopup li {
@@ -2594,9 +2598,15 @@ button {
 
 @media (max-width: 480px) {
     #notificationPopup {
+        position: fixed;
         width: 95vw;
-        right: 2.5%;
+        max-width: none;
+        left: 50%;
+        right: auto;
+        top: 60px;
+        transform: translateX(-50%);
         font-size: 13px;
+        z-index: 1000;
     }
     
     #notificationPopup li span {
