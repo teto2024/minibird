@@ -156,6 +156,8 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
     <a href="shop.php" class="tabBtn block">フレーム・ショップ</a>
     <a href="activate_buff.php" class="tabBtn block">バフショップ</a>
     <a href="extended_shop.php" class="tabBtn block">パッケージショップ</a>
+    <a href="token_forge.php" class="tabBtn block">🔨 トークン鍛冶</a>
+    <a href="equipment.php" class="tabBtn block">⚔️ 装備システム</a>
     <a href="quests.php" class="tabBtn block">クエスト</a>
     <a href="vip_shop.php" class="tabBtn block">VIPショップ</a>
     <a href="how_to.php" class="tabBtn block">使い方</a>

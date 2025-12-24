@@ -645,6 +645,37 @@ function showCompletionModal(status, data) {
     title.innerHTML = '😔 惜しい！次は成功しよう！';
   }
   
+  // トークンドロップをフォーマット
+  let tokenDropsHtml = '';
+  if (data.token_drops && Object.keys(data.token_drops).length > 0) {
+    const tokenIcons = {
+      'normal_tokens': '⚪',
+      'rare_tokens': '🟢',
+      'unique_tokens': '🔵',
+      'legend_tokens': '🟡',
+      'epic_tokens': '🟣',
+      'hero_tokens': '🔴',
+      'mythic_tokens': '🌈'
+    };
+    const tokenNames = {
+      'normal_tokens': 'ノーマル',
+      'rare_tokens': 'レア',
+      'unique_tokens': 'ユニーク',
+      'legend_tokens': 'レジェンド',
+      'epic_tokens': 'エピック',
+      'hero_tokens': 'ヒーロー',
+      'mythic_tokens': 'ミシック'
+    };
+    
+    tokenDropsHtml = Object.entries(data.token_drops).map(([key, val]) => {
+      return `<div style="text-align: center; padding: 5px 10px;">
+        <div style="font-size: clamp(20px, 5vw, 28px);">${tokenIcons[key] || '🎫'}</div>
+        <div style="font-size: clamp(14px, 3vw, 18px); font-weight: bold;">+${val}</div>
+        <div style="font-size: clamp(10px, 2vw, 12px); opacity: 0.7;">${tokenNames[key] || key}</div>
+      </div>`;
+    }).join('');
+  }
+  
   let html = `
     <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: clamp(10px, 3vw, 20px); margin-bottom: clamp(10px, 3vw, 20px);">
       <h3 style="margin: 0 0 15px 0; font-size: clamp(16px, 4vw, 20px);">📊 報酬</h3>
@@ -661,6 +692,18 @@ function showCompletionModal(status, data) {
       ${data.tag_bonus_active ? '<div style="margin-top: 15px; text-align: center; font-size: clamp(12px, 3vw, 16px); color: #ffeb3b;">✨ タッグボーナス！報酬2倍 ✨</div>' : ''}
     </div>
   `;
+  
+  // トークンドロップセクション
+  if (tokenDropsHtml) {
+    html += `
+    <div style="background: rgba(255,255,255,0.1); border-radius: 10px; padding: clamp(10px, 3vw, 20px); margin-bottom: clamp(10px, 3vw, 20px);">
+      <h3 style="margin: 0 0 15px 0; font-size: clamp(16px, 4vw, 20px);">🎫 トークンドロップ</h3>
+      <div style="display: flex; gap: clamp(8px, 2vw, 15px); justify-content: center; flex-wrap: wrap;">
+        ${tokenDropsHtml}
+      </div>
+    </div>
+    `;
+  }
   
   if (data.statistics) {
     const stats = data.statistics;

@@ -65,6 +65,36 @@ $st = $pdo->prepare("
 ");
 $st->execute([$targetId]);
 $followersList = $st->fetchAll(PDO::FETCH_ASSOC);
+
+// 装備中の装備を取得
+$equippedItems = [];
+try {
+    $st = $pdo->prepare("SELECT * FROM user_equipment WHERE user_id = ? AND is_equipped = 1");
+    $st->execute([$targetId]);
+    $equippedItems = $st->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // テーブルがまだ存在しない場合は無視
+    $equippedItems = [];
+}
+
+// 装備用の定数
+$RARITIES = [
+    'normal' => ['name' => 'ノーマル', 'color' => '#808080'],
+    'rare' => ['name' => 'レア', 'color' => '#00cc00'],
+    'unique' => ['name' => 'ユニーク', 'color' => '#0080ff'],
+    'legend' => ['name' => 'レジェンド', 'color' => '#ffcc00'],
+    'epic' => ['name' => 'エピック', 'color' => '#cc00ff'],
+    'hero' => ['name' => 'ヒーロー', 'color' => '#ff0000'],
+    'mythic' => ['name' => 'ミシック', 'color' => 'rainbow']
+];
+$SLOTS = [
+    'weapon' => ['name' => '武器', 'icon' => '⚔️'],
+    'helm' => ['name' => 'ヘルム', 'icon' => '🪖'],
+    'body' => ['name' => 'ボディ', 'icon' => '🛡️'],
+    'shoulder' => ['name' => 'ショルダー', 'icon' => '🎽'],
+    'arm' => ['name' => 'アーム', 'icon' => '🧤'],
+    'leg' => ['name' => 'レッグ', 'icon' => '👢']
+];
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -496,6 +526,31 @@ $followersList = $st->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                     </div>
                 </div>
+
+                <!-- 装備中の装備 -->
+                <?php if (!empty($equippedItems)): ?>
+                <div class="equipped-section" style="margin-top: 25px; width: 100%;">
+                    <h4 style="text-align: center; margin: 20px 0 15px 0; color: var(--text); font-size: 18px;">⚔️ 装備中</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                        <?php foreach ($equippedItems as $eq): 
+                            $buffs = json_decode($eq['buffs'], true) ?: [];
+                            $rarity = $RARITIES[$eq['rarity']] ?? ['name' => $eq['rarity'], 'color' => '#888'];
+                            $slot = $SLOTS[$eq['slot']] ?? ['name' => $eq['slot'], 'icon' => '❓'];
+                        ?>
+                        <div style="background: linear-gradient(135deg, #1e1e2f 0%, #2d2d44 100%); border-radius: 10px; padding: 12px; border-left: 3px solid <?= $rarity['color'] === 'rainbow' ? '#cc00ff' : $rarity['color'] ?>;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                <span style="font-size: 20px;"><?= $slot['icon'] ?></span>
+                                <span style="font-size: 14px; font-weight: bold; color: #fff;"><?= htmlspecialchars($eq['name']) ?></span>
+                            </div>
+                            <div style="font-size: 11px; color: <?= $rarity['color'] === 'rainbow' ? '#cc00ff' : $rarity['color'] ?>; margin-bottom: 5px;"><?= $rarity['name'] ?></div>
+                            <?php foreach ($buffs as $buff_key => $value): ?>
+                            <div style="font-size: 11px; color: #00ff88;">+<?= $value ?> <?= $buff_key ?></div>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <?php if ($me && $me['id'] !== $targetId): ?>
                     <div class="profile-actions">
