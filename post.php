@@ -6,6 +6,7 @@ error_reporting(E_ALL);
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/token_drop.php';
+require_once __DIR__ . '/exp_system.php';
 header('Content-Type: application/json');
 
 // 定数定義
@@ -247,8 +248,12 @@ try {
 
         // メンション通知の処理
         create_mention_notifications($content, $_SESSION['uid'], $post_id, $pdo);
+        
+        // 経験値付与
+        $exp_bonus = get_user_exp_bonus($_SESSION['uid']);
+        $exp_result = grant_exp($_SESSION['uid'], 'post', $exp_bonus);
 
-        echo json_encode(['ok'=>true,'id'=>$post_id]); exit;
+        echo json_encode(['ok'=>true,'id'=>$post_id, 'exp_gained'=>$exp_result['exp_gained'] ?? 0, 'level_up'=>$exp_result['level_up'] ?? false]); exit;
     }
 
     if ($action === 'quote_post') {

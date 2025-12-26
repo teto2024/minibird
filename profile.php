@@ -3,6 +3,7 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 require 'config.php';
+require_once __DIR__ . '/exp_system.php';
 
 $targetId = isset($_GET['id']) ? (int)$_GET['id'] : null;
 $handle = $_GET['handle'] ?? null;
@@ -153,8 +154,12 @@ $BUFF_TYPES = [
     'coin_drop' => ['name' => 'コインドロップ', 'icon' => '🪙', 'unit' => '%'],
     'crystal_drop' => ['name' => 'クリスタルドロップ', 'icon' => '💎', 'unit' => '%'],
     'token_normal_drop' => ['name' => 'ノーマルトークンドロップ', 'icon' => '⚪', 'unit' => '%'],
-    'token_rare_drop' => ['name' => 'レアトークンドロップ', 'icon' => '🟢', 'unit' => '%']
+    'token_rare_drop' => ['name' => 'レアトークンドロップ', 'icon' => '🟢', 'unit' => '%'],
+    'exp_bonus' => ['name' => '経験値ボーナス', 'icon' => '⭐', 'unit' => '%']
 ];
+
+// ユーザーレベル情報を取得
+$levelInfo = get_user_level_info($targetId);
 ?>
 <!DOCTYPE html>
 <html lang="ja">
@@ -566,6 +571,24 @@ $BUFF_TYPES = [
                     <span><?= $isOnline ? '🟢 オンライン' : '⚫ オフライン' ?></span>
                     <span style="opacity: 0.7; font-size: 12px;">(<?= htmlspecialchars($lastSeenText) ?>)</span>
                 </div>
+                
+                <!-- ユーザーレベル表示 -->
+                <?php if ($levelInfo): ?>
+                <div class="user-level-section" style="margin: 15px 0; padding: 15px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1)); border-radius: 12px; border: 1px solid rgba(102, 126, 234, 0.3);">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 10px;">
+                        <div style="font-size: 36px; font-weight: bold; color: #667eea;">Lv.<?= $levelInfo['level'] ?></div>
+                        <div style="font-size: 14px; color: var(--muted);">⭐ <?= number_format($levelInfo['current_exp']) ?> EXP</div>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.3); border-radius: 10px; height: 14px; overflow: hidden;">
+                        <div style="width: <?= min(100, $levelInfo['progress_percent']) ?>%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.5s; display: flex; align-items: center; justify-content: flex-end; padding-right: 5px;">
+                            <span style="font-size: 10px; color: white; font-weight: bold;"><?= $levelInfo['progress_percent'] ?>%</span>
+                        </div>
+                    </div>
+                    <div style="text-align: center; font-size: 12px; color: var(--muted); margin-top: 5px;">
+                        次のレベルまで: <?= number_format($levelInfo['level_exp_needed'] - $levelInfo['level_exp']) ?> EXP
+                    </div>
+                </div>
+                <?php endif; ?>
 
                 <!-- 自己紹介 -->
                 <div class="user-bio"><?= nl2br(htmlspecialchars($user['bio'] ?? '')) ?></div>

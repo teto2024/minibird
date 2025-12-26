@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/token_drop.php';
+require_once __DIR__ . '/exp_system.php';
 ob_start();
 require_login();
 
@@ -47,6 +48,10 @@ if ($action === 'toggle_like') {
             require_once __DIR__ . '/quest_progress.php';
             check_quest_progress($_SESSION['uid'], 'like', 1);
         }
+        
+        // 経験値付与（いいねした側）
+        $exp_bonus = get_user_exp_bonus($_SESSION['uid']);
+        grant_exp($_SESSION['uid'], 'like', $exp_bonus);
     }
 
     $cnt = (int)$pdo->query("SELECT COUNT(*) FROM likes WHERE post_id=".$post_id)->fetchColumn();
@@ -123,6 +128,10 @@ if ($action === 'toggle_repost') {
             require_once __DIR__ . '/quest_progress.php';
             check_quest_progress($_SESSION['uid'], 'repost', 1);
         }
+        
+        // 経験値付与（リポストした側）
+        $exp_bonus = get_user_exp_bonus($_SESSION['uid']);
+        grant_exp($_SESSION['uid'], 'repost', $exp_bonus);
 
         $reposted = true;
     }

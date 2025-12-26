@@ -114,6 +114,10 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
 
 <!-- ポップアップ -->
 <div id="notificationPopup" class="hidden">
+  <div class="notification-popup-header">
+    <span>通知</span>
+    <button id="closeNotificationBtn" class="close-notification-btn" aria-label="閉じる">✕</button>
+  </div>
   <ul id="notificationList"></ul>
   <a href="/notifications.php">すべてを見る</a>
 </div>
@@ -154,6 +158,7 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
     <a href="extended_shop.php" class="tabBtn block">パッケージショップ</a>
     <a href="token_forge.php" class="tabBtn block">🔨 トークン鍛冶</a>
     <a href="equipment.php" class="tabBtn block">⚔️ 装備システム</a>
+    <a href="hero_system.php" class="tabBtn block">🦸 ヒーローシステム</a>
     <a href="quests.php" class="tabBtn block">クエスト</a>
     <a href="vip_shop.php" class="tabBtn block">VIPショップ</a>
     <a href="how_to.php" class="tabBtn block">使い方</a>

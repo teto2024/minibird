@@ -382,7 +382,33 @@ if (!$original_post) {
             <button class="reply-action-btn">
                 💬 返信する
             </button>
+            <?php if ($me): 
+                $quoteHandle = json_encode($original_post['handle']);
+                $quotePreview = json_encode(mb_substr($original_post['content_md'] ?? '', 0, 100));
+            ?>
+            <button class="reply-action-btn" onclick="showQuoteModal(<?= $original_post['id'] ?>, <?= $quoteHandle ?>, <?= $quotePreview ?>)">
+                📝 引用
+            </button>
+            <button class="reply-action-btn" onclick="toggleRepost(<?= $original_post['id'] ?>, this)">
+                🔁 <span class="repost-count"><?= $original_post['repost_count'] ?></span>
+            </button>
+            <button class="reply-action-btn" onclick="boostPost(<?= $original_post['id'] ?>)">
+                🚀 ブースト
+            </button>
+            <button class="reply-action-btn" onclick="reportPost(<?= $original_post['id'] ?>)">
+                🚨 通報
+            </button>
+            <?php endif; ?>
         </div>
+        
+        <!-- リポスト元の親投稿リンク -->
+        <?php if (!empty($original_post['is_repost_of'])): ?>
+        <div style="margin-top: 10px; padding: 10px; background: rgba(102, 126, 234, 0.1); border-radius: 8px; border-left: 3px solid #667eea;">
+            <a href="replies_enhanced.php?post_id=<?= (int)$original_post['is_repost_of'] ?>" style="color: #667eea; text-decoration: none; font-size: 14px;">
+                📌 リポスト元の投稿を見る →
+            </a>
+        </div>
+        <?php endif; ?>
     </div>
 
     <!-- 返信フォーム -->
@@ -1072,6 +1098,223 @@ function showAppealDialog() {
             alert('ネットワークエラー');
         }
     };
+}
+
+// リポスト機能
+async function toggleRepost(postId, btn) {
+    if (!USER_ID) {
+        alert('ログインしてください');
+        return;
+    }
+    
+    try {
+        const res = await fetch('actions.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'toggle_repost', post_id: postId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            const countSpan = btn.querySelector('.repost-count');
+            if (countSpan) {
+                countSpan.textContent = data.count;
+            }
+            if (data.reposted) {
+                btn.classList.add('reposted');
+                alert('リポストしました');
+            } else {
+                btn.classList.remove('reposted');
+                alert('リポストを取り消しました');
+            }
+        } else {
+            alert('エラー: ' + (data.message || data.error || '不明なエラー'));
+        }
+    } catch (err) {
+        console.error('リポストエラー', err);
+        alert('ネットワークエラー');
+    }
+}
+
+// 引用モーダル表示
+function showQuoteModal(postId, handle, preview) {
+    const modal = document.createElement('div');
+    modal.id = 'quoteModalReply';
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+    modal.innerHTML = `
+        <div style="background: var(--card, #15202b); border-radius: 12px; padding: 30px; max-width: 600px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+            <h3 style="margin: 0 0 20px 0; color: var(--text, #e6e6e6);">📝 引用投稿</h3>
+            <div style="background: var(--bg, #0f1419); border-radius: 8px; padding: 15px; margin-bottom: 15px; border-left: 3px solid #667eea;">
+                <div style="font-weight: bold; color: #667eea;">@${handle}</div>
+                <div style="color: var(--muted, #8899a6); font-size: 14px; margin-top: 5px;">${preview}...</div>
+            </div>
+            <textarea id="quoteTextInput" rows="4" style="width: 100%; padding: 12px; border: 1px solid var(--border, #22303c); border-radius: 6px; background: var(--bg, #0f1419); color: var(--text, #e6e6e6); resize: vertical; font-family: inherit; margin-bottom: 15px;" placeholder="引用コメントを入力..."></textarea>
+            <div style="margin-bottom: 15px;">
+                <label style="color: var(--muted, #8899a6);"><input type="checkbox" id="quoteNsfwInput"> NSFW</label>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button onclick="closeQuoteModalReply()" style="padding: 10px 20px; border: 1px solid var(--border, #22303c); border-radius: 6px; background: var(--bg, #0f1419); color: var(--text, #e6e6e6); cursor: pointer;">キャンセル</button>
+                <button onclick="submitQuote(${postId})" style="padding: 10px 20px; border: none; border-radius: 6px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; cursor: pointer; font-weight: bold;">引用投稿</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function closeQuoteModalReply() {
+    const modal = document.getElementById('quoteModalReply');
+    if (modal) {
+        document.body.removeChild(modal);
+    }
+}
+
+async function submitQuote(postId) {
+    const content = document.getElementById('quoteTextInput').value.trim();
+    const nsfw = document.getElementById('quoteNsfwInput').checked;
+    
+    if (!content) {
+        alert('引用コメントを入力してください');
+        return;
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('action', 'create_post');
+        formData.append('content', content);
+        formData.append('nsfw', nsfw ? '1' : '0');
+        formData.append('quote_post_id', postId);
+        
+        const res = await fetch('post.php', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            alert('引用投稿しました');
+            closeQuoteModalReply();
+        } else {
+            alert('エラー: ' + (data.error || '不明なエラー'));
+        }
+    } catch (err) {
+        alert('ネットワークエラー');
+    }
+}
+
+// ブースト機能
+async function boostPost(postId) {
+    if (!USER_ID) {
+        alert('ログインしてください');
+        return;
+    }
+    
+    if (!confirm('この投稿をブーストしますか？\n\n費用: 🪙 200コイン + 💎 20クリスタル')) {
+        return;
+    }
+    
+    try {
+        const res = await fetch('boost_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'boost', post_id: postId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            alert(`ブーストしました！\n現在のブースト数: ${data.boost_count}`);
+        } else {
+            if (data.error === 'insufficient_currency') {
+                alert(`通貨が不足しています\n必要: 🪙 ${data.required.coins} + 💎 ${data.required.crystals}\n所持: 🪙 ${data.current.coins} + 💎 ${data.current.crystals}`);
+            } else if (data.error === 'boost_expired') {
+                alert(data.message || 'ブースト期限を過ぎています');
+            } else {
+                alert('エラー: ' + (data.message || data.error || '不明なエラー'));
+            }
+        }
+    } catch (err) {
+        console.error('ブーストエラー', err);
+        alert('ネットワークエラー');
+    }
+}
+
+// 通報機能
+function reportPost(postId) {
+    if (!USER_ID) {
+        alert('ログインしてください');
+        return;
+    }
+    
+    const modal = document.createElement('div');
+    modal.id = 'reportModal';
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+    modal.innerHTML = `
+        <div style="background: var(--card, #15202b); border-radius: 12px; padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+            <h3 style="margin: 0 0 20px 0; color: var(--text, #e6e6e6);">🚨 投稿を通報</h3>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: var(--text, #e6e6e6);">通報理由</label>
+                <select id="reportReason" style="width: 100%; padding: 10px; border: 1px solid var(--border, #22303c); border-radius: 6px; background: var(--bg, #0f1419); color: var(--text, #e6e6e6);">
+                    <option value="">選択してください</option>
+                    <option value="spam">スパム</option>
+                    <option value="harassment">嫌がらせ・ハラスメント</option>
+                    <option value="hate_speech">差別的発言・ヘイトスピーチ</option>
+                    <option value="violence">暴力的な内容</option>
+                    <option value="sexual">性的な内容（NSFWタグなし）</option>
+                    <option value="misinformation">誤情報・デマ</option>
+                    <option value="copyright">著作権侵害</option>
+                    <option value="other">その他</option>
+                </select>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: bold; color: var(--text, #e6e6e6);">詳細（任意）</label>
+                <textarea id="reportDetails" rows="3" style="width: 100%; padding: 10px; border: 1px solid var(--border, #22303c); border-radius: 6px; background: var(--bg, #0f1419); color: var(--text, #e6e6e6); resize: vertical; font-family: inherit;" placeholder="詳細を入力..."></textarea>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button onclick="closeReportModal()" style="padding: 10px 20px; border: 1px solid var(--border, #22303c); border-radius: 6px; background: var(--bg, #0f1419); color: var(--text, #e6e6e6); cursor: pointer;">キャンセル</button>
+                <button onclick="submitReport(${postId})" style="padding: 10px 20px; border: none; border-radius: 6px; background: #f56565; color: white; cursor: pointer; font-weight: bold;">通報する</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function closeReportModal() {
+    const modal = document.getElementById('reportModal');
+    if (modal) {
+        document.body.removeChild(modal);
+    }
+}
+
+async function submitReport(postId) {
+    const reason = document.getElementById('reportReason').value;
+    const details = document.getElementById('reportDetails').value.trim();
+    
+    if (!reason) {
+        alert('通報理由を選択してください');
+        return;
+    }
+    
+    try {
+        const res = await fetch('report_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                action: 'submit_report',
+                post_id: postId,
+                reason: reason,
+                details: details
+            })
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            alert('通報を受け付けました。管理者が確認します。');
+            closeReportModal();
+        } else {
+            alert('エラー: ' + (data.message || data.error || '不明なエラー'));
+        }
+    } catch (err) {
+        alert('ネットワークエラー');
+    }
 }
 </script>
 

@@ -131,8 +131,6 @@ try {
             echo json_encode(['ok' => false, 'error' => 'database_error']);
         }
     } elseif ($type === 'relay') {
-        $completion_key = 'relay_' . date('Y-m-d');
-        
         // リレークエスト全完了チェック
         $stmt = $pdo->prepare("SELECT COUNT(*) FROM quests WHERE type = 'relay' AND is_active = TRUE");
         $stmt->execute();
@@ -147,17 +145,8 @@ try {
             exit;
         }
         
-        // すでに報酬を受け取っているかチェック
-        $stmt = $pdo->prepare("
-            SELECT id FROM quest_completions 
-            WHERE user_id = ? AND completion_type = 'relay' AND period_key = ?
-        ");
-        $stmt->execute([$user_id, $completion_key]);
-        
-        if ($stmt->fetch()) {
-            echo json_encode(['ok' => false, 'error' => 'already_claimed']);
-            exit;
-        }
+        // ユニークなキーを生成（日時+マイクロ秒で複数回受け取り可能）
+        $completion_key = 'relay_' . date('Y-m-d_H-i-s') . '_' . uniqid();
         
         // 報酬付与
         $coins = 2000;

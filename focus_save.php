@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/token_drop.php';
+require_once __DIR__ . '/exp_system.php';
 require_login();
 $pdo = db();
 
@@ -207,6 +208,20 @@ try {
         // バフとタッグボーナスをトークンにも適用
         // --------------------------
         $token_drops = drop_tokens($uid, 'focus_success', $mins, $total_multiplier);
+        
+        // --------------------------
+        // 集中タスク用クエスト進行チェック
+        // --------------------------
+        if (file_exists(__DIR__ . '/quest_progress.php')) {
+            require_once __DIR__ . '/quest_progress.php';
+            check_focus_quest_progress($uid, $mins);
+        }
+        
+        // --------------------------
+        // 経験値付与（成功時）
+        // --------------------------
+        $exp_bonus = get_user_exp_bonus($uid);
+        $exp_result = grant_exp($uid, 'focus', $exp_bonus);
 
     } else {
         // --------------------------
