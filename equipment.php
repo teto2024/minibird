@@ -223,6 +223,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             
             $pdo->beginTransaction();
             
+            // 同じ部位の装備で、現在装備中のものを取得
+            $st = $pdo->prepare("SELECT id FROM user_equipment WHERE user_id = ? AND slot = ? AND is_equipped = 1");
+            $st->execute([$me['id'], $equipment['slot']]);
+            $previously_equipped = $st->fetch();
+            $previously_equipped_id = $previously_equipped ? $previously_equipped['id'] : null;
+            
             // 同じ部位の装備を外す
             $st = $pdo->prepare("UPDATE user_equipment SET is_equipped = 0 WHERE user_id = ? AND slot = ?");
             $st->execute([$me['id'], $equipment['slot']]);
@@ -233,7 +239,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             
             $pdo->commit();
             
-            echo json_encode(['ok' => true, 'message' => '装備しました']);
+            echo json_encode([
+                'ok' => true, 
+                'message' => '装備しました',
+                'equipment_id' => $equipment_id,
+                'slot' => $equipment['slot'],
+                'previously_equipped_id' => $previously_equipped_id
+            ]);
         } catch (Exception $e) {
             $pdo->rollBack();
             echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
@@ -245,10 +257,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $equipment_id = (int)($_POST['equipment_id'] ?? 0);
         
         try {
+            // 装備情報を取得
+            $st = $pdo->prepare("SELECT slot FROM user_equipment WHERE id = ? AND user_id = ?");
+            $st->execute([$equipment_id, $me['id']]);
+            $equipment = $st->fetch();
+            
             $st = $pdo->prepare("UPDATE user_equipment SET is_equipped = 0 WHERE id = ? AND user_id = ?");
             $st->execute([$equipment_id, $me['id']]);
             
-            echo json_encode(['ok' => true, 'message' => '装備を外しました']);
+            echo json_encode([
+                'ok' => true, 
+                'message' => '装備を外しました',
+                'equipment_id' => $equipment_id,
+                'slot' => $equipment ? $equipment['slot'] : null
+            ]);
         } catch (Exception $e) {
             echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
         }
@@ -1005,6 +1027,10 @@ async function handleEquipClick(e) {
     const id = btn.dataset.id;
     const action = btn.classList.contains('equip-btn') ? 'equip' : 'unequip';
     
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = action === 'equip' ? '装備中...' : '外し中...';
+    
     const formData = new FormData();
     formData.append('action', action);
     formData.append('equipment_id', id);
@@ -1014,13 +1040,47 @@ async function handleEquipClick(e) {
         const data = await res.json();
         
         if (data.ok) {
-            location.reload();
+            if (action === 'equip') {
+                // 同じスロットの他の装備の「装備中」状態を解除（DOMを更新）
+                if (data.previously_equipped_id) {
+                    const prevCard = document.querySelector(`.equipment-card .equip-btn[data-id="${data.previously_equipped_id}"], .equipment-card .unequip-btn[data-id="${data.previously_equipped_id}"]`);
+                    if (prevCard) {
+                        const prevCardContainer = prevCard.closest('.equipment-card');
+                        if (prevCardContainer) {
+                            prevCardContainer.classList.remove('equipped');
+                            // ボタンを「装備する」に変更
+                            prevCard.className = 'equip-btn';
+                            prevCard.textContent = '装備する';
+                        }
+                    }
+                }
+                
+                // 現在のカードを「装備中」に変更
+                const card = btn.closest('.equipment-card');
+                if (card) {
+                    card.classList.add('equipped');
+                    btn.className = 'unequip-btn';
+                    btn.textContent = '外す';
+                }
+            } else {
+                // 外す処理
+                const card = btn.closest('.equipment-card');
+                if (card) {
+                    card.classList.remove('equipped');
+                    btn.className = 'equip-btn';
+                    btn.textContent = '装備する';
+                }
+            }
         } else {
             alert('❌ ' + data.error);
+            btn.textContent = originalText;
         }
     } catch (e) {
         alert('❌ 通信エラーが発生しました');
+        btn.textContent = originalText;
     }
+    
+    btn.disabled = false;
 }
 
 // 装備/外す

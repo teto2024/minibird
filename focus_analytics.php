@@ -142,7 +142,7 @@ for ($h = 0; $h < 24; $h++) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>集中タイマー分析 - MiniBird</title>
 <link rel="stylesheet" href="assets/style.css?v=<?= ASSETS_VERSION ?>">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" integrity="sha384-wVkHSG9g5iJH0Bs0RlqZWOBn9G4TqBzq4sIvwQ6aGoYUv8Cbi+B8Mhz/0LPnB8Mg" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 body {
     background: linear-gradient(135deg, #0d0d0d 0%, #1a1a2e 50%, #16213e 100%);
@@ -421,85 +421,114 @@ const dailyData = <?= json_encode($chart_daily) ?>;
 const weeklyData = <?= json_encode($chart_weekly) ?>;
 const hourlyData = <?= json_encode($hourly_filled) ?>;
 
-// 共通チャート設定
-Chart.defaults.color = '#a0a0c0';
-Chart.defaults.borderColor = 'rgba(102, 126, 234, 0.2)';
+// Chart.jsが読み込まれているか確認
+if (typeof Chart === 'undefined') {
+    console.error('Chart.js is not loaded');
+    document.querySelectorAll('.chart-container').forEach(container => {
+        container.innerHTML = '<p style="color: #f56565; text-align: center; padding: 20px;">グラフの読み込みに失敗しました。ページを再読み込みしてください。</p>';
+    });
+} else {
+    // 共通チャート設定
+    Chart.defaults.color = '#a0a0c0';
+    Chart.defaults.borderColor = 'rgba(102, 126, 234, 0.2)';
 
-// 日別チャート
-new Chart(document.getElementById('dailyChart'), {
-    type: 'bar',
-    data: {
-        labels: dailyData.map(d => d.date),
-        datasets: [{
-            label: '集中時間（分）',
-            data: dailyData.map(d => d.total_minutes),
-            backgroundColor: 'rgba(102, 126, 234, 0.6)',
-            borderColor: 'rgba(102, 126, 234, 1)',
-            borderWidth: 1
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false }
-        },
-        scales: {
-            y: { beginAtZero: true }
+    // 日別チャート
+    try {
+        const dailyCtx = document.getElementById('dailyChart');
+        if (dailyCtx) {
+            new Chart(dailyCtx, {
+                type: 'bar',
+                data: {
+                    labels: dailyData.map(d => d.date),
+                    datasets: [{
+                        label: '集中時間（分）',
+                        data: dailyData.map(d => parseInt(d.total_minutes) || 0),
+                        backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                        borderColor: 'rgba(102, 126, 234, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
         }
+    } catch (e) {
+        console.error('Daily chart error:', e);
     }
-});
 
-// 時間帯別チャート
-new Chart(document.getElementById('hourlyChart'), {
-    type: 'line',
-    data: {
-        labels: hourlyData.map(d => d.hour + '時'),
-        datasets: [{
-            label: 'セッション数',
-            data: hourlyData.map(d => d.session_count),
-            borderColor: 'rgba(118, 75, 162, 1)',
-            backgroundColor: 'rgba(118, 75, 162, 0.2)',
-            fill: true,
-            tension: 0.4
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false }
-        },
-        scales: {
-            y: { beginAtZero: true }
+    // 時間帯別チャート
+    try {
+        const hourlyCtx = document.getElementById('hourlyChart');
+        if (hourlyCtx) {
+            new Chart(hourlyCtx, {
+                type: 'line',
+                data: {
+                    labels: hourlyData.map(d => d.hour + '時'),
+                    datasets: [{
+                        label: 'セッション数',
+                        data: hourlyData.map(d => parseInt(d.session_count) || 0),
+                        borderColor: 'rgba(118, 75, 162, 1)',
+                        backgroundColor: 'rgba(118, 75, 162, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
         }
+    } catch (e) {
+        console.error('Hourly chart error:', e);
     }
-});
 
-// 週別チャート
-new Chart(document.getElementById('weeklyChart'), {
-    type: 'bar',
-    data: {
-        labels: weeklyData.map(d => d.week_start),
-        datasets: [{
-            label: '集中時間（分）',
-            data: weeklyData.map(d => d.total_minutes),
-            backgroundColor: 'rgba(72, 187, 120, 0.6)',
-            borderColor: 'rgba(72, 187, 120, 1)',
-            borderWidth: 1
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false }
-        },
-        scales: {
-            y: { beginAtZero: true }
+    // 週別チャート
+    try {
+        const weeklyCtx = document.getElementById('weeklyChart');
+        if (weeklyCtx) {
+            new Chart(weeklyCtx, {
+                type: 'bar',
+                data: {
+                    labels: weeklyData.map(d => d.week_start),
+                    datasets: [{
+                        label: '集中時間（分）',
+                        data: weeklyData.map(d => parseInt(d.total_minutes) || 0),
+                        backgroundColor: 'rgba(72, 187, 120, 0.6)',
+                        borderColor: 'rgba(72, 187, 120, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
         }
+    } catch (e) {
+        console.error('Weekly chart error:', e);
     }
-});
+}
 </script>
 </body>
 </html>
