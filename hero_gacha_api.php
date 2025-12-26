@@ -241,14 +241,17 @@ function determineGachaReward($type, $pdo, $user_id) {
 
 // ヒーロー欠片報酬生成
 function generateHeroShardsReward($pdo, $shardCount) {
-    // ランダムにヒーローを選択
-    $stmt = $pdo->prepare("SELECT * FROM heroes WHERE generation = 0 ORDER BY RAND() LIMIT 1");
+    // ヒーロー一覧を取得してアプリケーション側でランダム選択（小規模データセット向け最適化）
+    $stmt = $pdo->prepare("SELECT id, name, icon FROM heroes WHERE generation = 0");
     $stmt->execute();
-    $hero = $stmt->fetch(PDO::FETCH_ASSOC);
+    $heroes = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    if (!$hero) {
+    if (empty($heroes)) {
         return ['type' => 'coins', 'amount' => 500, 'name' => 'コイン', 'detail' => '500 コインを獲得！'];
     }
+    
+    // アプリケーション側でランダム選択
+    $hero = $heroes[array_rand($heroes)];
     
     return [
         'type' => 'hero_shards',
@@ -344,8 +347,9 @@ function applyGachaReward($reward, $pdo, $user_id) {
             
         case 'tokens':
             $tokenCol = $reward['token_type'];
+            // ホワイトリスト検証でSQLインジェクションを防止
             $allowed = ['normal_tokens', 'rare_tokens', 'unique_tokens', 'legend_tokens', 'epic_tokens', 'hero_tokens', 'mythic_tokens'];
-            if (in_array($tokenCol, $allowed)) {
+            if (in_array($tokenCol, $allowed, true)) {
                 $stmt = $pdo->prepare("UPDATE users SET {$tokenCol} = {$tokenCol} + ? WHERE id = ?");
                 $stmt->execute([$reward['amount'], $user_id]);
             }

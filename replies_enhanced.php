@@ -382,8 +382,11 @@ if (!$original_post) {
             <button class="reply-action-btn">
                 💬 返信する
             </button>
-            <?php if ($me): ?>
-            <button class="reply-action-btn" onclick="showQuoteModal(<?= $original_post['id'] ?>, '<?= htmlspecialchars(addslashes($original_post['handle']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes(mb_substr($original_post['content_md'] ?? '', 0, 100)), ENT_QUOTES) ?>')">
+            <?php if ($me): 
+                $quoteHandle = json_encode($original_post['handle']);
+                $quotePreview = json_encode(mb_substr($original_post['content_md'] ?? '', 0, 100));
+            ?>
+            <button class="reply-action-btn" onclick="showQuoteModal(<?= $original_post['id'] ?>, <?= $quoteHandle ?>, <?= $quotePreview ?>)">
                 📝 引用
             </button>
             <button class="reply-action-btn" onclick="toggleRepost(<?= $original_post['id'] ?>, this)">

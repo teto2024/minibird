@@ -6,6 +6,11 @@
 
 require_once __DIR__ . '/config.php';
 
+// 経験値システム定数
+define('EXP_MIN', 50);       // 最小獲得経験値
+define('EXP_MAX', 100);      // 最大獲得経験値
+define('EXP_MAX_LEVEL', 100); // 最大レベル
+
 /**
  * 経験値を付与してレベルアップをチェック
  * @param int $user_id ユーザーID
@@ -16,8 +21,8 @@ require_once __DIR__ . '/config.php';
 function grant_exp($user_id, $reason, $exp_bonus_percent = 0) {
     $pdo = db();
     
-    // ランダムな基本経験値（50〜100）
-    $base_exp = mt_rand(50, 100);
+    // ランダムな基本経験値
+    $base_exp = mt_rand(EXP_MIN, EXP_MAX);
     
     // ボーナス適用
     $bonus_multiplier = 1 + ($exp_bonus_percent / 100);
@@ -53,9 +58,9 @@ function grant_exp($user_id, $reason, $exp_bonus_percent = 0) {
             } else {
                 break;
             }
-            // 最大レベル100
-            if ($new_level >= 100) {
-                $new_level = 100;
+            // 最大レベル制限
+            if ($new_level >= EXP_MAX_LEVEL) {
+                $new_level = EXP_MAX_LEVEL;
                 break;
             }
         }
