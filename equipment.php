@@ -1043,14 +1043,14 @@ async function handleEquipClick(e) {
             if (action === 'equip') {
                 // 同じスロットの他の装備の「装備中」状態を解除（DOMを更新）
                 if (data.previously_equipped_id) {
-                    const prevCard = document.querySelector(`.equipment-card .equip-btn[data-id="${data.previously_equipped_id}"], .equipment-card .unequip-btn[data-id="${data.previously_equipped_id}"]`);
-                    if (prevCard) {
-                        const prevCardContainer = prevCard.closest('.equipment-card');
+                    const prevButton = document.querySelector(`.equip-btn[data-id="${data.previously_equipped_id}"], .unequip-btn[data-id="${data.previously_equipped_id}"]`);
+                    if (prevButton) {
+                        const prevCardContainer = prevButton.closest('.equipment-card');
                         if (prevCardContainer) {
                             prevCardContainer.classList.remove('equipped');
                             // ボタンを「装備する」に変更
-                            prevCard.className = 'equip-btn';
-                            prevCard.textContent = '装備する';
+                            prevButton.className = 'equip-btn';
+                            prevButton.textContent = '装備する';
                         }
                     }
                 }

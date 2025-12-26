@@ -143,6 +143,12 @@ for ($h = 0; $h < 24; $h++) {
 <title>集中タイマー分析 - MiniBird</title>
 <link rel="stylesheet" href="assets/style.css?v=<?= ASSETS_VERSION ?>">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+// Chart.js CDN fallback
+if (typeof Chart === 'undefined') {
+    document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"><\/script>');
+}
+</script>
 <style>
 body {
     background: linear-gradient(135deg, #0d0d0d 0%, #1a1a2e 50%, #16213e 100%);
