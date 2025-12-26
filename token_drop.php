@@ -12,9 +12,10 @@ require_once __DIR__ . '/config.php';
  * @param int $user_id ユーザーID
  * @param string $action アクション種類（focus_success, focus_fail, post, quote, reply, like, repost, boost）
  * @param int $minutes 集中タイマーの場合の実施時間（分）
+ * @param float $multiplier バフやタッグボーナスによる倍率（デフォルト1.0）
  * @return array ドロップしたトークンの配列
  */
-function drop_tokens($user_id, $action, $minutes = 0) {
+function drop_tokens($user_id, $action, $minutes = 0, $multiplier = 1.0) {
     $pdo = db();
     $drops = [];
     
@@ -109,6 +110,17 @@ function drop_tokens($user_id, $action, $minutes = 0) {
     
     if (empty($drops)) {
         return [];
+    }
+    
+    // バフとタッグボーナスによる倍率を適用
+    if ($multiplier > 1.0) {
+        foreach ($drops as $token_col => $amount) {
+            $drops[$token_col] = (int)floor($amount * $multiplier);
+            // 最低1個は保証
+            if ($drops[$token_col] < 1) {
+                $drops[$token_col] = 1;
+            }
+        }
     }
     
     // 許可されたカラム名のホワイトリスト

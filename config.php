@@ -62,7 +62,23 @@ function user() {
     $pdo = db();
     $st = $pdo->prepare("SELECT * FROM users WHERE id=?");
     $st->execute([$_SESSION['uid']]);
-    return $st->fetch();
+    $user = $st->fetch();
+    
+    // 最終操作時刻を更新（1分ごとに更新）
+    if ($user) {
+        $last_activity = $user['last_activity'] ?? null;
+        $now = time();
+        if (!$last_activity || (strtotime($last_activity) + 60) < $now) {
+            try {
+                $update_st = $pdo->prepare("UPDATE users SET last_activity = NOW() WHERE id = ?");
+                $update_st->execute([$_SESSION['uid']]);
+            } catch (PDOException $e) {
+                // カラムがまだ存在しない場合は無視
+            }
+        }
+    }
+    
+    return $user;
 }
 
 // ----- ミュートチェック -----

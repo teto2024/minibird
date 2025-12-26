@@ -5,15 +5,15 @@ $me = user();
 if (!$me){ header('Location: ./login.php'); exit; }
 $pdo = db();
 
-// レアリティ定義
+// レアリティ定義（失敗率を半分に設定）
 $RARITIES = [
     'normal' => ['name' => 'ノーマル', 'color' => '#808080', 'icon' => '⚪', 'buff_count' => 1, 'fail_rate' => 0, 'token_col' => 'normal_tokens'],
-    'rare' => ['name' => 'レア', 'color' => '#00cc00', 'icon' => '🟢', 'buff_count' => 2, 'fail_rate' => 10, 'token_col' => 'rare_tokens'],
-    'unique' => ['name' => 'ユニーク', 'color' => '#0080ff', 'icon' => '🔵', 'buff_count' => 3, 'fail_rate' => 20, 'token_col' => 'unique_tokens'],
-    'legend' => ['name' => 'レジェンド', 'color' => '#ffcc00', 'icon' => '🟡', 'buff_count' => 4, 'fail_rate' => 30, 'token_col' => 'legend_tokens'],
-    'epic' => ['name' => 'エピック', 'color' => '#cc00ff', 'icon' => '🟣', 'buff_count' => 5, 'fail_rate' => 40, 'token_col' => 'epic_tokens'],
-    'hero' => ['name' => 'ヒーロー', 'color' => '#ff0000', 'icon' => '🔴', 'buff_count' => 6, 'fail_rate' => 50, 'token_col' => 'hero_tokens'],
-    'mythic' => ['name' => 'ミシック', 'color' => 'rainbow', 'icon' => '🌈', 'buff_count' => 7, 'fail_rate' => 60, 'token_col' => 'mythic_tokens']
+    'rare' => ['name' => 'レア', 'color' => '#00cc00', 'icon' => '🟢', 'buff_count' => 2, 'fail_rate' => 5, 'token_col' => 'rare_tokens'],
+    'unique' => ['name' => 'ユニーク', 'color' => '#0080ff', 'icon' => '🔵', 'buff_count' => 3, 'fail_rate' => 10, 'token_col' => 'unique_tokens'],
+    'legend' => ['name' => 'レジェンド', 'color' => '#ffcc00', 'icon' => '🟡', 'buff_count' => 4, 'fail_rate' => 15, 'token_col' => 'legend_tokens'],
+    'epic' => ['name' => 'エピック', 'color' => '#cc00ff', 'icon' => '🟣', 'buff_count' => 5, 'fail_rate' => 20, 'token_col' => 'epic_tokens'],
+    'hero' => ['name' => 'ヒーロー', 'color' => '#ff0000', 'icon' => '🔴', 'buff_count' => 6, 'fail_rate' => 25, 'token_col' => 'hero_tokens'],
+    'mythic' => ['name' => 'ミシック', 'color' => 'rainbow', 'icon' => '🌈', 'buff_count' => 7, 'fail_rate' => 30, 'token_col' => 'mythic_tokens']
 ];
 
 // 装備部位定義
@@ -26,15 +26,26 @@ $SLOTS = [
     'leg' => ['name' => 'レッグ', 'icon' => '👢']
 ];
 
-// バフ種類定義
+// バフ種類定義（レジェンド以上のバフを上方修正）
 $BUFF_TYPES = [
-    'attack' => ['name' => '攻撃力', 'icon' => '⚔️', 'min' => 1, 'max_normal' => 10, 'max_mythic' => 100],
-    'armor' => ['name' => 'アーマー', 'icon' => '🛡️', 'min' => 1, 'max_normal' => 10, 'max_mythic' => 100],
-    'health' => ['name' => '体力', 'icon' => '❤️', 'min' => 5, 'max_normal' => 50, 'max_mythic' => 500],
-    'coin_drop' => ['name' => 'コインドロップ', 'icon' => '🪙', 'min' => 1, 'max_normal' => 5, 'max_mythic' => 50, 'unit' => '%'],
-    'crystal_drop' => ['name' => 'クリスタルドロップ', 'icon' => '💎', 'min' => 1, 'max_normal' => 3, 'max_mythic' => 30, 'unit' => '%'],
-    'token_normal_drop' => ['name' => 'ノーマルトークンドロップ', 'icon' => '⚪', 'min' => 1, 'max_normal' => 5, 'max_mythic' => 50, 'unit' => '%'],
-    'token_rare_drop' => ['name' => 'レアトークンドロップ', 'icon' => '🟢', 'min' => 1, 'max_normal' => 4, 'max_mythic' => 40, 'unit' => '%']
+    'attack' => ['name' => '攻撃力', 'icon' => '⚔️', 'min' => 1, 'max_normal' => 10, 'max_mythic' => 200],
+    'armor' => ['name' => 'アーマー', 'icon' => '🛡️', 'min' => 1, 'max_normal' => 10, 'max_mythic' => 200],
+    'health' => ['name' => '体力', 'icon' => '❤️', 'min' => 5, 'max_normal' => 50, 'max_mythic' => 1000],
+    'coin_drop' => ['name' => 'コインドロップ', 'icon' => '🪙', 'min' => 1, 'max_normal' => 5, 'max_mythic' => 100, 'unit' => '%'],
+    'crystal_drop' => ['name' => 'クリスタルドロップ', 'icon' => '💎', 'min' => 1, 'max_normal' => 3, 'max_mythic' => 60, 'unit' => '%'],
+    'token_normal_drop' => ['name' => 'ノーマルトークンドロップ', 'icon' => '⚪', 'min' => 1, 'max_normal' => 5, 'max_mythic' => 100, 'unit' => '%'],
+    'token_rare_drop' => ['name' => 'レアトークンドロップ', 'icon' => '🟢', 'min' => 1, 'max_normal' => 4, 'max_mythic' => 80, 'unit' => '%']
+];
+
+// レアリティ別バフ倍率（レジェンド以上を上方修正）
+$RARITY_BUFF_MULTIPLIERS = [
+    'normal' => 1.0,
+    'rare' => 1.0,
+    'unique' => 1.0,
+    'legend' => 1.0,
+    'epic' => 1.5,    // エピックは1.5倍
+    'hero' => 2.0,    // ヒーローは2倍
+    'mythic' => 3.0   // ミシックは3倍
 ];
 
 $CRAFT_COST_COINS = 10000;
@@ -100,10 +111,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $rarity_index = array_search($rarity, array_keys($RARITIES));
                 $max_rarity_index = count($RARITIES) - 1;
                 
+                // レアリティ別倍率を取得
+                $rarity_multiplier = $RARITY_BUFF_MULTIPLIERS[$rarity] ?? 1.0;
+                
                 foreach ($selected_buffs as $buff_key) {
                     $buff_info = $BUFF_TYPES[$buff_key];
                     // レアリティに応じて最大値を補間
                     $max_value = $buff_info['max_normal'] + ($buff_info['max_mythic'] - $buff_info['max_normal']) * ($rarity_index / $max_rarity_index);
+                    // レジェンド以上の場合、レアリティ倍率を適用
+                    $max_value = $max_value * $rarity_multiplier;
                     $value = round($buff_info['min'] + (mt_rand(0, 100) / 100) * ($max_value - $buff_info['min']), 2);
                     $buffs[$buff_key] = $value;
                 }
@@ -119,6 +135,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 ");
                 $st->execute([$me['id'], $slot, $name, $rarity, json_encode($buffs)]);
                 $equipment_id = $pdo->lastInsertId();
+                
+                // エピック以上の装備作成時にお知らせbot通知
+                $high_tier_rarities = ['hero', 'mythic'];
+                if (in_array($rarity, $high_tier_rarities)) {
+                    $user_st = $pdo->prepare("SELECT handle, display_name FROM users WHERE id = ?");
+                    $user_st->execute([$me['id']]);
+                    $user_info = $user_st->fetch();
+                    $user_name = $user_info['display_name'] ?: $user_info['handle'];
+                    
+                    $notification_content = "🎉 おめでとうございます！\n\n@{$user_info['handle']} さんが {$rarity_info['icon']} **{$rarity_info['name']}装備**「{$name}」を作成しました！\n\n素晴らしい成果です！👏";
+                    
+                    $notification_html = markdown_to_html($notification_content);
+                    $notify_st = $pdo->prepare("INSERT INTO posts(user_id, content_md, content_html, created_at) VALUES(5, ?, ?, NOW())");
+                    $notify_st->execute([$notification_content, $notification_html]);
+                }
             }
             
             // 履歴を記録
@@ -130,6 +161,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             
             $pdo->commit();
             
+            // 更新後のトークン残高を取得
+            $st = $pdo->prepare("SELECT * FROM users WHERE id=?");
+            $st->execute([$me['id']]);
+            $updated_user = $st->fetch();
+            
+            $balance = [
+                'coins' => $updated_user['coins'],
+                'normal_tokens' => $updated_user['normal_tokens'] ?? 0,
+                'rare_tokens' => $updated_user['rare_tokens'] ?? 0,
+                'unique_tokens' => $updated_user['unique_tokens'] ?? 0,
+                'legend_tokens' => $updated_user['legend_tokens'] ?? 0,
+                'epic_tokens' => $updated_user['epic_tokens'] ?? 0,
+                'hero_tokens' => $updated_user['hero_tokens'] ?? 0,
+                'mythic_tokens' => $updated_user['mythic_tokens'] ?? 0
+            ];
+            
             if ($success) {
                 echo json_encode([
                     'ok' => true,
@@ -138,16 +185,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'equipment' => [
                         'id' => $equipment_id,
                         'name' => $name,
+                        'slot' => $slot,
                         'rarity' => $rarity,
-                        'buffs' => $buffs
-                    ]
+                        'buffs' => $buffs,
+                        'upgrade_level' => 0
+                    ],
+                    'balance' => $balance
                 ]);
             } else {
                 echo json_encode([
                     'ok' => true,
                     'success' => false,
                     'message' => '装備の作成に失敗しました...素材は消費されました。',
-                    'fail_rate' => $rarity_info['fail_rate']
+                    'fail_rate' => $rarity_info['fail_rate'],
+                    'balance' => $balance
                 ]);
             }
         } catch (Exception $e) {
@@ -299,12 +350,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             
             $pdo->commit();
             
+            // 更新後のトークン残高を取得
+            $st = $pdo->prepare("SELECT * FROM users WHERE id=?");
+            $st->execute([$me['id']]);
+            $updated_user = $st->fetch();
+            
+            // 装備情報を取得
+            $st = $pdo->prepare("SELECT * FROM user_equipment WHERE id = ?");
+            $st->execute([$equipment_id]);
+            $updated_equipment = $st->fetch();
+            
             echo json_encode([
                 'ok' => true,
                 'message' => '装備をアップグレードしました！（+' . $new_level . '）',
                 'new_level' => $new_level,
                 'new_buffs' => $buffs,
-                'buff_increase' => $buff_increase
+                'buff_increase' => $buff_increase,
+                'equipment' => [
+                    'id' => $updated_equipment['id'],
+                    'name' => $updated_equipment['name'],
+                    'rarity' => $rarity,
+                    'upgrade_level' => $new_level
+                ],
+                'balance' => [
+                    'coins' => $updated_user['coins'],
+                    'normal_tokens' => $updated_user['normal_tokens'] ?? 0,
+                    'rare_tokens' => $updated_user['rare_tokens'] ?? 0,
+                    'unique_tokens' => $updated_user['unique_tokens'] ?? 0,
+                    'legend_tokens' => $updated_user['legend_tokens'] ?? 0,
+                    'epic_tokens' => $updated_user['epic_tokens'] ?? 0,
+                    'hero_tokens' => $updated_user['hero_tokens'] ?? 0,
+                    'mythic_tokens' => $updated_user['mythic_tokens'] ?? 0
+                ]
             ]);
         } catch (Exception $e) {
             $pdo->rollBack();
@@ -818,6 +895,66 @@ function updateCraftInfo() {
     craftBtn.disabled = false;
 }
 
+// トークン残高を更新
+function updateTokenBalance(balance) {
+    if (!balance) return;
+    
+    const tokenDisplay = document.querySelector('.token-display');
+    if (tokenDisplay) {
+        const items = tokenDisplay.querySelectorAll('.token-item');
+        items[0].querySelector('span:last-child') && (items[0].innerHTML = `<span>🪙</span> ${balance.coins.toLocaleString()}`);
+        items[1] && (items[1].innerHTML = `<span>⚪</span> ${balance.normal_tokens}`);
+        items[2] && (items[2].innerHTML = `<span>🟢</span> ${balance.rare_tokens}`);
+        items[3] && (items[3].innerHTML = `<span>🔵</span> ${balance.unique_tokens}`);
+        items[4] && (items[4].innerHTML = `<span>🟡</span> ${balance.legend_tokens}`);
+        items[5] && (items[5].innerHTML = `<span>🟣</span> ${balance.epic_tokens}`);
+        items[6] && (items[6].innerHTML = `<span>🔴</span> ${balance.hero_tokens}`);
+        items[7] && (items[7].innerHTML = `<span>🌈</span> ${balance.mythic_tokens}`);
+    }
+}
+
+// 装備カードをDOMに追加
+function addEquipmentCard(equipment) {
+    const grid = document.querySelector('.equipment-grid');
+    if (!grid) return;
+    
+    const rarityInfo = RARITIES[equipment.rarity];
+    const buffHtml = Object.entries(equipment.buffs).map(([key, value]) => {
+        const buffInfo = {
+            'attack': { name: '攻撃力', icon: '⚔️' },
+            'armor': { name: 'アーマー', icon: '🛡️' },
+            'health': { name: '体力', icon: '❤️' },
+            'coin_drop': { name: 'コインドロップ', icon: '🪙', unit: '%' },
+            'crystal_drop': { name: 'クリスタルドロップ', icon: '💎', unit: '%' },
+            'token_normal_drop': { name: 'ノーマルトークンドロップ', icon: '⚪', unit: '%' },
+            'token_rare_drop': { name: 'レアトークンドロップ', icon: '🟢', unit: '%' }
+        }[key] || { name: key, icon: '❓' };
+        return `<div class="buff-item"><span class="buff-name"><span>${buffInfo.icon}</span>${buffInfo.name}</span><span class="buff-value">+${value}${buffInfo.unit || ''}</span></div>`;
+    }).join('');
+    
+    const card = document.createElement('div');
+    card.className = `equipment-card rarity-${equipment.rarity}`;
+    card.innerHTML = `
+        <div class="equipment-card-header">
+            <span class="equipment-name">${equipment.name}</span>
+            <span class="equipment-rarity" style="background: ${rarityInfo.color === 'rainbow' ? 'linear-gradient(90deg, red, orange, yellow, green, blue, violet)' : rarityInfo.color};">${rarityInfo.name}</span>
+        </div>
+        <div class="equipment-buffs">${buffHtml}</div>
+        <div class="upgrade-info"><span class="upgrade-cost">${rarityInfo.icon} ×1 で強化</span></div>
+        <div class="equipment-actions">
+            <button class="equip-btn" data-id="${equipment.id}">装備する</button>
+            <button class="upgrade-btn" data-id="${equipment.id}" data-rarity="${equipment.rarity}" data-level="0" data-name="${equipment.name}">⬆️ 強化</button>
+        </div>
+    `;
+    
+    // 新しいカードにイベントをバインド
+    grid.insertBefore(card, grid.firstChild);
+    
+    // イベントリスナーを追加
+    card.querySelector('.equip-btn').addEventListener('click', handleEquipClick);
+    card.querySelector('.upgrade-btn').addEventListener('click', handleUpgradeClick);
+}
+
 // 装備作成
 document.getElementById('craftBtn').addEventListener('click', async () => {
     if (!selectedSlot || !selectedRarity) return;
@@ -841,9 +978,13 @@ document.getElementById('craftBtn').addEventListener('click', async () => {
         const data = await res.json();
         
         if (data.ok) {
+            // トークン残高を更新
+            updateTokenBalance(data.balance);
+            
             if (data.success) {
                 alert(`✅ ${data.message}\n\n作成された装備: ${data.equipment.name}`);
-                location.reload();
+                // 新しい装備をDOMに追加
+                addEquipmentCard(data.equipment);
             } else {
                 alert(`❌ ${data.message}`);
             }
@@ -858,63 +999,111 @@ document.getElementById('craftBtn').addEventListener('click', async () => {
     btn.textContent = '装備を作成する';
 });
 
+// 装備/外すハンドラー
+async function handleEquipClick(e) {
+    const btn = e.target;
+    const id = btn.dataset.id;
+    const action = btn.classList.contains('equip-btn') ? 'equip' : 'unequip';
+    
+    const formData = new FormData();
+    formData.append('action', action);
+    formData.append('equipment_id', id);
+    
+    try {
+        const res = await fetch('', {method: 'POST', body: formData});
+        const data = await res.json();
+        
+        if (data.ok) {
+            location.reload();
+        } else {
+            alert('❌ ' + data.error);
+        }
+    } catch (e) {
+        alert('❌ 通信エラーが発生しました');
+    }
+}
+
 // 装備/外す
 document.querySelectorAll('.equip-btn, .unequip-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        const action = btn.classList.contains('equip-btn') ? 'equip' : 'unequip';
-        
-        const formData = new FormData();
-        formData.append('action', action);
-        formData.append('equipment_id', id);
-        
-        try {
-            const res = await fetch('', {method: 'POST', body: formData});
-            const data = await res.json();
-            
-            if (data.ok) {
-                location.reload();
-            } else {
-                alert('❌ ' + data.error);
-            }
-        } catch (e) {
-            alert('❌ 通信エラーが発生しました');
-        }
-    });
+    btn.addEventListener('click', handleEquipClick);
 });
+
+// アップグレードハンドラー
+async function handleUpgradeClick(e) {
+    const btn = e.target;
+    const id = btn.dataset.id;
+    const rarity = btn.dataset.rarity;
+    const level = parseInt(btn.dataset.level) || 0;
+    const name = btn.dataset.name;
+    const requiredTokens = level + 1;
+    const rarityInfo = RARITIES[rarity];
+    
+    if (!confirm(`「${name}${level > 0 ? ' +' + level : ''}」をアップグレードしますか？\n\n必要: ${rarityInfo.icon} ${rarityInfo.name}トークン ×${requiredTokens}\n効果: 全バフが${UPGRADE_BUFF_INCREASE_RATE}%上昇`)) {
+        return;
+    }
+    
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = '強化中...';
+    
+    const formData = new FormData();
+    formData.append('action', 'upgrade');
+    formData.append('equipment_id', id);
+    
+    try {
+        const res = await fetch('', {method: 'POST', body: formData});
+        const data = await res.json();
+        
+        if (data.ok) {
+            // トークン残高を更新
+            updateTokenBalance(data.balance);
+            
+            // カード内の情報を更新
+            const card = btn.closest('.equipment-card');
+            if (card) {
+                // 装備名のレベル表示を更新
+                const nameEl = card.querySelector('.equipment-name');
+                if (nameEl) {
+                    nameEl.textContent = `${name} +${data.new_level}`;
+                }
+                
+                // バフ値を更新
+                const buffItems = card.querySelectorAll('.buff-item');
+                Object.entries(data.new_buffs).forEach(([key, value], index) => {
+                    if (buffItems[index]) {
+                        const valueEl = buffItems[index].querySelector('.buff-value');
+                        if (valueEl) {
+                            const unit = ['coin_drop', 'crystal_drop', 'token_normal_drop', 'token_rare_drop'].includes(key) ? '%' : '';
+                            valueEl.textContent = `+${value}${unit}`;
+                        }
+                    }
+                });
+                
+                // ボタンのデータ属性を更新
+                btn.dataset.level = data.new_level;
+                
+                // 強化コストを更新
+                const costEl = card.querySelector('.upgrade-cost');
+                if (costEl) {
+                    costEl.textContent = `${rarityInfo.icon} ×${data.new_level + 1} で強化`;
+                }
+            }
+            
+            alert(`✅ ${data.message}`);
+        } else {
+            alert('❌ ' + data.error);
+        }
+    } catch (e) {
+        alert('❌ 通信エラーが発生しました');
+    }
+    
+    btn.disabled = false;
+    btn.textContent = originalText;
+}
 
 // アップグレード
 document.querySelectorAll('.upgrade-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        const rarity = btn.dataset.rarity;
-        const level = parseInt(btn.dataset.level) || 0;
-        const name = btn.dataset.name;
-        const requiredTokens = level + 1;
-        const rarityInfo = RARITIES[rarity];
-        
-        if (!confirm(`「${name}${level > 0 ? ' +' + level : ''}」をアップグレードしますか？\n\n必要: ${rarityInfo.icon} ${rarityInfo.name}トークン ×${requiredTokens}\n効果: 全バフが${UPGRADE_BUFF_INCREASE_RATE}%上昇`)) {
-            return;
-        }
-        
-        const formData = new FormData();
-        formData.append('action', 'upgrade');
-        formData.append('equipment_id', id);
-        
-        try {
-            const res = await fetch('', {method: 'POST', body: formData});
-            const data = await res.json();
-            
-            if (data.ok) {
-                alert(`✅ ${data.message}`);
-                location.reload();
-            } else {
-                alert('❌ ' + data.error);
-            }
-        } catch (e) {
-            alert('❌ 通信エラーが発生しました');
-        }
-    });
+    btn.addEventListener('click', handleUpgradeClick);
 });
 </script>
 </body>
