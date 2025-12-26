@@ -1004,6 +1004,21 @@ notificationBtn?.addEventListener("click", async () => {
     }
 });
 
+// モバイル用の閉じるボタン
+const closeNotificationBtn = document.getElementById("closeNotificationBtn");
+closeNotificationBtn?.addEventListener("click", () => {
+    notificationPopup?.classList.add("hidden");
+});
+
+// ポップアップ外クリックで閉じる（モバイル対応強化）
+document.addEventListener("click", (e) => {
+    if (notificationPopup && !notificationPopup.classList.contains("hidden")) {
+        if (!notificationPopup.contains(e.target) && !notificationBtn?.contains(e.target)) {
+            notificationPopup.classList.add("hidden");
+        }
+    }
+});
+
 // 定期的に新着通知チェック
 async function fetchNewNotifications() {
     const data = await fetchJSON(`/notifications_api.php?since_id=${lastNotificationId}`);

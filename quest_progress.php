@@ -428,3 +428,22 @@ function check_relay_quest_completion($user_id) {
     // 報酬は手動で受け取る仕組みに変更したため、この関数は何もしない
     return false;
 }
+
+/**
+ * 集中タスク専用のクエスト進行チェック
+ * @param int $user_id ユーザーID
+ * @param int $minutes 集中タスクの分数
+ */
+function check_focus_quest_progress($user_id, $minutes) {
+    $pdo = db();
+    $today_end = date('Y-m-d 23:59:59');
+    $week_end = date('Y-m-d 23:59:59', strtotime('sunday this week'));
+    
+    // 15分以上の場合、focus_min_15クエストを完了
+    if ($minutes >= 15) {
+        check_daily_quest_progress($user_id, 'focus_min_15', 1);
+    }
+    
+    // focus_total_100クエスト（累計分数）を進行
+    check_weekly_quest_progress($user_id, 'focus_total_100', $minutes);
+}

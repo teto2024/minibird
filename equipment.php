@@ -34,7 +34,8 @@ $BUFF_TYPES = [
     'coin_drop' => ['name' => 'コインドロップ', 'icon' => '🪙', 'min' => 1, 'max_normal' => 5, 'max_mythic' => 100, 'unit' => '%'],
     'crystal_drop' => ['name' => 'クリスタルドロップ', 'icon' => '💎', 'min' => 1, 'max_normal' => 3, 'max_mythic' => 60, 'unit' => '%'],
     'token_normal_drop' => ['name' => 'ノーマルトークンドロップ', 'icon' => '⚪', 'min' => 1, 'max_normal' => 5, 'max_mythic' => 100, 'unit' => '%'],
-    'token_rare_drop' => ['name' => 'レアトークンドロップ', 'icon' => '🟢', 'min' => 1, 'max_normal' => 4, 'max_mythic' => 80, 'unit' => '%']
+    'token_rare_drop' => ['name' => 'レアトークンドロップ', 'icon' => '🟢', 'min' => 1, 'max_normal' => 4, 'max_mythic' => 80, 'unit' => '%'],
+    'exp_bonus' => ['name' => '経験値ボーナス', 'icon' => '⭐', 'min' => 1, 'max_normal' => 5, 'max_mythic' => 50, 'unit' => '%']
 ];
 
 // レアリティ別バフ倍率（レジェンド以上を上方修正）
@@ -124,9 +125,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $buffs[$buff_key] = $value;
                 }
                 
-                // 装備名を生成
-                $prefixes = ['輝く', '神秘の', '古代の', '伝説の', '英雄の', '神の', '究極の'];
-                $name = $prefixes[array_rand($prefixes)] . $SLOTS[$slot]['name'];
+                // 装備名を生成（50-100種類を2-3個組み合わせ）
+                $prefixes1 = ['輝く', '神秘の', '古代の', '伝説の', '英雄の', '神の', '究極の', '聖なる', '闇の', '炎の', 
+                              '氷の', '雷の', '風の', '大地の', '光の', '影の', '星の', '月の', '太陽の', '深淵の',
+                              '永遠の', '無限の', '幻の', '真実の', '魔法の', '秘密の', '失われた', '禁断の', '天の', '魂の'];
+                $prefixes2 = ['勇者', '賢者', '戦士', '騎士', '魔道士', '竜騎士', '暗殺者', '守護者', '征服者', '破壊者',
+                              '創造者', '審判者', '預言者', '解放者', '支配者', '探求者', '覚醒者', '超越者', '救世主', '天使',
+                              '悪魔', '精霊', '巨人', '妖精', '英霊', '王者', '覇者', '神官', '導師', '帝王'];
+                $suffixes = ['の証', 'の刻印', 'の紋章', 'の守護', 'の力', 'の意志', 'の誓い', 'の運命', 'の奇跡', 'の祝福',
+                             'の栄光', 'の輝き', 'の覚醒', 'の結晶', 'の魂', 'の心臓', 'の眼', 'の翼', 'の牙', 'の爪',
+                             'の加護', 'の恩恵', 'の試練', 'の遺産', 'の秘宝', 'の継承', 'の約束', 'の希望', 'の絆', 'の軌跡'];
+                
+                // 2-3個の組み合わせパターンをランダム選択
+                $pattern = mt_rand(1, 3);
+                switch ($pattern) {
+                    case 1:
+                        // パターン1: prefix1 + 部位名
+                        $name = $prefixes1[array_rand($prefixes1)] . $SLOTS[$slot]['name'];
+                        break;
+                    case 2:
+                        // パターン2: prefix1 + prefix2 + の + 部位名
+                        $name = $prefixes1[array_rand($prefixes1)] . $prefixes2[array_rand($prefixes2)] . 'の' . $SLOTS[$slot]['name'];
+                        break;
+                    case 3:
+                        // パターン3: prefix2 + suffix + 部位名
+                        $name = $prefixes2[array_rand($prefixes2)] . $suffixes[array_rand($suffixes)] . '・' . $SLOTS[$slot]['name'];
+                        break;
+                }
                 
                 // 装備を保存
                 $st = $pdo->prepare("
@@ -407,6 +432,151 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             ]);
         } catch (Exception $e) {
             $pdo->rollBack();
+            echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    if ($action === 'sell') {
+        $equipment_id = (int)($_POST['equipment_id'] ?? 0);
+        
+        $pdo->beginTransaction();
+        try {
+            // 装備の所有確認（装備中でないことも確認）
+            $st = $pdo->prepare("SELECT * FROM user_equipment WHERE id = ? AND user_id = ?");
+            $st->execute([$equipment_id, $me['id']]);
+            $equipment = $st->fetch();
+            
+            if (!$equipment) {
+                throw new Exception('装備が見つかりません');
+            }
+            
+            if ($equipment['is_equipped']) {
+                throw new Exception('装備中の装備は売却できません。先に外してください。');
+            }
+            
+            // レアリティとバフ値に基づいて売却価格を計算
+            $rarity = $equipment['rarity'];
+            $buffs = json_decode($equipment['buffs'], true) ?: [];
+            $upgrade_level = (int)($equipment['upgrade_level'] ?? 0);
+            
+            // 基本売却価格（レアリティ別）
+            $base_prices = [
+                'normal' => ['coins' => 50, 'crystals' => 0],
+                'rare' => ['coins' => 200, 'crystals' => 1],
+                'unique' => ['coins' => 500, 'crystals' => 3],
+                'legend' => ['coins' => 1500, 'crystals' => 10],
+                'epic' => ['coins' => 4000, 'crystals' => 25],
+                'hero' => ['coins' => 10000, 'crystals' => 60],
+                'mythic' => ['coins' => 25000, 'crystals' => 150]
+            ];
+            
+            $base = $base_prices[$rarity] ?? ['coins' => 50, 'crystals' => 0];
+            
+            // バフ値による価格ボーナス（各バフ値の合計に応じて価格上昇）
+            $total_buff_value = 0;
+            foreach ($buffs as $buff_key => $value) {
+                $total_buff_value += $value;
+            }
+            
+            // バフボーナス（バフ合計値の10%をコイン、5%をクリスタルに加算）
+            $buff_bonus_coins = (int)floor($total_buff_value * 10);
+            $buff_bonus_crystals = (int)floor($total_buff_value * 0.5);
+            
+            // アップグレードレベルによるボーナス（レベルごとに基本価格の20%上昇）
+            $upgrade_multiplier = 1 + ($upgrade_level * 0.2);
+            
+            // 最終売却価格
+            $sell_coins = (int)floor(($base['coins'] + $buff_bonus_coins) * $upgrade_multiplier);
+            $sell_crystals = (int)floor(($base['crystals'] + $buff_bonus_crystals) * $upgrade_multiplier);
+            
+            // ユーザーに通貨を付与
+            $st = $pdo->prepare("UPDATE users SET coins = coins + ?, crystals = crystals + ? WHERE id = ?");
+            $st->execute([$sell_coins, $sell_crystals, $me['id']]);
+            
+            // 売却履歴を記録
+            $st = $pdo->prepare("
+                INSERT INTO equipment_sell_history (user_id, equipment_name, equipment_rarity, equipment_buffs, upgrade_level, sell_coins, sell_crystals)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ");
+            $st->execute([$me['id'], $equipment['name'], $rarity, $equipment['buffs'], $upgrade_level, $sell_coins, $sell_crystals]);
+            
+            // 装備を削除
+            $st = $pdo->prepare("DELETE FROM user_equipment WHERE id = ?");
+            $st->execute([$equipment_id]);
+            
+            $pdo->commit();
+            
+            // 更新後のユーザー情報を取得
+            $st = $pdo->prepare("SELECT coins, crystals FROM users WHERE id = ?");
+            $st->execute([$me['id']]);
+            $updated_user = $st->fetch();
+            
+            echo json_encode([
+                'ok' => true,
+                'message' => "「{$equipment['name']}」を売却しました！",
+                'sell_coins' => $sell_coins,
+                'sell_crystals' => $sell_crystals,
+                'balance' => [
+                    'coins' => $updated_user['coins'],
+                    'crystals' => $updated_user['crystals']
+                ]
+            ]);
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+    
+    if ($action === 'get_sell_price') {
+        $equipment_id = (int)($_POST['equipment_id'] ?? 0);
+        
+        try {
+            $st = $pdo->prepare("SELECT * FROM user_equipment WHERE id = ? AND user_id = ?");
+            $st->execute([$equipment_id, $me['id']]);
+            $equipment = $st->fetch();
+            
+            if (!$equipment) {
+                throw new Exception('装備が見つかりません');
+            }
+            
+            $rarity = $equipment['rarity'];
+            $buffs = json_decode($equipment['buffs'], true) ?: [];
+            $upgrade_level = (int)($equipment['upgrade_level'] ?? 0);
+            
+            $base_prices = [
+                'normal' => ['coins' => 50, 'crystals' => 0],
+                'rare' => ['coins' => 200, 'crystals' => 1],
+                'unique' => ['coins' => 500, 'crystals' => 3],
+                'legend' => ['coins' => 1500, 'crystals' => 10],
+                'epic' => ['coins' => 4000, 'crystals' => 25],
+                'hero' => ['coins' => 10000, 'crystals' => 60],
+                'mythic' => ['coins' => 25000, 'crystals' => 150]
+            ];
+            
+            $base = $base_prices[$rarity] ?? ['coins' => 50, 'crystals' => 0];
+            
+            $total_buff_value = 0;
+            foreach ($buffs as $buff_key => $value) {
+                $total_buff_value += $value;
+            }
+            
+            $buff_bonus_coins = (int)floor($total_buff_value * 10);
+            $buff_bonus_crystals = (int)floor($total_buff_value * 0.5);
+            $upgrade_multiplier = 1 + ($upgrade_level * 0.2);
+            
+            $sell_coins = (int)floor(($base['coins'] + $buff_bonus_coins) * $upgrade_multiplier);
+            $sell_crystals = (int)floor(($base['crystals'] + $buff_bonus_crystals) * $upgrade_multiplier);
+            
+            echo json_encode([
+                'ok' => true,
+                'equipment_name' => $equipment['name'],
+                'is_equipped' => (bool)$equipment['is_equipped'],
+                'sell_coins' => $sell_coins,
+                'sell_crystals' => $sell_crystals
+            ]);
+        } catch (Exception $e) {
             echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
         }
         exit;
@@ -741,6 +911,23 @@ $user = $st->fetch();
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
 }
+
+.sell-btn {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+    color: white;
+    font-size: 12px;
+}
+
+.sell-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(229, 62, 62, 0.4);
+}
 </style>
 </head>
 <body>
@@ -849,6 +1036,7 @@ $user = $st->fetch();
                     <button class="unequip-btn" data-id="<?= $eq['id'] ?>">外す</button>
                     <?php else: ?>
                     <button class="equip-btn" data-id="<?= $eq['id'] ?>">装備する</button>
+                    <button class="sell-btn" data-id="<?= $eq['id'] ?>" data-name="<?= htmlspecialchars($eq['name']) ?>">💰 売却</button>
                     <?php endif; ?>
                     <button class="upgrade-btn" data-id="<?= $eq['id'] ?>" data-rarity="<?= $eq['rarity'] ?>" data-level="<?= $upgrade_level ?>" data-name="<?= htmlspecialchars($eq['name']) ?>">⬆️ 強化</button>
                 </div>
@@ -1164,6 +1352,72 @@ async function handleUpgradeClick(e) {
 // アップグレード
 document.querySelectorAll('.upgrade-btn').forEach(btn => {
     btn.addEventListener('click', handleUpgradeClick);
+});
+
+// 売却ハンドラー
+async function handleSellClick(e) {
+    const btn = e.target;
+    const id = btn.dataset.id;
+    const name = btn.dataset.name;
+    
+    // まず売却価格を取得
+    const priceFormData = new FormData();
+    priceFormData.append('action', 'get_sell_price');
+    priceFormData.append('equipment_id', id);
+    
+    try {
+        const priceRes = await fetch('', {method: 'POST', body: priceFormData});
+        const priceData = await priceRes.json();
+        
+        if (!priceData.ok) {
+            alert('❌ ' + priceData.error);
+            return;
+        }
+        
+        if (priceData.is_equipped) {
+            alert('⚠️ 装備中の装備は売却できません。先に外してください。');
+            return;
+        }
+        
+        if (!confirm(`「${name}」を売却しますか？\n\n売却価格:\n🪙 ${priceData.sell_coins.toLocaleString()} コイン\n💎 ${priceData.sell_crystals.toLocaleString()} クリスタル`)) {
+            return;
+        }
+        
+        btn.disabled = true;
+        const originalText = btn.textContent;
+        btn.textContent = '売却中...';
+        
+        const formData = new FormData();
+        formData.append('action', 'sell');
+        formData.append('equipment_id', id);
+        
+        const res = await fetch('', {method: 'POST', body: formData});
+        const data = await res.json();
+        
+        if (data.ok) {
+            // トークン表示を更新
+            updateTokenDisplay(data.balance);
+            
+            // カードを削除
+            const card = btn.closest('.equipment-card');
+            if (card) {
+                card.remove();
+            }
+            
+            alert(`✅ ${data.message}\n\n獲得:\n🪙 ${data.sell_coins.toLocaleString()} コイン\n💎 ${data.sell_crystals.toLocaleString()} クリスタル`);
+        } else {
+            alert('❌ ' + data.error);
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    } catch (e) {
+        alert('❌ 通信エラーが発生しました');
+    }
+}
+
+// 売却
+document.querySelectorAll('.sell-btn').forEach(btn => {
+    btn.addEventListener('click', handleSellClick);
 });
 </script>
 </body>

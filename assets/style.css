@@ -2504,6 +2504,41 @@ button {
     line-height: 1.4;
 }
 
+/* 通知ポップアップヘッダー（閉じるボタン含む） */
+.notification-popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid #333;
+    font-weight: bold;
+    color: #e6e6e6;
+}
+
+.close-notification-btn {
+    background: transparent;
+    border: none;
+    color: #8899a6;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: none; /* デフォルトでは非表示 */
+}
+
+.close-notification-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e6e6e6;
+}
+
+/* モバイルでは閉じるボタンを表示 */
+@media (max-width: 768px) {
+    .close-notification-btn {
+        display: block;
+    }
+}
+
 #notificationPopup.hidden {
     display: none;
 }
