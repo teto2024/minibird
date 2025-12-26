@@ -79,11 +79,15 @@ $FORGE_RECIPES = [
     ]
 ];
 
+// 一括合成の最大個数
+define('MAX_BULK_SYNTHESIS', 100);
+
 // Ajax処理
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
     
     $recipe_key = $_POST['recipe'] ?? '';
+    $quantity = max(1, min(MAX_BULK_SYNTHESIS, (int)($_POST['quantity'] ?? 1))); // 一括合成の個数（1-MAX_BULK_SYNTHESIS）
     
     if (!isset($FORGE_RECIPES[$recipe_key])) {
         echo json_encode(['ok' => false, 'error' => '不正なレシピです']);
@@ -110,17 +114,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception('不正なカラム名です');
         }
         
-        if (($user[$from_col] ?? 0) < $recipe['from_amount']) {
-            throw new Exception($recipe['from_label'] . 'が不足しています');
+        // 必要な素材数を計算
+        $total_from_amount = $recipe['from_amount'] * $quantity;
+        $total_to_amount = $recipe['to_amount'] * $quantity;
+        
+        if (($user[$from_col] ?? 0) < $total_from_amount) {
+            throw new Exception($recipe['from_label'] . 'が不足しています（必要: ' . $total_from_amount . '）');
         }
         
         // 素材を消費してトークンを生成（ホワイトリスト検証済みのカラム名を使用）
         $st = $pdo->prepare("UPDATE users SET {$from_col} = {$from_col} - ?, {$to_col} = {$to_col} + ? WHERE id = ?");
-        $st->execute([$recipe['from_amount'], $recipe['to_amount'], $me['id']]);
+        $st->execute([$total_from_amount, $total_to_amount, $me['id']]);
         
         // 履歴を記録
         $st = $pdo->prepare("INSERT INTO token_forge_history (user_id, from_type, from_amount, to_type, to_amount) VALUES (?,?,?,?,?)");
-        $st->execute([$me['id'], $from_col, $recipe['from_amount'], $to_col, $recipe['to_amount']]);
+        $st->execute([$me['id'], $from_col, $total_from_amount, $to_col, $total_to_amount]);
+        
+        // ヒーロー・ミシックトークン（エピック以上）合成時にお知らせbot通知
+        $high_tier_tokens = ['epic_tokens', 'hero_tokens', 'mythic_tokens'];
+        if (in_array($to_col, $high_tier_tokens)) {
+            $user_st = $pdo->prepare("SELECT handle, display_name FROM users WHERE id = ?");
+            $user_st->execute([$me['id']]);
+            $user_info = $user_st->fetch();
+            $user_name = $user_info['display_name'] ?: $user_info['handle'];
+            
+            $notification_content = "🎉 おめでとうございます！\n\n@{$user_info['handle']} さんが {$recipe['to_icon']} **{$recipe['to_label']}**を{$total_to_amount}個合成しました！\n\n素晴らしい成果です！👏";
+            
+            $notification_html = markdown_to_html($notification_content);
+            $notify_st = $pdo->prepare("INSERT INTO posts(user_id, content_md, content_html, created_at) VALUES(5, ?, ?, NOW())");
+            $notify_st->execute([$notification_content, $notification_html]);
+        }
         
         $pdo->commit();
         
@@ -131,7 +154,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         echo json_encode([
             'ok' => true, 
-            'message' => $recipe['to_label'] . 'を1つ獲得しました！',
+            'message' => $recipe['to_label'] . 'を' . $total_to_amount . '個獲得しました！',
+            'quantity' => $total_to_amount,
             'balance' => [
                 'crystals' => $updated_user['crystals'],
                 'normal_tokens' => $updated_user['normal_tokens'] ?? 0,
@@ -282,6 +306,28 @@ $user = $st->fetch();
     color: #ff6b35;
 }
 
+.forge-quantity {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.quantity-input {
+    width: 70px;
+    padding: 10px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid #444;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    text-align: center;
+}
+
+.quantity-input:focus {
+    outline: none;
+    border-color: #ff6b35;
+}
+
 .forge-button {
     padding: 12px 24px;
     background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
@@ -419,6 +465,9 @@ $user = $st->fetch();
                     <div class="amount">×<?= $recipe['to_amount'] ?> 獲得</div>
                 </div>
             </div>
+            <div class="forge-quantity">
+                <input type="number" class="quantity-input" data-recipe="<?= $key ?>" min="1" max="100" value="1" placeholder="個数">
+            </div>
             <button class="forge-button" data-recipe="<?= $key ?>" data-from="<?= $recipe['from'] ?>" data-from-amount="<?= $recipe['from_amount'] ?>">
                 鍛冶する
             </button>
@@ -440,20 +489,33 @@ function updateBalance(balance) {
 // ボタンの状態を更新
 function updateButtonStates() {
     document.querySelectorAll('.forge-button').forEach(btn => {
+        const recipe = btn.dataset.recipe;
         const from = btn.dataset.from;
         const fromAmount = parseInt(btn.dataset.fromAmount);
+        const quantityInput = document.querySelector(`.quantity-input[data-recipe="${recipe}"]`);
+        const quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
         const currentEl = document.getElementById('bal_' + from);
         const current = currentEl ? parseInt(currentEl.textContent) : 0;
-        btn.disabled = current < fromAmount;
+        btn.disabled = current < (fromAmount * quantity);
     });
 }
+
+// 個数入力の変更を監視
+document.querySelectorAll('.quantity-input').forEach(input => {
+    input.addEventListener('change', updateButtonStates);
+    input.addEventListener('input', updateButtonStates);
+});
 
 // 鍛冶ボタンのイベント
 document.querySelectorAll('.forge-button').forEach(btn => {
     btn.addEventListener('click', async () => {
         const recipe = btn.dataset.recipe;
+        const fromAmount = parseInt(btn.dataset.fromAmount);
+        const quantityInput = document.querySelector(`.quantity-input[data-recipe="${recipe}"]`);
+        const quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
+        const totalCost = fromAmount * quantity;
         
-        if (!confirm('本当に鍛冶しますか？\n素材は消費されます。')) {
+        if (!confirm(`${quantity}個鍛冶しますか？\n素材 ×${totalCost} が消費されます。`)) {
             return;
         }
         
@@ -463,6 +525,7 @@ document.querySelectorAll('.forge-button').forEach(btn => {
         try {
             const formData = new FormData();
             formData.append('recipe', recipe);
+            formData.append('quantity', quantity);
             
             const res = await fetch('', {method: 'POST', body: formData});
             const data = await res.json();

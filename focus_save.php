@@ -4,12 +4,12 @@ require_once __DIR__ . '/token_drop.php';
 require_login();
 $pdo = db();
 
-// 報酬計算用の定数
-define('REWARD_BASE_COINS', 10);
-define('REWARD_BASE_CRYSTALS', 2);
-define('REWARD_COINS_EXP_RATE', 1.04);
-define('REWARD_CRYSTALS_EXP_RATE', 1.015);
-define('REWARD_SERVER_TIME_MULTIPLIER', 1.06); // サーバー側の時間補正
+// 報酬計算用の定数（上方修正）
+define('REWARD_BASE_COINS', 15);       // 10から15に上方修正
+define('REWARD_BASE_CRYSTALS', 3);     // 2から3に上方修正
+define('REWARD_COINS_EXP_RATE', 1.05); // 1.04から1.05に上方修正
+define('REWARD_CRYSTALS_EXP_RATE', 1.02); // 1.015から1.02に上方修正
+define('REWARD_SERVER_TIME_MULTIPLIER', 1.08); // 1.06から1.08に上方修正
 define('REWARD_MAX_MINUTES', 180); // 最大時間制限
 
 // JSONデータ取得
@@ -204,8 +204,9 @@ try {
 
         // --------------------------
         // トークンドロップ（成功時）
+        // バフとタッグボーナスをトークンにも適用
         // --------------------------
-        $token_drops = drop_tokens($uid, 'focus_success', $mins);
+        $token_drops = drop_tokens($uid, 'focus_success', $mins, $total_multiplier);
 
     } else {
         // --------------------------
@@ -239,9 +240,10 @@ try {
 
         // --------------------------
         // トークンドロップ（失敗時）
+        // バフとタッグボーナスをトークンにも適用
         // --------------------------
         $actual_mins = max(1, floor((strtotime($ended_at) - strtotime($started_at)) / 60));
-        $token_drops = drop_tokens($uid, 'focus_fail', $actual_mins);
+        $token_drops = drop_tokens($uid, 'focus_fail', $actual_mins, $total_multiplier);
     }
 
     // --------------------------

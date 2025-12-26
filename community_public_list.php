@@ -17,6 +17,22 @@ if (!$me) {
 
 $pdo = db();
 
+// ソート順の取得（デフォルト: 作成順）
+$sort = $_GET['sort'] ?? 'created';
+
+// ソート順に応じたORDER BY句を設定（ホワイトリスト方式で安全に設定）
+$order_by_map = [
+    'latest' => "(SELECT MAX(created_at) FROM community_posts WHERE community_id = c.id) DESC",
+    'active' => "(SELECT COUNT(*) FROM community_posts WHERE community_id = c.id AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) DESC",
+    'created' => "c.created_at DESC"
+];
+
+// ホワイトリストに存在しない場合はデフォルトを使用
+if (!isset($order_by_map[$sort])) {
+    $sort = 'created';
+}
+$order_by = $order_by_map[$sort];
+
 // 公開コミュニティ一覧を取得
 $stmt = $pdo->prepare("
     SELECT 
@@ -26,11 +42,12 @@ $stmt = $pdo->prepare("
         (SELECT COUNT(*) FROM community_members WHERE community_id = c.id) as member_count,
         (SELECT COUNT(*) FROM community_posts WHERE community_id = c.id) as post_count,
         (SELECT COUNT(*) FROM community_posts WHERE community_id = c.id AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as posts_24h,
+        (SELECT MAX(created_at) FROM community_posts WHERE community_id = c.id) as latest_post_at,
         EXISTS(SELECT 1 FROM community_members WHERE community_id = c.id AND user_id = ?) as is_member
     FROM communities c
     JOIN users u ON u.id = c.owner_id
     WHERE c.is_public = 1
-    ORDER BY c.created_at DESC
+    ORDER BY {$order_by}
 ");
 $stmt->execute([$me['id']]);
 $communities = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -162,6 +179,32 @@ unset($community);
 .active-meter-bar.active.red {
     background: #f56565;
 }
+.sort-selector {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+.sort-btn {
+    padding: 8px 16px;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    background: white;
+    color: #2d3748;
+    cursor: pointer;
+    font-size: 14px;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+.sort-btn:hover {
+    background: #edf2f7;
+}
+.sort-btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
 </style>
 </head>
 <body>
@@ -174,6 +217,13 @@ unset($community);
     <div style="margin-bottom: 20px;">
         <a href="communities.php" class="btn btn-secondary">← マイコミュニティに戻る</a>
         <a href="index.php" class="btn btn-secondary">フィードに戻る</a>
+    </div>
+    
+    <div class="sort-selector">
+        <span style="color: #718096;">並び替え:</span>
+        <a href="?sort=created" class="sort-btn <?= $sort === 'created' ? 'active' : '' ?>">作成順</a>
+        <a href="?sort=latest" class="sort-btn <?= $sort === 'latest' ? 'active' : '' ?>">新規投稿順</a>
+        <a href="?sort=active" class="sort-btn <?= $sort === 'active' ? 'active' : '' ?>">アクティブ順</a>
     </div>
     
     <?php if (empty($communities)): ?>

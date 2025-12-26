@@ -22,6 +22,41 @@ $st->execute([$targetId]);
 $user = $st->fetch();
 if (!$user) die('ユーザーが存在しません');
 
+// オンライン状態を計算
+$isOnline = false;
+$lastSeenText = '';
+$lastActivity = $user['last_activity'] ?? null;
+
+if ($lastActivity) {
+    $lastActivityTime = strtotime($lastActivity);
+    $now = time();
+    $diffMinutes = floor(($now - $lastActivityTime) / 60);
+    
+    if ($diffMinutes < 15) {
+        // 15分以内はオンライン
+        $isOnline = true;
+        if ($diffMinutes < 1) {
+            $lastSeenText = '今オンライン';
+        } else {
+            $lastSeenText = "{$diffMinutes}分前にアクティブ";
+        }
+    } else {
+        // 15分以上でオフライン
+        $isOnline = false;
+        if ($diffMinutes < 60) {
+            $lastSeenText = "{$diffMinutes}分前";
+        } elseif ($diffMinutes < 1440) {
+            $hours = floor($diffMinutes / 60);
+            $lastSeenText = "{$hours}時間前";
+        } else {
+            $days = floor($diffMinutes / 1440);
+            $lastSeenText = "{$days}日前";
+        }
+    }
+} else {
+    $lastSeenText = '不明';
+}
+
 // ログイン中ユーザー
 $me = user();
 
@@ -418,6 +453,52 @@ $BUFF_TYPES = [
     font-size: 14px;
 }
 
+/* オンライン状態インジケーター */
+.online-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 10px 0;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.online-status.online {
+    background: linear-gradient(135deg, rgba(72, 187, 120, 0.1), rgba(72, 187, 120, 0.2));
+    color: #48bb78;
+    border: 1px solid rgba(72, 187, 120, 0.3);
+}
+
+.online-status.offline {
+    background: linear-gradient(135deg, rgba(160, 174, 192, 0.1), rgba(160, 174, 192, 0.2));
+    color: #a0aec0;
+    border: 1px solid rgba(160, 174, 192, 0.3);
+}
+
+.online-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.online-dot.online {
+    background: #48bb78;
+    box-shadow: 0 0 8px rgba(72, 187, 120, 0.6);
+    animation: pulse-online 2s infinite;
+}
+
+.online-dot.offline {
+    background: #a0aec0;
+}
+
+@keyframes pulse-online {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.2); }
+}
+
 /* タブレット・モバイル対応 */
 @media (max-width: 768px) {
     .user-icon {
@@ -478,6 +559,13 @@ $BUFF_TYPES = [
                     <?php endif; ?>
                 </div>
                 <div class="user-handle">@<?= htmlspecialchars($user['handle']) ?></div>
+
+                <!-- オンライン状態インジケーター -->
+                <div class="online-status <?= $isOnline ? 'online' : 'offline' ?>">
+                    <span class="online-dot <?= $isOnline ? 'online' : 'offline' ?>"></span>
+                    <span><?= $isOnline ? '🟢 オンライン' : '⚫ オフライン' ?></span>
+                    <span style="opacity: 0.7; font-size: 12px;">(<?= htmlspecialchars($lastSeenText) ?>)</span>
+                </div>
 
                 <!-- 自己紹介 -->
                 <div class="user-bio"><?= nl2br(htmlspecialchars($user['bio'] ?? '')) ?></div>

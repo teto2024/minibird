@@ -314,6 +314,10 @@ canvas#fireCanvas {
 <body>
 <header class="topbar">
   <div class="logo"><a class="link" href="./">← 戻る</a></div>
+  <div style="display: flex; gap: 10px;">
+    <a href="focus_history.php" class="link" style="font-size: 14px;">📜 履歴</a>
+    <a href="focus_analytics.php" class="link" style="font-size: 14px;">📊 分析</a>
+  </div>
 </header>
 
 <!-- 焚火Canvas -->
@@ -374,12 +378,12 @@ canvas#fireCanvas {
 </main>
 
 <script>
-// 報酬計算用の定数
+// 報酬計算用の定数（上方修正）
 const REWARD_CONFIG = {
-  BASE_COINS: 10,
-  BASE_CRYSTALS: 2,
-  COINS_EXP_RATE: 1.04,
-  CRYSTALS_EXP_RATE: 1.015,
+  BASE_COINS: 15,
+  BASE_CRYSTALS: 3,
+  COINS_EXP_RATE: 1.05,
+  CRYSTALS_EXP_RATE: 1.02,
   MAX_MINUTES: <?= FOCUS_MAX_MINUTES ?>
 };
 
