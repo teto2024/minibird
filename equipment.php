@@ -136,8 +136,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $st->execute([$me['id'], $slot, $name, $rarity, json_encode($buffs)]);
                 $equipment_id = $pdo->lastInsertId();
                 
-                // エピック以上の装備作成時にお知らせbot通知
-                $high_tier_rarities = ['hero', 'mythic'];
+                // ヒーロー・ミシック装備（エピック以上）作成時にお知らせbot通知
+                $high_tier_rarities = ['epic', 'hero', 'mythic'];
                 if (in_array($rarity, $high_tier_rarities)) {
                     $user_st = $pdo->prepare("SELECT handle, display_name FROM users WHERE id = ?");
                     $user_st->execute([$me['id']]);

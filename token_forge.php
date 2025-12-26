@@ -79,12 +79,15 @@ $FORGE_RECIPES = [
     ]
 ];
 
+// 一括合成の最大個数
+define('MAX_BULK_SYNTHESIS', 100);
+
 // Ajax処理
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
     
     $recipe_key = $_POST['recipe'] ?? '';
-    $quantity = max(1, min(100, (int)($_POST['quantity'] ?? 1))); // 一括合成の個数（1-100）
+    $quantity = max(1, min(MAX_BULK_SYNTHESIS, (int)($_POST['quantity'] ?? 1))); // 一括合成の個数（1-MAX_BULK_SYNTHESIS）
     
     if (!isset($FORGE_RECIPES[$recipe_key])) {
         echo json_encode(['ok' => false, 'error' => '不正なレシピです']);
@@ -127,8 +130,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $st = $pdo->prepare("INSERT INTO token_forge_history (user_id, from_type, from_amount, to_type, to_amount) VALUES (?,?,?,?,?)");
         $st->execute([$me['id'], $from_col, $total_from_amount, $to_col, $total_to_amount]);
         
-        // エピック以上のトークン合成時にお知らせbot通知
-        $high_tier_tokens = ['hero_tokens', 'mythic_tokens'];
+        // ヒーロー・ミシックトークン（エピック以上）合成時にお知らせbot通知
+        $high_tier_tokens = ['epic_tokens', 'hero_tokens', 'mythic_tokens'];
         if (in_array($to_col, $high_tier_tokens)) {
             $user_st = $pdo->prepare("SELECT handle, display_name FROM users WHERE id = ?");
             $user_st->execute([$me['id']]);

@@ -19,27 +19,19 @@ $pdo = db();
 
 // ソート順の取得（デフォルト: 作成順）
 $sort = $_GET['sort'] ?? 'created';
-$valid_sorts = ['created', 'latest', 'active'];
-if (!in_array($sort, $valid_sorts)) {
+
+// ソート順に応じたORDER BY句を設定（ホワイトリスト方式で安全に設定）
+$order_by_map = [
+    'latest' => "(SELECT MAX(created_at) FROM community_posts WHERE community_id = c.id) DESC",
+    'active' => "(SELECT COUNT(*) FROM community_posts WHERE community_id = c.id AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) DESC",
+    'created' => "c.created_at DESC"
+];
+
+// ホワイトリストに存在しない場合はデフォルトを使用
+if (!isset($order_by_map[$sort])) {
     $sort = 'created';
 }
-
-// ソート順に応じたORDER BY句を設定
-switch ($sort) {
-    case 'latest':
-        // 新規投稿順（最新の投稿があるコミュニティ順）
-        $order_by = "(SELECT MAX(created_at) FROM community_posts WHERE community_id = c.id) DESC";
-        break;
-    case 'active':
-        // アクティブ順（直近24時間の投稿数が多い順）
-        $order_by = "(SELECT COUNT(*) FROM community_posts WHERE community_id = c.id AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) DESC";
-        break;
-    case 'created':
-    default:
-        // 作成順（新しいコミュニティ順）
-        $order_by = "c.created_at DESC";
-        break;
-}
+$order_by = $order_by_map[$sort];
 
 // 公開コミュニティ一覧を取得
 $stmt = $pdo->prepare("

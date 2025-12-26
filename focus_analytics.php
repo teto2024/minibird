@@ -142,7 +142,7 @@ for ($h = 0; $h < 24; $h++) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>集中タイマー分析 - MiniBird</title>
 <link rel="stylesheet" href="assets/style.css?v=<?= ASSETS_VERSION ?>">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" integrity="sha384-wVkHSG9g5iJH0Bs0RlqZWOBn9G4TqBzq4sIvwQ6aGoYUv8Cbi+B8Mhz/0LPnB8Mg" crossorigin="anonymous"></script>
 <style>
 body {
     background: linear-gradient(135deg, #0d0d0d 0%, #1a1a2e 50%, #16213e 100%);
