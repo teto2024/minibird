@@ -13,17 +13,42 @@ if (!$me) {
 
 $pdo = db();
 
+// ソート順を取得
+$sort = $_GET['sort'] ?? 'created';
+$valid_sorts = ['created', 'latest_post', 'active'];
+if (!in_array($sort, $valid_sorts)) {
+    $sort = 'created';
+}
+
+// ソート順に応じたORDER BY句を設定
+switch ($sort) {
+    case 'latest_post':
+        // 新規投稿順（最新の投稿がある順）
+        $order_by = "(SELECT MAX(created_at) FROM community_posts WHERE community_id = c.id) DESC";
+        break;
+    case 'active':
+        // アクティブ順（直近24時間の投稿数が多い順）
+        $order_by = "(SELECT COUNT(*) FROM community_posts WHERE community_id = c.id AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) DESC";
+        break;
+    case 'created':
+    default:
+        // 作成順
+        $order_by = "c.created_at DESC";
+        break;
+}
+
 // 自分が参加しているコミュニティ一覧
 $stmt = $pdo->prepare("
     SELECT c.*, cm.role, u.handle as owner_handle,
            (SELECT COUNT(*) FROM community_members WHERE community_id = c.id) as member_count,
            (SELECT COUNT(*) FROM community_posts WHERE community_id = c.id) as post_count,
-           (SELECT COUNT(*) FROM community_posts WHERE community_id = c.id AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as posts_24h
+           (SELECT COUNT(*) FROM community_posts WHERE community_id = c.id AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)) as posts_24h,
+           (SELECT MAX(created_at) FROM community_posts WHERE community_id = c.id) as latest_post_at
     FROM communities c
     JOIN community_members cm ON cm.community_id = c.id
     JOIN users u ON u.id = c.owner_id
     WHERE cm.user_id = ?
-    ORDER BY c.created_at DESC
+    ORDER BY {$order_by}
 ");
 $stmt->execute([$me['id']]);
 $communities = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -135,6 +160,42 @@ $msg = $_GET['msg'] ?? '';
     border-radius: 12px;
     padding: 25px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.community-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.community-list-header h2 {
+    margin: 0;
+    color: #2d3748;
+}
+.sort-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #4a5568;
+    font-size: 14px;
+}
+.sort-selector select {
+    padding: 8px 12px;
+    border: 2px solid #e2e8f0;
+    border-radius: 6px;
+    background: white;
+    color: #2d3748;
+    font-size: 14px;
+    cursor: pointer;
+    transition: border-color 0.3s;
+}
+.sort-selector select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+.sort-selector select:hover {
+    border-color: #667eea;
 }
 .community-list h2 {
     margin: 0 0 20px 0;
@@ -290,7 +351,17 @@ $msg = $_GET['msg'] ?? '';
 
     <!-- コミュニティ一覧 -->
     <div class="community-list">
-        <h2>参加中のコミュニティ（<?= count($communities) ?>）</h2>
+        <div class="community-list-header">
+            <h2>参加中のコミュニティ（<?= count($communities) ?>）</h2>
+            <div class="sort-selector">
+                <span>並び替え:</span>
+                <select id="sortSelect" onchange="location.href='?sort=' + this.value">
+                    <option value="created" <?= $sort === 'created' ? 'selected' : '' ?>>作成順</option>
+                    <option value="latest_post" <?= $sort === 'latest_post' ? 'selected' : '' ?>>新規投稿順</option>
+                    <option value="active" <?= $sort === 'active' ? 'selected' : '' ?>>アクティブ順</option>
+                </select>
+            </div>
+        </div>
         
         <?php if (empty($communities)): ?>
         <div class="empty-state">
