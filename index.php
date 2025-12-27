@@ -152,6 +152,7 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
     <a href="quiz.php" class="tabBtn block">英単語マスター</a>
      -->
     <a href="ranking.php" class="tabBtn block">集中ランキング</a>
+    <a href="word_master.php" class="tabBtn block">英単語マスター(改)</a>
     <a href="communities.php" class="tabBtn block">コミュニティ（β）</a>
     <a href="shop.php" class="tabBtn block">フレーム・ショップ</a>
     <a href="activate_buff.php" class="tabBtn block">バフショップ</a>
