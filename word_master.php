@@ -25,7 +25,7 @@ try {
     $sectionsCount = max(1, ceil($totalWords / 20));
 } catch (PDOException $e) {
     $dbError = true;
-    $dbErrorMessage = 'english_wordsテーブルが存在しないか、アクセスできません。スキーマを実行してください。';
+    $dbErrorMessage = 'データベースエラーが発生しました。テーブルが存在しないか、アクセスできません。スキーマを実行してください。';
     $totalWords = 0;
     $sectionsCount = 0;
 }
@@ -44,7 +44,7 @@ if (!$dbError) {
             $userProgress[$row['section_id'] . '_' . $row['level']] = $row;
         }
     } catch (PDOException $e) {
-        // user_word_master_progressテーブルがない場合は空配列のまま
+        // データベースエラー時は空配列のまま続行
     }
 }
 
@@ -64,7 +64,7 @@ if (!$dbError) {
         $rewardBuff = $stmt->fetch(PDO::FETCH_ASSOC);
         $buffMultiplier = $rewardBuff ? (1 + ($rewardBuff['level'] * 0.2)) : 1;
     } catch (PDOException $e) {
-        // user_buffsテーブルがない場合はバフなし
+        // データベースエラー時はバフなしで続行
     }
 }
 ?>
