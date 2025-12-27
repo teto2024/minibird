@@ -775,15 +775,20 @@ let fallAnimationId = null;
 function showErrorMessage(title, message, buttonText, buttonAction) {
     const gameArea = document.getElementById('gameArea');
     
+    // 安全にゲームエリアをクリア
+    while (gameArea.firstChild) {
+        gameArea.removeChild(gameArea.firstChild);
+    }
+    
     const container = document.createElement('div');
     container.style.cssText = 'text-align: center; padding: 50px; color: #ffd700;';
     
     const h2 = document.createElement('h2');
-    h2.textContent = title;
+    h2.textContent = String(title || '');
     container.appendChild(h2);
     
     const p = document.createElement('p');
-    p.textContent = message;
+    p.textContent = String(message || '');
     container.appendChild(p);
     
     const button = document.createElement('button');
@@ -792,7 +797,6 @@ function showErrorMessage(title, message, buttonText, buttonAction) {
     button.onclick = buttonAction;
     container.appendChild(button);
     
-    gameArea.innerHTML = '';
     gameArea.appendChild(container);
 }
 
