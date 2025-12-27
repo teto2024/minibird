@@ -1195,43 +1195,67 @@ async function toggleRepost(postId, btn) {
     }
 }
 
-// 引用モーダル表示
-function showQuoteModal(postId, handle, preview) {
-    const modal = document.createElement('div');
-    modal.id = 'quoteModalReply';
-    modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 10000;';
-    modal.innerHTML = `
-        <div style="background: var(--card, #15202b); border-radius: 12px; padding: 30px; max-width: 600px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
-            <h3 style="margin: 0 0 20px 0; color: var(--text, #e6e6e6);">📝 引用投稿</h3>
-            <div style="background: var(--bg, #0f1419); border-radius: 8px; padding: 15px; margin-bottom: 15px; border-left: 3px solid #667eea;">
-                <div style="font-weight: bold; color: #667eea;">@${handle}</div>
-                <div style="color: var(--muted, #8899a6); font-size: 14px; margin-top: 5px;">${preview}...</div>
-            </div>
-            <textarea id="quoteTextInput" rows="4" style="width: 100%; padding: 12px; border: 1px solid var(--border, #22303c); border-radius: 6px; background: var(--bg, #0f1419); color: var(--text, #e6e6e6); resize: vertical; font-family: inherit; margin-bottom: 15px;" placeholder="引用コメントを入力..."></textarea>
-            <div style="margin-bottom: 15px;">
-                <label style="color: var(--muted, #8899a6);"><input type="checkbox" id="quoteNsfwInput"> NSFW</label>
-            </div>
-            <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                <button onclick="closeQuoteModalReply()" style="padding: 10px 20px; border: 1px solid var(--border, #22303c); border-radius: 6px; background: var(--bg, #0f1419); color: var(--text, #e6e6e6); cursor: pointer;">キャンセル</button>
-                <button onclick="submitQuote(${postId})" style="padding: 10px 20px; border: none; border-radius: 6px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; cursor: pointer; font-weight: bold;">引用投稿</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-}
+// 引用モーダル用グローバル変数
+let currentQuotePostId = null;
 
-function closeQuoteModalReply() {
-    const modal = document.getElementById('quoteModalReply');
+// 引用モーダル表示 (index.phpと同じHTMLモーダルを使用)
+function showQuoteModal(postId, handle, preview) {
+    currentQuotePostId = postId;
+    const modal = document.getElementById('quoteModal');
+    const previewEl = document.getElementById('quotedPostPreview');
+    const quoteText = document.getElementById('quoteText');
+    const quoteNsfw = document.getElementById('quoteNsfw');
+    const quoteMedia = document.getElementById('quoteMedia');
+    const quoteMediaPreview = document.getElementById('quoteMediaPreview');
+    const quoteEnterToPost = document.getElementById('quoteEnterToPost');
+    
+    // Reset form
+    if (quoteText) quoteText.value = '';
+    if (quoteNsfw) quoteNsfw.checked = false;
+    if (quoteMedia) quoteMedia.value = '';
+    if (quoteMediaPreview) quoteMediaPreview.innerHTML = '';
+    
+    // Load saved Enter to post preference
+    if (quoteEnterToPost) {
+        const savedQuoteEnter = localStorage.getItem('quoteEnterToPost');
+        quoteEnterToPost.checked = savedQuoteEnter === 'true';
+    }
+    
+    // Build preview of quoted post
+    if (previewEl) {
+        previewEl.innerHTML = `
+            <div class="quote-meta">
+                <strong>@${handle}</strong>
+            </div>
+            <div class="quote-body">${preview}...</div>
+        `;
+    }
+    
     if (modal) {
-        document.body.removeChild(modal);
+        modal.classList.remove('hidden');
+        if (quoteText) quoteText.focus();
     }
 }
 
-async function submitQuote(postId) {
-    const content = document.getElementById('quoteTextInput').value.trim();
-    const nsfw = document.getElementById('quoteNsfwInput').checked;
+// 引用モーダルを閉じる
+function hideQuoteModal() {
+    const modal = document.getElementById('quoteModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    currentQuotePostId = null;
+}
+
+// 引用投稿を送信
+async function submitQuotePost() {
+    const quoteText = document.getElementById('quoteText');
+    const quoteNsfw = document.getElementById('quoteNsfw');
+    const quoteMedia = document.getElementById('quoteMedia');
     
-    if (!content) {
+    const content = quoteText ? quoteText.value.trim() : '';
+    const nsfw = quoteNsfw ? quoteNsfw.checked : false;
+    
+    if (!content && (!quoteMedia || !quoteMedia.files || quoteMedia.files.length === 0)) {
         alert('引用コメントを入力してください');
         return;
     }
@@ -1241,7 +1265,19 @@ async function submitQuote(postId) {
         formData.append('action', 'create_post');
         formData.append('content', content);
         formData.append('nsfw', nsfw ? '1' : '0');
-        formData.append('quote_post_id', postId);
+        formData.append('quote_post_id', currentQuotePostId);
+        
+        // Add media files
+        if (quoteMedia && quoteMedia.files && quoteMedia.files.length > 0) {
+            const files = Array.from(quoteMedia.files).slice(0, 4);
+            if (files.length === 1) {
+                formData.append('media', files[0]);
+            } else {
+                files.forEach((file, index) => {
+                    formData.append(`media_${index}`, file);
+                });
+            }
+        }
         
         const res = await fetch('post.php', {
             method: 'POST',
@@ -1251,7 +1287,7 @@ async function submitQuote(postId) {
         
         if (data.ok) {
             alert('引用投稿しました');
-            closeQuoteModalReply();
+            hideQuoteModal();
         } else {
             alert('エラー: ' + (data.error || '不明なエラー'));
         }
@@ -1259,6 +1295,99 @@ async function submitQuote(postId) {
         alert('ネットワークエラー');
     }
 }
+
+// 引用モーダルのイベントリスナー設定
+document.addEventListener('DOMContentLoaded', function() {
+    // Close button
+    const closeBtn = document.getElementById('closeQuoteModal');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', hideQuoteModal);
+    }
+    
+    // Cancel button
+    const cancelBtn = document.getElementById('cancelQuote');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', hideQuoteModal);
+    }
+    
+    // Submit button
+    const submitBtn = document.getElementById('submitQuote');
+    if (submitBtn) {
+        submitBtn.addEventListener('click', submitQuotePost);
+    }
+    
+    // Quote media preview
+    const quoteMedia = document.getElementById('quoteMedia');
+    if (quoteMedia) {
+        quoteMedia.addEventListener('change', function(e) {
+            const preview = document.getElementById('quoteMediaPreview');
+            if (preview) {
+                preview.innerHTML = '';
+                const files = Array.from(e.target.files).slice(0, 4);
+                files.forEach(function(file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        if (file.type.startsWith('image/')) {
+                            const img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.style.maxWidth = '100px';
+                            img.style.maxHeight = '100px';
+                            img.style.margin = '5px';
+                            preview.appendChild(img);
+                        } else if (file.type.startsWith('video/')) {
+                            const video = document.createElement('video');
+                            video.src = e.target.result;
+                            video.controls = true;
+                            video.style.maxWidth = '100px';
+                            video.style.maxHeight = '100px';
+                            video.style.margin = '5px';
+                            preview.appendChild(video);
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+        });
+    }
+    
+    // Quote Enter to post checkbox
+    const quoteEnterToPost = document.getElementById('quoteEnterToPost');
+    if (quoteEnterToPost) {
+        quoteEnterToPost.addEventListener('change', function(e) {
+            localStorage.setItem('quoteEnterToPost', e.target.checked ? 'true' : 'false');
+        });
+    }
+    
+    // Quote text keyboard shortcuts
+    const quoteTextArea = document.getElementById('quoteText');
+    if (quoteTextArea) {
+        quoteTextArea.addEventListener('keydown', function(e) {
+            const enterToPost = document.getElementById('quoteEnterToPost');
+            const quoteEnterEnabled = enterToPost && enterToPost.checked;
+            
+            // Shift+Enter: allow line break (default behavior)
+            if (e.key === 'Enter' && e.shiftKey) {
+                return;
+            }
+            
+            // Ctrl+Enter or Cmd+Enter: submit quote
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                submitQuotePost();
+                return;
+            }
+            
+            // Enter only: submit if checkbox is ON
+            if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                if (quoteEnterEnabled) {
+                    e.preventDefault();
+                    submitQuotePost();
+                    return;
+                }
+            }
+        });
+    }
+});
 
 // ブースト機能
 async function boostPost(postId) {
@@ -1376,6 +1505,39 @@ async function submitReport(postId) {
     }
 }
 </script>
+
+<!-- Quote Modal (same as index.php) -->
+<div id="quoteModal" class="modal hidden">
+  <div class="modal-content quote-modal-content">
+    <div class="modal-header">
+      <h3>引用投稿</h3>
+      <button id="closeQuoteModal" class="close-btn">&times;</button>
+    </div>
+    <div class="quoted-post-preview" id="quotedPostPreview">
+      <!-- 引用元の投稿プレビューがここに表示されます -->
+    </div>
+    <textarea id="quoteText" placeholder="引用コメントを入力..." rows="4"></textarea>
+    <div class="quote-options">
+      <label class="nsfw-checkbox">
+        <input type="checkbox" id="quoteNsfw">
+        <span>NSFW</span>
+      </label>
+      <label class="enter-checkbox">
+        <input type="checkbox" id="quoteEnterToPost">
+        <span>Enterで投稿</span>
+      </label>
+    </div>
+    <div class="quote-media-section">
+      <label for="quoteMedia" class="file-label">📎 ファイルを添付</label>
+      <input type="file" id="quoteMedia" accept="image/*,video/*" multiple style="display:none">
+      <div id="quoteMediaPreview" class="media-preview"></div>
+    </div>
+    <div class="modal-actions">
+      <button id="cancelQuote" class="btn-secondary">キャンセル</button>
+      <button id="submitQuote" class="btn-primary">引用投稿</button>
+    </div>
+  </div>
+</div>
 
 <!-- Media Expand Modal -->
 <div id="mediaExpandModal" class="media-expand-modal" onclick="closeMediaExpand()">
