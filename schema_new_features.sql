@@ -18,13 +18,22 @@ CREATE TABLE IF NOT EXISTS user_word_master_progress (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- user_buffsテーブルにlevelカラムを追加（存在しない場合）
-ALTER TABLE user_buffs ADD COLUMN IF NOT EXISTS level INT DEFAULT 1;
+-- user_buffsテーブルにlevelカラムを追加
+-- MySQL 5.7以下の場合は、カラムが存在しないことを確認してから実行してください
+-- ALTER TABLE user_buffs ADD COLUMN level INT DEFAULT 1;
+-- MySQL 8.0以上の場合:
+-- ALTER TABLE user_buffs ADD COLUMN IF NOT EXISTS level INT DEFAULT 1;
 
 -- 天使フレームを追加
 INSERT INTO frames (name, css_token, price_coins, price_crystals, price_diamonds, preview_css) 
 VALUES ('天使', 'frame-angel', 35000, 80, 2, '')
 ON DUPLICATE KEY UPDATE name = name;
+
+-- ===============================================
+-- バージョン情報
+-- ===============================================
+-- このスキーマはMySQL 5.7以降に対応しています
+-- MySQL 8.0では IF NOT EXISTS 構文が使用可能です
 
 -- ===============================================
 -- 以下は参考用（テーブルが存在しない場合のフルスキーマ）

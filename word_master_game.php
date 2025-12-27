@@ -32,20 +32,27 @@ $stmt->execute([$me['id']]);
 $buffLevel = $stmt->fetchColumn() ?: 0;
 $buffMultiplier = 1 + ($buffLevel * 0.2);
 
+// ゲーム設定
+define('WORDS_PER_SECTION', 20);
+define('MAX_QUESTIONS_NORMAL', 20);
+define('MAX_QUESTIONS_TEST', 50);
+
+// ステージごとの単語範囲（テストモード用）
+$STAGE_RANGES = [
+    1 => [1, 600],
+    2 => [601, 1200],
+    3 => [1201, 1700],
+    4 => [1701, 2027]
+];
+
 // セクションごとの単語範囲を計算
 if ($mode === 'section') {
-    $startId = ($section - 1) * 20 + 1;
-    $endId = $section * 20;
+    $startId = ($section - 1) * WORDS_PER_SECTION + 1;
+    $endId = $section * WORDS_PER_SECTION;
     $gameTitle = "セクション {$section}";
 } elseif ($mode === 'test') {
-    $stageRanges = [
-        1 => [1, 600],
-        2 => [601, 1200],
-        3 => [1201, 1700],
-        4 => [1701, 2027]
-    ];
-    $startId = $stageRanges[$stage][0] ?? 1;
-    $endId = $stageRanges[$stage][1] ?? 600;
+    $startId = $STAGE_RANGES[$stage][0] ?? 1;
+    $endId = $STAGE_RANGES[$stage][1] ?? 600;
     $gameTitle = "ステージ {$stage} テスト";
 } else {
     $startId = 1;
@@ -54,7 +61,7 @@ if ($mode === 'section') {
 }
 
 $isInputMode = ($level === 'input');
-$maxQuestions = ($mode === 'test') ? 50 : 20;
+$maxQuestions = ($mode === 'test') ? MAX_QUESTIONS_TEST : MAX_QUESTIONS_NORMAL;
 
 // AJAX処理
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -69,6 +76,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if ($mode === 'weak') {
             // 苦手モード: 間違いが多い単語から出題
+            // まずユーザーが単語を試したことがあるか確認
+            $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM user_word_stats WHERE user_id = ? AND incorrect_count > correct_count");
+            $checkStmt->execute([$me['id']]);
+            $hasWeakWords = $checkStmt->fetchColumn() > 0;
+            
+            if (!$hasWeakWords) {
+                echo json_encode(['ok' => false, 'reason' => 'no_weak_words', 'message' => '苦手な単語がありません。まず通常モードで練習してください。']);
+                exit;
+            }
+            
             $sql = "SELECT ew.id, ew.word, ew.meaning
                     FROM english_words ew
                     JOIN user_word_stats uws ON ew.id = uws.word_id
@@ -989,7 +1006,7 @@ function handleCorrect() {
     score += baseScore + timeBonus + comboBonus;
     
     document.getElementById('correctCount').textContent = correctCount;
-    document.getElementById('currentScore').textContent = (score / questionNum).toFixed(3);
+    document.getElementById('currentScore').textContent = questionNum > 0 ? (score / questionNum).toFixed(3) : '0.000';
     
     // コンボ表示
     if (combo >= 3) {
