@@ -739,7 +739,7 @@ body {
         padding: 15px 25px;
         max-width: 90%;
         text-align: center;
-        word-break: break-word;
+        overflow-wrap: break-word;
     }
     
     .answer-area {
@@ -755,7 +755,7 @@ body {
     .choice-btn {
         padding: 15px 10px;
         font-size: 15px;
-        word-break: break-word;
+        overflow-wrap: break-word;
     }
     
     .input-area {
@@ -774,7 +774,7 @@ body {
         margin-bottom: 15px;
     }
     
-    /* キーボードを3行に再配置 */
+    /* キーボードレイアウト: 768px以下では7列に調整（QWERTY配列を維持しつつタッチ操作しやすいサイズに） */
     .simple-keyboard {
         grid-template-columns: repeat(7, 1fr);
         gap: 5px;
@@ -874,6 +874,7 @@ body {
         font-size: 14px;
     }
     
+    /* キーボードレイアウト: 480px以下では6列に調整（より小さい画面でも操作可能に） */
     .simple-keyboard {
         grid-template-columns: repeat(6, 1fr);
         gap: 4px;
