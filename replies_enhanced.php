@@ -407,16 +407,16 @@ if (!$original_post) {
                 💬 返信する
             </button>
             <?php if ($me): 
-                $quoteHandle = json_encode($original_post['handle'] ?? '');
+                $quoteHandle = $original_post['handle'] ?? '';
                 $quoteContent = $original_post['content_md'] ?? $original_post['content_html'] ?? '';
                 // HTMLタグを除去してプレビュー用のテキストを取得
-                $quotePreview = json_encode(mb_substr(strip_tags($quoteContent), 0, 100));
+                $quotePreview = mb_substr(strip_tags($quoteContent), 0, 100);
             ?>
             <button class="reply-action-btn <?= $original_post['user_bookmarked'] ? 'bookmarked' : '' ?>" 
                     id="bookmarkBtn" onclick="toggleBookmark(<?= $original_post['id'] ?>, this)">
                 🔖 ブックマーク
             </button>
-            <button class="reply-action-btn" onclick="showQuoteModal(<?= $original_post['id'] ?>, <?= $quoteHandle ?>, <?= $quotePreview ?>)">
+            <button class="reply-action-btn" onclick="showQuoteModal(<?= $original_post['id'] ?>, <?= htmlspecialchars(json_encode($quoteHandle), ENT_QUOTES, 'UTF-8') ?>, <?= htmlspecialchars(json_encode($quotePreview), ENT_QUOTES, 'UTF-8') ?>)">
                 📝 引用
             </button>
             <button class="reply-action-btn" onclick="toggleRepost(<?= $original_post['id'] ?>, this)">

@@ -798,6 +798,26 @@ async function nextQuestion() {
         if (!data.ok) {
             if (data.reason === 'no_more_words') {
                 finishGame();
+            } else if (data.reason === 'no_weak_words') {
+                // 苦手な単語がない場合のエラー表示
+                const gameArea = document.getElementById('gameArea');
+                gameArea.innerHTML = `
+                    <div style="text-align: center; padding: 50px; color: #ffd700;">
+                        <h2>⚠️ ${data.message || '苦手な単語がありません'}</h2>
+                        <p>まず通常モードで練習してください。</p>
+                        <button onclick="goBack()" style="margin-top: 20px; padding: 12px 24px; background: #ffd700; color: #1a1a2e; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">戻る</button>
+                    </div>
+                `;
+            } else {
+                // その他のエラー
+                const gameArea = document.getElementById('gameArea');
+                gameArea.innerHTML = `
+                    <div style="text-align: center; padding: 50px; color: #ff6b6b;">
+                        <h2>⚠️ エラーが発生しました</h2>
+                        <p>${data.message || data.error || 'データを取得できませんでした。'}</p>
+                        <button onclick="goBack()" style="margin-top: 20px; padding: 12px 24px; background: #ffd700; color: #1a1a2e; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">戻る</button>
+                    </div>
+                `;
             }
             return;
         }
@@ -819,6 +839,15 @@ async function nextQuestion() {
         
     } catch (err) {
         console.error('問題取得エラー', err);
+        // ネットワークエラー等の場合にエラー表示
+        const gameArea = document.getElementById('gameArea');
+        gameArea.innerHTML = `
+            <div style="text-align: center; padding: 50px; color: #ff6b6b;">
+                <h2>⚠️ 通信エラー</h2>
+                <p>サーバーとの通信に失敗しました。ページを再読み込みしてください。</p>
+                <button onclick="location.reload()" style="margin-top: 20px; padding: 12px 24px; background: #ffd700; color: #1a1a2e; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">再読み込み</button>
+            </div>
+        `;
     }
 }
 
