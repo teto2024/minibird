@@ -771,6 +771,35 @@ let gameStartTime = null;
 let questionStartTime = null;
 let fallAnimationId = null;
 
+// エラーメッセージを安全に表示するヘルパー関数
+function showErrorMessage(title, message, buttonText, buttonAction) {
+    const gameArea = document.getElementById('gameArea');
+    
+    // 安全にゲームエリアをクリア
+    while (gameArea.firstChild) {
+        gameArea.removeChild(gameArea.firstChild);
+    }
+    
+    const container = document.createElement('div');
+    container.style.cssText = 'text-align: center; padding: 50px; color: #ffd700;';
+    
+    const h2 = document.createElement('h2');
+    h2.textContent = String(title || '');
+    container.appendChild(h2);
+    
+    const p = document.createElement('p');
+    p.textContent = String(message || '');
+    container.appendChild(p);
+    
+    const button = document.createElement('button');
+    button.textContent = buttonText;
+    button.style.cssText = 'margin-top: 20px; padding: 12px 24px; background: #ffd700; color: #1a1a2e; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;';
+    button.onclick = buttonAction;
+    container.appendChild(button);
+    
+    gameArea.appendChild(container);
+}
+
 // ゲーム開始
 async function startGame() {
     gameStartTime = Date.now();
@@ -798,6 +827,22 @@ async function nextQuestion() {
         if (!data.ok) {
             if (data.reason === 'no_more_words') {
                 finishGame();
+            } else if (data.reason === 'no_weak_words') {
+                // 苦手な単語がない場合のエラー表示
+                showErrorMessage(
+                    '⚠️ ' + (data.message || '苦手な単語がありません'),
+                    'まず通常モードで練習してください。',
+                    '戻る',
+                    goBack
+                );
+            } else {
+                // その他のエラー
+                showErrorMessage(
+                    '⚠️ エラーが発生しました',
+                    data.message || data.error || 'データを取得できませんでした。',
+                    '戻る',
+                    goBack
+                );
             }
             return;
         }
@@ -819,6 +864,13 @@ async function nextQuestion() {
         
     } catch (err) {
         console.error('問題取得エラー', err);
+        // ネットワークエラー等の場合にエラー表示
+        showErrorMessage(
+            '⚠️ 通信エラー',
+            'サーバーとの通信に失敗しました。ページを再読み込みしてください。',
+            '再読み込み',
+            () => location.reload()
+        );
     }
 }
 
