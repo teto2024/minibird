@@ -713,12 +713,12 @@ function showGacha10Result(rewards) {
 
 function closeGachaModal() {
     document.getElementById('gachaModal').classList.add('hidden');
-    location.reload(); // ページをリロードして更新
+    // ガチャタブに留まったまま次のガチャを回せるように、リロードしない
 }
 
 function closeGacha10Modal() {
     document.getElementById('gacha10Modal').classList.add('hidden');
-    location.reload(); // ページをリロードして更新
+    // ガチャタブに留まったまま次のガチャを回せるように、リロードしない
 }
 
 // ヒーローアンロック
