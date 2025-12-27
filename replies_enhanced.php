@@ -33,6 +33,7 @@ $stmt = $pdo->prepare("
            (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
            (SELECT COUNT(*) FROM posts WHERE is_repost_of = p.id) as repost_count,
            (SELECT 1 FROM likes WHERE post_id = p.id AND user_id = ?) as user_liked,
+           (SELECT 1 FROM bookmarks WHERE post_id = p.id AND user_id = ?) as user_bookmarked,
            p.media_path, p.media_type, p.media_paths, p.quote_post_id,
            qp.id as quoted_id, qp.user_id as quoted_user_id, qp.content_md as quoted_content_md,
            qp.content_html as quoted_content_html, qu.handle as quoted_handle, 
@@ -52,7 +53,7 @@ $stmt = $pdo->prepare("
     LEFT JOIN users qu ON qu.id = qp.user_id
     WHERE p.id = ?
 ");
-$stmt->execute([$me ? $me['id'] : 0, $post_id]);
+$stmt->execute([$me ? $me['id'] : 0, $me ? $me['id'] : 0, $post_id]);
 $original_post = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$original_post) {
@@ -242,6 +243,9 @@ if (!$original_post) {
 .reply-action-btn.reposted {
     color: #48bb78;
 }
+.reply-action-btn.bookmarked {
+    color: #f6ad55;
+}
 .nested-replies {
     margin-top: 15px;
     margin-left: 20px;
@@ -406,6 +410,10 @@ if (!$original_post) {
                 $quoteHandle = json_encode($original_post['handle']);
                 $quotePreview = json_encode(mb_substr($original_post['content_md'] ?? '', 0, 100));
             ?>
+            <button class="reply-action-btn <?= $original_post['user_bookmarked'] ? 'bookmarked' : '' ?>" 
+                    id="bookmarkBtn" onclick="toggleBookmark(<?= $original_post['id'] ?>, this)">
+                🔖 ブックマーク
+            </button>
             <button class="reply-action-btn" onclick="showQuoteModal(<?= $original_post['id'] ?>, <?= $quoteHandle ?>, <?= $quotePreview ?>)">
                 📝 引用
             </button>
@@ -851,6 +859,33 @@ async function toggleLike(postId, btn) {
         }
     } catch (err) {
         console.error('いいねエラー', err);
+    }
+}
+
+// ブックマーク切り替え
+async function toggleBookmark(postId, btn) {
+    if (!USER_ID) {
+        alert('ログインしてください');
+        return;
+    }
+    
+    try {
+        const res = await fetch('bookmark.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({post_id: postId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            if (data.bookmarked) {
+                btn.classList.add('bookmarked');
+            } else {
+                btn.classList.remove('bookmarked');
+            }
+        }
+    } catch (err) {
+        console.error('ブックマークエラー', err);
     }
 }
 

@@ -22,11 +22,13 @@ if(isset($_GET['fetch_buffs'])){
 
     $LABELS = [
         'task'=>'タスク報酬UP',
-        'chat_festival'=>'チャット祭'
+        'chat_festival'=>'チャット祭',
+        'word_master_reward'=>'英単語報酬UP'
     ];
     $ICONS = [
         'task'=>'✏',
-        'chat_festival'=>'🎊'
+        'chat_festival'=>'🎊',
+        'word_master_reward'=>'📚'
     ];
 
     // typeごとに「レベル最大 → 残り時間最大」を選択
@@ -48,7 +50,7 @@ if(isset($_GET['fetch_buffs'])){
         $b['level'] = isset($b['level']) ? (int)$b['level'] : 1;
         $b['label'] = $LABELS[$b['type']] ?? $b['type'];
         $b['icon']  = $ICONS[$b['type']] ?? '';
-        $b['bonus_percent'] = ($b['type']==='task'||$b['type']==='word') ? $b['level']*20 : 0;
+        $b['bonus_percent'] = ($b['type']==='task'||$b['type']==='word'||$b['type']==='word_master_reward') ? $b['level']*20 : 0;
         $b['activated_by'] = $b['activated_by'] ?? null;
     }
 
@@ -71,6 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $COSTS = [
         'task' => ['coin'=>500,'crystal'=>1],
         'chat_festival' => ['coin'=>1000,'crystal'=>2],
+        'word_master_reward' => ['coin'=>800,'crystal'=>2],
     ];
 
     if (!isset($COSTS[$type])) {
@@ -105,6 +108,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // チャット祭は重ねがけなし
             $st = $pdo->prepare("INSERT INTO buffs (type,level,activated_by,start_time,end_time) VALUES (?,?,?,?,?)");
             $st->execute([$type,1,$me['id'],$start,$end]);
+        } elseif ($type==='word_master_reward') {
+            // 英単語マスター報酬UPは個人バフ（user_buffs）、最大Lv10まで重ねがけ可能
+            $st = $pdo->prepare("SELECT id,level,end_time FROM user_buffs WHERE user_id=? AND type=? AND end_time>NOW() ORDER BY end_time DESC LIMIT 1");
+            $st->execute([$me['id'], $type]);
+            $userBuff = $st->fetch();
+            
+            $level = $userBuff ? min(10, $userBuff['level'] + 1) : 1;
+            $st = $pdo->prepare("INSERT INTO user_buffs (user_id,type,level,start_time,end_time) VALUES (?,?,?,?,?)");
+            $st->execute([$me['id'],$type,$level,$start,$end]);
         } else {
             // タスク報酬UPは重ねがけ可能（最大Lv10）
             $level = $buff ? min(10,$buff['level']+1) : 1;
@@ -418,6 +430,36 @@ $st->execute([5, $post_content_md, $post_content_html]);
         </button>
     </div>
 
+    <!-- 英単語マスター報酬UPバフ -->
+    <div class="buff-card" style="border-left: 4px solid #ffd700;">
+        <div class="buff-card-header">
+            <span class="buff-card-icon">📚</span>
+            <h2 class="buff-card-title">英単語マスター報酬UP</h2>
+        </div>
+        <div class="buff-card-description">
+            <strong>英単語マスターの報酬が20%アップします！</strong>
+            <ul>
+                <li>📈 英単語マスター完了時のコイン・クリスタル報酬が20%増加</li>
+                <li>⏱️ 効果時間：20分間</li>
+                <li>🔄 重ねがけ可能（最大Lv10で200%UP）</li>
+                <li>💡 英単語マスターを始める前に発動するのがオススメ！</li>
+            </ul>
+        </div>
+        <div class="buff-card-price">
+            <div class="price-item">
+                <span>🪙</span>
+                <span>800 コイン</span>
+            </div>
+            <div class="price-item">
+                <span>💎</span>
+                <span>2 クリスタル</span>
+            </div>
+        </div>
+        <button class="buff-card-button buff-btn" data-type="word_master_reward">
+            📚 英単語報酬UPを発動する
+        </button>
+    </div>
+
     <!-- アクティブなバフ表示 -->
     <div class="active-buffs-section">
         <h3 class="active-buffs-title">
@@ -479,11 +521,13 @@ async function initBuffBar(){
 const COSTS = {
     'task': {coin:500, crystal:1},
     'chat_festival': {coin:1000, crystal:2},
+    'word_master_reward': {coin:800, crystal:2},
 };
 
 const LABELS = {
     'task': 'タスク報酬UP',
     'chat_festival': 'チャット祭',
+    'word_master_reward': '英単語マスター報酬UP',
 };
 
 document.querySelectorAll('.buff-btn').forEach(btn=>{
@@ -514,7 +558,12 @@ document.querySelectorAll('.buff-btn').forEach(btn=>{
         }
 
         btn.disabled = false;
-        btn.textContent = type === 'task' ? '🚀 タスク報酬UPを発動する' : '🎉 チャット祭を発動する';
+        const buttonTexts = {
+            'task': '🚀 タスク報酬UPを発動する',
+            'chat_festival': '🎉 チャット祭を発動する',
+            'word_master_reward': '📚 英単語報酬UPを発動する'
+        };
+        btn.textContent = buttonTexts[type] || 'バフを発動する';
     });
 });
 
