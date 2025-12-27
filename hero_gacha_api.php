@@ -81,6 +81,73 @@ if ($action === 'pull') {
     exit;
 }
 
+// 10連ガチャを引く
+if ($action === 'pull_10') {
+    $type = $input['type'] ?? 'normal';
+    
+    $pdo->beginTransaction();
+    try {
+        // コスト確認（10連分、10%割引）
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ? FOR UPDATE");
+        $stmt->execute([$me['id']]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($type === 'normal') {
+            $cost_coins = 9000; // 10連で10%割引（通常10,000）
+            $cost_crystals = 0;
+            if ($user['coins'] < $cost_coins) {
+                throw new Exception('コインが不足しています（必要: ' . number_format($cost_coins) . '）');
+            }
+        } else {
+            $cost_coins = 0;
+            $cost_crystals = 900; // 10連で10%割引（通常1,000）
+            if ($user['crystals'] < $cost_crystals) {
+                throw new Exception('クリスタルが不足しています（必要: ' . number_format($cost_crystals) . '）');
+            }
+        }
+        
+        // コスト消費
+        $stmt = $pdo->prepare("UPDATE users SET coins = coins - ?, crystals = crystals - ? WHERE id = ?");
+        $stmt->execute([$cost_coins, $cost_crystals, $me['id']]);
+        
+        // 10回分の報酬を決定・付与
+        $rewards = [];
+        for ($i = 0; $i < 10; $i++) {
+            $reward = determineGachaReward($type, $pdo, $me['id']);
+            applyGachaReward($reward, $pdo, $me['id']);
+            $rewards[] = $reward;
+            
+            // 履歴記録
+            $stmt = $pdo->prepare("
+                INSERT INTO hero_gacha_history (user_id, gacha_type, reward_type, reward_data, cost_coins, cost_crystals)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ");
+            // 10連の場合、個別のコストは0として記録し、最初のエントリのみ総コストを記録
+            $individual_coins = ($i === 0) ? $cost_coins : 0;
+            $individual_crystals = ($i === 0) ? $cost_crystals : 0;
+            $stmt->execute([$me['id'], $type . '_10', $reward['type'], json_encode($reward), $individual_coins, $individual_crystals]);
+        }
+        
+        $pdo->commit();
+        
+        // 更新後の残高を取得
+        $stmt = $pdo->prepare("SELECT coins, crystals FROM users WHERE id = ?");
+        $stmt->execute([$me['id']]);
+        $balance = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'ok' => true,
+            'rewards' => $rewards,
+            'balance' => $balance
+        ]);
+        
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 // ヒーローアンロック
 if ($action === 'unlock') {
     $hero_id = (int)($input['hero_id'] ?? 0);

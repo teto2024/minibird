@@ -1396,7 +1396,7 @@ async function handleSellClick(e) {
         
         if (data.ok) {
             // トークン表示を更新
-            updateTokenDisplay(data.balance);
+            updateTokenBalance(data.balance);
             
             // カードを削除
             const card = btn.closest('.equipment-card');
