@@ -392,6 +392,55 @@ $RARITY_NAMES = [
     margin-bottom: 20px;
 }
 
+/* 10連ガチャ結果 */
+.gacha10-result {
+    background: linear-gradient(135deg, #1e1e2f 0%, #2d2d44 100%);
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 800px;
+    width: 95%;
+    max-height: 80vh;
+    overflow-y: auto;
+    animation: gachaAppear 0.5s ease-out;
+}
+
+.gacha10-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.gacha10-item {
+    background: rgba(0,0,0,0.3);
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+    border: 2px solid rgba(255,215,0,0.3);
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.gacha10-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(255,215,0,0.3);
+}
+
+.gacha10-icon {
+    font-size: 40px;
+    margin-bottom: 10px;
+}
+
+.gacha10-name {
+    font-weight: bold;
+    color: #ffd700;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.gacha10-detail {
+    font-size: 12px;
+    color: var(--muted);
+}
+
 .back-link {
     display: inline-block;
     color: var(--blue);
@@ -504,7 +553,11 @@ $RARITY_NAMES = [
                 <div class="gacha-option">
                     <h3>🪙 ノーマルガチャ</h3>
                     <div class="gacha-cost">1,000 コイン</div>
-                    <button class="gacha-btn normal" onclick="pullGacha('normal')">ガチャを回す</button>
+                    <button class="gacha-btn normal" onclick="pullGacha('normal')">1回ガチャを回す</button>
+                    <div style="margin-top: 10px;">
+                        <div class="gacha-cost" style="color: #ffd700;">10連: 9,000 コイン <span style="font-size: 12px; color: #48bb78;">(10%OFF!)</span></div>
+                        <button class="gacha-btn normal" onclick="pullGacha10('normal')" style="margin-top: 5px;">🔥 10連ガチャ</button>
+                    </div>
                     <div class="gacha-rewards">
                         <p>🎁 報酬内容:</p>
                         <ul>
@@ -519,7 +572,11 @@ $RARITY_NAMES = [
                 <div class="gacha-option">
                     <h3>💎 クリスタルガチャ</h3>
                     <div class="gacha-cost">100 クリスタル</div>
-                    <button class="gacha-btn crystal" onclick="pullGacha('crystal')">ガチャを回す</button>
+                    <button class="gacha-btn crystal" onclick="pullGacha('crystal')">1回ガチャを回す</button>
+                    <div style="margin-top: 10px;">
+                        <div class="gacha-cost" style="color: #c77dff;">10連: 900 クリスタル <span style="font-size: 12px; color: #48bb78;">(10%OFF!)</span></div>
+                        <button class="gacha-btn crystal" onclick="pullGacha10('crystal')" style="margin-top: 5px;">🔥 10連ガチャ</button>
+                    </div>
                     <div class="gacha-rewards">
                         <p>🎁 報酬内容 (確率UP!):</p>
                         <ul>
@@ -543,6 +600,15 @@ $RARITY_NAMES = [
         <div class="gacha-reward-name" id="gachaRewardName">報酬を獲得!</div>
         <div class="gacha-reward-detail" id="gachaRewardDetail"></div>
         <button onclick="closeGachaModal()" style="padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">OK</button>
+    </div>
+</div>
+
+<!-- 10連ガチャ結果モーダル -->
+<div id="gacha10Modal" class="gacha-modal hidden">
+    <div class="gacha10-result">
+        <h2 style="margin: 0 0 20px 0; color: #ffd700; text-align: center;">🔥 10連ガチャ結果 🔥</h2>
+        <div class="gacha10-grid" id="gacha10Content"></div>
+        <button onclick="closeGacha10Modal()" style="display: block; margin: 20px auto 0; padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">OK</button>
     </div>
 </div>
 
@@ -579,6 +645,33 @@ async function pullGacha(type) {
     }
 }
 
+// 10連ガチャを回す
+async function pullGacha10(type) {
+    const costText = type === 'normal' ? '9,000 コイン' : '900 クリスタル';
+    if (!confirm(`10連ガチャを回しますか？\n\n必要: ${costText}`)) {
+        return;
+    }
+    
+    try {
+        const res = await fetch('hero_gacha_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'pull_10', type: type})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showGacha10Result(data.rewards);
+            document.getElementById('userCoins').textContent = data.balance.coins.toLocaleString();
+            document.getElementById('userCrystals').textContent = data.balance.crystals.toLocaleString();
+        } else {
+            alert('エラー: ' + (data.error || '不明なエラー'));
+        }
+    } catch (e) {
+        alert('ネットワークエラー');
+    }
+}
+
 function showGachaResult(reward) {
     const icons = {
         'hero_shards': '🦸',
@@ -595,8 +688,36 @@ function showGachaResult(reward) {
     document.getElementById('gachaModal').classList.remove('hidden');
 }
 
+// 10連ガチャ結果を表示
+function showGacha10Result(rewards) {
+    const icons = {
+        'hero_shards': '🦸',
+        'exp': '⭐',
+        'coins': '🪙',
+        'crystals': '💎',
+        'tokens': '🎫',
+        'equipment': '⚔️'
+    };
+    
+    const rewardsHtml = rewards.map((reward, index) => `
+        <div class="gacha10-item">
+            <div class="gacha10-icon">${icons[reward.type] || '🎁'}</div>
+            <div class="gacha10-name">${reward.name}</div>
+            <div class="gacha10-detail">${reward.detail}</div>
+        </div>
+    `).join('');
+    
+    document.getElementById('gacha10Content').innerHTML = rewardsHtml;
+    document.getElementById('gacha10Modal').classList.remove('hidden');
+}
+
 function closeGachaModal() {
     document.getElementById('gachaModal').classList.add('hidden');
+    location.reload(); // ページをリロードして更新
+}
+
+function closeGacha10Modal() {
+    document.getElementById('gacha10Modal').classList.add('hidden');
     location.reload(); // ページをリロードして更新
 }
 

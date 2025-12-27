@@ -163,6 +163,22 @@ if (!$original_post) {
     font-weight: bold;
     color: #2d3748;
 }
+.reply-author-link {
+    text-decoration: none;
+    color: inherit;
+}
+.reply-author-link:hover .reply-author {
+    color: #667eea;
+    text-decoration: underline;
+}
+.handle-link {
+    text-decoration: none;
+    color: #a0aec0;
+}
+.handle-link:hover {
+    color: #667eea;
+    text-decoration: underline;
+}
 .reply-title {
     margin-left: 8px;
     font-size: 12px;
@@ -259,14 +275,18 @@ if (!$original_post) {
     <!-- 元投稿表示 -->
     <div class="original-post <?= htmlspecialchars($original_post['frame_class'] ?? '') ?>">
         <div class="reply-header">
-            <img src="<?= htmlspecialchars($original_post['icon'] ?? '/uploads/icons/default_icon.png') ?>" 
-                 alt="<?= htmlspecialchars($original_post['display_name'] ?? $original_post['handle']) ?>" 
-                 class="reply-avatar">
+            <a href="profile.php?handle=<?= urlencode($original_post['handle']) ?>">
+                <img src="<?= htmlspecialchars($original_post['icon'] ?? '/uploads/icons/default_icon.png') ?>" 
+                     alt="<?= htmlspecialchars($original_post['display_name'] ?? $original_post['handle']) ?>" 
+                     class="reply-avatar">
+            </a>
             <div class="reply-meta">
                 <div>
-                    <span class="reply-author">
-                        <?= htmlspecialchars($original_post['display_name'] ?? $original_post['handle']) ?>
-                    </span>
+                    <a href="profile.php?handle=<?= urlencode($original_post['handle']) ?>" class="reply-author-link">
+                        <span class="reply-author">
+                            <?= htmlspecialchars($original_post['display_name'] ?? $original_post['handle']) ?>
+                        </span>
+                    </a>
                     <?php if (isset($original_post['role']) && $original_post['role'] === 'admin'): ?>
                         <span class="role-badge admin-badge">ADMIN</span>
                     <?php elseif (isset($original_post['role']) && $original_post['role'] === 'mod'): ?>
@@ -279,7 +299,7 @@ if (!$original_post) {
                     <?php endif; ?>
                 </div>
                 <div class="reply-time">
-                    @<?= htmlspecialchars($original_post['handle']) ?> · 
+                    <a href="profile.php?handle=<?= urlencode($original_post['handle']) ?>" class="handle-link">@<?= htmlspecialchars($original_post['handle']) ?></a> · 
                     <?= date('Y/m/d H:i', strtotime($original_post['created_at'])) ?>
                 </div>
             </div>
@@ -767,18 +787,22 @@ function renderReply(reply, embedYouTubeNow = true) {
     return `
         <div class="reply-item ${frameClass}" data-reply-id="${reply.id}">
             <div class="reply-header">
-                <img src="${reply.icon || '/uploads/icons/default_icon.png'}" 
-                     alt="${reply.display_name || reply.handle}" 
-                     class="reply-avatar">
+                <a href="profile.php?handle=${encodeURIComponent(reply.handle)}">
+                    <img src="${reply.icon || '/uploads/icons/default_icon.png'}" 
+                         alt="${reply.display_name || reply.handle}" 
+                         class="reply-avatar">
+                </a>
                 <div class="reply-meta">
                     <div>
-                        <span class="reply-author">${reply.display_name || reply.handle}</span>
+                        <a href="profile.php?handle=${encodeURIComponent(reply.handle)}" class="reply-author-link">
+                            <span class="reply-author">${reply.display_name || reply.handle}</span>
+                        </a>
                         ${reply.role === 'admin' ? '<span class="role-badge admin-badge">ADMIN</span>' : ''}
                         ${reply.role === 'mod' ? '<span class="role-badge mod-badge">MOD</span>' : ''}
                         ${titleHtml}
                     </div>
                     <div class="reply-time">
-                        @${reply.handle} · ${formatTime(reply.created_at)}
+                        <a href="profile.php?handle=${encodeURIComponent(reply.handle)}" class="handle-link">@${reply.handle}</a> · ${formatTime(reply.created_at)}
                     </div>
                 </div>
             </div>
