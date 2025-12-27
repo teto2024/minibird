@@ -224,10 +224,16 @@ try {
         }
 
         $media_paths_json = !empty($media_paths) ? json_encode($media_paths) : null;
+        
+        // 引用投稿の場合はquote_post_idを取得
+        $quote_post_id = isset($_POST['quote_post_id']) ? (int)$_POST['quote_post_id'] : null;
+        if ($quote_post_id <= 0) {
+            $quote_post_id = null;
+        }
 
         $html = markdown_to_html($content);
-        $pdo->prepare("INSERT INTO posts(user_id,content_md,content_html,nsfw,media_path,media_type,media_paths,created_at) VALUES(?,?,?,?,?,?,?,NOW())")
-            ->execute([$_SESSION['uid'],$content,$html,$nsfw,$media_path,$media_type,$media_paths_json]);
+        $pdo->prepare("INSERT INTO posts(user_id,content_md,content_html,nsfw,media_path,media_type,media_paths,quote_post_id,created_at) VALUES(?,?,?,?,?,?,?,?,NOW())")
+            ->execute([$_SESSION['uid'],$content,$html,$nsfw,$media_path,$media_type,$media_paths_json,$quote_post_id]);
         $post_id = $pdo->lastInsertId();
 
         // random coin reward
