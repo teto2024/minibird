@@ -163,7 +163,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $isCorrect = (strtolower(trim($word['word'])) === strtolower($answer));
                 } else {
                     // 選択式: 意味を選択
-                    $isCorrect = ($word['meaning'] === $answer);
+                    // 空白の違いや前後の空白を無視して比較
+                    $normalizedMeaning = trim(preg_replace('/\s+/', ' ', $word['meaning']));
+                    $normalizedAnswer = trim(preg_replace('/\s+/', ' ', $answer));
+                    $isCorrect = ($normalizedMeaning === $normalizedAnswer);
                 }
                 
                 // 統計更新
@@ -703,6 +706,188 @@ body {
 .exit-btn:hover {
     background: #ffd700;
     color: #1a1a2e;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    .game-header {
+        padding: 10px 15px;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .game-title {
+        font-size: 16px;
+        text-align: center;
+    }
+    
+    .game-stats {
+        gap: 10px;
+        font-size: 13px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .combo-display {
+        top: 130px;
+        right: 15px;
+        font-size: 18px;
+    }
+    
+    .falling-word {
+        font-size: 24px;
+        padding: 15px 25px;
+        max-width: 90%;
+        text-align: center;
+        overflow-wrap: break-word;
+    }
+    
+    .answer-area {
+        padding: 15px 10px;
+    }
+    
+    .choices-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 0 5px;
+    }
+    
+    .choice-btn {
+        padding: 15px 10px;
+        font-size: 15px;
+        overflow-wrap: break-word;
+    }
+    
+    .input-area {
+        padding: 0 10px;
+    }
+    
+    .meaning-display {
+        font-size: 18px;
+        padding: 12px;
+        margin-bottom: 15px;
+    }
+    
+    .input-field {
+        font-size: 18px;
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    
+    /* キーボードレイアウト: 768px以下では7列に調整（QWERTY配列を維持しつつタッチ操作しやすいサイズに） */
+    .simple-keyboard {
+        grid-template-columns: repeat(7, 1fr);
+        gap: 5px;
+    }
+    
+    .key-btn {
+        padding: 12px 5px;
+        font-size: 14px;
+    }
+    
+    .key-btn.special {
+        grid-column: span 1;
+    }
+    
+    .exit-btn {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        padding: 6px 12px;
+        font-size: 11px;
+    }
+    
+    .result-content {
+        padding: 30px 20px;
+        max-width: 95%;
+    }
+    
+    .result-title {
+        font-size: 24px;
+        margin-bottom: 15px;
+    }
+    
+    .result-score {
+        font-size: 48px;
+    }
+    
+    .result-stats {
+        gap: 10px;
+        margin: 20px 0;
+    }
+    
+    .result-stat {
+        padding: 10px;
+    }
+    
+    .result-stat-value {
+        font-size: 22px;
+    }
+    
+    .result-stat-label {
+        font-size: 12px;
+    }
+    
+    .result-rewards {
+        padding: 15px;
+        margin: 15px 0;
+    }
+    
+    .result-rewards-title {
+        font-size: 16px;
+        margin-bottom: 10px;
+    }
+    
+    .rewards-grid {
+        gap: 10px;
+    }
+    
+    .reward-item {
+        font-size: 14px;
+    }
+    
+    .result-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .result-btn {
+        padding: 12px 20px;
+        font-size: 16px;
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-stats {
+        font-size: 11px;
+        gap: 8px;
+    }
+    
+    .falling-word {
+        font-size: 20px;
+        padding: 12px 18px;
+    }
+    
+    .choice-btn {
+        padding: 12px 8px;
+        font-size: 14px;
+    }
+    
+    /* キーボードレイアウト: 480px以下では6列に調整（より小さい画面でも操作可能に） */
+    .simple-keyboard {
+        grid-template-columns: repeat(6, 1fr);
+        gap: 4px;
+    }
+    
+    .key-btn {
+        padding: 10px 4px;
+        font-size: 12px;
+    }
+    
+    .result-score {
+        font-size: 36px;
+    }
 }
 </style>
 </head>

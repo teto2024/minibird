@@ -418,6 +418,137 @@ body {
     cursor: pointer;
     font-size: 16px;
 }
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    .word-master-container {
+        padding: 10px;
+    }
+    
+    .word-master-header {
+        padding: 20px 15px;
+        border-radius: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .word-master-header h1 {
+        font-size: 24px;
+        margin-bottom: 10px;
+    }
+    
+    .word-master-header p {
+        font-size: 14px;
+    }
+    
+    .currency-bar {
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 15px;
+    }
+    
+    .currency-item {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+    
+    .buff-indicator {
+        font-size: 12px;
+        padding: 8px 16px;
+    }
+    
+    .sections-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .section-card {
+        padding: 20px;
+    }
+    
+    .section-number {
+        font-size: 36px;
+    }
+    
+    .section-title {
+        font-size: 18px;
+    }
+    
+    .section-info {
+        font-size: 13px;
+    }
+    
+    .section-progress {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .level-badge {
+        padding: 4px 10px;
+        font-size: 11px;
+    }
+    
+    .best-score {
+        font-size: 12px;
+    }
+    
+    .start-btn {
+        padding: 10px;
+        font-size: 14px;
+    }
+    
+    .tabs {
+        gap: 8px;
+        justify-content: center;
+    }
+    
+    .tab-btn {
+        padding: 10px 16px;
+        font-size: 14px;
+        flex: 1;
+        min-width: 100px;
+        text-align: center;
+    }
+    
+    .level-modal-content {
+        padding: 25px 20px;
+        max-width: 95%;
+    }
+    
+    .level-modal-title {
+        font-size: 22px;
+        margin-bottom: 20px;
+    }
+    
+    .level-option-btn {
+        padding: 15px;
+        font-size: 16px;
+    }
+    
+    .level-option-desc {
+        font-size: 12px;
+    }
+    
+    .close-modal-btn {
+        padding: 10px 24px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .word-master-header h1 {
+        font-size: 20px;
+    }
+    
+    .section-number {
+        font-size: 28px;
+    }
+    
+    .tab-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+        min-width: 80px;
+    }
+}
 </style>
 </head>
 <body>
