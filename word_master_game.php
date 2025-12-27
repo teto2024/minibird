@@ -262,7 +262,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $stmt->execute([$rewardCoins, $rewardCrystals, $normalTokens, $rareTokens, $me['id']]);
             
-            // 進捗記録
+            // 進捗記録 - 進捗テーブルがなくてもユーザーの報酬付与は行う
+            // （進捗記録は補助的機能のため、失敗しても報酬付与を中断しない）
             if ($mode === 'section') {
                 $sectionId = $section;
                 try {
@@ -275,7 +276,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ");
                     $stmt->execute([$me['id'], $sectionId, $level, $finalScore, $finalScore >= 60 ? 1 : 0]);
                 } catch (PDOException $e) {
-                    // 進捗テーブルがない場合は無視
+                    // 進捗テーブルがない場合は無視（報酬付与は継続）
                 }
             }
             
