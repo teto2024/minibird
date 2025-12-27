@@ -14,34 +14,59 @@ if (!$me) {
 
 $pdo = db();
 
+// エラーハンドリング用変数
+$dbError = false;
+$dbErrorMessage = '';
+
 // セクション数を計算（20単語ごと）
-$stmt = $pdo->query("SELECT COUNT(*) FROM english_words");
-$totalWords = (int)$stmt->fetchColumn();
-$sectionsCount = max(1, ceil($totalWords / 20));
+try {
+    $stmt = $pdo->query("SELECT COUNT(*) FROM english_words");
+    $totalWords = (int)$stmt->fetchColumn();
+    $sectionsCount = max(1, ceil($totalWords / 20));
+} catch (PDOException $e) {
+    $dbError = true;
+    $dbErrorMessage = 'データベースエラーが発生しました。テーブルが存在しないか、アクセスできません。スキーマを実行してください。';
+    $totalWords = 0;
+    $sectionsCount = 0;
+}
 
 // ユーザーの進捗を取得
-$stmt = $pdo->prepare("
-    SELECT section_id, level, best_score, completed 
-    FROM user_word_master_progress 
-    WHERE user_id = ?
-");
-$stmt->execute([$me['id']]);
 $userProgress = [];
-while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-    $userProgress[$row['section_id'] . '_' . $row['level']] = $row;
+if (!$dbError) {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT section_id, level, best_score, completed 
+            FROM user_word_master_progress 
+            WHERE user_id = ?
+        ");
+        $stmt->execute([$me['id']]);
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $userProgress[$row['section_id'] . '_' . $row['level']] = $row;
+        }
+    } catch (PDOException $e) {
+        // データベースエラー時は空配列のまま続行
+    }
 }
 
 // 英単語マスター報酬バフの確認
-$stmt = $pdo->prepare("
-    SELECT level, end_time 
-    FROM user_buffs 
-    WHERE user_id = ? AND type = 'word_master_reward' AND end_time > NOW()
-    ORDER BY level DESC 
-    LIMIT 1
-");
-$stmt->execute([$me['id']]);
-$rewardBuff = $stmt->fetch(PDO::FETCH_ASSOC);
-$buffMultiplier = $rewardBuff ? (1 + ($rewardBuff['level'] * 0.2)) : 1;
+$rewardBuff = null;
+$buffMultiplier = 1;
+if (!$dbError) {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT level, end_time 
+            FROM user_buffs 
+            WHERE user_id = ? AND type = 'word_master_reward' AND end_time > NOW()
+            ORDER BY level DESC 
+            LIMIT 1
+        ");
+        $stmt->execute([$me['id']]);
+        $rewardBuff = $stmt->fetch(PDO::FETCH_ASSOC);
+        $buffMultiplier = $rewardBuff ? (1 + ($rewardBuff['level'] * 0.2)) : 1;
+    } catch (PDOException $e) {
+        // データベースエラー時はバフなしで続行
+    }
+}
 ?>
 <!doctype html>
 <html lang="ja">
@@ -419,6 +444,19 @@ body {
         <?php endif; ?>
     </div>
     
+    <?php if ($dbError): ?>
+    <div style="background: #f56565; color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center;">
+        <h3 style="margin: 0 0 10px 0;">⚠️ データベースエラー</h3>
+        <p style="margin: 0;"><?= htmlspecialchars($dbErrorMessage) ?></p>
+        <p style="margin: 10px 0 0 0; font-size: 14px;">管理者に連絡するか、<code>schema_new_features.sql</code>を実行してください。</p>
+    </div>
+    <?php elseif ($totalWords === 0): ?>
+    <div style="background: #ed8936; color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; text-align: center;">
+        <h3 style="margin: 0 0 10px 0;">📚 英単語データがありません</h3>
+        <p style="margin: 0;">英単語データがまだ登録されていません。管理者がデータをインポートするまでお待ちください。</p>
+    </div>
+    <?php endif; ?>
+
     <div class="tabs">
         <button class="tab-btn active" data-tab="sections">📖 セクション</button>
         <button class="tab-btn" data-tab="test">🎯 テストモード</button>
