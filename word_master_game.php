@@ -22,13 +22,18 @@ $level = $_GET['level'] ?? 'selection';
 $stage = (int)($_GET['stage'] ?? 1);
 
 // バフ確認
-$stmt = $pdo->prepare("
-    SELECT level FROM user_buffs 
-    WHERE user_id = ? AND type = 'word_master_reward' AND end_time > NOW()
-    ORDER BY level DESC LIMIT 1
-");
-$stmt->execute([$me['id']]);
-$buffLevel = $stmt->fetchColumn() ?: 0;
+$buffLevel = 0;
+try {
+    $stmt = $pdo->prepare("
+        SELECT level FROM user_buffs 
+        WHERE user_id = ? AND type = 'word_master_reward' AND end_time > NOW()
+        ORDER BY level DESC LIMIT 1
+    ");
+    $stmt->execute([$me['id']]);
+    $buffLevel = $stmt->fetchColumn() ?: 0;
+} catch (PDOException $e) {
+    // user_buffs テーブルがない場合は無視
+}
 $buffMultiplier = 1 + ($buffLevel * 0.2);
 
 // ゲーム設定
@@ -70,114 +75,128 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // 問題取得
     if ($action === 'get_question') {
-        $usedIds = $input['used_ids'] ?? [];
-        $usedPlaceholders = !empty($usedIds) ? implode(',', array_fill(0, count($usedIds), '?')) : '';
-        
-        if ($mode === 'weak') {
-            // 苦手モード: 間違いが多い単語から出題
-            // まずユーザーが単語を試したことがあるか確認
-            $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM user_word_stats WHERE user_id = ? AND incorrect_count > correct_count");
-            $checkStmt->execute([$me['id']]);
-            $hasWeakWords = $checkStmt->fetchColumn() > 0;
+        try {
+            $usedIds = $input['used_ids'] ?? [];
+            $usedPlaceholders = !empty($usedIds) ? implode(',', array_fill(0, count($usedIds), '?')) : '';
             
-            if (!$hasWeakWords) {
-                echo json_encode(['ok' => false, 'reason' => 'no_weak_words', 'message' => '苦手な単語がありません。まず通常モードで練習してください。']);
+            if ($mode === 'weak') {
+                // 苦手モード: 間違いが多い単語から出題
+                // まずユーザーが単語を試したことがあるか確認
+                $checkStmt = $pdo->prepare("SELECT COUNT(*) FROM user_word_stats WHERE user_id = ? AND incorrect_count > correct_count");
+                $checkStmt->execute([$me['id']]);
+                $hasWeakWords = $checkStmt->fetchColumn() > 0;
+                
+                if (!$hasWeakWords) {
+                    echo json_encode(['ok' => false, 'reason' => 'no_weak_words', 'message' => '苦手な単語がありません。まず通常モードで練習してください。']);
+                    exit;
+                }
+                
+                $sql = "SELECT ew.id, ew.word, ew.meaning
+                        FROM english_words ew
+                        JOIN user_word_stats uws ON ew.id = uws.word_id
+                        WHERE uws.user_id = ? AND uws.incorrect_count > uws.correct_count";
+                $params = [$me['id']];
+                if (!empty($usedPlaceholders)) {
+                    $sql .= " AND ew.id NOT IN ($usedPlaceholders)";
+                    $params = array_merge($params, $usedIds);
+                }
+                $sql .= " ORDER BY (uws.incorrect_count - uws.correct_count) DESC LIMIT 1";
+            } else {
+                $sql = "SELECT id, word, meaning FROM english_words WHERE id BETWEEN ? AND ?";
+                $params = [$startId, $endId];
+                if (!empty($usedPlaceholders)) {
+                    $sql .= " AND id NOT IN ($usedPlaceholders)";
+                    $params = array_merge($params, $usedIds);
+                }
+                $sql .= " ORDER BY RAND() LIMIT 1";
+            }
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            $word = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$word) {
+                echo json_encode(['ok' => false, 'reason' => 'no_more_words']);
                 exit;
             }
             
-            $sql = "SELECT ew.id, ew.word, ew.meaning
-                    FROM english_words ew
-                    JOIN user_word_stats uws ON ew.id = uws.word_id
-                    WHERE uws.user_id = ? AND uws.incorrect_count > uws.correct_count";
-            $params = [$me['id']];
-            if (!empty($usedPlaceholders)) {
-                $sql .= " AND ew.id NOT IN ($usedPlaceholders)";
-                $params = array_merge($params, $usedIds);
+            // 選択肢を生成（選択式の場合）
+            $choices = [];
+            if (!$isInputMode) {
+                $stmt = $pdo->prepare("SELECT meaning FROM english_words WHERE id != ? ORDER BY RAND() LIMIT 3");
+                $stmt->execute([$word['id']]);
+                $choices = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                $choices[] = $word['meaning'];
+                shuffle($choices);
             }
-            $sql .= " ORDER BY (uws.incorrect_count - uws.correct_count) DESC LIMIT 1";
-        } else {
-            $sql = "SELECT id, word, meaning FROM english_words WHERE id BETWEEN ? AND ?";
-            $params = [$startId, $endId];
-            if (!empty($usedPlaceholders)) {
-                $sql .= " AND id NOT IN ($usedPlaceholders)";
-                $params = array_merge($params, $usedIds);
-            }
-            $sql .= " ORDER BY RAND() LIMIT 1";
-        }
-        
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-        $word = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$word) {
-            echo json_encode(['ok' => false, 'reason' => 'no_more_words']);
+            
+            echo json_encode([
+                'ok' => true,
+                'question' => [
+                    'id' => $word['id'],
+                    'word' => $word['word'],
+                    'meaning' => $word['meaning'],
+                    'choices' => $choices
+                ]
+            ]);
+            exit;
+        } catch (PDOException $e) {
+            echo json_encode(['ok' => false, 'reason' => 'db_error', 'message' => 'データベースエラーが発生しました。テーブルが存在しない可能性があります。']);
             exit;
         }
-        
-        // 選択肢を生成（選択式の場合）
-        $choices = [];
-        if (!$isInputMode) {
-            $stmt = $pdo->prepare("SELECT meaning FROM english_words WHERE id != ? ORDER BY RAND() LIMIT 3");
-            $stmt->execute([$word['id']]);
-            $choices = $stmt->fetchAll(PDO::FETCH_COLUMN);
-            $choices[] = $word['meaning'];
-            shuffle($choices);
-        }
-        
-        echo json_encode([
-            'ok' => true,
-            'question' => [
-                'id' => $word['id'],
-                'word' => $word['word'],
-                'meaning' => $word['meaning'],
-                'choices' => $choices
-            ]
-        ]);
-        exit;
     }
     
     // 回答チェック
     if ($action === 'check_answer') {
-        $wordId = (int)($input['word_id'] ?? 0);
-        $answer = trim($input['answer'] ?? '');
-        $isCorrect = false;
-        
-        $stmt = $pdo->prepare("SELECT word, meaning FROM english_words WHERE id = ?");
-        $stmt->execute([$wordId]);
-        $word = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if ($word) {
-            if ($isInputMode) {
-                // 入力式: 英語を入力
-                $isCorrect = (strtolower(trim($word['word'])) === strtolower($answer));
-            } else {
-                // 選択式: 意味を選択
-                $isCorrect = ($word['meaning'] === $answer);
+        try {
+            $wordId = (int)($input['word_id'] ?? 0);
+            $answer = trim($input['answer'] ?? '');
+            $isCorrect = false;
+            
+            $stmt = $pdo->prepare("SELECT word, meaning FROM english_words WHERE id = ?");
+            $stmt->execute([$wordId]);
+            $word = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($word) {
+                if ($isInputMode) {
+                    // 入力式: 英語を入力
+                    $isCorrect = (strtolower(trim($word['word'])) === strtolower($answer));
+                } else {
+                    // 選択式: 意味を選択
+                    $isCorrect = ($word['meaning'] === $answer);
+                }
+                
+                // 統計更新
+                try {
+                    $stmt = $pdo->prepare("
+                        INSERT INTO user_word_stats (user_id, word_id, correct_count, incorrect_count, last_attempt)
+                        VALUES (?, ?, ?, ?, NOW())
+                        ON DUPLICATE KEY UPDATE 
+                            correct_count = correct_count + VALUES(correct_count),
+                            incorrect_count = incorrect_count + VALUES(incorrect_count),
+                            last_attempt = NOW()
+                    ");
+                    $stmt->execute([
+                        $me['id'],
+                        $wordId,
+                        $isCorrect ? 1 : 0,
+                        $isCorrect ? 0 : 1
+                    ]);
+                } catch (PDOException $e) {
+                    // 統計テーブルがない場合は無視
+                }
             }
             
-            // 統計更新
-            $stmt = $pdo->prepare("
-                INSERT INTO user_word_stats (user_id, word_id, correct_count, incorrect_count, last_attempt)
-                VALUES (?, ?, ?, ?, NOW())
-                ON DUPLICATE KEY UPDATE 
-                    correct_count = correct_count + VALUES(correct_count),
-                    incorrect_count = incorrect_count + VALUES(incorrect_count),
-                    last_attempt = NOW()
-            ");
-            $stmt->execute([
-                $me['id'],
-                $wordId,
-                $isCorrect ? 1 : 0,
-                $isCorrect ? 0 : 1
+            echo json_encode([
+                'ok' => true,
+                'correct' => $isCorrect,
+                'correct_answer' => $isInputMode ? ($word['word'] ?? '') : ($word['meaning'] ?? '')
             ]);
+            exit;
+        } catch (PDOException $e) {
+            echo json_encode(['ok' => false, 'error' => 'データベースエラーが発生しました。']);
+            exit;
         }
-        
-        echo json_encode([
-            'ok' => true,
-            'correct' => $isCorrect,
-            'correct_answer' => $isInputMode ? $word['word'] : $word['meaning']
-        ]);
-        exit;
     }
     
     // ゲーム終了 & 報酬付与
@@ -230,8 +249,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         // 報酬付与
-        $pdo->beginTransaction();
         try {
+            $pdo->beginTransaction();
+            
             $stmt = $pdo->prepare("
                 UPDATE users SET 
                     coins = coins + ?,
@@ -245,14 +265,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // 進捗記録
             if ($mode === 'section') {
                 $sectionId = $section;
-                $stmt = $pdo->prepare("
-                    INSERT INTO user_word_master_progress (user_id, section_id, level, best_score, completed)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE 
-                        best_score = GREATEST(best_score, VALUES(best_score)),
-                        completed = TRUE
-                ");
-                $stmt->execute([$me['id'], $sectionId, $level, $finalScore, $finalScore >= 60 ? 1 : 0]);
+                try {
+                    $stmt = $pdo->prepare("
+                        INSERT INTO user_word_master_progress (user_id, section_id, level, best_score, completed)
+                        VALUES (?, ?, ?, ?, ?)
+                        ON DUPLICATE KEY UPDATE 
+                            best_score = GREATEST(best_score, VALUES(best_score)),
+                            completed = TRUE
+                    ");
+                    $stmt->execute([$me['id'], $sectionId, $level, $finalScore, $finalScore >= 60 ? 1 : 0]);
+                } catch (PDOException $e) {
+                    // 進捗テーブルがない場合は無視
+                }
             }
             
             $pdo->commit();
@@ -276,8 +300,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'buff_bonus' => ($buffLevel * 20) . '%'
             ]);
         } catch (Exception $e) {
-            $pdo->rollBack();
-            echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            echo json_encode(['ok' => false, 'error' => 'データベースエラーが発生しました。']);
         }
         exit;
     }
