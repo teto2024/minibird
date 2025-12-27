@@ -407,8 +407,10 @@ if (!$original_post) {
                 💬 返信する
             </button>
             <?php if ($me): 
-                $quoteHandle = json_encode($original_post['handle']);
-                $quotePreview = json_encode(mb_substr($original_post['content_md'] ?? '', 0, 100));
+                $quoteHandle = json_encode($original_post['handle'] ?? '');
+                $quoteContent = $original_post['content_md'] ?? $original_post['content_html'] ?? '';
+                // HTMLタグを除去してプレビュー用のテキストを取得
+                $quotePreview = json_encode(mb_substr(strip_tags($quoteContent), 0, 100));
             ?>
             <button class="reply-action-btn <?= $original_post['user_bookmarked'] ? 'bookmarked' : '' ?>" 
                     id="bookmarkBtn" onclick="toggleBookmark(<?= $original_post['id'] ?>, this)">
