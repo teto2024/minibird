@@ -118,13 +118,13 @@ if ($action === 'pull_10') {
             $rewards[] = $reward;
             
             // 履歴記録
+            // 10連ガチャの場合、総コストを各エントリに1/10ずつ記録（分析しやすくするため）
             $stmt = $pdo->prepare("
                 INSERT INTO hero_gacha_history (user_id, gacha_type, reward_type, reward_data, cost_coins, cost_crystals)
                 VALUES (?, ?, ?, ?, ?, ?)
             ");
-            // 10連の場合、個別のコストは0として記録し、最初のエントリのみ総コストを記録
-            $individual_coins = ($i === 0) ? $cost_coins : 0;
-            $individual_crystals = ($i === 0) ? $cost_crystals : 0;
+            $individual_coins = (int)floor($cost_coins / 10);
+            $individual_crystals = (int)floor($cost_crystals / 10);
             $stmt->execute([$me['id'], $type . '_10', $reward['type'], json_encode($reward), $individual_coins, $individual_crystals]);
         }
         
