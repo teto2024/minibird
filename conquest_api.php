@@ -28,6 +28,8 @@ define('CONQUEST_REWARD_PARTICIPANT', [500, 5, 1]);   // 参加報酬（11位以
 // 装備バフの軍事力への変換定数
 define('CONQUEST_HEALTH_TO_POWER_RATIO', 10);       // 体力から軍事力への変換比率
 define('CONQUEST_TROOP_HEALTH_TO_POWER_RATIO', 50); // 兵種体力から軍事力への変換比率
+define('CONQUEST_ARMOR_MAX_REDUCTION', 0.5);         // アーマーによる最大ダメージ軽減率（50%）
+define('CONQUEST_ARMOR_PERCENT_DIVISOR', 100);       // アーマー値を軽減率に変換する除数
 
 header('Content-Type: application/json');
 
@@ -48,7 +50,23 @@ $action = $input['action'] ?? '';
  * @param int $userId ユーザーID
  * @return array ['attack' => float, 'armor' => float, 'health' => float] 各バフの合計値
  */
+/**
+ * ユーザーの装備バフを取得するヘルパー関数
+ * 
+ * @param PDO $pdo データベース接続
+ * @param int $userId ユーザーID
+ * @return array ['attack' => float, 'armor' => float, 'health' => float] 各バフの合計値
+ */
 function getConquestUserEquipmentBuffs($pdo, $userId) {
+    // ユーザーIDの検証
+    if (!is_int($userId) && !is_numeric($userId)) {
+        return ['attack' => 0, 'armor' => 0, 'health' => 0];
+    }
+    $userId = (int)$userId;
+    if ($userId <= 0) {
+        return ['attack' => 0, 'armor' => 0, 'health' => 0];
+    }
+    
     $stmt = $pdo->prepare("
         SELECT buffs FROM user_equipment 
         WHERE user_id = ? AND is_equipped = 1
@@ -63,7 +81,8 @@ function getConquestUserEquipmentBuffs($pdo, $userId) {
     ];
     
     foreach ($equippedItems as $item) {
-        $buffs = json_decode($item['buffs'], true) ?: [];
+        $decoded = json_decode($item['buffs'], true);
+        $buffs = is_array($decoded) ? $decoded : [];
         foreach ($totalBuffs as $key => $value) {
             if (isset($buffs[$key])) {
                 $totalBuffs[$key] += (float)$buffs[$key];
@@ -76,6 +95,7 @@ function getConquestUserEquipmentBuffs($pdo, $userId) {
 
 /**
  * 装備バフから追加軍事力を計算
+ * アーマーは防御側のダメージ軽減として別途使用するため、攻撃力と体力のみ軍事力に変換
  * 
  * @param array $equipmentBuffs 装備バフ配列
  * @return int 追加軍事力
@@ -668,9 +688,20 @@ if ($action === 'attack_castle') {
         $defense = calculateCastleDefensePower($pdo, $castle);
         $defenderPower = $defense['total_power'];
         
+        // 装備アーマーによるダメージ軽減を適用
+        // 防御側のアーマーは攻撃者の有効パワーを軽減
+        // 攻撃側のアーマーは防御側の有効パワーを軽減
+        $defenderArmor = $defense['equipment_buffs']['armor'] ?? 0;
+        $attackerArmorReduction = min(CONQUEST_ARMOR_MAX_REDUCTION, $attackerEquipmentBuffs['armor'] / CONQUEST_ARMOR_PERCENT_DIVISOR);
+        $defenderArmorReduction = min(CONQUEST_ARMOR_MAX_REDUCTION, $defenderArmor / CONQUEST_ARMOR_PERCENT_DIVISOR);
+        
+        // 有効パワーを計算（相手のアーマーで軽減）
+        $attackerEffectivePower = $attackerPower * (1 - $defenderArmorReduction);
+        $defenderEffectivePower = $defenderPower * (1 - $attackerArmorReduction);
+        
         // 戦闘判定
-        $attackerRoll = mt_rand(1, 100) + ($attackerPower * CONQUEST_ATTACKER_BONUS);
-        $defenderRoll = mt_rand(1, 100) + $defenderPower;
+        $attackerRoll = mt_rand(1, 100) + ($attackerEffectivePower * CONQUEST_ATTACKER_BONUS);
+        $defenderRoll = mt_rand(1, 100) + $defenderEffectivePower;
         
         $attackerWins = $attackerRoll > $defenderRoll;
         
