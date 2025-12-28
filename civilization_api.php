@@ -18,6 +18,9 @@ define('CIV_INSTANT_SECONDS_PER_CRYSTAL', 60); // クリスタル1個あたり�
 define('CIV_ARMOR_MAX_REDUCTION', 0.5);        // アーマーによる最大ダメージ軽減率（50%）
 define('CIV_ARMOR_PERCENT_DIVISOR', 100);      // アーマー値を軽減率に変換する除数
 define('CIV_HEALTH_TO_POWER_RATIO', 10);       // 体力から軍事力への変換比率
+define('CIV_TROOP_HEALTH_TO_POWER_RATIO', 50); // 兵種体力から軍事力への変換比率
+define('CIV_TROOP_ADVANTAGE_BONUS', 1.25);     // 相性有利時のダメージ倍率（25%増加）
+define('CIV_TROOP_DISADVANTAGE_PENALTY', 0.75); // 相性不利時のダメージ倍率（25%減少）
 
 // 資源価値の定義（市場交換レート計算用）
 // 値が高いほど価値が高い資源
@@ -141,9 +144,9 @@ function calculateTotalMilitaryPower($pdo, $userId, $includeEquipmentBuffs = tru
     $stmt->execute([$userId]);
     $buildingPower = (int)$stmt->fetchColumn();
     
-    // 兵士からの軍事力（攻撃力 + 防御力の半分）
+    // 兵士からの軍事力（攻撃力 + 防御力の半分 + 体力/CIV_TROOP_HEALTH_TO_POWER_RATIO）
     $stmt = $pdo->prepare("
-        SELECT COALESCE(SUM((tt.attack_power + FLOOR(tt.defense_power / 2)) * uct.count), 0) as troop_power
+        SELECT COALESCE(SUM((tt.attack_power + FLOOR(tt.defense_power / 2) + FLOOR(COALESCE(tt.health_points, 100) / " . CIV_TROOP_HEALTH_TO_POWER_RATIO . ")) * uct.count), 0) as troop_power
         FROM user_civilization_troops uct
         JOIN civilization_troop_types tt ON uct.troop_type_id = tt.id
         WHERE uct.user_id = ?
@@ -167,6 +170,106 @@ function calculateTotalMilitaryPower($pdo, $userId, $includeEquipmentBuffs = tru
         'equipment_buffs' => $equipmentBuffs,
         'total_power' => $buildingPower + $troopPower + $equipmentPower
     ];
+}
+
+/**
+ * ユーザーの兵種構成を取得するヘルパー関数
+ * 
+ * @param PDO $pdo データベース接続
+ * @param int $userId ユーザーID
+ * @return array 兵種カテゴリごとの合計パワー
+ */
+function getUserTroopComposition($pdo, $userId) {
+    $stmt = $pdo->prepare("
+        SELECT 
+            COALESCE(tt.troop_category, 'infantry') as category,
+            SUM((tt.attack_power + FLOOR(tt.defense_power / 2) + FLOOR(COALESCE(tt.health_points, 100) / " . CIV_TROOP_HEALTH_TO_POWER_RATIO . ")) * uct.count) as power,
+            SUM(uct.count) as troop_count,
+            SUM(COALESCE(tt.health_points, 100) * uct.count) as total_health
+        FROM user_civilization_troops uct
+        JOIN civilization_troop_types tt ON uct.troop_type_id = tt.id
+        WHERE uct.user_id = ?
+        GROUP BY COALESCE(tt.troop_category, 'infantry')
+    ");
+    $stmt->execute([$userId]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    $composition = [
+        'infantry' => ['power' => 0, 'count' => 0, 'health' => 0],
+        'cavalry' => ['power' => 0, 'count' => 0, 'health' => 0],
+        'ranged' => ['power' => 0, 'count' => 0, 'health' => 0],
+        'siege' => ['power' => 0, 'count' => 0, 'health' => 0]
+    ];
+    
+    foreach ($rows as $row) {
+        $category = $row['category'] ?? 'infantry';
+        if (isset($composition[$category])) {
+            $composition[$category]['power'] = (int)$row['power'];
+            $composition[$category]['count'] = (int)$row['troop_count'];
+            $composition[$category]['health'] = (int)$row['total_health'];
+        }
+    }
+    
+    return $composition;
+}
+
+/**
+ * 兵種相性ボーナスを計算するヘルパー関数
+ * 相性ルール:
+ *   - infantry（歩兵）は ranged（遠距離）に強い
+ *   - ranged（遠距離）は cavalry（騎兵）に強い
+ *   - cavalry（騎兵）は infantry（歩兵）に強い
+ *   - siege（攻城）は infantry に強いが cavalry に弱い
+ * 
+ * @param array $attackerComposition 攻撃者の兵種構成
+ * @param array $defenderComposition 防御者の兵種構成
+ * @return float 相性ボーナス倍率（1.0 = 変化なし）
+ */
+function calculateTroopAdvantageMultiplier($attackerComposition, $defenderComposition) {
+    // 相性マップ: [攻撃側カテゴリ => [有利な相手カテゴリ => ボーナス, 不利な相手カテゴリ => ペナルティ]]
+    $advantageMap = [
+        'infantry' => ['advantage' => 'ranged', 'disadvantage' => 'cavalry'],
+        'ranged' => ['advantage' => 'cavalry', 'disadvantage' => 'infantry'],
+        'cavalry' => ['advantage' => 'infantry', 'disadvantage' => 'ranged'],
+        'siege' => ['advantage' => 'infantry', 'disadvantage' => 'cavalry']
+    ];
+    
+    $totalAttackerPower = 0;
+    $totalAdvantageBonus = 0;
+    
+    foreach ($attackerComposition as $attackCategory => $attackData) {
+        $attackPower = $attackData['power'];
+        if ($attackPower <= 0) continue;
+        
+        $totalAttackerPower += $attackPower;
+        
+        if (!isset($advantageMap[$attackCategory])) continue;
+        
+        $advantage = $advantageMap[$attackCategory]['advantage'];
+        $disadvantage = $advantageMap[$attackCategory]['disadvantage'];
+        
+        $defenderTotalPower = array_sum(array_column($defenderComposition, 'power'));
+        if ($defenderTotalPower <= 0) continue;
+        
+        // 防御側の有利/不利カテゴリの割合を計算
+        $advantageRatio = isset($defenderComposition[$advantage]) 
+            ? $defenderComposition[$advantage]['power'] / $defenderTotalPower 
+            : 0;
+        $disadvantageRatio = isset($defenderComposition[$disadvantage]) 
+            ? $defenderComposition[$disadvantage]['power'] / $defenderTotalPower 
+            : 0;
+        
+        // 相性ボーナス/ペナルティを加重平均で計算
+        $categoryBonus = ($advantageRatio * (CIV_TROOP_ADVANTAGE_BONUS - 1.0)) - ($disadvantageRatio * (1.0 - CIV_TROOP_DISADVANTAGE_PENALTY));
+        $totalAdvantageBonus += $attackPower * $categoryBonus;
+    }
+    
+    if ($totalAttackerPower <= 0) {
+        return 1.0;
+    }
+    
+    // 全体の相性ボーナス倍率を計算（1.0を基準に加算）
+    return 1.0 + ($totalAdvantageBonus / $totalAttackerPower);
 }
 
 // 資源を収集（時間経過分）
@@ -811,7 +914,7 @@ if ($action === 'attack') {
             throw new Exception('相手の文明が見つかりません');
         }
         
-        // 軍事力を計算（建物 + 兵士）
+        // 軍事力を計算（建物 + 兵士 + 装備）
         $myPowerData = calculateTotalMilitaryPower($pdo, $me['id']);
         $myPower = $myPowerData['total_power'];
         
@@ -826,14 +929,23 @@ if ($action === 'attack') {
         $myEquipmentBuffs = $myPowerData['equipment_buffs'];
         $targetEquipmentBuffs = $targetPowerData['equipment_buffs'];
         
+        // 兵種構成を取得して相性ボーナスを計算
+        $myTroopComposition = getUserTroopComposition($pdo, $me['id']);
+        $targetTroopComposition = getUserTroopComposition($pdo, $targetUserId);
+        
+        // 攻撃側の相性ボーナス（攻撃者 vs 防御者）
+        $myAdvantageMultiplier = calculateTroopAdvantageMultiplier($myTroopComposition, $targetTroopComposition);
+        // 防御側の相性ボーナス（防御者 vs 攻撃者）
+        $targetAdvantageMultiplier = calculateTroopAdvantageMultiplier($targetTroopComposition, $myTroopComposition);
+        
         // 攻撃力計算（自分の攻撃力バフ - 相手のアーマーで相手へのダメージ軽減）
         // アーマーは敵の攻撃力を軽減する（1アーマー = 1%軽減、最大CIV_ARMOR_MAX_REDUCTIONまで）
         $targetArmorReduction = min(CIV_ARMOR_MAX_REDUCTION, $targetEquipmentBuffs['armor'] / CIV_ARMOR_PERCENT_DIVISOR);
         $myArmorReduction = min(CIV_ARMOR_MAX_REDUCTION, $myEquipmentBuffs['armor'] / CIV_ARMOR_PERCENT_DIVISOR);
         
-        // 最終的な攻撃力（装備攻撃力バフを含み、相手のアーマーで軽減）
-        $myEffectivePower = $myPower * (1 - $targetArmorReduction);
-        $targetEffectivePower = $targetPower * (1 - $myArmorReduction);
+        // 最終的な攻撃力（装備攻撃力バフを含み、相手のアーマーで軽減、相性ボーナス適用）
+        $myEffectivePower = $myPower * (1 - $targetArmorReduction) * $myAdvantageMultiplier;
+        $targetEffectivePower = $targetPower * (1 - $myArmorReduction) * $targetAdvantageMultiplier;
         
         // 戦闘判定（攻撃側ボーナス適用）
         $myRoll = mt_rand(1, 100) + ($myEffectivePower * CIV_ATTACKER_BONUS);
@@ -894,22 +1006,32 @@ if ($action === 'attack') {
             }
         }
         
-        // 戦争ログを記録
+        // 戦争ログを記録（詳細情報を含む）
         $stmt = $pdo->prepare("
             INSERT INTO civilization_war_logs 
-            (attacker_user_id, defender_user_id, attacker_power, defender_power, winner_user_id, loot_coins, loot_resources)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (attacker_user_id, defender_user_id, attacker_power, attacker_troop_power, attacker_equipment_power, defender_power, defender_troop_power, defender_equipment_power, troop_advantage_bonus, winner_user_id, loot_coins, loot_resources)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
-            $me['id'], $targetUserId, $myPower, $targetPower, $winnerId, $lootCoins, json_encode($lootResources)
+            $me['id'], $targetUserId, 
+            $myPower, $myPowerData['troop_power'], $myPowerData['equipment_power'],
+            $targetPower, $targetPowerData['troop_power'], $targetPowerData['equipment_power'],
+            round($myAdvantageMultiplier - 1.0, 2),
+            $winnerId, $lootCoins, json_encode($lootResources)
         ]);
         
         $pdo->commit();
         
         $result = ($winnerId === $me['id']) ? 'victory' : 'defeat';
+        $advantageText = '';
+        if ($myAdvantageMultiplier > 1.05) {
+            $advantageText = '（相性有利）';
+        } else if ($myAdvantageMultiplier < 0.95) {
+            $advantageText = '（相性不利）';
+        }
         $message = ($result === 'victory') 
-            ? "勝利！{$lootCoins}コインと資源を略奪しました！" 
-            : "敗北...相手の防御が強すぎました。";
+            ? "勝利{$advantageText}！{$lootCoins}コインと資源を略奪しました！" 
+            : "敗北{$advantageText}...相手の防御が強すぎました。";
         
         echo json_encode([
             'ok' => true,
@@ -917,6 +1039,9 @@ if ($action === 'attack') {
             'message' => $message,
             'my_power' => $myPower,
             'target_power' => $targetPower,
+            'my_effective_power' => round($myEffectivePower, 2),
+            'target_effective_power' => round($targetEffectivePower, 2),
+            'troop_advantage_multiplier' => round($myAdvantageMultiplier, 2),
             'loot_coins' => $lootCoins,
             'loot_resources' => $lootResources
         ]);
@@ -941,21 +1066,29 @@ if ($action === 'get_targets') {
         $stmt->execute([$me['id']]);
         $targets = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
+        // 自分の軍事力と兵種構成を取得
+        $myPowerData = calculateTotalMilitaryPower($pdo, $me['id']);
+        $myTroopComposition = getUserTroopComposition($pdo, $me['id']);
+        
         // 各ターゲットの軍事力と装備バフを計算
         foreach ($targets as &$target) {
             $targetPowerData = calculateTotalMilitaryPower($pdo, $target['user_id']);
             $target['military_power'] = $targetPowerData['total_power'];
             $target['equipment_buffs'] = $targetPowerData['equipment_buffs'];
+            
+            // 相性ボーナスを計算
+            $targetTroopComposition = getUserTroopComposition($pdo, $target['user_id']);
+            $advantageMultiplier = calculateTroopAdvantageMultiplier($myTroopComposition, $targetTroopComposition);
+            $target['troop_advantage_multiplier'] = round($advantageMultiplier, 2);
+            $target['troop_composition'] = $targetTroopComposition;
         }
         unset($target);
-        
-        // 自分の軍事力も取得して返す
-        $myPowerData = calculateTotalMilitaryPower($pdo, $me['id']);
         
         echo json_encode([
             'ok' => true, 
             'targets' => $targets,
-            'my_military_power' => $myPowerData
+            'my_military_power' => $myPowerData,
+            'my_troop_composition' => $myTroopComposition
         ]);
     } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
@@ -1384,7 +1517,9 @@ if ($action === 'get_troops') {
         
         // ユーザーの兵士
         $stmt = $pdo->prepare("
-            SELECT uct.*, tt.troop_key, tt.name, tt.icon, tt.attack_power, tt.defense_power
+            SELECT uct.*, tt.troop_key, tt.name, tt.icon, tt.attack_power, tt.defense_power, 
+                   COALESCE(tt.health_points, 100) as health_points, 
+                   COALESCE(tt.troop_category, 'infantry') as troop_category
             FROM user_civilization_troops uct
             JOIN civilization_troop_types tt ON uct.troop_type_id = tt.id
             WHERE uct.user_id = ?
@@ -1392,10 +1527,19 @@ if ($action === 'get_troops') {
         $stmt->execute([$me['id']]);
         $userTroops = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
+        // 兵種カテゴリの相性情報を追加
+        $troopAdvantageInfo = [
+            'infantry' => ['name' => '歩兵', 'icon' => '🗡️', 'strong_against' => 'ranged', 'weak_against' => 'cavalry'],
+            'cavalry' => ['name' => '騎兵', 'icon' => '🐴', 'strong_against' => 'infantry', 'weak_against' => 'ranged'],
+            'ranged' => ['name' => '遠距離', 'icon' => '🏹', 'strong_against' => 'cavalry', 'weak_against' => 'infantry'],
+            'siege' => ['name' => '攻城', 'icon' => '💣', 'strong_against' => 'infantry', 'weak_against' => 'cavalry']
+        ];
+        
         echo json_encode([
             'ok' => true,
             'available_troops' => $availableTroops,
-            'user_troops' => $userTroops
+            'user_troops' => $userTroops,
+            'troop_advantage_info' => $troopAdvantageInfo
         ]);
     } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
