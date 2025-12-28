@@ -32,6 +32,15 @@ define('CONQUEST_TROOP_HEALTH_TO_POWER_RATIO', 50); // 兵種体力から軍事�
 define('CONQUEST_ARMOR_MAX_REDUCTION', 0.5);         // アーマーによる最大ダメージ軽減率（50%）
 define('CONQUEST_ARMOR_PERCENT_DIVISOR', 100);       // アーマー値を軽減率に変換する除数
 
+// 砲撃システム定数
+define('CONQUEST_BOMBARDMENT_INTERVAL_MINUTES', 30);     // 砲撃間隔（分）
+define('CONQUEST_BOMBARDMENT_BASE_RATE', 0.05);          // 基本損失率（5%）
+define('CONQUEST_BOMBARDMENT_COST_FACTOR', 0.0001);      // コストによる損失軽減係数
+define('CONQUEST_BOMBARDMENT_MAX_COST_REDUCTION', 0.04); // コストによる最大軽減率
+define('CONQUEST_BOMBARDMENT_MIN_LOSS_RATE', 0.01);      // 最低損失率（1%）
+define('CONQUEST_BOMBARDMENT_VARIANCE_RANGE', 20);       // 乱数変動幅（±%）
+define('CONQUEST_BOMBARDMENT_WARNING_MINUTES', 5);       // 警告表示開始（分）
+
 header('Content-Type: application/json');
 
 $me = user();
@@ -1227,17 +1236,6 @@ if ($action === 'get_conquest_battle_turn_logs') {
     }
     exit;
 }
-
-// ===============================================
-// 砲撃システム定数
-// ===============================================
-define('CONQUEST_BOMBARDMENT_INTERVAL_MINUTES', 30);     // 砲撃間隔（分）
-define('CONQUEST_BOMBARDMENT_BASE_RATE', 0.05);          // 基本損失率（5%）
-define('CONQUEST_BOMBARDMENT_COST_FACTOR', 0.0001);      // コストによる損失軽減係数
-define('CONQUEST_BOMBARDMENT_MAX_COST_REDUCTION', 0.04); // コストによる最大軽減率
-define('CONQUEST_BOMBARDMENT_MIN_LOSS_RATE', 0.01);      // 最低損失率（1%）
-define('CONQUEST_BOMBARDMENT_VARIANCE_RANGE', 20);       // 乱数変動幅（±%）
-define('CONQUEST_BOMBARDMENT_WARNING_MINUTES', 5);       // 警告表示開始（分）
 
 /**
  * 砲撃を処理する関数

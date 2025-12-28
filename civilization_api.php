@@ -1503,15 +1503,19 @@ if ($action === 'get_troops') {
         $stmt->execute([$me['id']]);
         $userResearchIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
         
-        // 利用可能な兵種
+        // 利用可能な兵種（特殊スキル情報を含む）
         $stmt = $pdo->prepare("
             SELECT tt.*, e.name as era_name,
                    prereq_b.name as prerequisite_building_name,
-                   prereq_r.name as prerequisite_research_name
+                   prereq_r.name as prerequisite_research_name,
+                   ss.skill_key, ss.name as skill_name, ss.icon as skill_icon,
+                   ss.description as skill_description, ss.effect_type,
+                   ss.effect_value, ss.duration_turns, ss.activation_chance
             FROM civilization_troop_types tt
             LEFT JOIN civilization_eras e ON tt.unlock_era_id = e.id
             LEFT JOIN civilization_building_types prereq_b ON tt.prerequisite_building_id = prereq_b.id
             LEFT JOIN civilization_researches prereq_r ON tt.prerequisite_research_id = prereq_r.id
+            LEFT JOIN battle_special_skills ss ON tt.special_skill_id = ss.id
             WHERE tt.unlock_era_id IS NULL OR tt.unlock_era_id <= ?
             ORDER BY tt.unlock_era_id, tt.id
         ");
