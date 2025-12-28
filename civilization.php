@@ -679,6 +679,10 @@ body {
 </div>
 
 <script>
+// 戦闘計算用定数（サーバーサイドと同期）
+const CIV_ARMOR_MAX_REDUCTION = 0.5;    // アーマーによる最大ダメージ軽減率（50%）
+const CIV_ARMOR_PERCENT_DIVISOR = 100;  // アーマー値を軽減率に変換する除数
+
 let civData = null;
 let currentTab = 'buildings'; // 現在のアクティブタブを保持
 
@@ -1383,8 +1387,8 @@ async function loadTargets() {
                 
                 // アーマーによる軽減を考慮した有利不利計算
                 // 自分のアーマーは相手の攻撃を軽減、相手のアーマーは自分の攻撃を軽減
-                const myArmorReduction = Math.min(0.5, myArmor / 100);
-                const targetArmorReduction = Math.min(0.5, targetArmor / 100);
+                const myArmorReduction = Math.min(CIV_ARMOR_MAX_REDUCTION, myArmor / CIV_ARMOR_PERCENT_DIVISOR);
+                const targetArmorReduction = Math.min(CIV_ARMOR_MAX_REDUCTION, targetArmor / CIV_ARMOR_PERCENT_DIVISOR);
                 
                 const myEffectivePower = myPower * (1 - targetArmorReduction);
                 const targetEffectivePower = targetPower * (1 - myArmorReduction);

@@ -15,6 +15,9 @@ define('CIV_LOOT_COINS_RATE', 0.05);           // 略奪時のコイン比率（
 define('CIV_INSTANT_BUILDING_MIN_COST', 5);    // 建物即完了の最低クリスタルコスト
 define('CIV_INSTANT_RESEARCH_MIN_COST', 3);    // 研究即完了の最低クリスタルコスト
 define('CIV_INSTANT_SECONDS_PER_CRYSTAL', 60); // クリスタル1個あたりの秒数
+define('CIV_ARMOR_MAX_REDUCTION', 0.5);        // アーマーによる最大ダメージ軽減率（50%）
+define('CIV_ARMOR_PERCENT_DIVISOR', 100);      // アーマー値を軽減率に変換する除数
+define('CIV_HEALTH_TO_POWER_RATIO', 10);       // 体力から軍事力への変換比率
 
 // 資源価値の定義（市場交換レート計算用）
 // 値が高いほど価値が高い資源
@@ -86,7 +89,13 @@ function getUserCivilization($pdo, $userId) {
     return $civ;
 }
 
-// ユーザーの装備バフを取得するヘルパー関数
+/**
+ * ユーザーの装備バフを取得するヘルパー関数
+ * 
+ * @param PDO $pdo データベース接続
+ * @param int $userId ユーザーID
+ * @return array ['attack' => float, 'armor' => float, 'health' => float] 各バフの合計値
+ */
 function getUserEquipmentBuffs($pdo, $userId) {
     $stmt = $pdo->prepare("
         SELECT buffs FROM user_equipment 
@@ -113,7 +122,14 @@ function getUserEquipmentBuffs($pdo, $userId) {
     return $totalBuffs;
 }
 
-// 総合軍事力を計算するヘルパー関数（装備バフを含む）
+/**
+ * 総合軍事力を計算するヘルパー関数（装備バフを含む）
+ * 
+ * @param PDO $pdo データベース接続
+ * @param int $userId ユーザーID
+ * @param bool $includeEquipmentBuffs 装備バフを含めるかどうか
+ * @return array 軍事力の内訳と合計
+ */
 function calculateTotalMilitaryPower($pdo, $userId, $includeEquipmentBuffs = true) {
     // 建物からの軍事力
     $stmt = $pdo->prepare("
@@ -140,8 +156,8 @@ function calculateTotalMilitaryPower($pdo, $userId, $includeEquipmentBuffs = tru
     $equipmentPower = 0;
     if ($includeEquipmentBuffs) {
         $equipmentBuffs = getUserEquipmentBuffs($pdo, $userId);
-        // 装備からの追加軍事力: 攻撃力 + 体力/10（体力は戦闘力への影響を小さめに）
-        $equipmentPower = (int)floor($equipmentBuffs['attack'] + ($equipmentBuffs['health'] / 10));
+        // 装備からの追加軍事力: 攻撃力 + 体力/CIV_HEALTH_TO_POWER_RATIO（体力は戦闘力への影響を小さめに）
+        $equipmentPower = (int)floor($equipmentBuffs['attack'] + ($equipmentBuffs['health'] / CIV_HEALTH_TO_POWER_RATIO));
     }
     
     return [
@@ -811,9 +827,9 @@ if ($action === 'attack') {
         $targetEquipmentBuffs = $targetPowerData['equipment_buffs'];
         
         // 攻撃力計算（自分の攻撃力バフ - 相手のアーマーで相手へのダメージ軽減）
-        // アーマーは敵の攻撃力を軽減する（1アーマー = 1%軽減、最大50%まで）
-        $targetArmorReduction = min(0.5, $targetEquipmentBuffs['armor'] / 100);
-        $myArmorReduction = min(0.5, $myEquipmentBuffs['armor'] / 100);
+        // アーマーは敵の攻撃力を軽減する（1アーマー = 1%軽減、最大CIV_ARMOR_MAX_REDUCTIONまで）
+        $targetArmorReduction = min(CIV_ARMOR_MAX_REDUCTION, $targetEquipmentBuffs['armor'] / CIV_ARMOR_PERCENT_DIVISOR);
+        $myArmorReduction = min(CIV_ARMOR_MAX_REDUCTION, $myEquipmentBuffs['armor'] / CIV_ARMOR_PERCENT_DIVISOR);
         
         // 最終的な攻撃力（装備攻撃力バフを含み、相手のアーマーで軽減）
         $myEffectivePower = $myPower * (1 - $targetArmorReduction);
