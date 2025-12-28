@@ -25,6 +25,12 @@ define('CONQUEST_REWARD_RANK_3', [3000, 30, 10]);     // 3位報酬
 define('CONQUEST_REWARD_RANK_4_10', [1000, 10, 5]);   // 4-10位報酬
 define('CONQUEST_REWARD_PARTICIPANT', [500, 5, 1]);   // 参加報酬（11位以下）
 
+// 装備バフの軍事力への変換定数
+define('CONQUEST_HEALTH_TO_POWER_RATIO', 10);       // 体力から軍事力への変換比率
+define('CONQUEST_TROOP_HEALTH_TO_POWER_RATIO', 50); // 兵種体力から軍事力への変換比率
+define('CONQUEST_ARMOR_MAX_REDUCTION', 0.5);         // アーマーによる最大ダメージ軽減率（50%）
+define('CONQUEST_ARMOR_PERCENT_DIVISOR', 100);       // アーマー値を軽減率に変換する除数
+
 header('Content-Type: application/json');
 
 $me = user();
@@ -36,6 +42,60 @@ if (!$me) {
 $pdo = db();
 $input = json_decode(file_get_contents('php://input'), true) ?: [];
 $action = $input['action'] ?? '';
+
+/**
+ * ユーザーの装備バフを取得するヘルパー関数
+ * 
+ * @param PDO $pdo データベース接続
+ * @param int $userId ユーザーID
+ * @return array ['attack' => float, 'armor' => float, 'health' => float] 各バフの合計値
+ */
+function getConquestUserEquipmentBuffs($pdo, $userId) {
+    // ユーザーIDの検証
+    if (!is_int($userId) && !is_numeric($userId)) {
+        return ['attack' => 0, 'armor' => 0, 'health' => 0];
+    }
+    $userId = (int)$userId;
+    if ($userId <= 0) {
+        return ['attack' => 0, 'armor' => 0, 'health' => 0];
+    }
+    
+    $stmt = $pdo->prepare("
+        SELECT buffs FROM user_equipment 
+        WHERE user_id = ? AND is_equipped = 1
+    ");
+    $stmt->execute([$userId]);
+    $equippedItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    $totalBuffs = [
+        'attack' => 0,
+        'armor' => 0,
+        'health' => 0
+    ];
+    
+    foreach ($equippedItems as $item) {
+        $decoded = json_decode($item['buffs'], true);
+        $buffs = is_array($decoded) ? $decoded : [];
+        foreach ($totalBuffs as $key => $value) {
+            if (isset($buffs[$key])) {
+                $totalBuffs[$key] += (float)$buffs[$key];
+            }
+        }
+    }
+    
+    return $totalBuffs;
+}
+
+/**
+ * 装備バフから追加軍事力を計算
+ * アーマーは防御側のダメージ軽減として別途使用するため、攻撃力と体力のみ軍事力に変換
+ * 
+ * @param array $equipmentBuffs 装備バフ配列
+ * @return int 追加軍事力
+ */
+function calculateEquipmentPower($equipmentBuffs) {
+    return (int)floor($equipmentBuffs['attack'] + ($equipmentBuffs['health'] / CONQUEST_HEALTH_TO_POWER_RATIO));
+}
 
 /**
  * シーズン終了時に報酬を配布する
@@ -349,7 +409,7 @@ function getAttackableCastles($pdo, $userId, $seasonId) {
 }
 
 /**
- * 城の防御パワーを計算
+ * 城の防御パワーを計算（装備バフを含む）
  */
 function calculateCastleDefensePower($pdo, $castle) {
     if ($castle['owner_user_id'] === null) {
@@ -357,9 +417,15 @@ function calculateCastleDefensePower($pdo, $castle) {
         return [
             'total_power' => $castle['npc_defense_power'],
             'is_npc' => true,
-            'troops' => []
+            'troops' => [],
+            'equipment_buffs' => ['attack' => 0, 'armor' => 0, 'health' => 0],
+            'equipment_power' => 0
         ];
     }
+    
+    // ユーザーの装備バフを取得
+    $equipmentBuffs = getConquestUserEquipmentBuffs($pdo, $castle['owner_user_id']);
+    $equipmentPower = calculateEquipmentPower($equipmentBuffs);
     
     // ユーザー防御部隊を取得
     $stmt = $pdo->prepare("
@@ -373,12 +439,12 @@ function calculateCastleDefensePower($pdo, $castle) {
     $stmt->execute([$castle['id']]);
     $defenseTroops = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    $totalPower = 0;
+    $troopPower = 0;
     $troops = [];
     
     foreach ($defenseTroops as $troop) {
-        $power = ($troop['attack_power'] + floor($troop['defense_power'] / 2) + floor($troop['health_points'] / 50)) * $troop['count'];
-        $totalPower += $power;
+        $power = ($troop['attack_power'] + floor($troop['defense_power'] / 2) + floor($troop['health_points'] / CONQUEST_TROOP_HEALTH_TO_POWER_RATIO)) * $troop['count'];
+        $troopPower += $power;
         $troops[] = [
             'troop_type_id' => $troop['troop_type_id'],
             'name' => $troop['name'],
@@ -389,20 +455,31 @@ function calculateCastleDefensePower($pdo, $castle) {
         ];
     }
     
-    // 防御部隊がない場合はNPCデフォルト防御
+    // 防御部隊がない場合はNPCデフォルト防御 + 装備バフ
     if (empty($troops)) {
+        $basePower = max(50, $castle['npc_defense_power'] / 2);
         return [
-            'total_power' => max(50, $castle['npc_defense_power'] / 2),
+            'total_power' => $basePower + $equipmentPower,
             'is_npc' => true,
-            'troops' => []
+            'troops' => [],
+            'equipment_buffs' => $equipmentBuffs,
+            'equipment_power' => $equipmentPower
         ];
     }
     
+    // 兵士を配置した場合: 兵士パワー + 装備パワー
+    // 修正: 兵士を置いた時の方が弱くならないよう、最低でもNPC防御の半分は維持
+    $minBasePower = max(50, $castle['npc_defense_power'] / 2);
+    $totalPower = max($minBasePower, $troopPower) + $equipmentPower;
+    
     return [
         'total_power' => $totalPower,
+        'troop_power' => $troopPower,
         'is_npc' => false,
         'defender_user_id' => $castle['owner_user_id'],
-        'troops' => $troops
+        'troops' => $troops,
+        'equipment_buffs' => $equipmentBuffs,
+        'equipment_power' => $equipmentPower
     ];
 }
 
@@ -550,9 +627,13 @@ if ($action === 'attack_castle') {
             throw new Exception('この城は攻撃できません。隣接した城を占領してから攻撃してください。');
         }
         
+        // 攻撃者の装備バフを取得
+        $attackerEquipmentBuffs = getConquestUserEquipmentBuffs($pdo, $me['id']);
+        $attackerEquipmentPower = calculateEquipmentPower($attackerEquipmentBuffs);
+        
         // 攻撃部隊を検証
         $attackerTroops = [];
-        $attackerPower = 0;
+        $attackerTroopPower = 0;
         
         foreach ($troops as $troop) {
             $troopTypeId = (int)$troop['troop_type_id'];
@@ -576,8 +657,8 @@ if ($action === 'attack_castle') {
                 throw new Exception('兵士が不足しています');
             }
             
-            $power = ($userTroop['attack_power'] + floor($userTroop['defense_power'] / 2) + floor($userTroop['health_points'] / 50)) * $count;
-            $attackerPower += $power;
+            $power = ($userTroop['attack_power'] + floor($userTroop['defense_power'] / 2) + floor($userTroop['health_points'] / CONQUEST_TROOP_HEALTH_TO_POWER_RATIO)) * $count;
+            $attackerTroopPower += $power;
             
             $attackerTroops[] = [
                 'troop_type_id' => $troopTypeId,
@@ -589,17 +670,31 @@ if ($action === 'attack_castle') {
             ];
         }
         
-        if ($attackerPower <= 0) {
+        if ($attackerTroopPower <= 0) {
             throw new Exception('攻撃部隊のパワーが不足しています');
         }
         
-        // 防御パワーを計算
+        // 攻撃者の総パワー = 兵士パワー + 装備パワー
+        $attackerPower = $attackerTroopPower + $attackerEquipmentPower;
+        
+        // 防御パワーを計算（装備バフ込み）
         $defense = calculateCastleDefensePower($pdo, $castle);
         $defenderPower = $defense['total_power'];
         
+        // 装備アーマーによるダメージ軽減を適用
+        // 防御側のアーマーは攻撃者の有効パワーを軽減
+        // 攻撃側のアーマーは防御側の有効パワーを軽減
+        $defenderArmor = $defense['equipment_buffs']['armor'] ?? 0;
+        $attackerArmorReduction = min(CONQUEST_ARMOR_MAX_REDUCTION, $attackerEquipmentBuffs['armor'] / CONQUEST_ARMOR_PERCENT_DIVISOR);
+        $defenderArmorReduction = min(CONQUEST_ARMOR_MAX_REDUCTION, $defenderArmor / CONQUEST_ARMOR_PERCENT_DIVISOR);
+        
+        // 有効パワーを計算（相手のアーマーで軽減）
+        $attackerEffectivePower = $attackerPower * (1 - $defenderArmorReduction);
+        $defenderEffectivePower = $defenderPower * (1 - $attackerArmorReduction);
+        
         // 戦闘判定
-        $attackerRoll = mt_rand(1, 100) + ($attackerPower * CONQUEST_ATTACKER_BONUS);
-        $defenderRoll = mt_rand(1, 100) + $defenderPower;
+        $attackerRoll = mt_rand(1, 100) + ($attackerEffectivePower * CONQUEST_ATTACKER_BONUS);
+        $defenderRoll = mt_rand(1, 100) + $defenderEffectivePower;
         
         $attackerWins = $attackerRoll > $defenderRoll;
         
