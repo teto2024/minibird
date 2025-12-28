@@ -50,13 +50,6 @@ $action = $input['action'] ?? '';
  * @param int $userId ユーザーID
  * @return array ['attack' => float, 'armor' => float, 'health' => float] 各バフの合計値
  */
-/**
- * ユーザーの装備バフを取得するヘルパー関数
- * 
- * @param PDO $pdo データベース接続
- * @param int $userId ユーザーID
- * @return array ['attack' => float, 'armor' => float, 'health' => float] 各バフの合計値
- */
 function getConquestUserEquipmentBuffs($pdo, $userId) {
     // ユーザーIDの検証
     if (!is_int($userId) && !is_numeric($userId)) {
