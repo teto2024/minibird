@@ -11,7 +11,7 @@ $pdo = db();
 $period_start = date('Y-m-d H:i:s', strtotime('-48 hours'));
 $period_end   = date('Y-m-d H:i:s');
 
-// 投稿取得（最新200件または48時間以内）
+// 投稿取得（最新200件または48時間以内）- お知らせbot(id=5)の投稿を除外
 $stmt = $pdo->prepare("
     SELECT 
         id,
@@ -21,6 +21,7 @@ $stmt = $pdo->prepare("
     FROM posts
     WHERE created_at >= ? 
       AND deleted_at IS NULL
+      AND user_id != 5
     ORDER BY created_at DESC
     LIMIT 200
 ");

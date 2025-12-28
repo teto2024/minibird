@@ -125,7 +125,7 @@ $me = user();
             <li><strong>最大1024文字：</strong>長文もOK</li>
             <li><strong>画像・動画：</strong>最大4枚まで同時アップロード可能</li>
             <li><strong>NSFW設定：</strong>センシティブな内容はNSFWにチェック</li>
-            <li><strong>メンション：</strong>@ユーザー名で他のユーザーに通知</li>
+            <li><strong>メンション：</strong>@ユーザー名で他のユーザーに通知（@を入力するとユーザー候補が表示されます）</li>
         </ul>
 
         <h3>フィード</h3>
@@ -245,6 +245,20 @@ $me = user();
             <li><strong>専用フィード：</strong>コミュニティ内での投稿と交流</li>
             <li><strong>公開・非公開設定：</strong>プライバシーをコントロール</li>
         </ul>
+    </div>
+
+    <!-- 文明育成ゲーム -->
+    <div class="section">
+        <h2>🏛️ 文明育成ゲーム</h2>
+        <p>MiniBirdで自分だけの文明を育てよう！</p>
+        <ul>
+            <li><strong>コイン投資：</strong>MiniBirdで獲得したコインを投資して、資源と研究ポイントをゲット</li>
+            <li><strong>建物建設：</strong>様々な建物を建てて、人口や軍事力を増やす</li>
+            <li><strong>研究開発：</strong>技術を研究して、文明を進化させる</li>
+            <li><strong>時代進化：</strong>条件を満たして新しい時代へ！石器時代から現代まで</li>
+            <li><strong>戦争：</strong>他のプレイヤーの文明と戦って資源を略奪</li>
+        </ul>
+        <p>サイドメニューの「🏛️ 文明育成」からアクセスできます。</p>
     </div>
 
     <!-- トレンド -->

@@ -96,6 +96,25 @@ if ($action === 'register') {
       ->execute([$handle,$passhash,$user_hash,$inviterId,100,1]); // welcome bonus
 
   $uid = $pdo->lastInsertId();
+  
+  // 新規登録時の歓迎メッセージをお知らせbot(id=5)から投稿
+  $welcome_content = "@{$handle} さん、MiniBirdへようこそ！🐦\n\n新しい仲間が増えました！みなさん、よろしくお願いします✨\n\n使い方がわからないときは[使い方ページ](how_to.php)を見てくださいね！";
+  $welcome_html = $welcome_content; // 簡易的にそのまま保存
+  $bot_id = 5;
+  
+  try {
+      $pdo->prepare("INSERT INTO posts(user_id, content_md, content_html, created_at) VALUES(?, ?, ?, NOW())")
+          ->execute([$bot_id, $welcome_content, $welcome_html]);
+      $welcome_post_id = $pdo->lastInsertId();
+      
+      // 新規ユーザーへのメンション通知を作成
+      $pdo->prepare("INSERT INTO notifications (user_id, actor_id, type, post_id, created_at, is_read) VALUES (?, ?, 'mention', ?, NOW(), 0)")
+          ->execute([$uid, $bot_id, $welcome_post_id]);
+  } catch (Exception $e) {
+      // 歓迎メッセージ投稿失敗しても登録は継続
+      error_log("Welcome message error: " . $e->getMessage());
+  }
+  
   if ($inviterId) {
     $pdo->prepare("INSERT IGNORE INTO invites(inviter_id, invitee_id) VALUES(?,?)")->execute([$inviterId,$uid]);
     // inviter reward

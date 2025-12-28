@@ -61,6 +61,14 @@ try {
         // 追加
         $stmt = $pdo->prepare("INSERT INTO follows (follower_id, followee_id) VALUES (?, ?)");
         $stmt->execute([$user_id, $check_id]);
+        
+        // フォロー通知を作成
+        $stmt = $pdo->prepare("
+            INSERT INTO notifications (user_id, actor_id, type, created_at, is_read)
+            VALUES (?, ?, 'follow', NOW(), 0)
+        ");
+        $stmt->execute([$check_id, $user_id]);
+        
         echo json_encode(['status' => 'success', 'message' => 'フォローしました']);
 
     } elseif ($action === 'unfollow' && $_SERVER['REQUEST_METHOD'] === 'POST') {
