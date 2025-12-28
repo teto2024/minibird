@@ -1,10 +1,10 @@
 <?php
-require_once '../config.php';
-session_start();
-$user_id = $_SESSION['user_id'] ?? null;
+require_once __DIR__ . '/config.php';
+$user_id = $_SESSION['uid'] ?? null;
 
 if (!$user_id) exit(json_encode(['error'=>'Not logged in']));
 
+$pdo = db();
 $action = $_POST['action'] ?? '';
 $community_id = intval($_POST['community_id'] ?? 0);
 $target_id = intval($_POST['user_id'] ?? 0);
