@@ -18,7 +18,7 @@ ADD COLUMN IF NOT EXISTS troop_category ENUM('infantry', 'cavalry', 'ranged', 's
 --   - infantry（歩兵）は ranged（遠距離）に強い
 --   - ranged（遠距離）は cavalry（騎兵）に強い
 --   - cavalry（騎兵）は infantry（歩兵）に強い
---   - siege（攻城）は全ての歩兵系に強いが、騎兵に弱い
+--   - siege（攻城）は infantry（歩兵）に強いが、cavalry（騎兵）に弱い
 -- ===============================================
 
 -- 石器時代

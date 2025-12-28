@@ -21,6 +21,7 @@ define('CIV_HEALTH_TO_POWER_RATIO', 10);       // 体力から軍事力への変
 define('CIV_TROOP_HEALTH_TO_POWER_RATIO', 50); // 兵種体力から軍事力への変換比率
 define('CIV_TROOP_ADVANTAGE_BONUS', 1.25);     // 相性有利時のダメージ倍率（25%増加）
 define('CIV_TROOP_DISADVANTAGE_PENALTY', 0.75); // 相性不利時のダメージ倍率（25%減少）
+define('CIV_ADVANTAGE_DISPLAY_THRESHOLD', 0.05); // 相性表示の閾値（±5%）
 
 // 資源価値の定義（市場交換レート計算用）
 // 値が高いほど価値が高い資源
@@ -237,6 +238,7 @@ function calculateTroopAdvantageMultiplier($attackerComposition, $defenderCompos
     $totalAttackerPower = 0;
     $totalAdvantageBonus = 0;
     
+    // 各攻撃側兵種カテゴリについて、相性ボーナスを計算
     foreach ($attackerComposition as $attackCategory => $attackData) {
         $attackPower = $attackData['power'];
         if ($attackPower <= 0) continue;
@@ -252,6 +254,7 @@ function calculateTroopAdvantageMultiplier($attackerComposition, $defenderCompos
         if ($defenderTotalPower <= 0) continue;
         
         // 防御側の有利/不利カテゴリの割合を計算
+        // 例: 攻撃側が歩兵で、防御側に遠距離が50%いれば advantageRatio = 0.5
         $advantageRatio = isset($defenderComposition[$advantage]) 
             ? $defenderComposition[$advantage]['power'] / $defenderTotalPower 
             : 0;
@@ -260,7 +263,11 @@ function calculateTroopAdvantageMultiplier($attackerComposition, $defenderCompos
             : 0;
         
         // 相性ボーナス/ペナルティを加重平均で計算
+        // 計算式: (有利割合 × 有利ボーナス) - (不利割合 × 不利ペナルティ)
+        // 例: 有利ボーナス=1.25なら (1.25-1.0)=0.25 → 25%の追加ダメージ
+        // 例: 不利ペナルティ=0.75なら (1.0-0.75)=0.25 → 25%のダメージ減少
         $categoryBonus = ($advantageRatio * (CIV_TROOP_ADVANTAGE_BONUS - 1.0)) - ($disadvantageRatio * (1.0 - CIV_TROOP_DISADVANTAGE_PENALTY));
+        // 攻撃力で加重して合計（強い部隊の相性が全体に大きく影響）
         $totalAdvantageBonus += $attackPower * $categoryBonus;
     }
     
@@ -269,6 +276,7 @@ function calculateTroopAdvantageMultiplier($attackerComposition, $defenderCompos
     }
     
     // 全体の相性ボーナス倍率を計算（1.0を基準に加算）
+    // 加重平均により、部隊構成全体の相性効果を算出
     return 1.0 + ($totalAdvantageBonus / $totalAttackerPower);
 }
 
@@ -1024,9 +1032,11 @@ if ($action === 'attack') {
         
         $result = ($winnerId === $me['id']) ? 'victory' : 'defeat';
         $advantageText = '';
-        if ($myAdvantageMultiplier > 1.05) {
+        $advantageThresholdHigh = 1.0 + CIV_ADVANTAGE_DISPLAY_THRESHOLD;
+        $advantageThresholdLow = 1.0 - CIV_ADVANTAGE_DISPLAY_THRESHOLD;
+        if ($myAdvantageMultiplier > $advantageThresholdHigh) {
             $advantageText = '（相性有利）';
-        } else if ($myAdvantageMultiplier < 0.95) {
+        } else if ($myAdvantageMultiplier < $advantageThresholdLow) {
             $advantageText = '（相性不利）';
         }
         $message = ($result === 'victory') 

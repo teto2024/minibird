@@ -682,6 +682,7 @@ body {
 // 戦闘計算用定数（サーバーサイドと同期）
 const CIV_ARMOR_MAX_REDUCTION = 0.5;    // アーマーによる最大ダメージ軽減率（50%）
 const CIV_ARMOR_PERCENT_DIVISOR = 100;  // アーマー値を軽減率に変換する除数
+const CIV_ADVANTAGE_DISPLAY_THRESHOLD = 0.05; // 相性表示の閾値（±5%）
 
 let civData = null;
 let currentTab = 'buildings'; // 現在のアクティブタブを保持
@@ -1401,11 +1402,13 @@ async function loadTargets() {
                 const powerIndicator = powerDiff > 0 ? '✅ 有利' : (powerDiff < 0 ? '⚠️ 不利' : '⚖️ 互角');
                 
                 // 相性ボーナス表示
+                const advantageThresholdHigh = 1.0 + CIV_ADVANTAGE_DISPLAY_THRESHOLD;
+                const advantageThresholdLow = 1.0 - CIV_ADVANTAGE_DISPLAY_THRESHOLD;
                 let advantageText = '';
-                if (troopAdvantage > 1.05) {
+                if (troopAdvantage > advantageThresholdHigh) {
                     const bonusPercent = Math.round((troopAdvantage - 1) * 100);
                     advantageText = `<div style="color: #32cd32; font-size: 11px; margin-bottom: 5px;">🎯 相性有利 +${bonusPercent}%</div>`;
-                } else if (troopAdvantage < 0.95) {
+                } else if (troopAdvantage < advantageThresholdLow) {
                     const penaltyPercent = Math.round((1 - troopAdvantage) * 100);
                     advantageText = `<div style="color: #ff6b6b; font-size: 11px; margin-bottom: 5px;">⚠️ 相性不利 -${penaltyPercent}%</div>`;
                 }
