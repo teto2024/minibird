@@ -64,17 +64,47 @@ function collectResources($pdo, $userId) {
     $now = time();
     $hoursPassed = ($now - $lastCollection) / 3600;
     
-    if ($hoursPassed < 0.01) { // 約36秒未満なら収集しない
-        return [];
+    // 完了した建設を確認し、住宅の場合は人口も増やす
+    $stmt = $pdo->prepare("
+        SELECT ucb.id, bt.population_capacity, bt.name, ucb.level
+        FROM user_civilization_buildings ucb
+        JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+        WHERE ucb.user_id = ? AND ucb.is_constructing = TRUE AND ucb.construction_completes_at <= NOW()
+    ");
+    $stmt->execute([$userId]);
+    $completedBuildings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    $populationIncrease = 0;
+    foreach ($completedBuildings as $building) {
+        // 住宅建物の場合、人口増加
+        if ($building['population_capacity'] > 0) {
+            $populationIncrease += $building['population_capacity'] * $building['level'];
+        }
     }
     
-    // 完了した建設を確認
+    // 建設完了をマーク
     $stmt = $pdo->prepare("
         UPDATE user_civilization_buildings 
         SET is_constructing = FALSE 
         WHERE user_id = ? AND is_constructing = TRUE AND construction_completes_at <= NOW()
     ");
     $stmt->execute([$userId]);
+    
+    // 人口を増加
+    if ($populationIncrease > 0) {
+        $stmt = $pdo->prepare("
+            UPDATE user_civilizations 
+            SET population = population + ?,
+                max_population = max_population + ?
+            WHERE user_id = ?
+        ");
+        $stmt->execute([$populationIncrease, $populationIncrease, $userId]);
+    }
+    
+    // 時間経過が少なすぎる場合は資源収集をスキップ（約36秒未満）
+    if ($hoursPassed < 0.01) {
+        return [];
+    }
     
     // 生産建物からの資源を計算
     $stmt = $pdo->prepare("
@@ -94,24 +124,27 @@ function collectResources($pdo, $userId) {
         $produced = $rate * $hoursPassed;
         
         if ($produced > 0) {
+            // 資源がまだアンロックされていない場合はアンロックする
             $stmt = $pdo->prepare("
-                UPDATE user_civilization_resources 
-                SET amount = amount + ? 
-                WHERE user_id = ? AND resource_type_id = ?
+                INSERT INTO user_civilization_resources (user_id, resource_type_id, amount, unlocked, unlocked_at)
+                VALUES (?, ?, ?, TRUE, NOW())
+                ON DUPLICATE KEY UPDATE amount = amount + ?, unlocked = TRUE
             ");
-            $stmt->execute([$produced, $userId, $prod['produces_resource_id']]);
+            $stmt->execute([$userId, $prod['produces_resource_id'], $produced, $produced]);
             
             // 資源名を取得
             $stmt = $pdo->prepare("SELECT name, icon FROM civilization_resource_types WHERE id = ?");
             $stmt->execute([$prod['produces_resource_id']]);
             $resInfo = $stmt->fetch(PDO::FETCH_ASSOC);
             
-            $collectedResources[] = [
-                'resource_id' => $prod['produces_resource_id'],
-                'name' => $resInfo['name'],
-                'icon' => $resInfo['icon'],
-                'amount' => round($produced, 2)
-            ];
+            if ($resInfo) {
+                $collectedResources[] = [
+                    'resource_id' => $prod['produces_resource_id'],
+                    'name' => $resInfo['name'],
+                    'icon' => $resInfo['icon'],
+                    'amount' => round($produced, 2)
+                ];
+            }
         }
     }
     
@@ -192,8 +225,8 @@ if ($action === 'get_data') {
         $stmt->execute([$civ['current_era_id']]);
         $availableResearches = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // ユーザーのコイン・クリスタル残高
-        $stmt = $pdo->prepare("SELECT coins, crystals FROM users WHERE id = ?");
+        // ユーザーのコイン・クリスタル・ダイヤモンド残高
+        $stmt = $pdo->prepare("SELECT coins, crystals, diamonds FROM users WHERE id = ?");
         $stmt->execute([$me['id']]);
         $balance = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -729,6 +762,417 @@ if ($action === 'rename') {
         
         echo json_encode(['ok' => true, 'message' => '文明名を変更しました']);
     } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// 完了した建物を確認
+if ($action === 'complete_buildings') {
+    $pdo->beginTransaction();
+    try {
+        // 完了した建設を取得
+        $stmt = $pdo->prepare("
+            SELECT ucb.id, ucb.level, bt.name, bt.population_capacity
+            FROM user_civilization_buildings ucb
+            JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+            WHERE ucb.user_id = ? AND ucb.is_constructing = TRUE AND ucb.construction_completes_at <= NOW()
+        ");
+        $stmt->execute([$me['id']]);
+        $completedBuildings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $completedNames = [];
+        $populationIncrease = 0;
+        
+        foreach ($completedBuildings as $building) {
+            // 建設を完了
+            $stmt = $pdo->prepare("
+                UPDATE user_civilization_buildings 
+                SET is_constructing = FALSE 
+                WHERE id = ?
+            ");
+            $stmt->execute([$building['id']]);
+            
+            // 住宅の場合は人口を増やす
+            if ($building['population_capacity'] > 0) {
+                $populationIncrease += $building['population_capacity'] * $building['level'];
+            }
+            
+            $completedNames[] = $building['name'];
+        }
+        
+        // 人口を増加
+        if ($populationIncrease > 0) {
+            $stmt = $pdo->prepare("
+                UPDATE user_civilizations 
+                SET population = population + ?,
+                    max_population = max_population + ?
+                WHERE user_id = ?
+            ");
+            $stmt->execute([$populationIncrease, $populationIncrease, $me['id']]);
+        }
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'completed' => $completedNames,
+            'count' => count($completedNames),
+            'population_increase' => $populationIncrease
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// 建物を即座に完成（クリスタル消費）
+if ($action === 'instant_complete_building') {
+    $buildingId = (int)($input['building_id'] ?? 0);
+    
+    $pdo->beginTransaction();
+    try {
+        // 建設中の建物を確認
+        $stmt = $pdo->prepare("
+            SELECT ucb.*, bt.name, bt.population_capacity
+            FROM user_civilization_buildings ucb
+            JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+            WHERE ucb.id = ? AND ucb.user_id = ? AND ucb.is_constructing = TRUE
+        ");
+        $stmt->execute([$buildingId, $me['id']]);
+        $building = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$building) {
+            throw new Exception('建設中の建物が見つかりません');
+        }
+        
+        // 残り時間に応じたクリスタルコストを計算
+        $remainingSeconds = max(0, strtotime($building['construction_completes_at']) - time());
+        $crystalCost = max(5, (int)ceil($remainingSeconds / 60)); // 1分あたり1クリスタル、最低5クリスタル
+        
+        // クリスタルを確認
+        $stmt = $pdo->prepare("SELECT crystals FROM users WHERE id = ? FOR UPDATE");
+        $stmt->execute([$me['id']]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($user['crystals'] < $crystalCost) {
+            throw new Exception("クリスタルが不足しています（必要: {$crystalCost}、所持: {$user['crystals']}）");
+        }
+        
+        // クリスタルを消費
+        $stmt = $pdo->prepare("UPDATE users SET crystals = crystals - ? WHERE id = ?");
+        $stmt->execute([$crystalCost, $me['id']]);
+        
+        // 建設を完了
+        $stmt = $pdo->prepare("
+            UPDATE user_civilization_buildings 
+            SET is_constructing = FALSE, construction_completes_at = NOW()
+            WHERE id = ?
+        ");
+        $stmt->execute([$buildingId]);
+        
+        // 住宅の場合は人口を増やす
+        $populationIncrease = 0;
+        if ($building['population_capacity'] > 0) {
+            $populationIncrease = $building['population_capacity'] * $building['level'];
+            $stmt = $pdo->prepare("
+                UPDATE user_civilizations 
+                SET population = population + ?,
+                    max_population = max_population + ?
+                WHERE user_id = ?
+            ");
+            $stmt->execute([$populationIncrease, $populationIncrease, $me['id']]);
+        }
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => "{$building['name']}の建設が完了しました！",
+            'crystals_spent' => $crystalCost,
+            'population_increase' => $populationIncrease
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// 研究を即座に完成（クリスタル消費）
+if ($action === 'instant_complete_research') {
+    $researchId = (int)($input['user_research_id'] ?? 0);
+    
+    $pdo->beginTransaction();
+    try {
+        // 研究中の研究を確認
+        $stmt = $pdo->prepare("
+            SELECT ucr.*, r.name, r.unlock_resource_id
+            FROM user_civilization_researches ucr
+            JOIN civilization_researches r ON ucr.research_id = r.id
+            WHERE ucr.id = ? AND ucr.user_id = ? AND ucr.is_researching = TRUE
+        ");
+        $stmt->execute([$researchId, $me['id']]);
+        $research = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$research) {
+            throw new Exception('研究中の研究が見つかりません');
+        }
+        
+        // 残り時間に応じたクリスタルコストを計算
+        $remainingSeconds = max(0, strtotime($research['research_completes_at']) - time());
+        $crystalCost = max(3, (int)ceil($remainingSeconds / 60)); // 1分あたり1クリスタル、最低3クリスタル
+        
+        // クリスタルを確認
+        $stmt = $pdo->prepare("SELECT crystals FROM users WHERE id = ? FOR UPDATE");
+        $stmt->execute([$me['id']]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($user['crystals'] < $crystalCost) {
+            throw new Exception("クリスタルが不足しています（必要: {$crystalCost}、所持: {$user['crystals']}）");
+        }
+        
+        // クリスタルを消費
+        $stmt = $pdo->prepare("UPDATE users SET crystals = crystals - ? WHERE id = ?");
+        $stmt->execute([$crystalCost, $me['id']]);
+        
+        // 研究を完了
+        $stmt = $pdo->prepare("
+            UPDATE user_civilization_researches 
+            SET is_researching = FALSE, is_completed = TRUE, completed_at = NOW()
+            WHERE id = ?
+        ");
+        $stmt->execute([$researchId]);
+        
+        // 資源アンロック
+        if ($research['unlock_resource_id']) {
+            $stmt = $pdo->prepare("
+                INSERT INTO user_civilization_resources (user_id, resource_type_id, amount, unlocked, unlocked_at)
+                VALUES (?, ?, 0, TRUE, NOW())
+                ON DUPLICATE KEY UPDATE unlocked = TRUE, unlocked_at = NOW()
+            ");
+            $stmt->execute([$me['id'], $research['unlock_resource_id']]);
+        }
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => "{$research['name']}の研究が完了しました！",
+            'crystals_spent' => $crystalCost
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// 兵士を訓練
+if ($action === 'train_troops') {
+    $troopTypeId = (int)($input['troop_type_id'] ?? 0);
+    $count = (int)($input['count'] ?? 1);
+    
+    if ($count < 1 || $count > 100) {
+        echo json_encode(['ok' => false, 'error' => '訓練数は1〜100の範囲で指定してください']);
+        exit;
+    }
+    
+    $pdo->beginTransaction();
+    try {
+        // 兵種を確認
+        $stmt = $pdo->prepare("SELECT * FROM civilization_troop_types WHERE id = ?");
+        $stmt->execute([$troopTypeId]);
+        $troopType = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$troopType) {
+            throw new Exception('兵種が見つかりません');
+        }
+        
+        // 文明データを確認
+        $civ = getUserCivilization($pdo, $me['id']);
+        
+        // 時代制限チェック
+        if ($troopType['unlock_era_id'] && $troopType['unlock_era_id'] > $civ['current_era_id']) {
+            throw new Exception('この兵種はまだ利用できません');
+        }
+        
+        // コストを計算
+        $totalCoinCost = $troopType['train_cost_coins'] * $count;
+        $resourceCosts = json_decode($troopType['train_cost_resources'], true) ?: [];
+        
+        // コインを確認
+        $stmt = $pdo->prepare("SELECT coins FROM users WHERE id = ? FOR UPDATE");
+        $stmt->execute([$me['id']]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($user['coins'] < $totalCoinCost) {
+            throw new Exception('コインが不足しています');
+        }
+        
+        // 資源コストを確認・消費
+        foreach ($resourceCosts as $resourceKey => $required) {
+            $totalRequired = $required * $count;
+            $stmt = $pdo->prepare("
+                SELECT ucr.amount 
+                FROM user_civilization_resources ucr
+                JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
+                WHERE ucr.user_id = ? AND rt.resource_key = ?
+            ");
+            $stmt->execute([$me['id'], $resourceKey]);
+            $currentAmount = (float)$stmt->fetchColumn();
+            
+            if ($currentAmount < $totalRequired) {
+                throw new Exception("{$resourceKey}が不足しています");
+            }
+            
+            $stmt = $pdo->prepare("
+                UPDATE user_civilization_resources ucr
+                JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
+                SET ucr.amount = ucr.amount - ?
+                WHERE ucr.user_id = ? AND rt.resource_key = ?
+            ");
+            $stmt->execute([$totalRequired, $me['id'], $resourceKey]);
+        }
+        
+        // コインを消費
+        $stmt = $pdo->prepare("UPDATE users SET coins = coins - ? WHERE id = ?");
+        $stmt->execute([$totalCoinCost, $me['id']]);
+        
+        // 兵士を追加または更新
+        $stmt = $pdo->prepare("
+            INSERT INTO user_civilization_troops (user_id, troop_type_id, count)
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE count = count + ?
+        ");
+        $stmt->execute([$me['id'], $troopTypeId, $count, $count]);
+        
+        // 軍事力を更新
+        $totalMilitaryPower = $troopType['attack_power'] * $count;
+        $stmt = $pdo->prepare("
+            UPDATE user_civilizations 
+            SET military_power = military_power + ?
+            WHERE user_id = ?
+        ");
+        $stmt->execute([$totalMilitaryPower, $me['id']]);
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => "{$troopType['name']} ×{$count} を訓練しました！",
+            'military_power_increase' => $totalMilitaryPower
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// 兵種一覧を取得
+if ($action === 'get_troops') {
+    try {
+        $civ = getUserCivilization($pdo, $me['id']);
+        
+        // 利用可能な兵種
+        $stmt = $pdo->prepare("
+            SELECT tt.*, e.name as era_name
+            FROM civilization_troop_types tt
+            LEFT JOIN civilization_eras e ON tt.unlock_era_id = e.id
+            WHERE tt.unlock_era_id IS NULL OR tt.unlock_era_id <= ?
+            ORDER BY tt.unlock_era_id, tt.id
+        ");
+        $stmt->execute([$civ['current_era_id']]);
+        $availableTroops = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // ユーザーの兵士
+        $stmt = $pdo->prepare("
+            SELECT uct.*, tt.troop_key, tt.name, tt.icon, tt.attack_power, tt.defense_power
+            FROM user_civilization_troops uct
+            JOIN civilization_troop_types tt ON uct.troop_type_id = tt.id
+            WHERE uct.user_id = ?
+        ");
+        $stmt->execute([$me['id']]);
+        $userTroops = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'ok' => true,
+            'available_troops' => $availableTroops,
+            'user_troops' => $userTroops
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ダイヤモンドでVIPブースト購入
+if ($action === 'buy_vip_boost') {
+    $boostType = $input['boost_type'] ?? '';
+    
+    $boostCosts = [
+        'production_2x' => ['diamonds' => 5, 'duration_hours' => 24, 'description' => '資源生産2倍（24時間）'],
+        'research_speed' => ['diamonds' => 3, 'duration_hours' => 12, 'description' => '研究速度2倍（12時間）'],
+        'build_speed' => ['diamonds' => 3, 'duration_hours' => 12, 'description' => '建設速度2倍（12時間）'],
+        'resource_pack' => ['diamonds' => 10, 'resources' => ['food' => 1000, 'wood' => 1000, 'stone' => 1000], 'description' => '資源パック']
+    ];
+    
+    if (!isset($boostCosts[$boostType])) {
+        echo json_encode(['ok' => false, 'error' => '無効なブーストタイプです']);
+        exit;
+    }
+    
+    $boost = $boostCosts[$boostType];
+    
+    $pdo->beginTransaction();
+    try {
+        // ダイヤモンドを確認
+        $stmt = $pdo->prepare("SELECT diamonds FROM users WHERE id = ? FOR UPDATE");
+        $stmt->execute([$me['id']]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($user['diamonds'] < $boost['diamonds']) {
+            throw new Exception("ダイヤモンドが不足しています（必要: {$boost['diamonds']}、所持: {$user['diamonds']}）");
+        }
+        
+        // ダイヤモンドを消費
+        $stmt = $pdo->prepare("UPDATE users SET diamonds = diamonds - ? WHERE id = ?");
+        $stmt->execute([$boost['diamonds'], $me['id']]);
+        
+        // ブースト適用
+        if ($boostType === 'resource_pack') {
+            // 資源を追加
+            foreach ($boost['resources'] as $resourceKey => $amount) {
+                $stmt = $pdo->prepare("
+                    UPDATE user_civilization_resources ucr
+                    JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
+                    SET ucr.amount = ucr.amount + ?
+                    WHERE ucr.user_id = ? AND rt.resource_key = ?
+                ");
+                $stmt->execute([$amount, $me['id'], $resourceKey]);
+            }
+        } else {
+            // ブースト記録
+            $expiresAt = date('Y-m-d H:i:s', time() + ($boost['duration_hours'] * 3600));
+            $stmt = $pdo->prepare("
+                INSERT INTO civilization_boosts (user_id, boost_type, multiplier, expires_at)
+                VALUES (?, ?, 2.0, ?)
+                ON DUPLICATE KEY UPDATE expires_at = ?, multiplier = 2.0
+            ");
+            $stmt->execute([$me['id'], $boostType, $expiresAt, $expiresAt]);
+        }
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => $boost['description'] . 'を購入しました！',
+            'diamonds_spent' => $boost['diamonds']
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
     }
     exit;

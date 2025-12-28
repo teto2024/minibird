@@ -746,6 +746,14 @@ function renderApp() {
                     <div class="stat-value">${Number(balance.coins).toLocaleString()}</div>
                     <div class="stat-label">🪙 コイン</div>
                 </div>
+                <div class="stat-box">
+                    <div class="stat-value">${Number(balance.crystals || 0).toLocaleString()}</div>
+                    <div class="stat-label">💎 クリスタル</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value">${Number(balance.diamonds || 0).toLocaleString()}</div>
+                    <div class="stat-label">💠 ダイヤモンド</div>
+                </div>
             </div>
         </div>
         
@@ -806,7 +814,9 @@ function renderApp() {
         <div class="tabs">
             <button class="tab-btn active" data-tab="buildings">🏠 建物</button>
             <button class="tab-btn" data-tab="research">📚 研究</button>
+            <button class="tab-btn" data-tab="troops">🎖️ 兵士</button>
             <button class="tab-btn" data-tab="war">⚔️ 戦争</button>
+            <button class="tab-btn" data-tab="shop">💠 VIPショップ</button>
         </div>
         
         <!-- 建物タブ -->
@@ -825,6 +835,17 @@ function renderApp() {
             </div>
         </div>
         
+        <!-- 兵士タブ -->
+        <div class="tab-content" id="tab-troops">
+            <div class="war-section" style="background: linear-gradient(135deg, rgba(139, 69, 19, 0.5) 0%, rgba(50, 30, 10, 0.5) 100%); border-color: #8b4513;">
+                <h3 style="color: #ffd700;">🎖️ 兵士を訓練</h3>
+                <p style="color: #c0a080; margin-bottom: 20px;">兵舎や軍事施設を建設すると、より多くの兵士を訓練できます</p>
+                <div class="targets-list" id="troopsList">
+                    <div class="loading">兵種を読み込み中...</div>
+                </div>
+            </div>
+        </div>
+        
         <!-- 戦争タブ -->
         <div class="tab-content" id="tab-war">
             <div class="war-section">
@@ -832,6 +853,60 @@ function renderApp() {
                 <p style="color: #c0a080; margin-bottom: 20px;">軍事施設を建設して軍事力を上げ、他の文明から資源を略奪しましょう！</p>
                 <div class="targets-list" id="targetsList">
                     <div class="loading">攻撃対象を読み込み中...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- VIPショップタブ -->
+        <div class="tab-content" id="tab-shop">
+            <div class="invest-section" style="background: linear-gradient(135deg, rgba(153, 50, 204, 0.5) 0%, rgba(75, 0, 130, 0.5) 100%); border-color: #9932cc;">
+                <h3 style="color: #da70d6;">💠 VIPショップ（ダイヤモンド専用）</h3>
+                <p style="color: #c0a080; margin-bottom: 20px;">ダイヤモンドを使って特別なブーストやアイテムを購入できます</p>
+                <div class="buildings-grid">
+                    <div class="building-card" style="border-color: #9932cc;">
+                        <div class="building-header">
+                            <span class="building-icon">⚡</span>
+                            <span class="building-name">資源生産2倍</span>
+                        </div>
+                        <div class="building-desc">24時間、すべての資源生産量が2倍になります</div>
+                        <div class="building-cost">💠 5 ダイヤモンド</div>
+                        <button class="build-btn" onclick="buyVipBoost('production_2x')" style="background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%);">
+                            購入する
+                        </button>
+                    </div>
+                    <div class="building-card" style="border-color: #9932cc;">
+                        <div class="building-header">
+                            <span class="building-icon">📚</span>
+                            <span class="building-name">研究速度2倍</span>
+                        </div>
+                        <div class="building-desc">12時間、研究速度が2倍になります</div>
+                        <div class="building-cost">💠 3 ダイヤモンド</div>
+                        <button class="build-btn" onclick="buyVipBoost('research_speed')" style="background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%);">
+                            購入する
+                        </button>
+                    </div>
+                    <div class="building-card" style="border-color: #9932cc;">
+                        <div class="building-header">
+                            <span class="building-icon">🏗️</span>
+                            <span class="building-name">建設速度2倍</span>
+                        </div>
+                        <div class="building-desc">12時間、建設速度が2倍になります</div>
+                        <div class="building-cost">💠 3 ダイヤモンド</div>
+                        <button class="build-btn" onclick="buyVipBoost('build_speed')" style="background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%);">
+                            購入する
+                        </button>
+                    </div>
+                    <div class="building-card" style="border-color: #9932cc;">
+                        <div class="building-header">
+                            <span class="building-icon">📦</span>
+                            <span class="building-name">資源パック</span>
+                        </div>
+                        <div class="building-desc">食料、木材、石材を各1000獲得します</div>
+                        <div class="building-cost">💠 10 ダイヤモンド</div>
+                        <button class="build-btn" onclick="buyVipBoost('resource_pack')" style="background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%);">
+                            購入する
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -848,6 +923,10 @@ function renderApp() {
             // 戦争タブの場合、攻撃対象を読み込む
             if (btn.dataset.tab === 'war') {
                 loadTargets();
+            }
+            // 兵士タブの場合、兵種を読み込む
+            if (btn.dataset.tab === 'troops') {
+                loadTroops();
             }
         });
     });
@@ -871,10 +950,17 @@ function renderBuildingsGrid(availableBuildings, ownedBuildings, resources) {
         
         let statusClass = '';
         let statusText = '';
+        let instantCompleteBtn = '';
         if (constructing) {
             statusClass = 'constructing';
             const remaining = Math.max(0, Math.ceil((new Date(constructing.construction_completes_at) - new Date()) / 1000));
-            statusText = `建設中... ${formatTime(remaining)}`;
+            if (remaining <= 0) {
+                statusText = `建設完了！データを更新中...`;
+            } else {
+                statusText = `建設中... ${formatTime(remaining)}`;
+                const crystalCost = Math.max(5, Math.ceil(remaining / 60));
+                instantCompleteBtn = `<button class="instant-btn" onclick="instantCompleteBuilding(${constructing.id})" style="margin-top: 8px; padding: 8px 12px; background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%); color: white; border: none; border-radius: 6px; font-size: 13px; cursor: pointer;">💎 ${crystalCost}で即完了</button>`;
+            }
         } else if (ownedCount > 0) {
             statusClass = 'owned';
         }
@@ -894,6 +980,7 @@ function renderBuildingsGrid(availableBuildings, ownedBuildings, resources) {
                 </div>
                 <div class="building-cost">${costText} | ⏱️ ${formatTime(bt.base_build_time_seconds)}</div>
                 ${statusText ? `<div style="color: #ffa500; margin-bottom: 10px;">${statusText}</div>` : ''}
+                ${instantCompleteBtn}
                 <button class="build-btn" onclick="buildBuilding(${bt.id})" ${constructing ? 'disabled' : ''}>
                     建設する
                 </button>
@@ -921,13 +1008,20 @@ function renderResearchTree() {
         
         let statusClass = '';
         let statusText = '';
+        let instantCompleteBtn = '';
         if (isCompleted) {
             statusClass = 'completed';
             statusText = '✅ 完了';
         } else if (isResearching) {
             statusClass = 'researching';
             const remaining = Math.max(0, Math.ceil((new Date(userResearch.research_completes_at) - new Date()) / 1000));
-            statusText = `研究中... ${formatTime(remaining)}`;
+            if (remaining <= 0) {
+                statusText = `研究完了！データを更新中...`;
+            } else {
+                statusText = `研究中... ${formatTime(remaining)}`;
+                const crystalCost = Math.max(3, Math.ceil(remaining / 60));
+                instantCompleteBtn = `<button class="instant-btn" onclick="instantCompleteResearch(${userResearch.id})" style="margin-top: 8px; padding: 8px 12px; background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%); color: white; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; width: 100%;">💎 ${crystalCost}で即完了</button>`;
+            }
         } else if (isLocked) {
             statusClass = 'locked';
             statusText = '🔒 前提研究が必要';
@@ -945,6 +1039,7 @@ function renderResearchTree() {
                     <span>⏱️ ${formatTime(r.research_time_seconds)}</span>
                 </div>
                 ${statusText ? `<div style="margin-bottom: 10px; font-size: 13px;">${statusText}</div>` : ''}
+                ${instantCompleteBtn}
                 ${!isCompleted && !isResearching && !isLocked ? `
                     <button class="research-btn" onclick="startResearch(${r.id})" 
                         ${civData.civilization.research_points < r.research_cost_points ? 'disabled' : ''}>
@@ -1086,6 +1181,111 @@ async function advanceEra() {
     }
 }
 
+// 兵種を読み込む
+async function loadTroops() {
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_troops'})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            const troopsList = document.getElementById('troopsList');
+            if (data.available_troops && data.available_troops.length > 0) {
+                troopsList.innerHTML = data.available_troops.map(t => {
+                    const owned = data.user_troops.find(ut => ut.troop_type_id == t.id);
+                    const ownedCount = owned ? owned.count : 0;
+                    
+                    let costText = `🪙 ${t.train_cost_coins}`;
+                    if (t.train_cost_resources) {
+                        const costs = JSON.parse(t.train_cost_resources);
+                        Object.entries(costs).forEach(([key, val]) => {
+                            costText += ` | ${key}: ${val}`;
+                        });
+                    }
+                    
+                    return `
+                        <div class="target-card" style="border-color: #8b4513;">
+                            <div class="target-header">
+                                <span class="target-name">${t.icon} ${t.name}</span>
+                                <span class="target-power">×${ownedCount}</span>
+                            </div>
+                            <div style="color: #888; font-size: 13px; margin-bottom: 10px;">
+                                ${t.description || ''}<br>
+                                ⚔️ 攻撃: ${t.attack_power} | 🛡️ 防御: ${t.defense_power}
+                            </div>
+                            <div style="color: #c0a080; font-size: 12px; margin-bottom: 10px;">
+                                ${costText}
+                            </div>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <input type="number" id="troop-count-${t.id}" value="1" min="1" max="100" style="width: 60px; padding: 8px; background: rgba(0,0,0,0.3); border: 1px solid #8b4513; border-radius: 4px; color: #f5deb3;">
+                                <button class="attack-btn" onclick="trainTroops(${t.id})" style="background: linear-gradient(135deg, #8b4513 0%, #d4a574 100%); flex: 1;">
+                                    訓練する
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                troopsList.innerHTML = '<p style="color: #888;">利用可能な兵種がありません。時代を進めてください。</p>';
+            }
+        }
+    } catch (e) {
+        console.error(e);
+        document.getElementById('troopsList').innerHTML = '<p style="color: #888;">兵種の読み込みに失敗しました</p>';
+    }
+}
+
+// 兵士を訓練
+async function trainTroops(troopTypeId) {
+    const countInput = document.getElementById(`troop-count-${troopTypeId}`);
+    const count = parseInt(countInput ? countInput.value : 1);
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'train_troops', troop_type_id: troopTypeId, count: count})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadData();
+            loadTroops();
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// VIPブーストを購入
+async function buyVipBoost(boostType) {
+    if (!confirm('ダイヤモンドを消費してブーストを購入しますか？')) return;
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'buy_vip_boost', boost_type: boostType})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadData();
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
+}
+
 // 攻撃
 async function attack(targetUserId) {
     if (!confirm('この文明を攻撃しますか？')) return;
@@ -1138,8 +1338,9 @@ async function renameCiv() {
 
 // ユーティリティ関数
 function formatTime(seconds) {
+    if (seconds <= 0) return '完了';
     if (seconds < 60) return `${seconds}秒`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}分`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}分${seconds % 60}秒`;
     return `${Math.floor(seconds / 3600)}時間${Math.floor((seconds % 3600) / 60)}分`;
 }
 
@@ -1161,23 +1362,117 @@ function showNotification(message, isError = false) {
     setTimeout(() => notification.remove(), 4000);
 }
 
-// 定期的にデータを更新
-setInterval(() => {
+// 建物を即完了
+async function instantCompleteBuilding(buildingId) {
+    if (!confirm('クリスタルを消費して建設を即完了しますか？')) return;
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'instant_complete_building', building_id: buildingId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadData();
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// 研究を即完了
+async function instantCompleteResearch(userResearchId) {
+    if (!confirm('クリスタルを消費して研究を即完了しますか？')) return;
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'instant_complete_research', user_research_id: userResearchId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadData();
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// 完了チェックとUIリフレッシュ
+async function checkCompletions() {
+    let needsRefresh = false;
+    
+    // 完了した建物を確認
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'complete_buildings'})
+        });
+        const data = await res.json();
+        if (data.ok && data.count > 0) {
+            let message = `建設完了: ${data.completed.join(', ')}`;
+            if (data.population_increase > 0) {
+                message += ` (+${data.population_increase}人口)`;
+            }
+            showNotification(message);
+            needsRefresh = true;
+        }
+    } catch (e) {
+        console.error('Building check error:', e);
+    }
+    
     // 完了した研究を確認
-    fetch('civilization_api.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({action: 'complete_researches'})
-    }).then(res => res.json()).then(data => {
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'complete_researches'})
+        });
+        const data = await res.json();
         if (data.ok && data.count > 0) {
             showNotification(`研究完了: ${data.completed.join(', ')}`);
-            loadData();
+            needsRefresh = true;
         }
-    });
-}, 30000); // 30秒ごと
+    } catch (e) {
+        console.error('Research check error:', e);
+    }
+    
+    if (needsRefresh) {
+        loadData();
+    }
+}
+
+// 定期的にデータを更新（10秒ごとにカウントダウンを更新し、完了チェック）
+let updateInterval = null;
+
+function startUpdateTimer() {
+    if (updateInterval) clearInterval(updateInterval);
+    
+    updateInterval = setInterval(() => {
+        // 完了チェック
+        checkCompletions();
+        
+        // カウントダウンを更新するため、全体を再描画
+        if (civData) {
+            renderApp();
+        }
+    }, 10000); // 10秒ごと
+}
 
 // 初期読み込み
 loadData();
+startUpdateTimer();
 </script>
 </body>
 </html>
