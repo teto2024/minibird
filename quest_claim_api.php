@@ -169,13 +169,19 @@ try {
             $stmt->execute([$coins, $crystals, $diamonds, $user_id]);
             
             // リレークエストをリセットして、また最初からプレイできるようにする
+            // 注意: reset_relay_quests は自身のトランザクションを持つので、先にコミットする
+            $pdo->commit();
+            
+            // トランザクション外でリレークエストをリセット
             require_once __DIR__ . '/quest_progress.php';
             reset_relay_quests($user_id);
-            
-            $pdo->commit();
             echo json_encode(['ok' => true, 'coins' => $coins, 'crystals' => 0, 'diamonds' => $diamonds]);
         } catch (Exception $e) {
-            $pdo->rollBack();
+            // トランザクションがまだアクティブな場合のみロールバック
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log("Relay quest claim error: " . $e->getMessage());
             echo json_encode(['ok' => false, 'error' => 'database_error']);
         }
     } else {
