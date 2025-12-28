@@ -493,6 +493,30 @@ if ($action === 'get_season') {
     try {
         $season = getOrCreateActiveSeason($pdo);
         
+        // 砲撃処理を実行（cron不要: ページアクセス時に自動処理）
+        // 砲撃対象の城があるか事前チェック（軽量クエリ）
+        $bombardmentInterval = CONQUEST_BOMBARDMENT_INTERVAL_MINUTES;
+        $checkStmt = $pdo->prepare("
+            SELECT COUNT(*) FROM conquest_castles 
+            WHERE season_id = ? 
+              AND owner_user_id IS NOT NULL
+              AND (last_bombardment_at IS NULL OR last_bombardment_at < DATE_SUB(NOW(), INTERVAL ? MINUTE))
+            LIMIT 1
+        ");
+        $checkStmt->execute([$season['id'], $bombardmentInterval]);
+        $hasCastlesToBombard = (int)$checkStmt->fetchColumn() > 0;
+        
+        if ($hasCastlesToBombard) {
+            try {
+                $pdo->beginTransaction();
+                processAllBombardments($pdo, $season['id']);
+                $pdo->commit();
+            } catch (Exception $bombException) {
+                $pdo->rollBack();
+                error_log("Conquest bombardment error: " . $bombException->getMessage());
+            }
+        }
+        
         // マップデータを取得
         $stmt = $pdo->prepare("
             SELECT cc.*, uc.civilization_name as owner_civ_name, u.handle as owner_handle
