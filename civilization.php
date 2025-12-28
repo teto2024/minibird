@@ -923,18 +923,18 @@ async function loadAttackTroops() {
                         <div class="troop-select-stats">⚔️${troop.attack_power} 🛡️${troop.defense_power}</div>
                     </div>
                     <input type="range" class="troop-select-slider" 
-                           id="attack-slider-${troop.troop_type_id}"
-                           min="0" max="${troop.count}" value="0"
-                           data-troop-id="${troop.troop_type_id}"
-                           data-attack="${troop.attack_power}"
-                           data-defense="${troop.defense_power}"
-                           oninput="syncAttackTroopInput(${troop.troop_type_id}, this.value)">
+                           id="attack-slider-${parseInt(troop.troop_type_id)}"
+                           min="0" max="${parseInt(troop.count)}" value="0"
+                           data-troop-id="${parseInt(troop.troop_type_id)}"
+                           data-attack="${parseInt(troop.attack_power)}"
+                           data-defense="${parseInt(troop.defense_power)}"
+                           oninput="syncAttackTroopInput(${parseInt(troop.troop_type_id)}, this.value)">
                     <input type="number" class="troop-select-count" 
-                           id="attack-count-${troop.troop_type_id}"
-                           min="0" max="${troop.count}" value="0"
-                           data-troop-id="${troop.troop_type_id}"
-                           oninput="syncAttackTroopSlider(${troop.troop_type_id}, this.value)">
-                    <span class="troop-select-max">/ ${troop.count}</span>
+                           id="attack-count-${parseInt(troop.troop_type_id)}"
+                           min="0" max="${parseInt(troop.count)}" value="0"
+                           data-troop-id="${parseInt(troop.troop_type_id)}"
+                           oninput="syncAttackTroopSlider(${parseInt(troop.troop_type_id)}, this.value)">
+                    <span class="troop-select-max">/ ${parseInt(troop.count)}</span>
                 </div>
             `).join('');
             
@@ -2793,7 +2793,6 @@ function startUpdateTimer() {
     updateInterval = setInterval(() => {
         // ユーザー操作中は更新をスキップ
         if (isUserInteracting) {
-            console.log('Update skipped - user interacting');
             return;
         }
         

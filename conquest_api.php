@@ -73,11 +73,11 @@ function distributeSeasonRewards($pdo, $seasonId) {
         // 順位に応じた報酬を決定
         if ($rankNum == 1) {
             $reward = CONQUEST_REWARD_RANK_1;
-        } else if ($rankNum == 2) {
+        } elseif ($rankNum == 2) {
             $reward = CONQUEST_REWARD_RANK_2;
-        } else if ($rankNum == 3) {
+        } elseif ($rankNum == 3) {
             $reward = CONQUEST_REWARD_RANK_3;
-        } else if ($rankNum <= 10) {
+        } elseif ($rankNum <= 10) {
             $reward = CONQUEST_REWARD_RANK_4_10;
         } else {
             $reward = CONQUEST_REWARD_PARTICIPANT;
@@ -211,12 +211,12 @@ function generateConquestMap($pdo, $seasonId) {
                 $isSacred = true;
                 $npcPower = CONQUEST_SACRED_NPC_POWER;
                 $icon = '⛩️';
-            } else if ($distance == 1) {
+            } elseif ($distance == 1) {
                 // 内周（神城の周り）
                 $castleType = 'inner';
                 $npcPower = CONQUEST_NPC_BASE_POWER * CONQUEST_NPC_POWER_MULTIPLIER_INNER;
                 $icon = '🏯';
-            } else if ($distance == $maxDistance) {
+            } elseif ($distance == $maxDistance) {
                 // 最外周（外周）- 城を持っていないプレイヤーが最初に攻撃できる
                 $castleType = 'outer';
                 $npcPower = CONQUEST_NPC_BASE_POWER;
