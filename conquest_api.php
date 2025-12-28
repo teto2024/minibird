@@ -893,7 +893,7 @@ if ($action === 'get_ranking') {
 // シーズンをリセット（管理者のみ）
 if ($action === 'reset_season') {
     // 管理者チェック（型を考慮した比較: 1, '1', true などを許容）
-    $isAdmin = isset($me['is_admin']) && ($me['is_admin'] == 1 || $me['is_admin'] === true || $me['is_admin'] === '1');
+    $isAdmin = !empty($me['is_admin']) && in_array($me['is_admin'], [1, '1', true], true);
     if (!$isAdmin) {
         echo json_encode(['ok' => false, 'error' => '管理者のみ実行できます']);
         exit;

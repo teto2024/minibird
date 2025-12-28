@@ -1896,7 +1896,7 @@ if ($action === 'attack_with_troops') {
     $pdo->beginTransaction();
     try {
         // 対象ユーザーが存在するか確認
-        $stmt = $pdo->prepare("SELECT id FROM users WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT 1 FROM users WHERE id = ?");
         $stmt->execute([$targetUserId]);
         if (!$stmt->fetch()) {
             throw new Exception('攻撃対象のユーザーが存在しません');
