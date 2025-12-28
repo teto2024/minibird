@@ -23,12 +23,12 @@ INSERT IGNORE INTO civilization_resource_types (resource_key, name, icon, descri
 -- ===============================================
 INSERT IGNORE INTO civilization_building_types (building_key, name, icon, description, category, produces_resource_id, production_rate, max_level, unlock_era_id, base_build_cost_coins, base_build_cost_resources, base_build_time_seconds, population_capacity, military_power) VALUES
 -- 新しい生産系建物
-('weaving_mill', '織物工場', '🧵', '布を生産する', 'production', NULL, 0, 10, 2, 600, '{"wood": 50, "food": 30}', 360, 0, 0),
-('glassworks', 'ガラス工房', '🔮', 'ガラスを生産する', 'production', NULL, 0, 10, 4, 4000, '{"stone": 200, "coal": 50}', 2400, 0, 0),
+('weaving_mill', '織物工場', '🧵', '布を生産する（特殊生産施設）', 'special', NULL, 0, 10, 2, 600, '{"wood": 50, "food": 30}', 360, 0, 0),
+('glassworks', 'ガラス工房', '🔮', 'ガラスを生産する（特殊生産施設）', 'special', NULL, 0, 10, 4, 4000, '{"stone": 200, "coal": 50}', 2400, 0, 0),
 ('mint', '造幣局', '🪙', '金をコインに変換する', 'special', 6, 0.5, 5, 4, 8000, '{"stone": 300, "gold": 50, "iron": 100}', 5400, 0, 0),
 ('harbor', '港', '⚓', '海上貿易と海軍基地', 'special', NULL, 0, 10, 3, 3500, '{"wood": 200, "stone": 150, "iron": 30}', 2700, 0, 20),
 ('granary', '穀倉', '🌾', '食料の保存と生産ボーナス', 'production', 1, 15, 10, 2, 400, '{"wood": 60, "stone": 40}', 300, 0, 0),
-('mine_shaft', '坑道', '⛏️', '深い鉱山で様々な資源を採掘', 'production', 5, 6, 15, 3, 2500, '{"wood": 100, "stone": 200, "iron": 50}', 1800, 0, 0),
+('mine_shaft', '坑道', '⛏️', '深い鉱山で鉄を採掘', 'production', 5, 6, 15, 3, 2500, '{"wood": 100, "stone": 200, "iron": 50}', 1800, 0, 0),
 
 -- 新しい住居系建物
 ('village', '村落', '🏘️', '複数の家族が住む集落', 'housing', NULL, 0, 10, 2, 1000, '{"wood": 80, "stone": 50, "food": 100}', 900, 25, 0),

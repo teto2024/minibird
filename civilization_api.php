@@ -1455,9 +1455,9 @@ if ($action === 'get_military_power') {
         $stmt->execute([$me['id']]);
         $buildingPower = (int)$stmt->fetchColumn();
         
-        // 兵士からの軍事力
+        // 兵士からの軍事力（攻撃力 + 防御力の半分）
         $stmt = $pdo->prepare("
-            SELECT COALESCE(SUM(tt.attack_power * uct.count), 0) as troop_power
+            SELECT COALESCE(SUM((tt.attack_power + FLOOR(tt.defense_power / 2)) * uct.count), 0) as troop_power
             FROM user_civilization_troops uct
             JOIN civilization_troop_types tt ON uct.troop_type_id = tt.id
             WHERE uct.user_id = ?
