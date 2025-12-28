@@ -296,7 +296,7 @@ try {
         }
         
         $pdo = db();
-        $st = $pdo->prepare("SELECT id, content_md FROM posts WHERE id=?");
+        $st = $pdo->prepare("SELECT id, content_md, user_id FROM posts WHERE id=?");
         $st->execute([$post_id]);
         $ref = $st->fetch();
         if (!$ref) { echo json_encode(['ok'=>false,'error'=>'not_found']); exit; }
@@ -314,10 +314,22 @@ try {
                 ->execute([$_SESSION['uid'],$content,$html,$post_id,$nsfw]);
         }
         
+        $new_post_id = $pdo->lastInsertId();
+        
+        // 引用通知を作成（自分の投稿は除く）
+        $original_owner_id = (int)$ref['user_id'];
+        if ($original_owner_id !== $_SESSION['uid']) {
+            $st = $pdo->prepare("
+                INSERT INTO notifications (user_id, actor_id, type, post_id, created_at, is_read)
+                VALUES (?, ?, 'quote', ?, NOW(), 0)
+            ");
+            $st->execute([$original_owner_id, $_SESSION['uid'], $new_post_id]);
+        }
+        
         // トークンドロップ（引用投稿時）
         drop_tokens($_SESSION['uid'], 'quote');
         
-        echo json_encode(['ok'=>true]);
+        echo json_encode(['ok'=>true, 'id'=>$new_post_id]);
         exit;
     }
 
