@@ -41,6 +41,16 @@ define('CONQUEST_BOMBARDMENT_MIN_LOSS_RATE', 0.01);      // 最低損失率（1%
 define('CONQUEST_BOMBARDMENT_VARIANCE_RANGE', 20);       // 乱数変動幅（±%）
 define('CONQUEST_BOMBARDMENT_WARNING_MINUTES', 5);       // 警告表示開始（分）
 
+// 城耐久度システム定数
+define('CONQUEST_DURABILITY_OUTER', 500);                // 外周城の耐久度
+define('CONQUEST_DURABILITY_MIDDLE', 1000);              // 中間城の耐久度
+define('CONQUEST_DURABILITY_INNER', 2000);               // 内周城の耐久度
+define('CONQUEST_DURABILITY_SACRED', 5000);              // 神城の耐久度
+define('CONQUEST_BASE_DURABILITY_DAMAGE', 10);           // 基本耐久度ダメージ
+define('CONQUEST_BOMBARDMENT_DURABILITY_DAMAGE', 5);     // 砲撃による耐久度ダメージ
+define('CONQUEST_SIEGE_DURABILITY_MULTIPLIER', 3.0);     // 攻城兵器の耐久度ダメージ倍率（デフォルト）
+define('CONQUEST_ANNOUNCEMENT_BOT_ID', 5);               // お知らせbot ユーザーID
+
 header('Content-Type: application/json');
 
 $me = user();
@@ -105,6 +115,92 @@ function getConquestUserEquipmentBuffs($pdo, $userId) {
  */
 function calculateEquipmentPower($equipmentBuffs) {
     return (int)floor($equipmentBuffs['attack'] + ($equipmentBuffs['health'] / CONQUEST_HEALTH_TO_POWER_RATIO));
+}
+
+/**
+ * 城の種類に応じた最大耐久度を取得
+ * @param string $castleType 城の種類
+ * @return int 最大耐久度
+ */
+function getCastleMaxDurability($castleType) {
+    switch ($castleType) {
+        case 'outer':
+            return CONQUEST_DURABILITY_OUTER;
+        case 'middle':
+            return CONQUEST_DURABILITY_MIDDLE;
+        case 'inner':
+            return CONQUEST_DURABILITY_INNER;
+        case 'sacred':
+            return CONQUEST_DURABILITY_SACRED;
+        default:
+            return CONQUEST_DURABILITY_OUTER;
+    }
+}
+
+/**
+ * 攻撃部隊の攻城ダメージを計算
+ * @param PDO $pdo
+ * @param array $troops 攻撃部隊 [{troop_type_id, count}, ...]
+ * @return int 攻城ダメージ
+ */
+function calculateSiegeDamage($pdo, $troops) {
+    $totalDamage = 0;
+    
+    foreach ($troops as $troop) {
+        $troopTypeId = (int)$troop['troop_type_id'];
+        $count = (int)$troop['count'];
+        
+        if ($count <= 0) continue;
+        
+        // 兵種の攻城ダメージ倍率を取得
+        $stmt = $pdo->prepare("
+            SELECT attack_power, COALESCE(siege_damage_multiplier, 1.0) as siege_multiplier
+            FROM civilization_troop_types WHERE id = ?
+        ");
+        $stmt->execute([$troopTypeId]);
+        $troopType = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($troopType) {
+            // 攻城ダメージ = 攻撃力 * 攻城ダメージ倍率 * 兵数 / 10
+            $damage = (int)floor($troopType['attack_power'] * $troopType['siege_multiplier'] * $count / 10);
+            $totalDamage += $damage;
+        }
+    }
+    
+    // 最低でも基本ダメージを与える
+    return max(CONQUEST_BASE_DURABILITY_DAMAGE, $totalDamage);
+}
+
+/**
+ * 占領告知メッセージを送信
+ * 外周以外の城を占領した場合にお知らせbotから全体フィードに投稿
+ * 
+ * @param PDO $pdo データベース接続
+ * @param string $castleName 城の名前
+ * @param string $castleType 城の種類
+ * @param string|null $playerHandle 占領したプレイヤーのハンドル (NPCの場合はnull)
+ * @param bool $isNpcCapture NPCによる占領かどうか
+ */
+function sendConquestAnnouncement($pdo, $castleName, $castleType, $playerHandle = null, $isNpcCapture = false) {
+    // 外周城は告知しない
+    if ($castleType === 'outer') {
+        return;
+    }
+    
+    // メッセージを生成
+    if ($isNpcCapture) {
+        $content = "NPCが{$castleName}を占領しました！";
+    } else {
+        $content = "@{$playerHandle}が{$castleName}を占領しました！破竹の勢い！！";
+    }
+    
+    // お知らせbotとして投稿
+    $html = markdown_to_html($content);
+    $stmt = $pdo->prepare("
+        INSERT INTO posts (user_id, content_md, content_html, created_at)
+        VALUES (?, ?, ?, NOW())
+    ");
+    $stmt->execute([CONQUEST_ANNOUNCEMENT_BOT_ID, $content, $html]);
 }
 
 /**
@@ -311,6 +407,9 @@ function generateConquestMap($pdo, $seasonId) {
             $nameList = $names[$castleType];
             $name = $nameList[($x + $y) % count($nameList)];
             
+            // 耐久度を取得
+            $durability = getCastleMaxDurability($castleType);
+            
             $castleData[] = [
                 'key' => $castleKey,
                 'name' => $name,
@@ -319,15 +418,17 @@ function generateConquestMap($pdo, $seasonId) {
                 'type' => $castleType,
                 'is_sacred' => $isSacred,
                 'npc_power' => $npcPower,
-                'icon' => $icon
+                'icon' => $icon,
+                'durability' => $durability,
+                'max_durability' => $durability
             ];
         }
     }
     
-    // 城を挿入
+    // 城を挿入（耐久度カラムを含む - conquest_durability_schema.sql の適用が必要）
     $stmt = $pdo->prepare("
-        INSERT INTO conquest_castles (season_id, castle_key, name, position_x, position_y, castle_type, is_sacred, npc_defense_power, icon)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO conquest_castles (season_id, castle_key, name, position_x, position_y, castle_type, is_sacred, npc_defense_power, icon, durability, max_durability)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     
     foreach ($castleData as $castle) {
@@ -340,7 +441,9 @@ function generateConquestMap($pdo, $seasonId) {
             $castle['type'],
             $castle['is_sacred'] ? 1 : 0,
             $castle['npc_power'],
-            $castle['icon']
+            $castle['icon'],
+            $castle['durability'],
+            $castle['max_durability']
         ]);
     }
     
@@ -821,36 +924,77 @@ if ($action === 'attack_castle') {
             }
         }
         
-        // 城の占領
+        // 城の占領処理（耐久度システムを考慮）
         $castleCaptured = false;
+        $durabilityDamage = 0;
+        $isDurabilityAttack = false;
+        
+        // 現在の耐久度を取得（カラムが存在しない場合のデフォルト値）
+        $currentDurability = isset($castle['durability']) ? (int)$castle['durability'] : getCastleMaxDurability($castle['castle_type']);
+        $maxDurability = isset($castle['max_durability']) ? (int)$castle['max_durability'] : getCastleMaxDurability($castle['castle_type']);
+        
         if ($attackerWins) {
-            $castleCaptured = true;
-            
-            // 残りの防御部隊を元の所有者に戻す
-            if (!$defense['is_npc'] && !empty($defense['defender_user_id'])) {
-                $stmt = $pdo->prepare("SELECT troop_type_id, count, user_id FROM conquest_castle_defense WHERE castle_id = ? AND count > 0");
-                $stmt->execute([$castle['id']]);
-                $remainingTroops = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // 守備兵がいない場合は耐久度を削る
+            if ($defense['is_npc'] || empty($defense['troops'])) {
+                $isDurabilityAttack = true;
                 
-                $returnStmt = $pdo->prepare("
-                    INSERT INTO user_civilization_troops (user_id, troop_type_id, count)
-                    VALUES (?, ?, ?)
-                    ON DUPLICATE KEY UPDATE count = count + ?
-                ");
-                foreach ($remainingTroops as $troop) {
-                    $returnStmt->execute([$troop['user_id'], $troop['troop_type_id'], $troop['count'], $troop['count']]);
+                // 攻城ダメージを計算
+                $durabilityDamage = calculateSiegeDamage($pdo, $attackerTroops);
+                $newDurability = max(0, $currentDurability - $durabilityDamage);
+                
+                // 耐久度を更新
+                $stmt = $pdo->prepare("UPDATE conquest_castles SET durability = ? WHERE id = ?");
+                $stmt->execute([$newDurability, $castle['id']]);
+                
+                // 耐久度が0になったら城を占領
+                if ($newDurability <= 0) {
+                    $castleCaptured = true;
+                    
+                    // 城を占領し、耐久度をリセット
+                    $stmt = $pdo->prepare("UPDATE conquest_castles SET owner_user_id = ?, durability = ? WHERE id = ?");
+                    $stmt->execute([$me['id'], $maxDurability, $castle['id']]);
+                    
+                    // 古い防御部隊をクリア
+                    $stmt = $pdo->prepare("DELETE FROM conquest_castle_defense WHERE castle_id = ?");
+                    $stmt->execute([$castle['id']]);
+                    
+                    // お知らせ投稿（外周以外の場合）
+                    sendConquestAnnouncement($pdo, $castle['name'], $castle['castle_type'], $me['handle'], false);
                 }
+            } else {
+                // 守備兵がいる場合は通常の占領
+                $castleCaptured = true;
+                
+                // 残りの防御部隊を元の所有者に戻す
+                if (!$defense['is_npc'] && !empty($defense['defender_user_id'])) {
+                    $stmt = $pdo->prepare("SELECT troop_type_id, count, user_id FROM conquest_castle_defense WHERE castle_id = ? AND count > 0");
+                    $stmt->execute([$castle['id']]);
+                    $remainingTroops = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    $returnStmt = $pdo->prepare("
+                        INSERT INTO user_civilization_troops (user_id, troop_type_id, count)
+                        VALUES (?, ?, ?)
+                        ON DUPLICATE KEY UPDATE count = count + ?
+                    ");
+                    foreach ($remainingTroops as $troop) {
+                        $returnStmt->execute([$troop['user_id'], $troop['troop_type_id'], $troop['count'], $troop['count']]);
+                    }
+                }
+                
+                // 城を占領し、耐久度をリセット
+                $stmt = $pdo->prepare("UPDATE conquest_castles SET owner_user_id = ?, durability = ? WHERE id = ?");
+                $stmt->execute([$me['id'], $maxDurability, $castle['id']]);
+                
+                // 古い防御部隊をクリア
+                $stmt = $pdo->prepare("DELETE FROM conquest_castle_defense WHERE castle_id = ?");
+                $stmt->execute([$castle['id']]);
+                
+                // お知らせ投稿（外周以外の場合）
+                sendConquestAnnouncement($pdo, $castle['name'], $castle['castle_type'], $me['handle'], false);
             }
-            
-            $stmt = $pdo->prepare("UPDATE conquest_castles SET owner_user_id = ? WHERE id = ?");
-            $stmt->execute([$me['id'], $castle['id']]);
-            
-            // 古い防御部隊をクリア
-            $stmt = $pdo->prepare("DELETE FROM conquest_castle_defense WHERE castle_id = ?");
-            $stmt->execute([$castle['id']]);
         }
         
-        // 戦闘ログを記録（ターン制バトル情報を含む）
+        // 戦闘ログを記録（ターン制バトル情報と耐久度ダメージを含む）
         $battleSummary = generateBattleSummary($battleResult);
         $defenderId = $defense['is_npc'] ? null : ($defense['defender_user_id'] ?? null);
         $winnerId = $attackerWins ? $me['id'] : $defenderId;
@@ -860,9 +1004,9 @@ if ($action === 'attack_castle') {
             (season_id, castle_id, attacker_user_id, defender_user_id, 
              attacker_troops, defender_troops, attacker_power, defender_power,
              attacker_losses, defender_losses, attacker_wounded, defender_wounded,
-             winner_user_id, castle_captured, total_turns, battle_log_summary,
-             attacker_final_hp, defender_final_hp)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             winner_user_id, castle_captured, durability_damage, is_durability_attack,
+             total_turns, battle_log_summary, attacker_final_hp, defender_final_hp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $season['id'],
@@ -879,6 +1023,8 @@ if ($action === 'attack_castle') {
             json_encode($defenderWounded),
             $winnerId,
             $castleCaptured ? 1 : 0,
+            $durabilityDamage,
+            $isDurabilityAttack ? 1 : 0,
             $battleResult['total_turns'],
             $battleSummary,
             $battleResult['attacker_final_hp'],
@@ -891,10 +1037,21 @@ if ($action === 'attack_castle') {
         
         $pdo->commit();
         
-        $resultText = $attackerWins ? '勝利！' : '敗北...';
-        $message = $attackerWins 
-            ? "{$castle['name']}を{$battleResult['total_turns']}ターンの激戦の末、占領しました！" 
-            : "{$castle['name']}の攻略に失敗しました...{$battleResult['total_turns']}ターンの戦いでした。";
+        // メッセージの生成
+        if ($attackerWins) {
+            if ($isDurabilityAttack) {
+                if ($castleCaptured) {
+                    $message = "{$castle['name']}の耐久度を0にし、占領しました！（耐久度ダメージ: {$durabilityDamage}）";
+                } else {
+                    $newDurability = $currentDurability - $durabilityDamage;
+                    $message = "{$castle['name']}の耐久度を削りました！（ダメージ: {$durabilityDamage}、残り耐久度: {$newDurability}/{$maxDurability}）";
+                }
+            } else {
+                $message = "{$castle['name']}を{$battleResult['total_turns']}ターンの激戦の末、占領しました！";
+            }
+        } else {
+            $message = "{$castle['name']}の攻略に失敗しました...{$battleResult['total_turns']}ターンの戦いでした。";
+        }
         
         echo json_encode([
             'ok' => true,
@@ -902,6 +1059,10 @@ if ($action === 'attack_castle') {
             'message' => $message,
             'castle_captured' => $castleCaptured,
             'battle_id' => $battleId,
+            'durability_damage' => $durabilityDamage,
+            'is_durability_attack' => $isDurabilityAttack,
+            'current_durability' => $isDurabilityAttack ? max(0, $currentDurability - $durabilityDamage) : $currentDurability,
+            'max_durability' => $maxDurability,
             'battle_result' => [
                 'total_turns' => $battleResult['total_turns'],
                 'attacker_final_hp' => $battleResult['attacker_final_hp'],
@@ -1276,65 +1437,92 @@ function processBombardment($pdo, $castleId, $seasonId) {
     $stmt->execute([$castleId]);
     $defenseTroops = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    if (empty($defenseTroops)) {
-        return ['ok' => false, 'message' => '防御部隊なし'];
-    }
+    // 現在の耐久度を取得
+    $currentDurability = isset($castle['durability']) ? (int)$castle['durability'] : getCastleMaxDurability($castle['castle_type']);
+    $maxDurability = isset($castle['max_durability']) ? (int)$castle['max_durability'] : getCastleMaxDurability($castle['castle_type']);
     
     $woundedTroops = [];
     $totalWounded = 0;
+    $durabilityDamage = 0;
+    $castleFallen = false;
     $logMessages = ["💥 砲撃発生！ ({$castle['name']})"];
     
-    foreach ($defenseTroops as $troop) {
-        // コストに基づく損失率計算
-        // 低コスト兵ほど損失率が高い（基本5%から、コストが高いほど軽減）
-        $costFactor = min(CONQUEST_BOMBARDMENT_MAX_COST_REDUCTION, $troop['train_cost_coins'] * CONQUEST_BOMBARDMENT_COST_FACTOR);
-        $lossRate = max(CONQUEST_BOMBARDMENT_MIN_LOSS_RATE, CONQUEST_BOMBARDMENT_BASE_RATE - $costFactor);
+    if (empty($defenseTroops)) {
+        // 防御部隊がない場合は耐久度を削る
+        $durabilityDamage = CONQUEST_BOMBARDMENT_DURABILITY_DAMAGE;
+        $newDurability = max(0, $currentDurability - $durabilityDamage);
+        $logMessages[] = "🏰 城壁へのダメージ: {$durabilityDamage}（残り耐久度: {$newDurability}/{$maxDurability}）";
         
-        // 負傷兵数を計算（乱数幅を持たせる）
-        $baseWounded = (int)floor($troop['count'] * $lossRate);
-        $varianceRange = CONQUEST_BOMBARDMENT_VARIANCE_RANGE;
-        $randomVariance = mt_rand(-$varianceRange, $varianceRange) / 100;
-        $wounded = max(1, (int)floor($baseWounded * (1 + $randomVariance)));
-        $wounded = min($wounded, $troop['count']); // 配置数を超えない
+        // 耐久度を更新
+        $stmt = $pdo->prepare("UPDATE conquest_castles SET durability = ? WHERE id = ?");
+        $stmt->execute([$newDurability, $castleId]);
         
-        if ($wounded > 0) {
-            $woundedTroops[] = [
-                'troop_type_id' => $troop['troop_type_id'],
-                'count' => $wounded,
-                'name' => $troop['name'],
-                'icon' => $troop['icon'],
-                'cost' => $troop['train_cost_coins']
-            ];
-            $totalWounded += $wounded;
-            $logMessages[] = "{$troop['icon']} {$troop['name']}: {$wounded}体が負傷";
+        // 耐久度が0になったら城をNPCに渡す
+        if ($newDurability <= 0) {
+            $castleFallen = true;
+            $logMessages[] = "⚠️ {$castle['name']}が陥落！所有者はNPCに変更されました。";
             
-            // 防御部隊から減少
-            $stmt = $pdo->prepare("
-                UPDATE conquest_castle_defense
-                SET count = count - ?
-                WHERE castle_id = ? AND troop_type_id = ? AND user_id = ?
-            ");
-            $stmt->execute([$wounded, $castleId, $troop['troop_type_id'], $troop['user_id']]);
+            // 城をNPCに渡し、耐久度をリセット
+            $stmt = $pdo->prepare("UPDATE conquest_castles SET owner_user_id = NULL, durability = ? WHERE id = ?");
+            $stmt->execute([$maxDurability, $castleId]);
             
-            // 負傷兵として追加
-            $stmt = $pdo->prepare("
-                INSERT INTO user_civilization_wounded_troops (user_id, troop_type_id, count)
-                VALUES (?, ?, ?)
-                ON DUPLICATE KEY UPDATE count = count + ?
-            ");
-            $stmt->execute([$troop['user_id'], $troop['troop_type_id'], $wounded, $wounded]);
+            // お知らせ投稿（外周以外の場合）
+            sendConquestAnnouncement($pdo, $castle['name'], $castle['castle_type'], null, true);
+        }
+    } else {
+        // 防御部隊がいる場合は兵士にダメージを与える
+        foreach ($defenseTroops as $troop) {
+            // コストに基づく損失率計算
+            // 低コスト兵ほど損失率が高い（基本5%から、コストが高いほど軽減）
+            $costFactor = min(CONQUEST_BOMBARDMENT_MAX_COST_REDUCTION, $troop['train_cost_coins'] * CONQUEST_BOMBARDMENT_COST_FACTOR);
+            $lossRate = max(CONQUEST_BOMBARDMENT_MIN_LOSS_RATE, CONQUEST_BOMBARDMENT_BASE_RATE - $costFactor);
+            
+            // 負傷兵数を計算（乱数幅を持たせる）
+            $baseWounded = (int)floor($troop['count'] * $lossRate);
+            $varianceRange = CONQUEST_BOMBARDMENT_VARIANCE_RANGE;
+            $randomVariance = mt_rand(-$varianceRange, $varianceRange) / 100;
+            $wounded = max(1, (int)floor($baseWounded * (1 + $randomVariance)));
+            $wounded = min($wounded, $troop['count']); // 配置数を超えない
+            
+            if ($wounded > 0) {
+                $woundedTroops[] = [
+                    'troop_type_id' => $troop['troop_type_id'],
+                    'count' => $wounded,
+                    'name' => $troop['name'],
+                    'icon' => $troop['icon'],
+                    'cost' => $troop['train_cost_coins']
+                ];
+                $totalWounded += $wounded;
+                $logMessages[] = "{$troop['icon']} {$troop['name']}: {$wounded}体が負傷";
+                
+                // 防御部隊から減少
+                $stmt = $pdo->prepare("
+                    UPDATE conquest_castle_defense
+                    SET count = count - ?
+                    WHERE castle_id = ? AND troop_type_id = ? AND user_id = ?
+                ");
+                $stmt->execute([$wounded, $castleId, $troop['troop_type_id'], $troop['user_id']]);
+                
+                // 負傷兵として追加
+                $stmt = $pdo->prepare("
+                    INSERT INTO user_civilization_wounded_troops (user_id, troop_type_id, count)
+                    VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE count = count + ?
+                ");
+                $stmt->execute([$troop['user_id'], $troop['troop_type_id'], $wounded, $wounded]);
+            }
         }
     }
     
-    if ($totalWounded == 0) {
+    if ($totalWounded == 0 && $durabilityDamage == 0) {
         return ['ok' => false, 'message' => '砲撃被害なし'];
     }
     
     // 砲撃ログを記録
     $stmt = $pdo->prepare("
         INSERT INTO conquest_bombardment_logs 
-        (season_id, castle_id, user_id, bombardment_at, troops_wounded, total_wounded, log_message)
-        VALUES (?, ?, ?, NOW(), ?, ?, ?)
+        (season_id, castle_id, user_id, bombardment_at, troops_wounded, total_wounded, durability_damage, log_message)
+        VALUES (?, ?, ?, NOW(), ?, ?, ?, ?)
     ");
     $stmt->execute([
         $seasonId,
@@ -1342,6 +1530,7 @@ function processBombardment($pdo, $castleId, $seasonId) {
         $castle['owner_user_id'],
         json_encode($woundedTroops),
         $totalWounded,
+        $durabilityDamage,
         implode("\n", $logMessages)
     ]);
     $bombardmentLogId = $pdo->lastInsertId();
@@ -1356,8 +1545,8 @@ function processBombardment($pdo, $castleId, $seasonId) {
         (log_type, season_id, castle_id, attacker_user_id, defender_user_id,
          attacker_troops, defender_troops, attacker_power, defender_power,
          attacker_losses, defender_losses, attacker_wounded, defender_wounded,
-         winner_user_id, castle_captured, total_turns, battle_log_summary)
-        VALUES ('bombardment', ?, ?, ?, ?, '[]', ?, 0, 0, '{}', ?, '{}', ?, NULL, 0, 1, ?)
+         winner_user_id, castle_captured, durability_damage, total_turns, battle_log_summary)
+        VALUES ('bombardment', ?, ?, ?, ?, '[]', ?, 0, 0, '{}', ?, '{}', ?, NULL, ?, ?, 1, ?)
     ");
     $stmt->execute([
         $seasonId,
@@ -1367,6 +1556,8 @@ function processBombardment($pdo, $castleId, $seasonId) {
         json_encode($woundedTroops),
         json_encode(array_column($woundedTroops, 'count', 'troop_type_id')),
         json_encode(array_column($woundedTroops, 'count', 'troop_type_id')),
+        $castleFallen ? 1 : 0,
+        $durabilityDamage,
         implode("\n", $logMessages)
     ]);
     $battleLogId = $pdo->lastInsertId();
@@ -1380,7 +1571,7 @@ function processBombardment($pdo, $castleId, $seasonId) {
     ");
     $stmt->execute([
         $battleLogId,
-        $totalWounded,
+        $totalWounded + $durabilityDamage,
         implode("\n", $logMessages)
     ]);
     
@@ -1390,6 +1581,8 @@ function processBombardment($pdo, $castleId, $seasonId) {
         'castle_name' => $castle['name'],
         'total_wounded' => $totalWounded,
         'wounded_troops' => $woundedTroops,
+        'durability_damage' => $durabilityDamage,
+        'castle_fallen' => $castleFallen,
         'log_messages' => $logMessages,
         'bombardment_log_id' => $bombardmentLogId,
         'battle_log_id' => $battleLogId
