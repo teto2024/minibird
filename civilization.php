@@ -877,6 +877,10 @@ function renderApp() {
                             <span style="color: #87ceeb; font-weight: bold;" id="myArmor">${Math.floor(civData.military_power_breakdown?.equipment_buffs?.armor || 0)}</span>
                         </div>
                         <div>
+                            <span style="color: #888;">❤️ 体力:</span>
+                            <span style="color: #ff6b6b; font-weight: bold;" id="myHealth">${Math.floor(civData.military_power_breakdown?.equipment_buffs?.health || 0)}</span>
+                        </div>
+                        <div>
                             <span style="color: #888;">⚔️ 合計:</span>
                             <span style="color: #ff6b6b; font-weight: bold; font-size: 1.2em;" id="myTotalPower">${civ.military_power || 0}</span>
                         </div>
@@ -1375,6 +1379,10 @@ async function loadTargets() {
             const myArmor = document.getElementById('myArmor');
             if (myArmor && data.my_military_power.equipment_buffs) {
                 myArmor.textContent = Math.floor(data.my_military_power.equipment_buffs.armor || 0);
+            }
+            const myHealth = document.getElementById('myHealth');
+            if (myHealth && data.my_military_power.equipment_buffs) {
+                myHealth.textContent = Math.floor(data.my_military_power.equipment_buffs.health || 0);
             }
         }
         
