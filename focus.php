@@ -550,6 +550,12 @@ document.getElementById('start').onclick = async ()=>{
 
   const mins = parseInt(document.getElementById('mins').value||'25',10);
   
+  // 最小時間チェック
+  if (mins < 1) {
+    alert('集中時間は1分以上に設定してください');
+    return;
+  }
+  
   // 最大時間チェック
   if (mins > REWARD_CONFIG.MAX_MINUTES) {
     alert(`集中時間は最大${REWARD_CONFIG.MAX_MINUTES}分までです。\n入力された値: ${mins}分`);

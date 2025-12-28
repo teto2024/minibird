@@ -167,6 +167,10 @@ try {
             ");
             $stmt->execute([$coins, $diamonds, $user_id]);
             
+            // リレークエストをリセットして、また最初からプレイできるようにする
+            require_once __DIR__ . '/quest_progress.php';
+            reset_relay_quests($user_id);
+            
             $pdo->commit();
             echo json_encode(['ok' => true, 'coins' => $coins, 'crystals' => 0, 'diamonds' => $diamonds]);
         } catch (Exception $e) {

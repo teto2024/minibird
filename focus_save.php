@@ -48,6 +48,11 @@ if (!$task || !$started_at || !$ended_at || !$uid) {
     json_exit(['ok'=>false,'error'=>'missing fields']);
 }
 
+// 最小時間チェック（1分以上必要）
+if ($mins < 1) {
+    json_exit(['ok'=>false,'error'=>'時間は1分以上に設定してください']);
+}
+
 try {
     // --------------------------
     // タッグボーナス判定

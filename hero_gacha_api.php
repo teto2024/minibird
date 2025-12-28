@@ -355,6 +355,23 @@ function generateEquipmentReward($pdo, $user_id) {
     $slots = ['weapon', 'helm', 'body', 'shoulder', 'arm', 'leg'];
     $rarities = ['rare', 'unique', 'legend'];
     
+    // レアリティごとのバフ数定義
+    $RARITY_BUFF_COUNTS = [
+        'rare' => 2,
+        'unique' => 3,
+        'legend' => 4
+    ];
+    
+    // バフ種類定義
+    $BUFF_TYPES = [
+        'attack' => ['min' => 5, 'max_rare' => 15, 'max_legend' => 30],
+        'armor' => ['min' => 3, 'max_rare' => 12, 'max_legend' => 25],
+        'health' => ['min' => 10, 'max_rare' => 50, 'max_legend' => 100],
+        'coin_drop' => ['min' => 1, 'max_rare' => 5, 'max_legend' => 15],
+        'crystal_drop' => ['min' => 1, 'max_rare' => 3, 'max_legend' => 10],
+        'exp_bonus' => ['min' => 1, 'max_rare' => 5, 'max_legend' => 15]
+    ];
+    
     $slot = $slots[array_rand($slots)];
     $rarity = $rarities[array_rand($rarities)];
     
@@ -370,8 +387,25 @@ function generateEquipmentReward($pdo, $user_id) {
     $prefixes = ['輝く', '神秘の', '古代の', '伝説の', '英雄の'];
     $name = $prefixes[array_rand($prefixes)] . $SLOTS[$slot]['name'];
     
-    // 簡易バフ生成
-    $buffs = ['attack' => mt_rand(5, 20), 'armor' => mt_rand(3, 15)];
+    // レアリティに応じたバフ数を取得
+    $buff_count = $RARITY_BUFF_COUNTS[$rarity] ?? 2;
+    
+    // バフをランダムに選択して生成
+    $buff_keys = array_keys($BUFF_TYPES);
+    shuffle($buff_keys);
+    $selected_buffs = array_slice($buff_keys, 0, $buff_count);
+    
+    $buffs = [];
+    $rarity_index = array_search($rarity, $rarities);
+    $max_rarity_index = count($rarities) - 1;
+    
+    foreach ($selected_buffs as $buff_key) {
+        $buff_info = $BUFF_TYPES[$buff_key];
+        // レアリティに応じて最大値を補間
+        $max_value = $buff_info['max_rare'] + ($buff_info['max_legend'] - $buff_info['max_rare']) * ($rarity_index / $max_rarity_index);
+        $value = mt_rand($buff_info['min'], (int)$max_value);
+        $buffs[$buff_key] = $value;
+    }
     
     return [
         'type' => 'equipment',

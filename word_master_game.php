@@ -212,43 +212,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // スコアを100点満点で計算（小数点3桁）
         $finalScore = round($score, 3);
         
-        // 報酬計算
-        $baseCoins = $correctCount * 10;
-        $baseCrystals = floor($correctCount / 2);
+        // 報酬計算（上方修正）
+        $baseCoins = $correctCount * 20;  // 10から20に上方修正
+        $baseCrystals = $correctCount;    // correctCount/2 から correctCount に上方修正
         
         // 難易度ボーナス
         if ($isInputMode) {
-            $baseCoins *= 1.5;
-            $baseCrystals *= 1.5;
+            $baseCoins *= 1.8;   // 1.5から1.8に上方修正
+            $baseCrystals *= 1.8;
         }
         if ($mode === 'test') {
-            $baseCoins *= 2;
-            $baseCrystals *= 2;
+            $baseCoins *= 2.5;   // 2から2.5に上方修正
+            $baseCrystals *= 2.5;
         }
         
-        // スコアボーナス
-        if ($finalScore >= 90) {
-            $baseCoins *= 1.5;
-            $baseCrystals *= 1.5;
+        // スコアボーナス（上方修正）
+        if ($finalScore >= 100) {
+            $baseCoins *= 2.0;   // パーフェクトボーナス
+            $baseCrystals *= 2.0;
+        } elseif ($finalScore >= 90) {
+            $baseCoins *= 1.8;   // 1.5から1.8に上方修正
+            $baseCrystals *= 1.8;
         } elseif ($finalScore >= 70) {
-            $baseCoins *= 1.2;
-            $baseCrystals *= 1.2;
+            $baseCoins *= 1.4;   // 1.2から1.4に上方修正
+            $baseCrystals *= 1.4;
         }
         
         // バフ適用
         $rewardCoins = (int)floor($baseCoins * $buffMultiplier);
         $rewardCrystals = (int)floor($baseCrystals * $buffMultiplier);
         
-        // トークン報酬（パーフェクトで追加）
-        $normalTokens = 0;
-        $rareTokens = 0;
+        // トークン報酬（上方修正：確定でノーマル・レア、確率でユニーク・レジェンド）
+        $normalTokens = max(1, (int)floor($correctCount / 5));  // 確定でドロップ
+        $rareTokens = max(1, (int)floor($correctCount / 10));   // 確定でドロップ
+        $uniqueTokens = 0;
+        $legendTokens = 0;
+        
+        // スコアに応じてトークン量を調整
         if ($finalScore >= 100) {
-            $normalTokens = 3;
-            $rareTokens = 1;
+            // パーフェクト：ノーマル・レア増量、確定でユニーク、高確率でレジェンド
+            $normalTokens += 5;
+            $rareTokens += 3;
+            $uniqueTokens = 2;
+            if (mt_rand(1, 100) <= 50) {
+                $legendTokens = 1;
+            }
         } elseif ($finalScore >= 90) {
-            $normalTokens = 2;
+            // 90点以上：ノーマル・レア増量、高確率でユニーク、確率でレジェンド
+            $normalTokens += 3;
+            $rareTokens += 2;
+            if (mt_rand(1, 100) <= 70) {
+                $uniqueTokens = 1;
+            }
+            if (mt_rand(1, 100) <= 25) {
+                $legendTokens = 1;
+            }
         } elseif ($finalScore >= 70) {
-            $normalTokens = 1;
+            // 70点以上：ノーマル・レア少量増量、確率でユニーク
+            $normalTokens += 2;
+            $rareTokens += 1;
+            if (mt_rand(1, 100) <= 30) {
+                $uniqueTokens = 1;
+            }
         }
         
         // 報酬付与
@@ -260,10 +285,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     coins = coins + ?,
                     crystals = crystals + ?,
                     normal_tokens = normal_tokens + ?,
-                    rare_tokens = rare_tokens + ?
+                    rare_tokens = rare_tokens + ?,
+                    unique_tokens = unique_tokens + ?,
+                    legend_tokens = legend_tokens + ?
                 WHERE id = ?
             ");
-            $stmt->execute([$rewardCoins, $rewardCrystals, $normalTokens, $rareTokens, $me['id']]);
+            $stmt->execute([$rewardCoins, $rewardCrystals, $normalTokens, $rareTokens, $uniqueTokens, $legendTokens, $me['id']]);
             
             // 進捗記録 - 進捗テーブルがなくてもユーザーの報酬付与は行う
             // （進捗記録は補助的機能のため、失敗しても報酬付与を中断しない）
@@ -297,7 +324,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'coins' => $rewardCoins,
                     'crystals' => $rewardCrystals,
                     'normal_tokens' => $normalTokens,
-                    'rare_tokens' => $rareTokens
+                    'rare_tokens' => $rareTokens,
+                    'unique_tokens' => $uniqueTokens,
+                    'legend_tokens' => $legendTokens
                 ],
                 'balance' => $balance,
                 'buff_applied' => $buffLevel > 0,
@@ -331,6 +360,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 body {
     background: linear-gradient(180deg, #0a0a1a 0%, #1a1a3e 50%, #0f0f2a 100%);
     min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
     margin: 0;
     overflow: hidden;
 }
@@ -338,15 +368,18 @@ body {
 .game-container {
     width: 100%;
     height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile */
     position: relative;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 /* ヘッダー */
 .game-header {
     background: linear-gradient(180deg, rgba(212, 175, 55, 0.3) 0%, rgba(0, 0, 0, 0.5) 100%);
     padding: 15px 20px;
+    padding-left: 100px; /* 終了ボタン分の余白 */
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -561,6 +594,8 @@ body {
     align-items: center;
     justify-content: center;
     z-index: 1000;
+    padding: 20px;
+    overflow-y: auto;
 }
 
 .result-modal.hidden {
@@ -575,6 +610,9 @@ body {
     text-align: center;
     max-width: 500px;
     width: 90%;
+    max-height: 90vh;
+    max-height: 90dvh;
+    overflow-y: auto;
     animation: resultAppear 0.5s ease-out;
 }
 
@@ -690,7 +728,7 @@ body {
 
 /* 終了ボタン */
 .exit-btn {
-    position: absolute;
+    position: fixed;
     top: 15px;
     left: 15px;
     padding: 10px 20px;
@@ -700,7 +738,9 @@ body {
     color: #ffd700;
     font-size: 14px;
     cursor: pointer;
-    z-index: 100;
+    z-index: 200;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
 .exit-btn:hover {
@@ -790,11 +830,16 @@ body {
     }
     
     .exit-btn {
-        position: absolute;
+        position: fixed;
         top: 10px;
         left: 10px;
-        padding: 6px 12px;
-        font-size: 11px;
+        padding: 8px 14px;
+        font-size: 12px;
+        z-index: 200;
+    }
+    
+    .game-header {
+        padding-top: 50px; /* 終了ボタン分の余白 */
     }
     
     .result-content {
@@ -1334,8 +1379,10 @@ function showResults(data) {
     rewardsGrid.innerHTML = `
         <div class="reward-item">🪙 ${data.rewards.coins}</div>
         <div class="reward-item">💎 ${data.rewards.crystals}</div>
-        ${data.rewards.normal_tokens > 0 ? `<div class="reward-item">🎫 ノーマル×${data.rewards.normal_tokens}</div>` : ''}
-        ${data.rewards.rare_tokens > 0 ? `<div class="reward-item">✨ レア×${data.rewards.rare_tokens}</div>` : ''}
+        ${data.rewards.normal_tokens > 0 ? `<div class="reward-item">⚪ ノーマル×${data.rewards.normal_tokens}</div>` : ''}
+        ${data.rewards.rare_tokens > 0 ? `<div class="reward-item">🟢 レア×${data.rewards.rare_tokens}</div>` : ''}
+        ${data.rewards.unique_tokens > 0 ? `<div class="reward-item">🔵 ユニーク×${data.rewards.unique_tokens}</div>` : ''}
+        ${data.rewards.legend_tokens > 0 ? `<div class="reward-item">🟡 レジェンド×${data.rewards.legend_tokens}</div>` : ''}
         ${data.buff_applied ? `<div class="reward-item" style="color: #ff6b6b;">🔥 バフ+${data.buff_bonus}</div>` : ''}
     `;
     
