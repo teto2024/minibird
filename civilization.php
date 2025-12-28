@@ -2294,6 +2294,34 @@ async function loadTroops() {
                     const categoryInfo = advantageInfo[category] || advantageInfo['infantry'];
                     const healthPoints = t.health_points || 100;
                     
+                    // 特殊スキル情報を構築
+                    let skillHtml = '';
+                    if (t.skill_name && t.skill_icon) {
+                        const effectType = t.effect_type || '';
+                        let effectColor = 'rgba(147, 112, 219, 0.4)'; // デフォルト紫色
+                        if (effectType === 'buff') {
+                            effectColor = 'rgba(50, 205, 50, 0.4)'; // バフは緑
+                        } else if (effectType === 'debuff') {
+                            effectColor = 'rgba(255, 100, 100, 0.4)'; // デバフは赤
+                        } else if (effectType === 'damage_over_time') {
+                            effectColor = 'rgba(255, 165, 0, 0.4)'; // 継続ダメージはオレンジ
+                        }
+                        const activationChance = t.activation_chance ? `${t.activation_chance}%` : '';
+                        const effectValue = t.effect_value ? t.effect_value : '';
+                        const durationTurns = t.duration_turns ? `${t.duration_turns}T` : '';
+                        
+                        skillHtml = `
+                            <div style="background: ${effectColor}; padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; font-size: 12px;">
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <span style="font-size: 14px;">${t.skill_icon}</span>
+                                    <span style="color: #ffd700; font-weight: bold;">${t.skill_name}</span>
+                                    ${activationChance ? `<span style="color: #888; font-size: 10px; margin-left: auto;">発動: ${activationChance}</span>` : ''}
+                                </div>
+                                ${t.skill_description ? `<div style="color: #c0a080; font-size: 11px; margin-top: 3px;">${t.skill_description}</div>` : ''}
+                            </div>
+                        `;
+                    }
+                    
                     return `
                         <div class="target-card" style="border-color: #8b4513; ${!canTrain ? 'opacity: 0.7;' : ''}">
                             <div class="target-header">
@@ -2317,6 +2345,7 @@ async function loadTroops() {
                                     ❤️ ${healthPoints}
                                 </span>
                             </div>
+                            ${skillHtml}
                             <div style="color: #c0a080; font-size: 12px; margin-bottom: 10px;">
                                 ${costText}
                             </div>
