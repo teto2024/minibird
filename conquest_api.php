@@ -683,6 +683,23 @@ if ($action === 'attack_castle') {
         $castleCaptured = false;
         if ($attackerWins) {
             $castleCaptured = true;
+            
+            // 残りの防御部隊を元の所有者に戻す
+            if (!$defense['is_npc'] && $defense['defender_user_id']) {
+                $stmt = $pdo->prepare("SELECT troop_type_id, count, user_id FROM conquest_castle_defense WHERE castle_id = ? AND count > 0");
+                $stmt->execute([$castle['id']]);
+                $remainingTroops = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                $returnStmt = $pdo->prepare("
+                    INSERT INTO user_civilization_troops (user_id, troop_type_id, count)
+                    VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE count = count + ?
+                ");
+                foreach ($remainingTroops as $troop) {
+                    $returnStmt->execute([$troop['user_id'], $troop['troop_type_id'], $troop['count'], $troop['count']]);
+                }
+            }
+            
             $stmt = $pdo->prepare("UPDATE conquest_castles SET owner_user_id = ? WHERE id = ?");
             $stmt->execute([$me['id'], $castle['id']]);
             
@@ -761,6 +778,22 @@ if ($action === 'set_castle_defense') {
             throw new Exception('この城を所有していません');
         }
         
+        // 既存の防御部隊を手元に戻す
+        $stmt = $pdo->prepare("SELECT troop_type_id, count FROM conquest_castle_defense WHERE castle_id = ? AND user_id = ? AND count > 0");
+        $stmt->execute([$castleId, $me['id']]);
+        $existingTroops = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        if (!empty($existingTroops)) {
+            $returnStmt = $pdo->prepare("
+                INSERT INTO user_civilization_troops (user_id, troop_type_id, count)
+                VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE count = count + ?
+            ");
+            foreach ($existingTroops as $existingTroop) {
+                $returnStmt->execute([$me['id'], $existingTroop['troop_type_id'], $existingTroop['count'], $existingTroop['count']]);
+            }
+        }
+        
         // 既存の防御部隊をクリア
         $stmt = $pdo->prepare("DELETE FROM conquest_castle_defense WHERE castle_id = ? AND user_id = ?");
         $stmt->execute([$castleId, $me['id']]);
@@ -828,18 +861,20 @@ if ($action === 'withdraw_castle_defense') {
         }
         
         // 自分の防御部隊を取得
-        $stmt = $pdo->prepare("SELECT * FROM conquest_castle_defense WHERE castle_id = ? AND user_id = ?");
+        $stmt = $pdo->prepare("SELECT troop_type_id, count FROM conquest_castle_defense WHERE castle_id = ? AND user_id = ? AND count > 0");
         $stmt->execute([$castleId, $me['id']]);
         $defenseTroops = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // 兵士を戻す
-        foreach ($defenseTroops as $troop) {
-            $stmt = $pdo->prepare("
+        if (!empty($defenseTroops)) {
+            $returnStmt = $pdo->prepare("
                 INSERT INTO user_civilization_troops (user_id, troop_type_id, count)
                 VALUES (?, ?, ?)
                 ON DUPLICATE KEY UPDATE count = count + ?
             ");
-            $stmt->execute([$me['id'], $troop['troop_type_id'], $troop['count'], $troop['count']]);
+            foreach ($defenseTroops as $troop) {
+                $returnStmt->execute([$me['id'], $troop['troop_type_id'], $troop['count'], $troop['count']]);
+            }
         }
         
         // 防御部隊を削除
