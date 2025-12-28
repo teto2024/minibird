@@ -86,8 +86,35 @@ function getUserCivilization($pdo, $userId) {
     return $civ;
 }
 
-// 総合軍事力を計算するヘルパー関数
-function calculateTotalMilitaryPower($pdo, $userId) {
+// ユーザーの装備バフを取得するヘルパー関数
+function getUserEquipmentBuffs($pdo, $userId) {
+    $stmt = $pdo->prepare("
+        SELECT buffs FROM user_equipment 
+        WHERE user_id = ? AND is_equipped = 1
+    ");
+    $stmt->execute([$userId]);
+    $equippedItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    $totalBuffs = [
+        'attack' => 0,
+        'armor' => 0,
+        'health' => 0
+    ];
+    
+    foreach ($equippedItems as $item) {
+        $buffs = json_decode($item['buffs'], true) ?: [];
+        foreach ($totalBuffs as $key => $value) {
+            if (isset($buffs[$key])) {
+                $totalBuffs[$key] += (float)$buffs[$key];
+            }
+        }
+    }
+    
+    return $totalBuffs;
+}
+
+// 総合軍事力を計算するヘルパー関数（装備バフを含む）
+function calculateTotalMilitaryPower($pdo, $userId, $includeEquipmentBuffs = true) {
     // 建物からの軍事力
     $stmt = $pdo->prepare("
         SELECT COALESCE(SUM(bt.military_power * ucb.level), 0) as building_power
@@ -108,10 +135,21 @@ function calculateTotalMilitaryPower($pdo, $userId) {
     $stmt->execute([$userId]);
     $troopPower = (int)$stmt->fetchColumn();
     
+    // 装備バフを取得
+    $equipmentBuffs = ['attack' => 0, 'armor' => 0, 'health' => 0];
+    $equipmentPower = 0;
+    if ($includeEquipmentBuffs) {
+        $equipmentBuffs = getUserEquipmentBuffs($pdo, $userId);
+        // 装備からの追加軍事力: 攻撃力 + 体力/10（体力は戦闘力への影響を小さめに）
+        $equipmentPower = (int)floor($equipmentBuffs['attack'] + ($equipmentBuffs['health'] / 10));
+    }
+    
     return [
         'building_power' => $buildingPower,
         'troop_power' => $troopPower,
-        'total_power' => $buildingPower + $troopPower
+        'equipment_power' => $equipmentPower,
+        'equipment_buffs' => $equipmentBuffs,
+        'total_power' => $buildingPower + $troopPower + $equipmentPower
     ];
 }
 
@@ -250,18 +288,7 @@ if ($action === 'get_data') {
         $stmt->execute([$me['id']]);
         $buildings = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // 利用可能な建物タイプ（現在の時代まで）
-        $stmt = $pdo->prepare("
-            SELECT bt.*, e.name as era_name
-            FROM civilization_building_types bt
-            LEFT JOIN civilization_eras e ON bt.unlock_era_id = e.id
-            WHERE bt.unlock_era_id IS NULL OR bt.unlock_era_id <= ?
-            ORDER BY bt.unlock_era_id, bt.id
-        ");
-        $stmt->execute([$civ['current_era_id']]);
-        $availableBuildings = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        // 研究進捗
+        // 研究進捗（建物の前提条件チェックに必要なので先に取得）
         $stmt = $pdo->prepare("
             SELECT ucr.*, r.research_key, r.name, r.icon, r.description, r.era_id, 
                    r.unlock_building_id, r.unlock_resource_id, r.research_cost_points, r.research_time_seconds
@@ -271,6 +298,58 @@ if ($action === 'get_data') {
         ");
         $stmt->execute([$me['id']]);
         $userResearches = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 利用可能な建物タイプ（現在の時代まで）
+        $stmt = $pdo->prepare("
+            SELECT bt.*, e.name as era_name,
+                   prereq_b.name as prerequisite_building_name,
+                   prereq_r.name as prerequisite_research_name
+            FROM civilization_building_types bt
+            LEFT JOIN civilization_eras e ON bt.unlock_era_id = e.id
+            LEFT JOIN civilization_building_types prereq_b ON bt.prerequisite_building_id = prereq_b.id
+            LEFT JOIN civilization_researches prereq_r ON bt.prerequisite_research_id = prereq_r.id
+            WHERE bt.unlock_era_id IS NULL OR bt.unlock_era_id <= ?
+            ORDER BY bt.unlock_era_id, bt.id
+        ");
+        $stmt->execute([$civ['current_era_id']]);
+        $availableBuildings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 各建物の前提条件を満たしているかチェック
+        foreach ($availableBuildings as &$building) {
+            $building['can_build'] = true;
+            $building['missing_prerequisites'] = [];
+            
+            // 前提建物チェック
+            if (!empty($building['prerequisite_building_id'])) {
+                $hasPrereq = false;
+                foreach ($buildings as $userBuilding) {
+                    if ($userBuilding['building_type_id'] == $building['prerequisite_building_id'] && !$userBuilding['is_constructing']) {
+                        $hasPrereq = true;
+                        break;
+                    }
+                }
+                if (!$hasPrereq) {
+                    $building['can_build'] = false;
+                    $building['missing_prerequisites'][] = "🏗️ " . ($building['prerequisite_building_name'] ?? '必要な建物');
+                }
+            }
+            
+            // 前提研究チェック
+            if (!empty($building['prerequisite_research_id'])) {
+                $hasPrereq = false;
+                foreach ($userResearches as $research) {
+                    if ($research['research_id'] == $building['prerequisite_research_id'] && $research['is_completed']) {
+                        $hasPrereq = true;
+                        break;
+                    }
+                }
+                if (!$hasPrereq) {
+                    $building['can_build'] = false;
+                    $building['missing_prerequisites'][] = "📚 " . ($building['prerequisite_research_name'] ?? '必要な研究');
+                }
+            }
+        }
+        unset($building);
         
         // 利用可能な研究
         $stmt = $pdo->prepare("
@@ -396,6 +475,42 @@ if ($action === 'build') {
         // 時代制限チェック
         if ($buildingType['unlock_era_id'] && $buildingType['unlock_era_id'] > $civ['current_era_id']) {
             throw new Exception('この建物はまだ利用できません');
+        }
+        
+        // 前提建物チェック
+        if (!empty($buildingType['prerequisite_building_id'])) {
+            $stmt = $pdo->prepare("
+                SELECT COUNT(*) FROM user_civilization_buildings ucb
+                WHERE ucb.user_id = ? AND ucb.building_type_id = ? AND ucb.is_constructing = FALSE
+            ");
+            $stmt->execute([$me['id'], $buildingType['prerequisite_building_id']]);
+            $hasPrereqBuilding = (int)$stmt->fetchColumn() > 0;
+            
+            if (!$hasPrereqBuilding) {
+                // 前提建物名を取得
+                $stmt = $pdo->prepare("SELECT name FROM civilization_building_types WHERE id = ?");
+                $stmt->execute([$buildingType['prerequisite_building_id']]);
+                $prereqName = $stmt->fetchColumn() ?: '必要な建物';
+                throw new Exception("「{$prereqName}」を先に建設してください");
+            }
+        }
+        
+        // 前提研究チェック
+        if (!empty($buildingType['prerequisite_research_id'])) {
+            $stmt = $pdo->prepare("
+                SELECT COUNT(*) FROM user_civilization_researches
+                WHERE user_id = ? AND research_id = ? AND is_completed = TRUE
+            ");
+            $stmt->execute([$me['id'], $buildingType['prerequisite_research_id']]);
+            $hasPrereqResearch = (int)$stmt->fetchColumn() > 0;
+            
+            if (!$hasPrereqResearch) {
+                // 前提研究名を取得
+                $stmt = $pdo->prepare("SELECT name FROM civilization_researches WHERE id = ?");
+                $stmt->execute([$buildingType['prerequisite_research_id']]);
+                $prereqName = $stmt->fetchColumn() ?: '必要な研究';
+                throw new Exception("「{$prereqName}」を先に研究してください");
+            }
         }
         
         // コストを確認
@@ -691,9 +806,22 @@ if ($action === 'attack') {
             throw new Exception('軍事力がありません。兵舎や軍事施設を建設するか、兵士を訓練してください。');
         }
         
+        // 装備バフを取得
+        $myEquipmentBuffs = $myPowerData['equipment_buffs'];
+        $targetEquipmentBuffs = $targetPowerData['equipment_buffs'];
+        
+        // 攻撃力計算（自分の攻撃力バフ - 相手のアーマーで相手へのダメージ軽減）
+        // アーマーは敵の攻撃力を軽減する（1アーマー = 1%軽減、最大50%まで）
+        $targetArmorReduction = min(0.5, $targetEquipmentBuffs['armor'] / 100);
+        $myArmorReduction = min(0.5, $myEquipmentBuffs['armor'] / 100);
+        
+        // 最終的な攻撃力（装備攻撃力バフを含み、相手のアーマーで軽減）
+        $myEffectivePower = $myPower * (1 - $targetArmorReduction);
+        $targetEffectivePower = $targetPower * (1 - $myArmorReduction);
+        
         // 戦闘判定（攻撃側ボーナス適用）
-        $myRoll = mt_rand(1, 100) + ($myPower * CIV_ATTACKER_BONUS);
-        $targetRoll = mt_rand(1, 100) + $targetPower;
+        $myRoll = mt_rand(1, 100) + ($myEffectivePower * CIV_ATTACKER_BONUS);
+        $targetRoll = mt_rand(1, 100) + $targetEffectivePower;
         
         $winnerId = ($myRoll > $targetRoll) ? $me['id'] : $targetUserId;
         $loserId = ($winnerId === $me['id']) ? $targetUserId : $me['id'];
@@ -787,15 +915,7 @@ if ($action === 'attack') {
 if ($action === 'get_targets') {
     try {
         $stmt = $pdo->prepare("
-            SELECT uc.user_id, uc.civilization_name, uc.population, u.handle, u.display_name,
-                   (SELECT COALESCE(SUM(bt.military_power * ucb.level), 0) 
-                    FROM user_civilization_buildings ucb
-                    JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
-                    WHERE ucb.user_id = uc.user_id AND ucb.is_constructing = FALSE) +
-                   (SELECT COALESCE(SUM((tt.attack_power + FLOOR(tt.defense_power / 2)) * uct.count), 0)
-                    FROM user_civilization_troops uct
-                    JOIN civilization_troop_types tt ON uct.troop_type_id = tt.id
-                    WHERE uct.user_id = uc.user_id) as military_power
+            SELECT uc.user_id, uc.civilization_name, uc.population, u.handle, u.display_name
             FROM user_civilizations uc
             JOIN users u ON uc.user_id = u.id
             WHERE uc.user_id != ?
@@ -804,6 +924,14 @@ if ($action === 'get_targets') {
         ");
         $stmt->execute([$me['id']]);
         $targets = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 各ターゲットの軍事力と装備バフを計算
+        foreach ($targets as &$target) {
+            $targetPowerData = calculateTotalMilitaryPower($pdo, $target['user_id']);
+            $target['military_power'] = $targetPowerData['total_power'];
+            $target['equipment_buffs'] = $targetPowerData['equipment_buffs'];
+        }
+        unset($target);
         
         // 自分の軍事力も取得して返す
         $myPowerData = calculateTotalMilitaryPower($pdo, $me['id']);
@@ -1070,6 +1198,42 @@ if ($action === 'train_troops') {
             throw new Exception('この兵種はまだ利用できません');
         }
         
+        // 前提建物チェック
+        if (!empty($troopType['prerequisite_building_id'])) {
+            $stmt = $pdo->prepare("
+                SELECT COUNT(*) FROM user_civilization_buildings ucb
+                WHERE ucb.user_id = ? AND ucb.building_type_id = ? AND ucb.is_constructing = FALSE
+            ");
+            $stmt->execute([$me['id'], $troopType['prerequisite_building_id']]);
+            $hasPrereqBuilding = (int)$stmt->fetchColumn() > 0;
+            
+            if (!$hasPrereqBuilding) {
+                // 前提建物名を取得
+                $stmt = $pdo->prepare("SELECT name FROM civilization_building_types WHERE id = ?");
+                $stmt->execute([$troopType['prerequisite_building_id']]);
+                $prereqName = $stmt->fetchColumn() ?: '必要な建物';
+                throw new Exception("「{$prereqName}」を先に建設してください");
+            }
+        }
+        
+        // 前提研究チェック
+        if (!empty($troopType['prerequisite_research_id'])) {
+            $stmt = $pdo->prepare("
+                SELECT COUNT(*) FROM user_civilization_researches
+                WHERE user_id = ? AND research_id = ? AND is_completed = TRUE
+            ");
+            $stmt->execute([$me['id'], $troopType['prerequisite_research_id']]);
+            $hasPrereqResearch = (int)$stmt->fetchColumn() > 0;
+            
+            if (!$hasPrereqResearch) {
+                // 前提研究名を取得
+                $stmt = $pdo->prepare("SELECT name FROM civilization_researches WHERE id = ?");
+                $stmt->execute([$troopType['prerequisite_research_id']]);
+                $prereqName = $stmt->fetchColumn() ?: '必要な研究';
+                throw new Exception("「{$prereqName}」を先に研究してください");
+            }
+        }
+        
         // コストを計算
         $totalCoinCost = $troopType['train_cost_coins'] * $count;
         $resourceCosts = json_decode($troopType['train_cost_resources'], true) ?: [];
@@ -1148,16 +1312,59 @@ if ($action === 'get_troops') {
     try {
         $civ = getUserCivilization($pdo, $me['id']);
         
+        // ユーザーの建物を取得（前提条件チェック用）
+        $stmt = $pdo->prepare("
+            SELECT building_type_id FROM user_civilization_buildings 
+            WHERE user_id = ? AND is_constructing = FALSE
+        ");
+        $stmt->execute([$me['id']]);
+        $userBuildingIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        // ユーザーの研究を取得（前提条件チェック用）
+        $stmt = $pdo->prepare("
+            SELECT research_id FROM user_civilization_researches 
+            WHERE user_id = ? AND is_completed = TRUE
+        ");
+        $stmt->execute([$me['id']]);
+        $userResearchIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
         // 利用可能な兵種
         $stmt = $pdo->prepare("
-            SELECT tt.*, e.name as era_name
+            SELECT tt.*, e.name as era_name,
+                   prereq_b.name as prerequisite_building_name,
+                   prereq_r.name as prerequisite_research_name
             FROM civilization_troop_types tt
             LEFT JOIN civilization_eras e ON tt.unlock_era_id = e.id
+            LEFT JOIN civilization_building_types prereq_b ON tt.prerequisite_building_id = prereq_b.id
+            LEFT JOIN civilization_researches prereq_r ON tt.prerequisite_research_id = prereq_r.id
             WHERE tt.unlock_era_id IS NULL OR tt.unlock_era_id <= ?
             ORDER BY tt.unlock_era_id, tt.id
         ");
         $stmt->execute([$civ['current_era_id']]);
         $availableTroops = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 各兵種の前提条件をチェック
+        foreach ($availableTroops as &$troop) {
+            $troop['can_train'] = true;
+            $troop['missing_prerequisites'] = [];
+            
+            // 前提建物チェック
+            if (!empty($troop['prerequisite_building_id'])) {
+                if (!in_array($troop['prerequisite_building_id'], $userBuildingIds)) {
+                    $troop['can_train'] = false;
+                    $troop['missing_prerequisites'][] = "🏗️ " . ($troop['prerequisite_building_name'] ?? '必要な建物');
+                }
+            }
+            
+            // 前提研究チェック
+            if (!empty($troop['prerequisite_research_id'])) {
+                if (!in_array($troop['prerequisite_research_id'], $userResearchIds)) {
+                    $troop['can_train'] = false;
+                    $troop['missing_prerequisites'][] = "📚 " . ($troop['prerequisite_research_name'] ?? '必要な研究');
+                }
+            }
+        }
+        unset($troop);
         
         // ユーザーの兵士
         $stmt = $pdo->prepare("

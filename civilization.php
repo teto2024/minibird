@@ -864,10 +864,19 @@ function renderApp() {
                             <span style="color: #ffd700; font-weight: bold;" id="myTroopPower">${civ.troop_power || 0}</span>
                         </div>
                         <div>
+                            <span style="color: #888;">⚔️ 装備:</span>
+                            <span style="color: #9932cc; font-weight: bold;" id="myEquipmentPower">${civData.military_power_breakdown?.equipment_power || 0}</span>
+                        </div>
+                        <div>
+                            <span style="color: #888;">🛡️ アーマー:</span>
+                            <span style="color: #87ceeb; font-weight: bold;" id="myArmor">${Math.floor(civData.military_power_breakdown?.equipment_buffs?.armor || 0)}</span>
+                        </div>
+                        <div>
                             <span style="color: #888;">⚔️ 合計:</span>
                             <span style="color: #ff6b6b; font-weight: bold; font-size: 1.2em;" id="myTotalPower">${civ.military_power || 0}</span>
                         </div>
                     </div>
+                    <p style="color: #888; font-size: 11px; margin-top: 10px;">💡 装備のバフ（攻撃力・体力・アーマー）が戦闘力に影響します。アーマーは敵の攻撃を軽減します。</p>
                 </div>
                 <p style="color: #c0a080; margin-bottom: 20px;">軍事施設を建設して軍事力を上げ、他の文明から資源を略奪しましょう！</p>
                 <div class="targets-list" id="targetsList">
@@ -1019,8 +1028,18 @@ function renderBuildingsGrid(availableBuildings, ownedBuildings, resources) {
             statusClass = 'owned';
         }
         
+        // 前提条件表示
+        const canBuild = bt.can_build !== false;
+        const missingPrereqs = bt.missing_prerequisites || [];
+        const prereqText = missingPrereqs.length > 0 
+            ? `<div style="color: #ff6b6b; font-size: 12px; margin-bottom: 10px;">🔒 必要: ${missingPrereqs.join(', ')}</div>` 
+            : '';
+        
+        // 建設不可の場合はスタイルを変更
+        const lockedClass = !canBuild ? 'locked' : '';
+        
         return `
-            <div class="building-card ${statusClass}">
+            <div class="building-card ${statusClass} ${lockedClass}" style="${!canBuild ? 'opacity: 0.7;' : ''}">
                 <div class="building-header">
                     <span class="building-icon">${bt.icon}</span>
                     <span class="building-name">${bt.name}</span>
@@ -1033,10 +1052,11 @@ function renderBuildingsGrid(availableBuildings, ownedBuildings, resources) {
                     ${bt.military_power > 0 ? `<span class="building-stat">⚔️ +${bt.military_power}</span>` : ''}
                 </div>
                 <div class="building-cost">${costText} | ⏱️ ${formatTime(bt.base_build_time_seconds)}</div>
+                ${prereqText}
                 ${statusText ? `<div style="color: #ffa500; margin-bottom: 10px;">${statusText}</div>` : ''}
                 ${instantCompleteBtn}
-                <button class="build-btn" onclick="buildBuilding(${bt.id})" ${constructing ? 'disabled' : ''}>
-                    建設する
+                <button class="build-btn" onclick="buildBuilding(${bt.id})" ${constructing || !canBuild ? 'disabled' : ''}>
+                    ${!canBuild ? '🔒 ロック中' : '建設する'}
                 </button>
             </div>
         `;
@@ -1339,19 +1359,44 @@ async function loadTargets() {
         if (data.my_military_power) {
             const myBuildingPower = document.getElementById('myBuildingPower');
             const myTroopPower = document.getElementById('myTroopPower');
+            const myEquipmentPower = document.getElementById('myEquipmentPower');
             const myTotalPower = document.getElementById('myTotalPower');
             if (myBuildingPower) myBuildingPower.textContent = data.my_military_power.building_power || 0;
             if (myTroopPower) myTroopPower.textContent = data.my_military_power.troop_power || 0;
+            if (myEquipmentPower) myEquipmentPower.textContent = data.my_military_power.equipment_power || 0;
             if (myTotalPower) myTotalPower.textContent = data.my_military_power.total_power || 0;
+            
+            // 装備バフを更新
+            const myArmor = document.getElementById('myArmor');
+            if (myArmor && data.my_military_power.equipment_buffs) {
+                myArmor.textContent = Math.floor(data.my_military_power.equipment_buffs.armor || 0);
+            }
         }
         
         if (data.ok && data.targets.length > 0) {
             const myPower = data.my_military_power?.total_power || 0;
+            const myArmor = data.my_military_power?.equipment_buffs?.armor || 0;
+            
             document.getElementById('targetsList').innerHTML = data.targets.map(t => {
                 const targetPower = t.military_power || 0;
-                const powerDiff = myPower - targetPower;
+                const targetArmor = t.equipment_buffs?.armor || 0;
+                
+                // アーマーによる軽減を考慮した有利不利計算
+                // 自分のアーマーは相手の攻撃を軽減、相手のアーマーは自分の攻撃を軽減
+                const myArmorReduction = Math.min(0.5, myArmor / 100);
+                const targetArmorReduction = Math.min(0.5, targetArmor / 100);
+                
+                const myEffectivePower = myPower * (1 - targetArmorReduction);
+                const targetEffectivePower = targetPower * (1 - myArmorReduction);
+                
+                const powerDiff = myEffectivePower - targetEffectivePower;
                 const powerClass = powerDiff > 0 ? 'color: #32cd32;' : (powerDiff < 0 ? 'color: #ff6b6b;' : 'color: #ffd700;');
                 const powerIndicator = powerDiff > 0 ? '✅ 有利' : (powerDiff < 0 ? '⚠️ 不利' : '⚖️ 互角');
+                
+                // 装備バフ表示
+                const equipBuffs = t.equipment_buffs || {};
+                const hasEquipBuffs = (equipBuffs.attack > 0 || equipBuffs.armor > 0 || equipBuffs.health > 0);
+                const equipBuffText = hasEquipBuffs ? `<div style="color: #9932cc; font-size: 11px; margin-bottom: 5px;">⚔️${Math.floor(equipBuffs.attack || 0)} 🛡️${Math.floor(equipBuffs.armor || 0)} ❤️${Math.floor(equipBuffs.health || 0)}</div>` : '';
                 
                 return `
                 <div class="target-card">
@@ -1360,8 +1405,9 @@ async function loadTargets() {
                         <span class="target-power" style="${powerClass}">⚔️ ${targetPower}</span>
                     </div>
                     <div style="color: #888; font-size: 13px; margin-bottom: 5px;">
-                        @${t.handle} | 👥 ${t.population}人
+                        @${escapeHtml(t.handle)} | 👥 ${t.population}人
                     </div>
+                    ${equipBuffText}
                     <div style="font-size: 12px; margin-bottom: 10px; ${powerClass}">
                         ${powerIndicator}
                     </div>
@@ -1402,7 +1448,11 @@ async function loadWarLogs() {
                 const resultText = isWinner ? '勝利' : '敗北';
                 const resultClass = isWinner ? 'color: #32cd32;' : 'color: #ff6b6b;';
                 const actionText = isAttacker ? '攻撃' : '防衛';
-                const opponentName = isAttacker ? (log.defender_civ_name || log.defender_handle) : (log.attacker_civ_name || log.attacker_handle);
+                
+                // 相手の文明名とユーザーハンドルを取得
+                const opponentCivName = isAttacker ? log.defender_civ_name : log.attacker_civ_name;
+                const opponentHandle = isAttacker ? log.defender_handle : log.attacker_handle;
+                const opponentDisplayName = isAttacker ? log.defender_name : log.attacker_name;
                 const battleTime = new Date(log.battle_at).toLocaleString('ja-JP');
                 
                 let lootText = '';
@@ -1426,7 +1476,8 @@ async function loadWarLogs() {
                     </div>
                     <div style="margin-top: 5px; font-size: 13px;">
                         <span style="color: #c0a080;">vs</span> 
-                        <span style="color: #ffd700;">${escapeHtml(opponentName || '不明')}</span>
+                        <span style="color: #ffd700;">${escapeHtml(opponentCivName || '不明の文明')}</span>
+                        <span style="color: #87ceeb; font-size: 12px;">(@${escapeHtml(opponentHandle || '?')})</span>
                     </div>
                     <div style="margin-top: 5px; font-size: 12px; color: #888;">
                         ⚔️ ${log.attacker_power} vs 🛡️ ${log.defender_power}
@@ -1565,8 +1616,15 @@ async function loadTroops() {
                         });
                     }
                     
+                    // 前提条件表示
+                    const canTrain = t.can_train !== false;
+                    const missingPrereqs = t.missing_prerequisites || [];
+                    const prereqText = missingPrereqs.length > 0 
+                        ? `<div style="color: #ff6b6b; font-size: 12px; margin-bottom: 10px;">🔒 必要: ${missingPrereqs.join(', ')}</div>` 
+                        : '';
+                    
                     return `
-                        <div class="target-card" style="border-color: #8b4513;">
+                        <div class="target-card" style="border-color: #8b4513; ${!canTrain ? 'opacity: 0.7;' : ''}">
                             <div class="target-header">
                                 <span class="target-name">${t.icon} ${t.name}</span>
                                 <span class="target-power">×${ownedCount}</span>
@@ -1578,10 +1636,11 @@ async function loadTroops() {
                             <div style="color: #c0a080; font-size: 12px; margin-bottom: 10px;">
                                 ${costText}
                             </div>
+                            ${prereqText}
                             <div style="display: flex; gap: 8px; align-items: center;">
-                                <input type="number" id="troop-count-${t.id}" value="1" min="1" max="100" style="width: 60px; padding: 8px; background: rgba(0,0,0,0.3); border: 1px solid #8b4513; border-radius: 4px; color: #f5deb3;">
-                                <button class="attack-btn" onclick="trainTroops(${t.id})" style="background: linear-gradient(135deg, #8b4513 0%, #d4a574 100%); flex: 1;">
-                                    訓練する
+                                <input type="number" id="troop-count-${t.id}" value="1" min="1" max="100" style="width: 60px; padding: 8px; background: rgba(0,0,0,0.3); border: 1px solid #8b4513; border-radius: 4px; color: #f5deb3;" ${!canTrain ? 'disabled' : ''}>
+                                <button class="attack-btn" onclick="trainTroops(${t.id})" style="background: linear-gradient(135deg, #8b4513 0%, #d4a574 100%); flex: 1;" ${!canTrain ? 'disabled' : ''}>
+                                    ${!canTrain ? '🔒 ロック中' : '訓練する'}
                                 </button>
                             </div>
                         </div>
