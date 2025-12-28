@@ -163,10 +163,10 @@ try {
             
             $stmt = $pdo->prepare("
                 UPDATE users 
-                SET coins = coins + ?, diamonds = diamonds + ?, relay_quest_completions = relay_quest_completions + 1
+                SET coins = coins + ?, crystals = crystals + ?, diamonds = diamonds + ?, relay_quest_completions = relay_quest_completions + 1
                 WHERE id = ?
             ");
-            $stmt->execute([$coins, $diamonds, $user_id]);
+            $stmt->execute([$coins, $crystals, $diamonds, $user_id]);
             
             // リレークエストをリセットして、また最初からプレイできるようにする
             require_once __DIR__ . '/quest_progress.php';

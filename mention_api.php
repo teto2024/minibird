@@ -33,6 +33,7 @@ try {
     $pdo = db();
     
     // ユーザー検索（handle または display_name で前方一致優先）
+    // Note: For better performance, consider adding indexes on handle and display_name columns
     $stmt = $pdo->prepare("
         SELECT id, handle, display_name, icon
         FROM users

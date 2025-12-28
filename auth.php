@@ -98,6 +98,7 @@ if ($action === 'register') {
   $uid = $pdo->lastInsertId();
   
   // 新規登録時の歓迎メッセージをお知らせbot(id=5)から投稿
+  $safe_handle = htmlspecialchars($handle, ENT_QUOTES, 'UTF-8');
   $welcome_content = "@{$handle} さん、MiniBirdへようこそ！🐦\n\n新しい仲間が増えました！みなさん、よろしくお願いします✨\n\n使い方がわからないときは[使い方ページ](how_to.php)を見てくださいね！";
   $welcome_html = $welcome_content; // 簡易的にそのまま保存
   $bot_id = 5;

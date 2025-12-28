@@ -542,7 +542,7 @@ class MentionAutocomplete {
         clearTimeout(this.searchTimeout);
         this.searchTimeout = setTimeout(async () => {
             try {
-                const res = await fetch(`/mention_api.php?q=${encodeURIComponent(query)}`);
+                const res = await fetch(`./mention_api.php?q=${encodeURIComponent(query)}`);
                 const data = await res.json();
                 
                 if (data.ok && data.users.length > 0) {
