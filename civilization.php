@@ -1891,7 +1891,7 @@ async function loadTargets() {
                     <div style="font-size: 12px; margin-bottom: 10px; ${powerClass}">
                         ${powerIndicator}
                     </div>
-                    <button class="attack-btn" data-target-id="${parseInt(t.user_id)}" data-target-name="${escapeHtml(t.civilization_name)}" data-target-power="${parseInt(targetPower)}">
+                    <button class="attack-btn" data-target-id="${Number(t.user_id) || 0}" data-target-name="${escapeHtml(t.civilization_name)}" data-target-power="${Number(targetPower) || 0}">
                         ⚔️ 攻撃する
                     </button>
                 </div>
@@ -1900,10 +1900,15 @@ async function loadTargets() {
             // 攻撃ボタンにイベントリスナーを追加
             document.querySelectorAll('.attack-btn[data-target-id]').forEach(btn => {
                 btn.addEventListener('click', () => {
+                    const targetId = Number(btn.dataset.targetId) || 0;
+                    if (targetId <= 0) {
+                        showNotification('攻撃対象の情報が正しくありません', true);
+                        return;
+                    }
                     openAttackModal(
-                        parseInt(btn.dataset.targetId),
-                        btn.dataset.targetName,
-                        parseInt(btn.dataset.targetPower)
+                        targetId,
+                        btn.dataset.targetName || '不明',
+                        Number(btn.dataset.targetPower) || 0
                     );
                 });
             });

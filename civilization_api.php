@@ -1878,6 +1878,11 @@ if ($action === 'attack_with_troops') {
     $targetUserId = (int)($input['target_user_id'] ?? 0);
     $troops = $input['troops'] ?? []; // [{troop_type_id: 1, count: 10}, ...]
     
+    if ($targetUserId <= 0) {
+        echo json_encode(['ok' => false, 'error' => '攻撃対象が指定されていません']);
+        exit;
+    }
+    
     if ($targetUserId === $me['id']) {
         echo json_encode(['ok' => false, 'error' => '自分を攻撃することはできません']);
         exit;
@@ -1890,6 +1895,13 @@ if ($action === 'attack_with_troops') {
     
     $pdo->beginTransaction();
     try {
+        // 対象ユーザーが存在するか確認
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE id = ?");
+        $stmt->execute([$targetUserId]);
+        if (!$stmt->fetch()) {
+            throw new Exception('攻撃対象のユーザーが存在しません');
+        }
+        
         // 攻撃者の文明
         $myCiv = getUserCivilization($pdo, $me['id']);
         
