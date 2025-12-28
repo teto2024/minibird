@@ -1207,9 +1207,13 @@ if ($action === 'get_conquest_battle_turn_logs') {
 // ===============================================
 // 砲撃システム定数
 // ===============================================
-define('CONQUEST_BOMBARDMENT_INTERVAL_MINUTES', 30);  // 砲撃間隔（分）
-define('CONQUEST_BOMBARDMENT_BASE_RATE', 0.05);       // 基本損失率（5%）
-define('CONQUEST_BOMBARDMENT_COST_FACTOR', 0.0001);   // コストによる損失軽減係数
+define('CONQUEST_BOMBARDMENT_INTERVAL_MINUTES', 30);     // 砲撃間隔（分）
+define('CONQUEST_BOMBARDMENT_BASE_RATE', 0.05);          // 基本損失率（5%）
+define('CONQUEST_BOMBARDMENT_COST_FACTOR', 0.0001);      // コストによる損失軽減係数
+define('CONQUEST_BOMBARDMENT_MAX_COST_REDUCTION', 0.04); // コストによる最大軽減率
+define('CONQUEST_BOMBARDMENT_MIN_LOSS_RATE', 0.01);      // 最低損失率（1%）
+define('CONQUEST_BOMBARDMENT_VARIANCE_RANGE', 20);       // 乱数変動幅（±%）
+define('CONQUEST_BOMBARDMENT_WARNING_MINUTES', 5);       // 警告表示開始（分）
 
 /**
  * 砲撃を処理する関数
@@ -1261,12 +1265,13 @@ function processBombardment($pdo, $castleId, $seasonId) {
     foreach ($defenseTroops as $troop) {
         // コストに基づく損失率計算
         // 低コスト兵ほど損失率が高い（基本5%から、コストが高いほど軽減）
-        $costFactor = min(0.04, $troop['train_cost_coins'] * CONQUEST_BOMBARDMENT_COST_FACTOR);
-        $lossRate = max(0.01, CONQUEST_BOMBARDMENT_BASE_RATE - $costFactor); // 最低1%、最大5%
+        $costFactor = min(CONQUEST_BOMBARDMENT_MAX_COST_REDUCTION, $troop['train_cost_coins'] * CONQUEST_BOMBARDMENT_COST_FACTOR);
+        $lossRate = max(CONQUEST_BOMBARDMENT_MIN_LOSS_RATE, CONQUEST_BOMBARDMENT_BASE_RATE - $costFactor);
         
         // 負傷兵数を計算（乱数幅を持たせる）
         $baseWounded = (int)floor($troop['count'] * $lossRate);
-        $randomVariance = mt_rand(-20, 20) / 100; // ±20%の変動
+        $varianceRange = CONQUEST_BOMBARDMENT_VARIANCE_RANGE;
+        $randomVariance = mt_rand(-$varianceRange, $varianceRange) / 100;
         $wounded = max(1, (int)floor($baseWounded * (1 + $randomVariance)));
         $wounded = min($wounded, $troop['count']); // 配置数を超えない
         

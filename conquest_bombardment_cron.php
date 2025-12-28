@@ -9,10 +9,26 @@ require_once __DIR__ . '/config.php';
 
 $pdo = db();
 
-// 砲撃システム定数
-define('CONQUEST_BOMBARDMENT_INTERVAL_MINUTES', 30);  // 砲撃間隔（分）
-define('CONQUEST_BOMBARDMENT_BASE_RATE', 0.05);       // 基本損失率（5%）
-define('CONQUEST_BOMBARDMENT_COST_FACTOR', 0.0001);   // コストによる損失軽減係数
+// conquest_api.phpから砲撃定数と関数を読み込む
+// 定数はすでに定義されている場合はスキップ
+if (!defined('CONQUEST_BOMBARDMENT_INTERVAL_MINUTES')) {
+    define('CONQUEST_BOMBARDMENT_INTERVAL_MINUTES', 30);
+}
+if (!defined('CONQUEST_BOMBARDMENT_BASE_RATE')) {
+    define('CONQUEST_BOMBARDMENT_BASE_RATE', 0.05);
+}
+if (!defined('CONQUEST_BOMBARDMENT_COST_FACTOR')) {
+    define('CONQUEST_BOMBARDMENT_COST_FACTOR', 0.0001);
+}
+if (!defined('CONQUEST_BOMBARDMENT_MAX_COST_REDUCTION')) {
+    define('CONQUEST_BOMBARDMENT_MAX_COST_REDUCTION', 0.04);
+}
+if (!defined('CONQUEST_BOMBARDMENT_MIN_LOSS_RATE')) {
+    define('CONQUEST_BOMBARDMENT_MIN_LOSS_RATE', 0.01);
+}
+if (!defined('CONQUEST_BOMBARDMENT_VARIANCE_RANGE')) {
+    define('CONQUEST_BOMBARDMENT_VARIANCE_RANGE', 20);
+}
 
 /**
  * アクティブなシーズンを取得
@@ -25,8 +41,9 @@ function getActiveSeason($pdo) {
 
 /**
  * 砲撃を処理する関数
+ * conquest_api.phpと同じロジックを使用
  */
-function processBombardment($pdo, $castleId, $seasonId) {
+function processBombardmentCron($pdo, $castleId, $seasonId) {
     // 城の情報を取得
     $stmt = $pdo->prepare("
         SELECT cc.*, 
@@ -70,12 +87,13 @@ function processBombardment($pdo, $castleId, $seasonId) {
     
     foreach ($defenseTroops as $troop) {
         // コストに基づく損失率計算
-        $costFactor = min(0.04, $troop['train_cost_coins'] * CONQUEST_BOMBARDMENT_COST_FACTOR);
-        $lossRate = max(0.01, CONQUEST_BOMBARDMENT_BASE_RATE - $costFactor);
+        $costFactor = min(CONQUEST_BOMBARDMENT_MAX_COST_REDUCTION, $troop['train_cost_coins'] * CONQUEST_BOMBARDMENT_COST_FACTOR);
+        $lossRate = max(CONQUEST_BOMBARDMENT_MIN_LOSS_RATE, CONQUEST_BOMBARDMENT_BASE_RATE - $costFactor);
         
         // 負傷兵数を計算
         $baseWounded = (int)floor($troop['count'] * $lossRate);
-        $randomVariance = mt_rand(-20, 20) / 100;
+        $varianceRange = CONQUEST_BOMBARDMENT_VARIANCE_RANGE;
+        $randomVariance = mt_rand(-$varianceRange, $varianceRange) / 100;
         $wounded = max(1, (int)floor($baseWounded * (1 + $randomVariance)));
         $wounded = min($wounded, $troop['count']);
         
@@ -204,7 +222,7 @@ try {
     $totalWounded = 0;
     
     foreach ($castles as $castle) {
-        $result = processBombardment($pdo, $castle['id'], $season['id']);
+        $result = processBombardmentCron($pdo, $castle['id'], $season['id']);
         if ($result['ok']) {
             $processedCount++;
             $totalWounded += $result['total_wounded'];
