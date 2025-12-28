@@ -430,11 +430,11 @@ if ($action === 'get_season') {
         // ユーザーが所有する城を取得
         $stmt = $pdo->prepare("SELECT id FROM conquest_castles WHERE season_id = ? AND owner_user_id = ?");
         $stmt->execute([$season['id'], $me['id']]);
-        $ownedCastleIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $ownedCastleIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
         
         // 攻撃可能な城を取得
         $attackableCastles = getAttackableCastles($pdo, $me['id'], $season['id']);
-        $attackableCastleIds = array_column($attackableCastles, 'id');
+        $attackableCastleIds = array_map('intval', array_column($attackableCastles, 'id'));
         
         // 残り時間を計算
         $remainingSeconds = max(0, strtotime($season['ends_at']) - time());
@@ -892,9 +892,8 @@ if ($action === 'get_ranking') {
 
 // シーズンをリセット（管理者のみ）
 if ($action === 'reset_season') {
-    // 管理者チェック（型を考慮した比較: 1, '1', true などを許容）
-    $isAdmin = !empty($me['is_admin']) && in_array($me['is_admin'], [1, '1', true], true);
-    if (!$isAdmin) {
+    // 管理者チェック（is_adminがtruthy値であればOK）
+    if (empty($me['is_admin'])) {
         echo json_encode(['ok' => false, 'error' => '管理者のみ実行できます']);
         exit;
     }

@@ -993,6 +993,9 @@ function updateAttackPowerDisplay() {
 async function confirmAttack() {
     if (!selectedAttackTarget) return;
     
+    // 攻撃対象を先に保存（closeAttackModalでnullになるため）
+    const targetUserId = selectedAttackTarget;
+    
     // 選択した部隊を収集
     const troops = [];
     document.querySelectorAll('[id^="attack-count-"]').forEach(input => {
@@ -1019,7 +1022,7 @@ async function confirmAttack() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 action: 'attack_with_troops',
-                target_user_id: selectedAttackTarget,
+                target_user_id: targetUserId,
                 troops: troops
             })
         });
