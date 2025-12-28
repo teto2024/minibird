@@ -19,6 +19,7 @@ try {
     // パラメータ
     $since_id = isset($_GET['since_id']) ? (int)$_GET['since_id'] : 0;
     $limit = min(isset($_GET['limit']) ? (int)$_GET['limit'] : 50, 100);
+    $type_filter = isset($_GET['type']) ? trim($_GET['type']) : '';
 
     // 通知取得SQL（handleも取得、from_user_idも対応）
     $sql = "
@@ -40,6 +41,18 @@ try {
     if ($since_id > 0) {
         $sql .= " AND n.id > ? ";
         $params[] = $since_id;
+    }
+
+    // タイプフィルタリング
+    $valid_types = ['like', 'repost', 'quote', 'boost', 'reply', 'mention', 'community'];
+    if ($type_filter !== '' && in_array($type_filter, $valid_types)) {
+        if ($type_filter === 'community') {
+            // コミュニティ関連通知をまとめてフィルタ
+            $sql .= " AND n.type IN ('community_like', 'community_reply', 'community_mention') ";
+        } else {
+            $sql .= " AND n.type = ? ";
+            $params[] = $type_filter;
+        }
     }
 
     // LIMIT は直接埋め込み（MariaDB対応）
@@ -96,7 +109,7 @@ try {
             "actor" => [
                 "id" => (int)$r['actor_id_resolved'],
                 "display_name" => $r['actor_name'] ?: $r['actor_handle'],
-                "icon" => $r['actor_icon'] ?: '/default_icon.png'
+                "icon" => $r['actor_icon'] ?: '/uploads/icons/default_icon.png'
             ],
             "post" => $actual_post_id ? [
                 "id" => (int)$actual_post_id,
