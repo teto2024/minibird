@@ -190,10 +190,8 @@ function sendConquestAnnouncement($pdo, $castleName, $castleType, $playerHandle 
     // メッセージを生成
     if ($isNpcCapture) {
         $content = "NPCが{$castleName}を占領しました！";
-        $exclamation = "";
     } else {
         $content = "@{$playerHandle}が{$castleName}を占領しました！破竹の勢い！！";
-        $exclamation = "";
     }
     
     // お知らせbotとして投稿
@@ -427,7 +425,7 @@ function generateConquestMap($pdo, $seasonId) {
         }
     }
     
-    // 城を挿入（耐久度カラムがある場合は含める）
+    // 城を挿入（耐久度カラムを含む - conquest_durability_schema.sql の適用が必要）
     $stmt = $pdo->prepare("
         INSERT INTO conquest_castles (season_id, castle_key, name, position_x, position_y, castle_type, is_sacred, npc_defense_power, icon, durability, max_durability)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
