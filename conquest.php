@@ -816,13 +816,63 @@ function renderCastleDetail(data) {
         `;
     }
     
+    // 砲撃状況（占領者がいる場合）
+    if (castle.owner_user_id && data.bombardment_status) {
+        const bombStatus = data.bombardment_status;
+        const minutesUntil = bombStatus.minutes_until_next || 0;
+        const warningClass = minutesUntil <= 5 ? 'style="color: #ff6b6b;"' : '';
+        html += `
+            <div class="castle-detail-section" style="background: linear-gradient(135deg, rgba(255, 100, 0, 0.2) 0%, rgba(139, 0, 0, 0.2) 100%); border: 1px solid #ff6b00;">
+                <h4>💥 砲撃状況</h4>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="color: #888; font-size: 11px;">次の砲撃まで</div>
+                        <div ${warningClass} style="font-size: 18px; font-weight: bold;">
+                            ${minutesUntil > 0 ? `${minutesUntil}分` : '間もなく発生'}
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="color: #888; font-size: 11px;">最終砲撃</div>
+                        <div style="font-size: 12px;">
+                            ${bombStatus.last_bombardment_at ? new Date(bombStatus.last_bombardment_at).toLocaleString('ja-JP') : '未発生'}
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top: 10px; font-size: 11px; color: #888;">
+                    💡 砲撃は${bombStatus.interval_minutes}分おきに発生し、配置した兵士が負傷します。低コスト兵ほど被害が大きくなります。
+                </div>
+            </div>
+        `;
+    }
+    
     // 最近の戦闘
     if (data.recent_battles && data.recent_battles.length > 0) {
         html += `
             <div class="castle-detail-section">
-                <h4>📜 最近の戦闘</h4>
+                <h4>📜 最近の戦闘・砲撃</h4>
                 <div style="max-height: 200px; overflow-y: auto;">
                     ${data.recent_battles.map(battle => {
+                        const logType = battle.log_type || 'battle';
+                        
+                        // 砲撃ログの場合
+                        if (logType === 'bombardment') {
+                            return `
+                                <div class="battle-log-item" style="border-left: 3px solid #ff6b00; background: rgba(255, 100, 0, 0.1);">
+                                    <div style="display: flex; justify-content: space-between;">
+                                        <span style="color: #ff6b00;">💥 砲撃被害</span>
+                                        <span style="color: #888; font-size: 11px;">${new Date(battle.battle_at).toLocaleString('ja-JP')}</span>
+                                    </div>
+                                    <div style="margin-top: 5px; font-size: 12px; color: #ff6b6b;">
+                                        負傷兵: ${battle.total_turns}体
+                                    </div>
+                                    <button onclick="showConquestBattleLogs(${battle.id})" style="margin-top: 5px; padding: 3px 8px; background: linear-gradient(135deg, #ff6b00 0%, #ff8c00 100%); color: #fff; border: none; border-radius: 4px; font-size: 10px; cursor: pointer;">
+                                        📜 詳細
+                                    </button>
+                                </div>
+                            `;
+                        }
+                        
+                        // 通常の戦闘ログ
                         const isWin = battle.castle_captured;
                         const totalTurns = battle.total_turns || 0;
                         const turnsText = totalTurns > 0 ? `<span style="color: #87ceeb; font-size: 10px; margin-left: 5px;">⚡${totalTurns}ターン</span>` : '';
