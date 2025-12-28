@@ -667,6 +667,172 @@ body {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* 攻撃モーダル */
+.attack-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.attack-modal-overlay.active {
+    display: flex;
+}
+
+.attack-modal {
+    background: linear-gradient(135deg, #1a0f0a 0%, #2d1810 100%);
+    border-radius: 16px;
+    padding: 25px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    border: 2px solid #8b4513;
+}
+
+.attack-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.attack-modal-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #ffd700;
+}
+
+.attack-modal-close {
+    background: none;
+    border: none;
+    color: #c0a080;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.troop-select-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,0.05);
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.troop-select-info {
+    flex: 1;
+    min-width: 120px;
+}
+
+.troop-select-icon {
+    font-size: 20px;
+}
+
+.troop-select-name {
+    color: #f5deb3;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.troop-select-stats {
+    font-size: 11px;
+    color: #a08060;
+}
+
+.troop-select-slider {
+    width: 100px;
+    -webkit-appearance: none;
+    height: 8px;
+    border-radius: 4px;
+    background: #8b4513;
+}
+
+.troop-select-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ffd700;
+    cursor: pointer;
+}
+
+.troop-select-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ffd700;
+    cursor: pointer;
+    border: none;
+}
+
+.troop-select-count {
+    width: 60px;
+    padding: 8px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid #8b4513;
+    border-radius: 6px;
+    color: #f5deb3;
+    text-align: center;
+}
+
+.troop-select-count:focus {
+    border-color: #ffd700;
+    outline: none;
+}
+
+.troop-select-max {
+    font-size: 11px;
+    color: #888;
+    min-width: 50px;
+    text-align: right;
+}
+
+.attack-power-display {
+    background: rgba(0,0,0,0.3);
+    padding: 15px;
+    border-radius: 10px;
+    margin: 15px 0;
+    text-align: center;
+}
+
+.attack-power-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ff6b6b;
+}
+
+.attack-confirm-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #8b0000 0%, #dc143c 100%);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.attack-confirm-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(220, 20, 60, 0.5);
+}
+
+.attack-confirm-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
 </style>
 </head>
 <body>
@@ -678,6 +844,25 @@ body {
     </div>
 </div>
 
+<!-- 攻撃部隊選択モーダル -->
+<div class="attack-modal-overlay" id="attackModal">
+    <div class="attack-modal">
+        <div class="attack-modal-header">
+            <h3 class="attack-modal-title">⚔️ 出撃部隊を選択</h3>
+            <button class="attack-modal-close" onclick="closeAttackModal()">×</button>
+        </div>
+        <div id="attackModalTarget"></div>
+        <div id="attackTroopSelector"></div>
+        <div class="attack-power-display">
+            <div>出撃パワー</div>
+            <div class="attack-power-value" id="attackPowerDisplay">0</div>
+        </div>
+        <button class="attack-confirm-btn" id="confirmAttackBtn" onclick="confirmAttack()">
+            ⚔️ 攻撃開始
+        </button>
+    </div>
+</div>
+
 <script>
 // 戦闘計算用定数（サーバーサイドと同期）
 const CIV_ARMOR_MAX_REDUCTION = 0.5;    // アーマーによる最大ダメージ軽減率（50%）
@@ -686,6 +871,181 @@ const CIV_ADVANTAGE_DISPLAY_THRESHOLD = 0.05; // 相性表示の閾値（±5%）
 
 let civData = null;
 let currentTab = 'buildings'; // 現在のアクティブタブを保持
+let selectedAttackTarget = null; // 攻撃対象のユーザーID
+let userTroops = []; // ユーザーの兵士データ
+
+// 攻撃モーダルを開く
+function openAttackModal(targetUserId, targetCivName, targetPower) {
+    selectedAttackTarget = targetUserId;
+    
+    // モーダルを表示
+    document.getElementById('attackModal').classList.add('active');
+    
+    // ターゲット情報を表示
+    document.getElementById('attackModalTarget').innerHTML = `
+        <div style="background: rgba(139, 0, 0, 0.3); padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+            <div style="color: #ff6b6b; font-weight: bold;">攻撃対象: ${escapeHtml(targetCivName)}</div>
+            <div style="color: #888; font-size: 12px; margin-top: 5px;">防御力: ⚔️ ${targetPower}</div>
+        </div>
+    `;
+    
+    // 兵士データを読み込んで表示
+    loadAttackTroops();
+}
+
+// 攻撃モーダルを閉じる
+function closeAttackModal() {
+    document.getElementById('attackModal').classList.remove('active');
+    selectedAttackTarget = null;
+}
+
+// 攻撃用兵士を読み込む
+async function loadAttackTroops() {
+    const container = document.getElementById('attackTroopSelector');
+    container.innerHTML = '<div class="loading">兵士を読み込み中...</div>';
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_troops'})
+        });
+        const data = await res.json();
+        
+        if (data.ok && data.user_troops && data.user_troops.filter(t => t.count > 0).length > 0) {
+            userTroops = data.user_troops.filter(t => t.count > 0);
+            
+            container.innerHTML = userTroops.map(troop => `
+                <div class="troop-select-row">
+                    <div class="troop-select-info">
+                        <span class="troop-select-icon">${troop.icon}</span>
+                        <span class="troop-select-name">${troop.name}</span>
+                        <div class="troop-select-stats">⚔️${troop.attack_power} 🛡️${troop.defense_power}</div>
+                    </div>
+                    <input type="range" class="troop-select-slider" 
+                           id="attack-slider-${parseInt(troop.troop_type_id)}"
+                           min="0" max="${parseInt(troop.count)}" value="0"
+                           data-troop-id="${parseInt(troop.troop_type_id)}"
+                           data-attack="${parseInt(troop.attack_power)}"
+                           data-defense="${parseInt(troop.defense_power)}"
+                           oninput="syncAttackTroopInput(${parseInt(troop.troop_type_id)}, this.value)">
+                    <input type="number" class="troop-select-count" 
+                           id="attack-count-${parseInt(troop.troop_type_id)}"
+                           min="0" max="${parseInt(troop.count)}" value="0"
+                           data-troop-id="${parseInt(troop.troop_type_id)}"
+                           oninput="syncAttackTroopSlider(${parseInt(troop.troop_type_id)}, this.value)">
+                    <span class="troop-select-max">/ ${parseInt(troop.count)}</span>
+                </div>
+            `).join('');
+            
+            updateAttackPowerDisplay();
+        } else {
+            container.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">兵士がいません。兵士タブで兵士を訓練してください。</p>';
+        }
+    } catch (e) {
+        container.innerHTML = '<p style="color: #ff6b6b; text-align: center;">兵士の読み込みに失敗しました</p>';
+    }
+}
+
+// スライダーと数値入力を同期
+function syncAttackTroopInput(troopId, value) {
+    const countInput = document.getElementById(`attack-count-${troopId}`);
+    if (countInput) {
+        countInput.value = value;
+    }
+    updateAttackPowerDisplay();
+}
+
+function syncAttackTroopSlider(troopId, value) {
+    const slider = document.getElementById(`attack-slider-${troopId}`);
+    if (slider) {
+        const max = parseInt(slider.max);
+        let val = parseInt(value) || 0;
+        val = Math.max(0, Math.min(max, val));
+        slider.value = val;
+        document.getElementById(`attack-count-${troopId}`).value = val;
+    }
+    updateAttackPowerDisplay();
+}
+
+// 攻撃パワーを計算・表示
+function updateAttackPowerDisplay() {
+    let totalPower = 0;
+    
+    document.querySelectorAll('[id^="attack-count-"]').forEach(input => {
+        const count = parseInt(input.value) || 0;
+        const troopId = input.dataset.troopId;
+        if (count > 0 && troopId) {
+            const slider = document.getElementById(`attack-slider-${troopId}`);
+            if (slider) {
+                const attack = parseInt(slider.dataset.attack) || 0;
+                const defense = parseInt(slider.dataset.defense) || 0;
+                totalPower += (attack + Math.floor(defense / 2)) * count;
+            }
+        }
+    });
+    
+    document.getElementById('attackPowerDisplay').textContent = totalPower;
+    document.getElementById('confirmAttackBtn').disabled = totalPower === 0;
+}
+
+// 攻撃を実行
+async function confirmAttack() {
+    if (!selectedAttackTarget) return;
+    
+    // 選択した部隊を収集
+    const troops = [];
+    document.querySelectorAll('[id^="attack-count-"]').forEach(input => {
+        const count = parseInt(input.value) || 0;
+        const troopId = input.dataset.troopId;
+        if (count > 0 && troopId) {
+            troops.push({
+                troop_type_id: parseInt(troopId),
+                count: count
+            });
+        }
+    });
+    
+    if (troops.length === 0) {
+        showNotification('出撃部隊を選択してください', true);
+        return;
+    }
+    
+    closeAttackModal();
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                action: 'attack_with_troops',
+                target_user_id: selectedAttackTarget,
+                troops: troops
+            })
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            const isVictory = data.result === 'victory';
+            showNotification(data.message, !isVictory);
+            loadData();
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// 攻撃モーダルの外側クリックで閉じる
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('attackModal');
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeAttackModal();
+        }
+    });
+});
 
 // 初期データ読み込み
 async function loadData() {
@@ -1531,11 +1891,22 @@ async function loadTargets() {
                     <div style="font-size: 12px; margin-bottom: 10px; ${powerClass}">
                         ${powerIndicator}
                     </div>
-                    <button class="attack-btn" onclick="attack(${t.user_id})">
-                        攻撃する
+                    <button class="attack-btn" data-target-id="${parseInt(t.user_id)}" data-target-name="${escapeHtml(t.civilization_name)}" data-target-power="${parseInt(targetPower)}">
+                        ⚔️ 攻撃する
                     </button>
                 </div>
             `}).join('');
+            
+            // 攻撃ボタンにイベントリスナーを追加
+            document.querySelectorAll('.attack-btn[data-target-id]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    openAttackModal(
+                        parseInt(btn.dataset.targetId),
+                        btn.dataset.targetName,
+                        parseInt(btn.dataset.targetPower)
+                    );
+                });
+            });
         } else {
             document.getElementById('targetsList').innerHTML = '<p style="color: #888;">攻撃可能な文明がありません</p>';
         }
@@ -2377,11 +2748,76 @@ async function checkCompletions() {
 
 // 定期的にデータを更新（10秒ごとにカウントダウンを更新し、完了チェック）
 let updateInterval = null;
+let isUserInteracting = false;
+let interactionTimeout = null;
+
+// ユーザー操作検出用のフラグを設定
+function setUserInteracting() {
+    isUserInteracting = true;
+    
+    // 既存のタイムアウトをクリア
+    if (interactionTimeout) {
+        clearTimeout(interactionTimeout);
+    }
+    
+    // 2秒間操作がなければフラグを解除
+    interactionTimeout = setTimeout(() => {
+        isUserInteracting = false;
+    }, 2000);
+}
+
+// スクロールイベントのスロットリング
+let scrollThrottleTimer = null;
+function handleScrollThrottled() {
+    if (!scrollThrottleTimer) {
+        scrollThrottleTimer = setTimeout(() => {
+            setUserInteracting();
+            scrollThrottleTimer = null;
+        }, 100);
+    }
+}
+
+// ユーザー操作イベントを監視
+function setupInteractionListeners() {
+    // 入力フィールドのフォーカスと入力
+    document.addEventListener('focusin', (e) => {
+        if (e.target.matches('input, select, textarea')) {
+            setUserInteracting();
+        }
+    });
+    
+    document.addEventListener('input', (e) => {
+        if (e.target.matches('input, select, textarea')) {
+            setUserInteracting();
+        }
+    });
+    
+    // スクロール操作（スロットリング済み）
+    document.addEventListener('scroll', handleScrollThrottled, true);
+    
+    // スライダー操作
+    document.addEventListener('mousedown', (e) => {
+        if (e.target.matches('input[type="range"]')) {
+            setUserInteracting();
+        }
+    });
+    
+    document.addEventListener('touchstart', (e) => {
+        if (e.target.matches('input[type="range"], input[type="number"]')) {
+            setUserInteracting();
+        }
+    }, { passive: true });
+}
 
 function startUpdateTimer() {
     if (updateInterval) clearInterval(updateInterval);
     
     updateInterval = setInterval(() => {
+        // ユーザー操作中は更新をスキップ
+        if (isUserInteracting) {
+            return;
+        }
+        
         // 完了チェック
         checkCompletions();
         
@@ -2395,6 +2831,7 @@ function startUpdateTimer() {
 // 初期読み込み
 loadData();
 startUpdateTimer();
+setupInteractionListeners();
 </script>
 </body>
 </html>

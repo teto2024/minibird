@@ -17,6 +17,14 @@ define('CONQUEST_WOUNDED_RATE', 0.3);                 // 負傷兵発生率（30
 define('CONQUEST_DEATH_RATE', 0.1);                   // 戦死率（10%）
 define('CONQUEST_ATTACKER_BONUS', 1.1);               // 攻撃側ボーナス
 
+// シーズン報酬定数
+// 順位に応じた報酬 [coins, crystals, diamonds]
+define('CONQUEST_REWARD_RANK_1', [10000, 100, 50]);   // 1位報酬
+define('CONQUEST_REWARD_RANK_2', [5000, 50, 20]);     // 2位報酬
+define('CONQUEST_REWARD_RANK_3', [3000, 30, 10]);     // 3位報酬
+define('CONQUEST_REWARD_RANK_4_10', [1000, 10, 5]);   // 4-10位報酬
+define('CONQUEST_REWARD_PARTICIPANT', [500, 5, 1]);   // 参加報酬（11位以下）
+
 header('Content-Type: application/json');
 
 $me = user();
@@ -28,6 +36,77 @@ if (!$me) {
 $pdo = db();
 $input = json_decode(file_get_contents('php://input'), true) ?: [];
 $action = $input['action'] ?? '';
+
+/**
+ * シーズン終了時に報酬を配布する
+ * @param PDO $pdo
+ * @param int $seasonId
+ */
+function distributeSeasonRewards($pdo, $seasonId) {
+    // 既に報酬配布済みかチェック
+    $stmt = $pdo->prepare("SELECT rewards_distributed FROM conquest_seasons WHERE id = ?");
+    $stmt->execute([$seasonId]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($result && $result['rewards_distributed']) {
+        return; // 既に配布済み
+    }
+    
+    // ランキングを取得（城の数でソート、神城所有者が1位）
+    $stmt = $pdo->prepare("
+        SELECT cc.owner_user_id, 
+               COUNT(*) as castle_count,
+               SUM(CASE WHEN cc.is_sacred THEN 1 ELSE 0 END) as sacred_count
+        FROM conquest_castles cc
+        WHERE cc.season_id = ? AND cc.owner_user_id IS NOT NULL
+        GROUP BY cc.owner_user_id
+        ORDER BY sacred_count DESC, castle_count DESC
+    ");
+    $stmt->execute([$seasonId]);
+    $rankings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // 報酬配布
+    foreach ($rankings as $rank => $player) {
+        $userId = $player['owner_user_id'];
+        $rankNum = $rank + 1; // 1-indexed
+        
+        // 順位に応じた報酬を決定
+        if ($rankNum == 1) {
+            $reward = CONQUEST_REWARD_RANK_1;
+        } elseif ($rankNum == 2) {
+            $reward = CONQUEST_REWARD_RANK_2;
+        } elseif ($rankNum == 3) {
+            $reward = CONQUEST_REWARD_RANK_3;
+        } elseif ($rankNum <= 10) {
+            $reward = CONQUEST_REWARD_RANK_4_10;
+        } else {
+            $reward = CONQUEST_REWARD_PARTICIPANT;
+        }
+        
+        $coins = $reward[0];
+        $crystals = $reward[1];
+        $diamonds = $reward[2];
+        
+        // ユーザーに報酬を付与
+        $stmt = $pdo->prepare("
+            UPDATE users 
+            SET coins = coins + ?, crystals = crystals + ?, diamonds = diamonds + ?
+            WHERE id = ?
+        ");
+        $stmt->execute([$coins, $crystals, $diamonds, $userId]);
+        
+        // 報酬ログを記録
+        $stmt = $pdo->prepare("
+            INSERT INTO conquest_season_rewards (season_id, user_id, rank_position, coins_reward, crystals_reward, diamonds_reward, castle_count)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([$seasonId, $userId, $rankNum, $coins, $crystals, $diamonds, $player['castle_count']]);
+    }
+    
+    // 報酬配布済みフラグを設定
+    $stmt = $pdo->prepare("UPDATE conquest_seasons SET rewards_distributed = TRUE WHERE id = ?");
+    $stmt->execute([$seasonId]);
+}
 
 /**
  * 現在のアクティブシーズンを取得（なければ新規作成）
@@ -42,6 +121,9 @@ function getOrCreateActiveSeason($pdo) {
     if (!$season || strtotime($season['ends_at']) < time()) {
         // 古いシーズンを終了
         if ($season) {
+            // 報酬を配布（シーズン終了時）
+            distributeSeasonRewards($pdo, $season['id']);
+            
             $stmt = $pdo->prepare("UPDATE conquest_seasons SET is_active = FALSE WHERE id = ?");
             $stmt->execute([$season['id']]);
             
@@ -106,6 +188,7 @@ function createNewSeason($pdo) {
 function generateConquestMap($pdo, $seasonId) {
     $size = CONQUEST_MAP_SIZE;
     $center = floor($size / 2);
+    $maxDistance = $center; // 中心から端までの最大距離
     
     $castleData = [];
     $castleKeys = [];
@@ -128,13 +211,18 @@ function generateConquestMap($pdo, $seasonId) {
                 $isSacred = true;
                 $npcPower = CONQUEST_SACRED_NPC_POWER;
                 $icon = '⛩️';
-            } else if ($distance == 1) {
-                // 内周
+            } elseif ($distance == 1) {
+                // 内周（神城の周り）
                 $castleType = 'inner';
                 $npcPower = CONQUEST_NPC_BASE_POWER * CONQUEST_NPC_POWER_MULTIPLIER_INNER;
                 $icon = '🏯';
-            } else if ($distance == 2 && $size >= 5) {
-                // 中間（5x5以上の場合）
+            } elseif ($distance == $maxDistance) {
+                // 最外周（外周）- 城を持っていないプレイヤーが最初に攻撃できる
+                $castleType = 'outer';
+                $npcPower = CONQUEST_NPC_BASE_POWER;
+                $icon = '🏰';
+            } else {
+                // 中間（内周と外周の間）
                 $castleType = 'middle';
                 $npcPower = CONQUEST_NPC_BASE_POWER * CONQUEST_NPC_POWER_MULTIPLIER_MIDDLE;
                 $icon = '🏰';
@@ -812,9 +900,34 @@ if ($action === 'reset_season') {
     
     $pdo->beginTransaction();
     try {
-        // 現在のシーズンを終了
-        $stmt = $pdo->prepare("UPDATE conquest_seasons SET is_active = FALSE WHERE is_active = TRUE");
+        // 現在のアクティブシーズンを取得
+        $stmt = $pdo->prepare("SELECT * FROM conquest_seasons WHERE is_active = TRUE ORDER BY id DESC LIMIT 1");
         $stmt->execute();
+        $currentSeason = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($currentSeason) {
+            // 報酬を配布
+            distributeSeasonRewards($pdo, $currentSeason['id']);
+            
+            // 神城を持っていたユーザーを勝者として記録
+            $stmt = $pdo->prepare("
+                SELECT cc.owner_user_id, uc.civilization_name 
+                FROM conquest_castles cc
+                LEFT JOIN user_civilizations uc ON cc.owner_user_id = uc.user_id
+                WHERE cc.season_id = ? AND cc.is_sacred = TRUE
+            ");
+            $stmt->execute([$currentSeason['id']]);
+            $winner = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($winner && $winner['owner_user_id']) {
+                $stmt = $pdo->prepare("UPDATE conquest_seasons SET winner_user_id = ?, winner_civilization_name = ? WHERE id = ?");
+                $stmt->execute([$winner['owner_user_id'], $winner['civilization_name'], $currentSeason['id']]);
+            }
+            
+            // シーズンを終了
+            $stmt = $pdo->prepare("UPDATE conquest_seasons SET is_active = FALSE WHERE id = ?");
+            $stmt->execute([$currentSeason['id']]);
+        }
         
         // 新しいシーズンを作成
         $season = createNewSeason($pdo);
@@ -823,7 +936,7 @@ if ($action === 'reset_season') {
         
         echo json_encode([
             'ok' => true,
-            'message' => '新しいシーズンを開始しました',
+            'message' => '報酬を配布し、新しいシーズンを開始しました',
             'season' => $season
         ]);
     } catch (Exception $e) {

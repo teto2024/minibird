@@ -549,6 +549,7 @@ let seasonData = null;
 let userTroops = [];
 let selectedCastle = null;
 let currentTab = 'map';
+const isAdmin = <?= ($me['is_admin'] ?? 0) ? 'true' : 'false' ?>;
 
 // 初期データ読み込み
 async function loadData() {
@@ -612,6 +613,13 @@ function renderApp() {
                     <div class="season-stat-label">攻撃可能</div>
                 </div>
             </div>
+            ${isAdmin ? `
+                <div style="margin-top: 15px;">
+                    <button class="action-btn" style="background: linear-gradient(135deg, #8b0000 0%, #dc143c 100%); color: #fff;" onclick="adminResetSeason()">
+                        🔄 シーズンリセット（管理者）
+                    </button>
+                </div>
+            ` : ''}
         </div>
         
         <div class="tabs">
@@ -632,7 +640,7 @@ function renderApp() {
                     <li>城を占領すると、隣接する城を攻撃できます</li>
                     <li>中央の神城⛩️を占領した状態でシーズン終了すると勝利</li>
                     <li>占領した城には防御部隊を配置できます</li>
-                    <li>シーズンは毎週月曜日にリセットされます</li>
+                    <li>シーズン終了時、ランキング順位に応じてコイン・クリスタル・ダイヤモンドの報酬を獲得</li>
                 </ul>
             </div>
         </div>
@@ -1136,6 +1144,40 @@ function showNotification(message, isError = false) {
     setTimeout(() => notification.remove(), 4000);
 }
 
+// 管理者用シーズンリセット
+async function adminResetSeason() {
+    if (!isAdmin) {
+        showNotification('管理者権限が必要です', true);
+        return;
+    }
+    
+    if (!confirm('シーズンをリセットしますか？\n\n・現在のシーズンは終了し、報酬が配布されます\n・新しいシーズンが開始されます')) {
+        return;
+    }
+    
+    if (!confirm('本当にリセットしますか？この操作は取り消せません。')) {
+        return;
+    }
+    
+    try {
+        const res = await fetch('conquest_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'reset_season'})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadData();
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
+}
+
 // モーダル外クリックで閉じる
 document.getElementById('castleModal').addEventListener('click', (e) => {
     if (e.target.id === 'castleModal') {
@@ -1143,11 +1185,50 @@ document.getElementById('castleModal').addEventListener('click', (e) => {
     }
 });
 
+// ユーザー操作検出（更新をスキップするため）
+let isUserInteracting = false;
+let interactionTimeout = null;
+
+function setUserInteracting() {
+    isUserInteracting = true;
+    if (interactionTimeout) clearTimeout(interactionTimeout);
+    interactionTimeout = setTimeout(() => { isUserInteracting = false; }, 2000);
+}
+
+// スクロールイベントのスロットリング
+let scrollThrottleTimer = null;
+function handleScrollThrottled() {
+    if (!scrollThrottleTimer) {
+        scrollThrottleTimer = setTimeout(() => {
+            setUserInteracting();
+            scrollThrottleTimer = null;
+        }, 100);
+    }
+}
+
+document.addEventListener('focusin', (e) => {
+    if (e.target.matches('input, select, textarea')) setUserInteracting();
+});
+document.addEventListener('input', (e) => {
+    if (e.target.matches('input, select, textarea')) setUserInteracting();
+});
+document.addEventListener('scroll', handleScrollThrottled, true);
+document.addEventListener('mousedown', (e) => {
+    if (e.target.matches('input[type="range"]')) setUserInteracting();
+});
+document.addEventListener('touchstart', (e) => {
+    if (e.target.matches('input[type="range"], input[type="number"]')) setUserInteracting();
+}, { passive: true });
+
 // 初期読み込み
 loadData();
 
-// 定期的にデータを更新（30秒ごと）
-setInterval(loadData, 30000);
+// 定期的にデータを更新（30秒ごと、ユーザー操作中はスキップ）
+setInterval(() => {
+    if (!isUserInteracting) {
+        loadData();
+    }
+}, 30000);
 </script>
 </body>
 </html>
