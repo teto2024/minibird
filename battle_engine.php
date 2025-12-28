@@ -382,7 +382,8 @@ function executeTurnBattle($attacker, $defender) {
                 $defender['current_health'] -= $damageResult['damage'];
                 $defender['current_health'] = max(0, $defender['current_health']);
                 
-                $attackLabel = $attackCount > 1 ? "[攻撃{$i}+1] " : "";
+                $attackNum = $i + 1;
+                $attackLabel = $attackCount > 1 ? "[攻撃{$attackNum}] " : "";
                 $turnMessages[] = "{$attackLabel}⚔️ 攻撃側が{$damageResult['damage']}ダメージを与えた！";
                 $turnMessages = array_merge($turnMessages, $damageResult['messages']);
                 $turnMessages[] = "防御側HP: {$defender['current_health']}/{$defender['max_health']}";
@@ -491,7 +492,8 @@ function executeTurnBattle($attacker, $defender) {
                 $attacker['current_health'] -= $damageResult['damage'];
                 $attacker['current_health'] = max(0, $attacker['current_health']);
                 
-                $attackLabel = $attackCount > 1 ? "[攻撃{$i}+1] " : "";
+                $attackNum = $i + 1;
+                $attackLabel = $attackCount > 1 ? "[攻撃{$attackNum}] " : "";
                 $turnMessages[] = "{$attackLabel}🛡️ 防御側が{$damageResult['damage']}ダメージを与えた！";
                 $turnMessages = array_merge($turnMessages, $damageResult['messages']);
                 $turnMessages[] = "攻撃側HP: {$attacker['current_health']}/{$attacker['max_health']}";

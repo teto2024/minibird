@@ -763,7 +763,7 @@ if ($action === 'attack_castle') {
                 }
                 
                 // 防御側ユーザーの負傷兵を追加
-                if ($wounded > 0 && isset($defense['defender_user_id'])) {
+                if ($wounded > 0 && !empty($defense['defender_user_id'])) {
                     $stmt = $pdo->prepare("
                         INSERT INTO user_civilization_wounded_troops (user_id, troop_type_id, count)
                         VALUES (?, ?, ?)
@@ -780,7 +780,7 @@ if ($action === 'attack_castle') {
             $castleCaptured = true;
             
             // 残りの防御部隊を元の所有者に戻す
-            if (!$defense['is_npc'] && isset($defense['defender_user_id'])) {
+            if (!$defense['is_npc'] && !empty($defense['defender_user_id'])) {
                 $stmt = $pdo->prepare("SELECT troop_type_id, count, user_id FROM conquest_castle_defense WHERE castle_id = ? AND count > 0");
                 $stmt->execute([$castle['id']]);
                 $remainingTroops = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -805,6 +805,9 @@ if ($action === 'attack_castle') {
         
         // 戦闘ログを記録（ターン制バトル情報を含む）
         $battleSummary = generateBattleSummary($battleResult);
+        $defenderId = $defense['is_npc'] ? null : ($defense['defender_user_id'] ?? null);
+        $winnerId = $attackerWins ? $me['id'] : $defenderId;
+        
         $stmt = $pdo->prepare("
             INSERT INTO conquest_battle_logs 
             (season_id, castle_id, attacker_user_id, defender_user_id, 
@@ -818,7 +821,7 @@ if ($action === 'attack_castle') {
             $season['id'],
             $castle['id'],
             $me['id'],
-            $defense['is_npc'] ? null : ($defense['defender_user_id'] ?? null),
+            $defenderId,
             json_encode($attackerUnit['troops']),
             json_encode($defenderUnit['troops']),
             $attackerUnit['attack'],
@@ -827,7 +830,7 @@ if ($action === 'attack_castle') {
             json_encode($defenderLosses),
             json_encode($attackerWounded),
             json_encode($defenderWounded),
-            $attackerWins ? $me['id'] : ($defense['is_npc'] ? null : ($defense['defender_user_id'] ?? null)),
+            $winnerId,
             $castleCaptured ? 1 : 0,
             $battleResult['total_turns'],
             $battleSummary,
