@@ -348,6 +348,8 @@ body {
     align-items: center;
     justify-content: center;
     z-index: 1000;
+    padding: 20px;
+    overflow-y: auto;
 }
 
 .level-modal.hidden {
@@ -360,6 +362,9 @@ body {
     padding: 40px;
     max-width: 500px;
     width: 90%;
+    max-height: 90vh;
+    max-height: 90dvh;
+    overflow-y: auto;
     border: 3px solid #ffd700;
     text-align: center;
 }
