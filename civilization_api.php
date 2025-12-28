@@ -1181,4 +1181,105 @@ if ($action === 'buy_vip_boost') {
     exit;
 }
 
+// 資源交換（市場機能）
+if ($action === 'exchange_resources') {
+    $fromResourceId = (int)($input['from_resource_id'] ?? 0);
+    $toResourceId = (int)($input['to_resource_id'] ?? 0);
+    $amount = (int)($input['amount'] ?? 0);
+    
+    if ($fromResourceId === $toResourceId) {
+        echo json_encode(['ok' => false, 'error' => '同じ資源は交換できません']);
+        exit;
+    }
+    
+    if ($amount < 2) {
+        echo json_encode(['ok' => false, 'error' => '最低交換量は2です']);
+        exit;
+    }
+    
+    $pdo->beginTransaction();
+    try {
+        // 市場建物を持っているか確認
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*) FROM user_civilization_buildings ucb
+            JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+            WHERE ucb.user_id = ? AND bt.building_key = 'market' AND ucb.is_constructing = FALSE
+        ");
+        $stmt->execute([$me['id']]);
+        $hasMarket = (int)$stmt->fetchColumn() > 0;
+        
+        if (!$hasMarket) {
+            throw new Exception('市場を建設してから交換してください');
+        }
+        
+        // 資源を確認
+        $stmt = $pdo->prepare("
+            SELECT ucr.amount, rt.name as from_name, rt.icon as from_icon
+            FROM user_civilization_resources ucr
+            JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
+            WHERE ucr.user_id = ? AND ucr.resource_type_id = ?
+        ");
+        $stmt->execute([$me['id'], $fromResourceId]);
+        $fromResource = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$fromResource) {
+            throw new Exception('交換元の資源がアンロックされていません');
+        }
+        
+        if ((float)$fromResource['amount'] < $amount) {
+            throw new Exception("資源が不足しています（必要: {$amount}、所持: " . round($fromResource['amount']) . "）");
+        }
+        
+        // 交換先の資源を確認
+        $stmt = $pdo->prepare("
+            SELECT rt.name as to_name, rt.icon as to_icon
+            FROM user_civilization_resources ucr
+            JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
+            WHERE ucr.user_id = ? AND ucr.resource_type_id = ?
+        ");
+        $stmt->execute([$me['id'], $toResourceId]);
+        $toResource = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$toResource) {
+            throw new Exception('交換先の資源がアンロックされていません');
+        }
+        
+        // 交換レート: 2:1
+        $received = (int)floor($amount / 2);
+        
+        if ($received < 1) {
+            throw new Exception('交換量が少なすぎます（最低2以上必要）');
+        }
+        
+        // 資源を消費
+        $stmt = $pdo->prepare("
+            UPDATE user_civilization_resources 
+            SET amount = amount - ? 
+            WHERE user_id = ? AND resource_type_id = ?
+        ");
+        $stmt->execute([$amount, $me['id'], $fromResourceId]);
+        
+        // 資源を追加
+        $stmt = $pdo->prepare("
+            UPDATE user_civilization_resources 
+            SET amount = amount + ? 
+            WHERE user_id = ? AND resource_type_id = ?
+        ");
+        $stmt->execute([$received, $me['id'], $toResourceId]);
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => "{$fromResource['from_icon']} {$amount} → {$toResource['to_icon']} {$received} に交換しました！",
+            'from_amount' => $amount,
+            'to_amount' => $received
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 echo json_encode(['ok' => false, 'error' => 'invalid_action']);

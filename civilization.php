@@ -680,6 +680,7 @@ body {
 
 <script>
 let civData = null;
+let currentTab = 'buildings'; // 現在のアクティブタブを保持
 
 // 初期データ読み込み
 async function loadData() {
@@ -812,15 +813,16 @@ function renderApp() {
         
         <!-- タブ -->
         <div class="tabs">
-            <button class="tab-btn active" data-tab="buildings">🏠 建物</button>
-            <button class="tab-btn" data-tab="research">📚 研究</button>
-            <button class="tab-btn" data-tab="troops">🎖️ 兵士</button>
-            <button class="tab-btn" data-tab="war">⚔️ 戦争</button>
-            <button class="tab-btn" data-tab="shop">💠 VIPショップ</button>
+            <button class="tab-btn ${currentTab === 'buildings' ? 'active' : ''}" data-tab="buildings">🏠 建物</button>
+            <button class="tab-btn ${currentTab === 'research' ? 'active' : ''}" data-tab="research">📚 研究</button>
+            <button class="tab-btn ${currentTab === 'market' ? 'active' : ''}" data-tab="market">🏪 市場</button>
+            <button class="tab-btn ${currentTab === 'troops' ? 'active' : ''}" data-tab="troops">🎖️ 兵士</button>
+            <button class="tab-btn ${currentTab === 'war' ? 'active' : ''}" data-tab="war">⚔️ 戦争</button>
+            <button class="tab-btn ${currentTab === 'shop' ? 'active' : ''}" data-tab="shop">💠 VIPショップ</button>
         </div>
         
         <!-- 建物タブ -->
-        <div class="tab-content active" id="tab-buildings">
+        <div class="tab-content ${currentTab === 'buildings' ? 'active' : ''}" id="tab-buildings">
             <h3 style="color: #ffd700; margin-bottom: 20px;">🏗️ 建設可能な建物</h3>
             <div class="buildings-grid">
                 ${renderBuildingsGrid(availableBuildings, buildings, resources)}
@@ -828,7 +830,7 @@ function renderApp() {
         </div>
         
         <!-- 研究タブ -->
-        <div class="tab-content" id="tab-research">
+        <div class="tab-content ${currentTab === 'research' ? 'active' : ''}" id="tab-research">
             <h3 style="color: #87ceeb; margin-bottom: 20px;">🔬 研究ツリー</h3>
             <div class="research-tree">
                 ${renderResearchTree()}
@@ -836,7 +838,7 @@ function renderApp() {
         </div>
         
         <!-- 兵士タブ -->
-        <div class="tab-content" id="tab-troops">
+        <div class="tab-content ${currentTab === 'troops' ? 'active' : ''}" id="tab-troops">
             <div class="war-section" style="background: linear-gradient(135deg, rgba(139, 69, 19, 0.5) 0%, rgba(50, 30, 10, 0.5) 100%); border-color: #8b4513;">
                 <h3 style="color: #ffd700;">🎖️ 兵士を訓練</h3>
                 <p style="color: #c0a080; margin-bottom: 20px;">兵舎や軍事施設を建設すると、より多くの兵士を訓練できます</p>
@@ -847,7 +849,7 @@ function renderApp() {
         </div>
         
         <!-- 戦争タブ -->
-        <div class="tab-content" id="tab-war">
+        <div class="tab-content ${currentTab === 'war' ? 'active' : ''}" id="tab-war">
             <div class="war-section">
                 <h3>⚔️ 他の文明を攻撃</h3>
                 <p style="color: #c0a080; margin-bottom: 20px;">軍事施設を建設して軍事力を上げ、他の文明から資源を略奪しましょう！</p>
@@ -858,7 +860,7 @@ function renderApp() {
         </div>
         
         <!-- VIPショップタブ -->
-        <div class="tab-content" id="tab-shop">
+        <div class="tab-content ${currentTab === 'shop' ? 'active' : ''}" id="tab-shop">
             <div class="invest-section" style="background: linear-gradient(135deg, rgba(153, 50, 204, 0.5) 0%, rgba(75, 0, 130, 0.5) 100%); border-color: #9932cc;">
                 <h3 style="color: #da70d6;">💠 VIPショップ（ダイヤモンド専用）</h3>
                 <p style="color: #c0a080; margin-bottom: 20px;">ダイヤモンドを使って特別なブーストやアイテムを購入できます</p>
@@ -910,11 +912,21 @@ function renderApp() {
                 </div>
             </div>
         </div>
+        
+        <!-- 市場タブ -->
+        <div class="tab-content ${currentTab === 'market' ? 'active' : ''}" id="tab-market">
+            <div class="invest-section" style="background: linear-gradient(135deg, rgba(139, 115, 85, 0.5) 0%, rgba(100, 80, 60, 0.5) 100%); border-color: #d4a574;">
+                <h3 style="color: #ffd700;">🏪 市場 - 資源交換</h3>
+                <p style="color: #c0a080; margin-bottom: 20px;">市場を建設していると、資源を他の資源に交換できます。交換レート: 2:1</p>
+                ${renderMarketExchange(resources)}
+            </div>
+        </div>
     `;
     
     // タブ切り替え
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
+            currentTab = btn.dataset.tab; // 現在のタブを保存
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             btn.classList.add('active');
@@ -928,8 +940,25 @@ function renderApp() {
             if (btn.dataset.tab === 'troops') {
                 loadTroops();
             }
+            // 市場タブの場合、市場を読み込む
+            if (btn.dataset.tab === 'market') {
+                loadMarketData();
+            }
         });
     });
+    
+    // 市場タブがアクティブな場合、市場データを読み込む
+    if (currentTab === 'market') {
+        loadMarketData();
+    }
+    // 戦争タブがアクティブな場合、攻撃対象を読み込む
+    if (currentTab === 'war') {
+        loadTargets();
+    }
+    // 兵士タブがアクティブな場合、兵種を読み込む
+    if (currentTab === 'troops') {
+        loadTroops();
+    }
 }
 
 // 建物グリッドを描画
@@ -1049,6 +1078,169 @@ function renderResearchTree() {
             </div>
         `;
     }).join('');
+}
+
+// 市場交換UIを描画
+function renderMarketExchange(resources) {
+    // 市場建物を持っているか確認
+    const hasMarket = civData.buildings.some(b => b.building_key === 'market' && !b.is_constructing);
+    
+    if (!hasMarket) {
+        return `
+            <div style="text-align: center; padding: 40px; color: #c0a080;">
+                <p style="font-size: 24px; margin-bottom: 15px;">🏪</p>
+                <p>市場を建設すると、資源を交換できるようになります。</p>
+                <p style="font-size: 13px; margin-top: 10px;">建物タブから「市場」を建設してください。</p>
+            </div>
+        `;
+    }
+    
+    const unlockedResources = resources.filter(r => r.unlocked);
+    
+    if (unlockedResources.length < 2) {
+        return `
+            <div style="text-align: center; padding: 40px; color: #c0a080;">
+                <p>交換できる資源が足りません。資源を2種類以上アンロックしてください。</p>
+            </div>
+        `;
+    }
+    
+    return `
+        <div class="buildings-grid">
+            <div class="building-card" style="border-color: #d4a574; grid-column: span 2;">
+                <div class="building-header">
+                    <span class="building-icon">🔄</span>
+                    <span class="building-name">資源交換</span>
+                </div>
+                <div class="building-desc">資源を他の資源に交換します（交換レート: 2:1）</div>
+                
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; margin-top: 15px;">
+                    <div style="flex: 1; min-width: 150px;">
+                        <label style="display: block; margin-bottom: 8px; color: #c0a080; font-size: 13px;">交換する資源</label>
+                        <select id="fromResource" class="invest-input" style="width: 100%;">
+                            ${unlockedResources.map(r => `<option value="${r.resource_type_id}" data-amount="${r.amount}">${r.icon} ${r.name} (${Math.floor(r.amount)})</option>`).join('')}
+                        </select>
+                    </div>
+                    <div style="flex: 0; padding-top: 25px; font-size: 24px;">→</div>
+                    <div style="flex: 1; min-width: 150px;">
+                        <label style="display: block; margin-bottom: 8px; color: #c0a080; font-size: 13px;">受け取る資源</label>
+                        <select id="toResource" class="invest-input" style="width: 100%;">
+                            ${unlockedResources.map(r => `<option value="${r.resource_type_id}">${r.icon} ${r.name}</option>`).join('')}
+                        </select>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 15px;">
+                    <label style="display: block; margin-bottom: 8px; color: #c0a080; font-size: 13px;">交換する量</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="number" id="exchangeAmount" class="invest-input" value="100" min="2" step="2" style="flex: 1;">
+                        <div class="quick-invest-btns">
+                            <button class="quick-invest-btn" onclick="setExchangeAmount(10)">10</button>
+                            <button class="quick-invest-btn" onclick="setExchangeAmount(50)">50</button>
+                            <button class="quick-invest-btn" onclick="setExchangeAmount(100)">100</button>
+                            <button class="quick-invest-btn" onclick="setExchangeAmount(500)">500</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                    <span style="color: #c0a080;">交換結果: </span>
+                    <span id="exchangeResult" style="color: #ffd700;">--</span>
+                </div>
+                
+                <button class="build-btn" onclick="exchangeResources()" style="margin-top: 15px; background: linear-gradient(135deg, #d4a574 0%, #8b4513 100%);">
+                    交換する
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// 市場データを読み込む
+function loadMarketData() {
+    // 交換結果の計算をセットアップ
+    const fromSelect = document.getElementById('fromResource');
+    const toSelect = document.getElementById('toResource');
+    const amountInput = document.getElementById('exchangeAmount');
+    
+    if (!fromSelect || !toSelect || !amountInput) {
+        return; // 市場が建設されていない場合などは要素が存在しない
+    }
+    
+    const updateResult = () => {
+        const resultElement = document.getElementById('exchangeResult');
+        if (!resultElement) return;
+        
+        const fromId = fromSelect.value;
+        const toId = toSelect.value;
+        const amount = parseInt(amountInput.value) || 0;
+        
+        if (fromId === toId) {
+            resultElement.textContent = '同じ資源は交換できません';
+            return;
+        }
+        
+        const fromOption = fromSelect.options[fromSelect.selectedIndex];
+        const toOption = toSelect.options[toSelect.selectedIndex];
+        const fromName = fromOption.textContent.split('(')[0].trim();
+        const toName = toOption.textContent.split('(')[0].trim();
+        
+        const received = Math.floor(amount / 2);
+        resultElement.textContent = `${amount} ${fromName} → ${received} ${toName}`;
+    };
+    
+    fromSelect.addEventListener('change', updateResult);
+    toSelect.addEventListener('change', updateResult);
+    amountInput.addEventListener('input', updateResult);
+    
+    updateResult();
+}
+
+// 交換量をセット
+function setExchangeAmount(amount) {
+    document.getElementById('exchangeAmount').value = amount;
+    // 結果を更新
+    document.getElementById('exchangeAmount').dispatchEvent(new Event('input'));
+}
+
+// 資源を交換
+async function exchangeResources() {
+    const fromResourceId = parseInt(document.getElementById('fromResource').value);
+    const toResourceId = parseInt(document.getElementById('toResource').value);
+    const amount = parseInt(document.getElementById('exchangeAmount').value) || 0;
+    
+    if (fromResourceId === toResourceId) {
+        showNotification('同じ資源は交換できません', true);
+        return;
+    }
+    
+    if (amount < 2) {
+        showNotification('最低交換量は2です', true);
+        return;
+    }
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                action: 'exchange_resources',
+                from_resource_id: fromResourceId,
+                to_resource_id: toResourceId,
+                amount: amount
+            })
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadData();
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
 }
 
 // 攻撃対象を読み込む
