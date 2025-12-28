@@ -1195,13 +1195,24 @@ function setUserInteracting() {
     interactionTimeout = setTimeout(() => { isUserInteracting = false; }, 2000);
 }
 
+// スクロールイベントのスロットリング
+let scrollThrottleTimer = null;
+function handleScrollThrottled() {
+    if (!scrollThrottleTimer) {
+        scrollThrottleTimer = setTimeout(() => {
+            setUserInteracting();
+            scrollThrottleTimer = null;
+        }, 100);
+    }
+}
+
 document.addEventListener('focusin', (e) => {
     if (e.target.matches('input, select, textarea')) setUserInteracting();
 });
 document.addEventListener('input', (e) => {
     if (e.target.matches('input, select, textarea')) setUserInteracting();
 });
-document.addEventListener('scroll', () => setUserInteracting(), true);
+document.addEventListener('scroll', handleScrollThrottled, true);
 document.addEventListener('mousedown', (e) => {
     if (e.target.matches('input[type="range"]')) setUserInteracting();
 });

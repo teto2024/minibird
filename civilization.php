@@ -974,8 +974,9 @@ function updateAttackPowerDisplay() {
     
     document.querySelectorAll('[id^="attack-count-"]').forEach(input => {
         const count = parseInt(input.value) || 0;
-        if (count > 0) {
-            const slider = document.getElementById(`attack-slider-${input.dataset.troopId}`);
+        const troopId = input.dataset.troopId;
+        if (count > 0 && troopId) {
+            const slider = document.getElementById(`attack-slider-${troopId}`);
             if (slider) {
                 const attack = parseInt(slider.dataset.attack) || 0;
                 const defense = parseInt(slider.dataset.defense) || 0;
@@ -996,9 +997,10 @@ async function confirmAttack() {
     const troops = [];
     document.querySelectorAll('[id^="attack-count-"]').forEach(input => {
         const count = parseInt(input.value) || 0;
-        if (count > 0) {
+        const troopId = input.dataset.troopId;
+        if (count > 0 && troopId) {
             troops.push({
-                troop_type_id: parseInt(input.dataset.troopId),
+                troop_type_id: parseInt(troopId),
                 count: count
             });
         }
@@ -1889,11 +1891,22 @@ async function loadTargets() {
                     <div style="font-size: 12px; margin-bottom: 10px; ${powerClass}">
                         ${powerIndicator}
                     </div>
-                    <button class="attack-btn" onclick="openAttackModal(${t.user_id}, '${escapeHtml(t.civilization_name).replace(/'/g, "\\'")}', ${targetPower})">
+                    <button class="attack-btn" data-target-id="${parseInt(t.user_id)}" data-target-name="${escapeHtml(t.civilization_name)}" data-target-power="${parseInt(targetPower)}">
                         ⚔️ 攻撃する
                     </button>
                 </div>
             `}).join('');
+            
+            // 攻撃ボタンにイベントリスナーを追加
+            document.querySelectorAll('.attack-btn[data-target-id]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    openAttackModal(
+                        parseInt(btn.dataset.targetId),
+                        btn.dataset.targetName,
+                        parseInt(btn.dataset.targetPower)
+                    );
+                });
+            });
         } else {
             document.getElementById('targetsList').innerHTML = '<p style="color: #888;">攻撃可能な文明がありません</p>';
         }
@@ -2753,6 +2766,17 @@ function setUserInteracting() {
     }, 2000);
 }
 
+// スクロールイベントのスロットリング
+let scrollThrottleTimer = null;
+function handleScrollThrottled() {
+    if (!scrollThrottleTimer) {
+        scrollThrottleTimer = setTimeout(() => {
+            setUserInteracting();
+            scrollThrottleTimer = null;
+        }, 100);
+    }
+}
+
 // ユーザー操作イベントを監視
 function setupInteractionListeners() {
     // 入力フィールドのフォーカスと入力
@@ -2768,10 +2792,8 @@ function setupInteractionListeners() {
         }
     });
     
-    // スクロール操作
-    document.addEventListener('scroll', () => {
-        setUserInteracting();
-    }, true);
+    // スクロール操作（スロットリング済み）
+    document.addEventListener('scroll', handleScrollThrottled, true);
     
     // スライダー操作
     document.addEventListener('mousedown', (e) => {
