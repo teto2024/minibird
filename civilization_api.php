@@ -16,6 +16,32 @@ define('CIV_INSTANT_BUILDING_MIN_COST', 5);    // 建物即完了の最低クリ
 define('CIV_INSTANT_RESEARCH_MIN_COST', 3);    // 研究即完了の最低クリスタルコスト
 define('CIV_INSTANT_SECONDS_PER_CRYSTAL', 60); // クリスタル1個あたりの秒数
 
+// 資源価値の定義（市場交換レート計算用）
+// 値が高いほど価値が高い資源
+$RESOURCE_VALUES = [
+    'food' => 1.0,       // 基本資源
+    'wood' => 1.0,       // 基本資源
+    'stone' => 1.2,      // やや希少
+    'bronze' => 1.5,     // 中程度の価値
+    'iron' => 2.0,       // 価値が高い
+    'gold' => 3.0,       // 高価値
+    'knowledge' => 2.5,  // 価値が高い
+    'oil' => 3.5,        // かなり高価値
+    'crystal' => 4.0,    // 非常に高価値
+    'mana' => 4.5,       // 非常に高価値
+    'uranium' => 5.0,    // 最高価値
+    'diamond' => 6.0,    // 最高価値
+    // 追加資源
+    'sulfur' => 2.0,
+    'gems' => 4.0,
+    'cloth' => 1.5,
+    'marble' => 2.5,
+    'horses' => 2.0,
+    'coal' => 2.0,
+    'glass' => 2.5,
+    'spices' => 3.0
+];
+
 header('Content-Type: application/json');
 
 $me = user();
@@ -1290,24 +1316,11 @@ if ($action === 'exchange_resources') {
             throw new Exception('交換先の資源がアンロックされていません');
         }
         
-        // 資源の価値を定義（レア度に応じて異なるレート）
-        $resourceValues = [
-            'food' => 1.0,       // 基本資源
-            'wood' => 1.0,       // 基本資源
-            'stone' => 1.2,      // やや希少
-            'bronze' => 1.5,     // 中程度の価値
-            'iron' => 2.0,       // 価値が高い
-            'gold' => 3.0,       // 高価値
-            'knowledge' => 2.5,  // 価値が高い
-            'oil' => 3.5,        // かなり高価値
-            'crystal' => 4.0,    // 非常に高価値
-            'mana' => 4.5,       // 非常に高価値
-            'uranium' => 5.0,    // 最高価値
-            'diamond' => 6.0     // 最高価値
-        ];
+        // グローバルの資源価値定義を使用
+        global $RESOURCE_VALUES;
         
-        $fromValue = $resourceValues[$fromResource['from_key']] ?? 1.0;
-        $toValue = $resourceValues[$toResource['to_key']] ?? 1.0;
+        $fromValue = $RESOURCE_VALUES[$fromResource['from_key']] ?? 1.0;
+        $toValue = $RESOURCE_VALUES[$toResource['to_key']] ?? 1.0;
         
         // 基本交換レート（価値の比率）
         $baseRate = $fromValue / $toValue;
@@ -1378,28 +1391,15 @@ if ($action === 'get_market_info') {
         $totalMarketLevel = (int)($marketData['total_level'] ?? 0);
         $marketBonus = min(0.5, ($marketCount * 0.05) + ($totalMarketLevel * 0.02));
         
-        // 資源の価値を定義
-        $resourceValues = [
-            'food' => 1.0,
-            'wood' => 1.0,
-            'stone' => 1.2,
-            'bronze' => 1.5,
-            'iron' => 2.0,
-            'gold' => 3.0,
-            'knowledge' => 2.5,
-            'oil' => 3.5,
-            'crystal' => 4.0,
-            'mana' => 4.5,
-            'uranium' => 5.0,
-            'diamond' => 6.0
-        ];
+        // グローバルの資源価値定義を使用
+        global $RESOURCE_VALUES;
         
         echo json_encode([
             'ok' => true,
             'market_count' => $marketCount,
             'total_market_level' => $totalMarketLevel,
             'market_bonus' => $marketBonus,
-            'resource_values' => $resourceValues
+            'resource_values' => $RESOURCE_VALUES
         ]);
     } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);

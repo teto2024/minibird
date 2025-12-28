@@ -1215,64 +1215,67 @@ function loadMarketData() {
         return; // 市場が建設されていない場合などは要素が存在しない
     }
     
-    // 資源の価値を定義（サーバー側と同じ）
-    const resourceValues = {
-        'food': 1.0,
-        'wood': 1.0,
-        'stone': 1.2,
-        'bronze': 1.5,
-        'iron': 2.0,
-        'gold': 3.0,
-        'knowledge': 2.5,
-        'oil': 3.5,
-        'crystal': 4.0,
-        'mana': 4.5,
-        'uranium': 5.0,
-        'diamond': 6.0
-    };
-    
-    // 市場ボーナスを計算
-    const markets = civData.buildings.filter(b => b.building_key === 'market' && !b.is_constructing);
-    const marketCount = markets.length;
-    const totalMarketLevel = markets.reduce((sum, m) => sum + (parseInt(m.level) || 1), 0);
-    const marketBonus = Math.min(0.5, (marketCount * 0.05) + (totalMarketLevel * 0.02));
-    
-    const updateResult = () => {
-        const resultElement = document.getElementById('exchangeResult');
-        if (!resultElement) return;
+    // 市場情報をサーバーから取得して資源価値を使用
+    fetch('civilization_api.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({action: 'get_market_info'})
+    })
+    .then(res => res.json())
+    .then(marketInfo => {
+        // サーバーから資源価値を取得（フォールバック用にデフォルト値も設定）
+        const resourceValues = marketInfo.ok ? marketInfo.resource_values : {
+            'food': 1.0, 'wood': 1.0, 'stone': 1.2, 'bronze': 1.5, 'iron': 2.0,
+            'gold': 3.0, 'knowledge': 2.5, 'oil': 3.5, 'crystal': 4.0,
+            'mana': 4.5, 'uranium': 5.0, 'diamond': 6.0
+        };
         
-        const fromId = fromSelect.value;
-        const toId = toSelect.value;
-        const amount = parseInt(amountInput.value) || 0;
+        // 市場ボーナスを計算
+        const markets = civData.buildings.filter(b => b.building_key === 'market' && !b.is_constructing);
+        const marketCount = markets.length;
+        const totalMarketLevel = markets.reduce((sum, m) => sum + (parseInt(m.level) || 1), 0);
+        const marketBonus = Math.min(0.5, (marketCount * 0.05) + (totalMarketLevel * 0.02));
         
-        if (fromId === toId) {
-            resultElement.textContent = '同じ資源は交換できません';
-            return;
-        }
+        const updateResult = () => {
+            const resultElement = document.getElementById('exchangeResult');
+            if (!resultElement) return;
+            
+            const fromId = fromSelect.value;
+            const toId = toSelect.value;
+            const amount = parseInt(amountInput.value) || 0;
+            
+            if (fromId === toId) {
+                resultElement.textContent = '同じ資源は交換できません';
+                return;
+            }
+            
+            const fromOption = fromSelect.options[fromSelect.selectedIndex];
+            const toOption = toSelect.options[toSelect.selectedIndex];
+            const fromName = fromOption.textContent.split('(')[0].trim();
+            const toName = toOption.textContent.split('(')[0].trim();
+            const fromKey = fromOption.dataset.key || 'food';
+            const toKey = toOption.dataset.key || 'food';
+            
+            // 交換レートを計算
+            const fromValue = resourceValues[fromKey] || 1.0;
+            const toValue = resourceValues[toKey] || 1.0;
+            const baseRate = fromValue / toValue;
+            const finalRate = baseRate * (1 + marketBonus);
+            
+            const received = Math.floor(amount * finalRate);
+            const ratePercent = Math.round(finalRate * 100);
+            resultElement.innerHTML = `${amount} ${fromName} → <strong style="color: #32cd32;">${received}</strong> ${toName} <span style="color: #888; font-size: 12px;">(レート: ${ratePercent}%)</span>`;
+        };
         
-        const fromOption = fromSelect.options[fromSelect.selectedIndex];
-        const toOption = toSelect.options[toSelect.selectedIndex];
-        const fromName = fromOption.textContent.split('(')[0].trim();
-        const toName = toOption.textContent.split('(')[0].trim();
-        const fromKey = fromOption.dataset.key || 'food';
-        const toKey = toOption.dataset.key || 'food';
+        fromSelect.addEventListener('change', updateResult);
+        toSelect.addEventListener('change', updateResult);
+        amountInput.addEventListener('input', updateResult);
         
-        // 交換レートを計算
-        const fromValue = resourceValues[fromKey] || 1.0;
-        const toValue = resourceValues[toKey] || 1.0;
-        const baseRate = fromValue / toValue;
-        const finalRate = baseRate * (1 + marketBonus);
-        
-        const received = Math.floor(amount * finalRate);
-        const ratePercent = Math.round(finalRate * 100);
-        resultElement.innerHTML = `${amount} ${fromName} → <strong style="color: #32cd32;">${received}</strong> ${toName} <span style="color: #888; font-size: 12px;">(レート: ${ratePercent}%)</span>`;
-    };
-    
-    fromSelect.addEventListener('change', updateResult);
-    toSelect.addEventListener('change', updateResult);
-    amountInput.addEventListener('input', updateResult);
-    
-    updateResult();
+        updateResult();
+    })
+    .catch(err => {
+        console.error('Failed to load market info:', err);
+    });
 }
 
 // 交換量をセット
