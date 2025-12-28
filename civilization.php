@@ -823,6 +823,7 @@ function renderApp() {
             <button class="tab-btn ${currentTab === 'market' ? 'active' : ''}" data-tab="market">🏪 市場</button>
             <button class="tab-btn ${currentTab === 'troops' ? 'active' : ''}" data-tab="troops">🎖️ 兵士</button>
             <button class="tab-btn ${currentTab === 'war' ? 'active' : ''}" data-tab="war">⚔️ 戦争</button>
+            <button class="tab-btn ${currentTab === 'conquest' ? 'active' : ''}" data-tab="conquest">🏰 占領戦</button>
             <button class="tab-btn ${currentTab === 'shop' ? 'active' : ''}" data-tab="shop">💠 VIPショップ</button>
         </div>
         
@@ -844,12 +845,68 @@ function renderApp() {
         
         <!-- 兵士タブ -->
         <div class="tab-content ${currentTab === 'troops' ? 'active' : ''}" id="tab-troops">
+            <!-- 訓練キュー -->
+            <div class="war-section" style="background: linear-gradient(135deg, rgba(70, 130, 180, 0.5) 0%, rgba(25, 25, 112, 0.5) 100%); border-color: #4682b4; margin-bottom: 20px;">
+                <h3 style="color: #87ceeb;">⏳ 訓練キュー</h3>
+                <div id="trainingQueueList">
+                    <div class="loading">訓練キューを読み込み中...</div>
+                </div>
+            </div>
+            
+            <!-- 負傷兵 -->
+            <div class="war-section" style="background: linear-gradient(135deg, rgba(220, 20, 60, 0.3) 0%, rgba(139, 0, 0, 0.3) 100%); border-color: #dc143c; margin-bottom: 20px;">
+                <h3 style="color: #ff6b6b;">🏥 負傷兵</h3>
+                <p style="color: #c0a080; margin-bottom: 10px;">病院または野戦病院を建設して負傷兵を治療しましょう</p>
+                <div id="woundedTroopsList">
+                    <div class="loading">負傷兵を読み込み中...</div>
+                </div>
+                <div id="healingQueueList" style="margin-top: 15px;"></div>
+            </div>
+            
+            <!-- 防御設定 -->
+            <div class="war-section" style="background: linear-gradient(135deg, rgba(50, 205, 50, 0.3) 0%, rgba(0, 100, 0, 0.3) 100%); border-color: #32cd32; margin-bottom: 20px;">
+                <h3 style="color: #90ee90;">🛡️ 防御部隊設定</h3>
+                <p style="color: #c0a080; margin-bottom: 10px;">攻撃された時に自動的に防御に使用される兵士を設定します</p>
+                <div id="defenseSettingsList">
+                    <div class="loading">防御設定を読み込み中...</div>
+                </div>
+            </div>
+            
+            <!-- 兵士訓練 -->
             <div class="war-section" style="background: linear-gradient(135deg, rgba(139, 69, 19, 0.5) 0%, rgba(50, 30, 10, 0.5) 100%); border-color: #8b4513;">
                 <h3 style="color: #ffd700;">🎖️ 兵士を訓練</h3>
-                <p style="color: #c0a080; margin-bottom: 20px;">兵舎や軍事施設を建設すると、より多くの兵士を訓練できます</p>
+                <p style="color: #c0a080; margin-bottom: 20px;">兵舎や軍事施設を建設すると、より多くの兵士を訓練できます。訓練には時間がかかります。</p>
                 <div class="targets-list" id="troopsList">
                     <div class="loading">兵種を読み込み中...</div>
                 </div>
+            </div>
+        </div>
+        
+        <!-- 占領戦タブ -->
+        <div class="tab-content ${currentTab === 'conquest' ? 'active' : ''}" id="tab-conquest">
+            <div class="war-section" style="background: linear-gradient(135deg, rgba(153, 50, 204, 0.5) 0%, rgba(75, 0, 130, 0.5) 100%); border-color: #9932cc;">
+                <h3 style="color: #da70d6;">🏰 占領戦</h3>
+                <p style="color: #c0a080; margin-bottom: 20px;">
+                    占領戦は毎週月曜日にリセットされるシーズン制のコンテンツです。<br>
+                    マップ上の城を攻め落とし、中央の神城⛩️を目指しましょう！
+                </p>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
+                    <div class="stat-box" style="background: rgba(0,0,0,0.3);">
+                        <div style="font-size: 32px;">🏰</div>
+                        <div style="color: #ffd700; font-size: 14px;">城を占領</div>
+                    </div>
+                    <div class="stat-box" style="background: rgba(0,0,0,0.3);">
+                        <div style="font-size: 32px;">🛡️</div>
+                        <div style="color: #ffd700; font-size: 14px;">防御部隊配置</div>
+                    </div>
+                    <div class="stat-box" style="background: rgba(0,0,0,0.3);">
+                        <div style="font-size: 32px;">⛩️</div>
+                        <div style="color: #ffd700; font-size: 14px;">神城を奪取</div>
+                    </div>
+                </div>
+                <a href="./conquest.php" class="invest-btn" style="display: inline-block; text-decoration: none; padding: 15px 30px; font-size: 18px; background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%);">
+                    ⚔️ 占領戦に参加する
+                </a>
             </div>
         </div>
         
@@ -979,9 +1036,12 @@ function renderApp() {
             if (btn.dataset.tab === 'war') {
                 loadTargets();
             }
-            // 兵士タブの場合、兵種を読み込む
+            // 兵士タブの場合、兵種・キュー・負傷兵を読み込む
             if (btn.dataset.tab === 'troops') {
                 loadTroops();
+                loadTrainingQueue();
+                loadWoundedTroops();
+                loadDefenseSettings();
             }
             // 市場タブの場合、市場を読み込む
             if (btn.dataset.tab === 'market') {
@@ -998,9 +1058,12 @@ function renderApp() {
     if (currentTab === 'war') {
         loadTargets();
     }
-    // 兵士タブがアクティブな場合、兵種を読み込む
+    // 兵士タブがアクティブな場合、兵種・キュー・負傷兵を読み込む
     if (currentTab === 'troops') {
         loadTroops();
+        loadTrainingQueue();
+        loadWoundedTroops();
+        loadDefenseSettings();
     }
 }
 
@@ -1031,7 +1094,12 @@ function renderBuildingsGrid(availableBuildings, ownedBuildings, resources) {
             } else {
                 statusText = `建設中... ${formatTime(remaining)}`;
                 const crystalCost = Math.max(5, Math.ceil(remaining / 60));
-                instantCompleteBtn = `<button class="instant-btn" onclick="instantCompleteBuilding(${constructing.id})" style="margin-top: 8px; padding: 8px 12px; background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%); color: white; border: none; border-radius: 6px; font-size: 13px; cursor: pointer;">💎 ${crystalCost}で即完了</button>`;
+                const diamondCost = Math.max(1, Math.ceil(remaining / 120));
+                instantCompleteBtn = `
+                    <div style="display: flex; gap: 5px; margin-top: 8px;">
+                        <button class="instant-btn" onclick="instantCompleteBuilding(${constructing.id})" style="flex: 1; padding: 8px 12px; background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%); color: white; border: none; border-radius: 6px; font-size: 11px; cursor: pointer;">💎 ${crystalCost}</button>
+                        <button class="instant-btn" onclick="instantCompleteBuildingDiamond(${constructing.id})" style="flex: 1; padding: 8px 12px; background: linear-gradient(135deg, #00bfff 0%, #1e90ff 100%); color: white; border: none; border-radius: 6px; font-size: 11px; cursor: pointer;">💠 ${diamondCost}</button>
+                    </div>`;
             }
         } else if (ownedCount > 0) {
             statusClass = 'owned';
@@ -1103,7 +1171,12 @@ function renderResearchTree() {
             } else {
                 statusText = `研究中... ${formatTime(remaining)}`;
                 const crystalCost = Math.max(3, Math.ceil(remaining / 60));
-                instantCompleteBtn = `<button class="instant-btn" onclick="instantCompleteResearch(${userResearch.id})" style="margin-top: 8px; padding: 8px 12px; background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%); color: white; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; width: 100%;">💎 ${crystalCost}で即完了</button>`;
+                const diamondCost = Math.max(1, Math.ceil(remaining / 120));
+                instantCompleteBtn = `
+                    <div style="display: flex; gap: 5px; margin-top: 8px;">
+                        <button class="instant-btn" onclick="instantCompleteResearch(${userResearch.id})" style="flex: 1; padding: 8px 12px; background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%); color: white; border: none; border-radius: 6px; font-size: 11px; cursor: pointer;">💎 ${crystalCost}</button>
+                        <button class="instant-btn" onclick="instantCompleteResearchDiamond(${userResearch.id})" style="flex: 1; padding: 8px 12px; background: linear-gradient(135deg, #00bfff 0%, #1e90ff 100%); color: white; border: none; border-radius: 6px; font-size: 11px; cursor: pointer;">💠 ${diamondCost}</button>
+                    </div>`;
             }
         } else if (isLocked) {
             statusClass = 'locked';
@@ -1770,7 +1843,7 @@ async function trainTroops(troopTypeId) {
         const res = await fetch('civilization_api.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({action: 'train_troops', troop_type_id: troopTypeId, count: count})
+            body: JSON.stringify({action: 'queue_training', troop_type_id: troopTypeId, count: count})
         });
         const data = await res.json();
         
@@ -1778,12 +1851,292 @@ async function trainTroops(troopTypeId) {
             showNotification(data.message);
             loadData();
             loadTroops();
+            loadTrainingQueue();
         } else {
             showNotification(data.error, true);
         }
     } catch (e) {
         showNotification('エラーが発生しました', true);
     }
+}
+
+// 訓練キューを読み込む
+async function loadTrainingQueue() {
+    try {
+        // 訓練完了をチェック
+        await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'complete_training'})
+        });
+        
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_training_queue'})
+        });
+        const data = await res.json();
+        
+        const container = document.getElementById('trainingQueueList');
+        if (!container) return;
+        
+        if (data.ok && data.training_queue && data.training_queue.length > 0) {
+            container.innerHTML = data.training_queue.map(q => {
+                const completesAt = new Date(q.training_completes_at);
+                const remaining = Math.max(0, Math.floor((completesAt - Date.now()) / 1000));
+                const remainingText = formatTime(remaining);
+                
+                return `
+                    <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 8px;">
+                        <div>
+                            <span>${q.icon} ${q.name} ×${q.count}</span>
+                            <span style="color: #87ceeb; margin-left: 10px;">⏱️ ${remainingText}</span>
+                        </div>
+                        <div style="display: flex; gap: 5px;">
+                            <button class="quick-invest-btn" onclick="instantCompleteQueue('training', ${q.id}, 'crystal')" style="font-size: 11px;">💎 即完了</button>
+                            <button class="quick-invest-btn" onclick="instantCompleteQueue('training', ${q.id}, 'diamond')" style="font-size: 11px;">💠 即完了</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            container.innerHTML = '<p style="color: #888;">訓練中の兵士はいません</p>';
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// 負傷兵と治療キューを読み込む
+async function loadWoundedTroops() {
+    try {
+        // 治療完了をチェック
+        await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'complete_healing'})
+        });
+        
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_wounded_troops'})
+        });
+        const data = await res.json();
+        
+        const woundedContainer = document.getElementById('woundedTroopsList');
+        const healingContainer = document.getElementById('healingQueueList');
+        
+        if (!woundedContainer) return;
+        
+        if (data.ok) {
+            // 負傷兵リスト
+            if (data.wounded_troops && data.wounded_troops.length > 0) {
+                woundedContainer.innerHTML = `
+                    <div style="margin-bottom: 10px; color: #888; font-size: 12px;">病院容量: ${data.hospital_capacity}床</div>
+                    ${data.wounded_troops.map(w => `
+                        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 8px;">
+                            <div>
+                                <span>${w.icon} ${w.name} ×${w.count}</span>
+                                <span style="color: #888; font-size: 11px; margin-left: 10px;">治療: ${w.heal_time_seconds}秒/体 🪙${w.heal_cost_coins}/体</span>
+                            </div>
+                            <div style="display: flex; gap: 5px; align-items: center;">
+                                <input type="number" id="heal-count-${w.troop_type_id}" value="1" min="1" max="${w.count}" style="width: 50px; padding: 5px; background: rgba(0,0,0,0.3); border: 1px solid #dc143c; border-radius: 4px; color: #f5deb3;">
+                                <button class="quick-invest-btn" onclick="healTroops(${w.troop_type_id})" style="background: linear-gradient(135deg, #32cd32 0%, #228b22 100%); color: #fff;">🏥 治療</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                `;
+            } else {
+                woundedContainer.innerHTML = '<p style="color: #888;">負傷兵はいません</p>';
+            }
+            
+            // 治療キュー
+            if (healingContainer && data.healing_queue && data.healing_queue.length > 0) {
+                healingContainer.innerHTML = `
+                    <h4 style="color: #90ee90; margin-bottom: 10px;">💉 治療中</h4>
+                    ${data.healing_queue.map(h => {
+                        const completesAt = new Date(h.healing_completes_at);
+                        const remaining = Math.max(0, Math.floor((completesAt - Date.now()) / 1000));
+                        const remainingText = formatTime(remaining);
+                        
+                        return `
+                            <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(50, 205, 50, 0.2); padding: 10px; border-radius: 8px; margin-bottom: 8px;">
+                                <div>
+                                    <span>${h.icon} ${h.name} ×${h.count}</span>
+                                    <span style="color: #90ee90; margin-left: 10px;">⏱️ ${remainingText}</span>
+                                </div>
+                                <div style="display: flex; gap: 5px;">
+                                    <button class="quick-invest-btn" onclick="instantCompleteQueue('healing', ${h.id}, 'crystal')" style="font-size: 11px;">💎 即完了</button>
+                                    <button class="quick-invest-btn" onclick="instantCompleteQueue('healing', ${h.id}, 'diamond')" style="font-size: 11px;">💠 即完了</button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                `;
+            } else if (healingContainer) {
+                healingContainer.innerHTML = '';
+            }
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// 負傷兵を治療
+async function healTroops(troopTypeId) {
+    const countInput = document.getElementById(`heal-count-${troopTypeId}`);
+    const count = parseInt(countInput ? countInput.value : 1);
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'heal_troops', troop_type_id: troopTypeId, count: count})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadWoundedTroops();
+            loadData();
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// 訓練・治療を即完了
+async function instantCompleteQueue(queueType, queueId, currency) {
+    const currencyName = currency === 'crystal' ? 'クリスタル' : 'ダイヤモンド';
+    if (!confirm(`${currencyName}を使用して即座に完了しますか？`)) return;
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'instant_complete_queue', queue_type: queueType, queue_id: queueId, currency: currency})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadData();
+            loadTrainingQueue();
+            loadWoundedTroops();
+            loadTroops();
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// 防御設定を読み込む
+async function loadDefenseSettings() {
+    try {
+        // 利用可能な兵士を取得
+        const troopsRes = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_troops'})
+        });
+        const troopsData = await troopsRes.json();
+        
+        // 現在の防御設定を取得
+        const defenseRes = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_defense_troops'})
+        });
+        const defenseData = await defenseRes.json();
+        
+        const container = document.getElementById('defenseSettingsList');
+        if (!container) return;
+        
+        if (troopsData.ok && troopsData.user_troops && troopsData.user_troops.length > 0) {
+            const defenseTroops = defenseData.ok ? (defenseData.defense_troops || []) : [];
+            
+            container.innerHTML = `
+                <div style="margin-bottom: 15px;">
+                    ${troopsData.user_troops.filter(t => t.count > 0).map(t => {
+                        const assigned = defenseTroops.find(d => d.troop_type_id == t.troop_type_id);
+                        const assignedCount = assigned ? assigned.assigned_count : 0;
+                        
+                        return `
+                            <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 8px;">
+                                <div>
+                                    <span>${t.icon} ${t.name}</span>
+                                    <span style="color: #888; margin-left: 10px;">所持: ${t.count}</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="range" id="defense-slider-${t.troop_type_id}" 
+                                           min="0" max="${t.count}" value="${assignedCount}"
+                                           style="width: 100px;"
+                                           oninput="document.getElementById('defense-count-${t.troop_type_id}').value = this.value">
+                                    <input type="number" id="defense-count-${t.troop_type_id}" 
+                                           min="0" max="${t.count}" value="${assignedCount}"
+                                           style="width: 60px; padding: 5px; background: rgba(0,0,0,0.3); border: 1px solid #32cd32; border-radius: 4px; color: #f5deb3;"
+                                           oninput="document.getElementById('defense-slider-${t.troop_type_id}').value = this.value">
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                <button class="invest-btn" onclick="saveDefenseSettings()" style="background: linear-gradient(135deg, #32cd32 0%, #228b22 100%);">
+                    🛡️ 防御設定を保存
+                </button>
+            `;
+        } else {
+            container.innerHTML = '<p style="color: #888;">兵士がいません。まず兵士を訓練してください。</p>';
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// 防御設定を保存
+async function saveDefenseSettings() {
+    const troops = [];
+    document.querySelectorAll('[id^="defense-count-"]').forEach(input => {
+        const troopTypeId = parseInt(input.id.replace('defense-count-', ''));
+        const count = parseInt(input.value) || 0;
+        if (count > 0) {
+            troops.push({troop_type_id: troopTypeId, count: count});
+        }
+    });
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'set_defense_troops', troops: troops})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// 時間をフォーマット
+function formatTime(seconds) {
+    if (seconds <= 0) return '完了';
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) return `${hours}時間${mins}分`;
+    if (mins > 0) return `${mins}分${secs}秒`;
+    return `${secs}秒`;
 }
 
 // VIPブーストを購入
@@ -1908,6 +2261,29 @@ async function instantCompleteBuilding(buildingId) {
     }
 }
 
+// 建物をダイヤモンドで即完了
+async function instantCompleteBuildingDiamond(buildingId) {
+    if (!confirm('ダイヤモンドを消費して建設を即完了しますか？')) return;
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'instant_complete_building_diamond', building_id: buildingId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadData();
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
+}
+
 // 研究を即完了
 async function instantCompleteResearch(userResearchId) {
     if (!confirm('クリスタルを消費して研究を即完了しますか？')) return;
@@ -1917,6 +2293,29 @@ async function instantCompleteResearch(userResearchId) {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({action: 'instant_complete_research', user_research_id: userResearchId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadData();
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// 研究をダイヤモンドで即完了
+async function instantCompleteResearchDiamond(userResearchId) {
+    if (!confirm('ダイヤモンドを消費して研究を即完了しますか？')) return;
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'instant_complete_research_diamond', user_research_id: userResearchId})
         });
         const data = await res.json();
         
