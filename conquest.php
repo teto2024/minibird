@@ -685,8 +685,9 @@ function renderApp() {
 // マップを描画
 function renderMap(castles, mapSize) {
     return castles.map(castle => {
-        const isOwned = seasonData.owned_castle_ids.includes(castle.id);
-        const isAttackable = seasonData.attackable_castle_ids.includes(castle.id);
+        const castleId = parseInt(castle.id, 10);
+        const isOwned = seasonData.owned_castle_ids.includes(castleId);
+        const isAttackable = seasonData.attackable_castle_ids.includes(castleId);
         const isSacred = castle.is_sacred == 1;
         
         let classes = 'castle-cell';
