@@ -23,6 +23,20 @@ define('CIV_TROOP_ADVANTAGE_BONUS', 1.25);     // 相性有利時のダメージ
 define('CIV_TROOP_DISADVANTAGE_PENALTY', 0.75); // 相性不利時のダメージ倍率（25%減少）
 define('CIV_ADVANTAGE_DISPLAY_THRESHOLD', 0.05); // 相性表示の閾値（±5%）
 
+// 負傷兵・治療システム定数
+define('CIV_WOUNDED_RATE', 0.3);                  // 負傷兵発生率（30%）
+define('CIV_DEATH_RATE', 0.1);                    // 戦死率（10%）
+define('CIV_BASE_HEAL_TIME_SECONDS', 30);         // 基本治療時間（秒/兵士）
+define('CIV_HEAL_COST_COINS_PER_UNIT', 10);       // 治療コスト（コイン/兵士）
+
+// 訓練キューシステム定数
+define('CIV_INSTANT_TRAINING_MIN_COST', 2);       // 訓練即完了の最低クリスタルコスト
+define('CIV_INSTANT_HEALING_MIN_COST', 1);        // 治療即完了の最低クリスタルコスト
+
+// ダイヤモンド即時完了（クリスタルより安い）
+define('CIV_INSTANT_SECONDS_PER_DIAMOND', 120);   // ダイヤモンド1個あたりの秒数
+define('CIV_DIAMOND_DISCOUNT_RATE', 0.5);         // ダイヤモンドの割引率（クリスタルの50%）
+
 // 資源価値の定義（市場交換レート計算用）
 // 値が高いほど価値が高い資源
 $RESOURCE_VALUES = [
@@ -1851,6 +1865,1039 @@ if ($action === 'get_military_power') {
             'total_power' => $totalPower
         ]);
     } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 兵士選択による攻撃（新しい戦争システム）
+// ===============================================
+if ($action === 'attack_with_troops') {
+    $targetUserId = (int)($input['target_user_id'] ?? 0);
+    $troops = $input['troops'] ?? []; // [{troop_type_id: 1, count: 10}, ...]
+    
+    if ($targetUserId === $me['id']) {
+        echo json_encode(['ok' => false, 'error' => '自分を攻撃することはできません']);
+        exit;
+    }
+    
+    if (empty($troops)) {
+        echo json_encode(['ok' => false, 'error' => '攻撃部隊を選択してください']);
+        exit;
+    }
+    
+    $pdo->beginTransaction();
+    try {
+        // 攻撃者の文明
+        $myCiv = getUserCivilization($pdo, $me['id']);
+        
+        // 防御者の文明
+        $stmt = $pdo->prepare("SELECT * FROM user_civilizations WHERE user_id = ?");
+        $stmt->execute([$targetUserId]);
+        $targetCiv = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$targetCiv) {
+            throw new Exception('相手の文明が見つかりません');
+        }
+        
+        // 攻撃部隊を検証し、パワーを計算
+        $attackerTroops = [];
+        $attackerPower = 0;
+        $attackerComposition = [
+            'infantry' => ['power' => 0, 'count' => 0],
+            'cavalry' => ['power' => 0, 'count' => 0],
+            'ranged' => ['power' => 0, 'count' => 0],
+            'siege' => ['power' => 0, 'count' => 0]
+        ];
+        
+        foreach ($troops as $troop) {
+            $troopTypeId = (int)$troop['troop_type_id'];
+            $count = (int)$troop['count'];
+            
+            if ($count <= 0) continue;
+            
+            // 所有兵士数を確認
+            $stmt = $pdo->prepare("
+                SELECT uct.count, tt.name, tt.icon, tt.attack_power, tt.defense_power,
+                       COALESCE(tt.health_points, 100) as health_points,
+                       COALESCE(tt.troop_category, 'infantry') as troop_category
+                FROM user_civilization_troops uct
+                JOIN civilization_troop_types tt ON uct.troop_type_id = tt.id
+                WHERE uct.user_id = ? AND uct.troop_type_id = ?
+            ");
+            $stmt->execute([$me['id'], $troopTypeId]);
+            $userTroop = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$userTroop || $userTroop['count'] < $count) {
+                throw new Exception('兵士が不足しています');
+            }
+            
+            $power = ($userTroop['attack_power'] + floor($userTroop['defense_power'] / 2) + floor($userTroop['health_points'] / CIV_TROOP_HEALTH_TO_POWER_RATIO)) * $count;
+            $attackerPower += $power;
+            
+            $category = $userTroop['troop_category'] ?? 'infantry';
+            $attackerComposition[$category]['power'] += $power;
+            $attackerComposition[$category]['count'] += $count;
+            
+            $attackerTroops[] = [
+                'troop_type_id' => $troopTypeId,
+                'name' => $userTroop['name'],
+                'icon' => $userTroop['icon'],
+                'count' => $count,
+                'power' => $power,
+                'category' => $category
+            ];
+        }
+        
+        if ($attackerPower <= 0) {
+            throw new Exception('攻撃部隊のパワーが不足しています');
+        }
+        
+        // 防御側の部隊を取得
+        $defenderTroops = [];
+        $defenderPower = 0;
+        $defenderComposition = [
+            'infantry' => ['power' => 0, 'count' => 0],
+            'cavalry' => ['power' => 0, 'count' => 0],
+            'ranged' => ['power' => 0, 'count' => 0],
+            'siege' => ['power' => 0, 'count' => 0]
+        ];
+        
+        // 防御部隊設定を確認（なければ全兵士を使用）
+        $stmt = $pdo->prepare("SELECT * FROM user_civilization_defense_troops WHERE user_id = ?");
+        $stmt->execute([$targetUserId]);
+        $defenseSettings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        if (empty($defenseSettings)) {
+            // 防御設定がない場合は全兵士を使用
+            $stmt = $pdo->prepare("
+                SELECT uct.*, tt.name, tt.icon, tt.attack_power, tt.defense_power,
+                       COALESCE(tt.health_points, 100) as health_points,
+                       COALESCE(tt.troop_category, 'infantry') as troop_category
+                FROM user_civilization_troops uct
+                JOIN civilization_troop_types tt ON uct.troop_type_id = tt.id
+                WHERE uct.user_id = ? AND uct.count > 0
+            ");
+            $stmt->execute([$targetUserId]);
+            $defenseSettings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($defenseSettings as $troop) {
+                $power = ($troop['attack_power'] + floor($troop['defense_power'] / 2) + floor($troop['health_points'] / CIV_TROOP_HEALTH_TO_POWER_RATIO)) * $troop['count'];
+                $defenderPower += $power;
+                
+                $category = $troop['troop_category'] ?? 'infantry';
+                $defenderComposition[$category]['power'] += $power;
+                $defenderComposition[$category]['count'] += $troop['count'];
+                
+                $defenderTroops[] = [
+                    'troop_type_id' => $troop['troop_type_id'],
+                    'name' => $troop['name'],
+                    'icon' => $troop['icon'],
+                    'count' => $troop['count'],
+                    'power' => $power,
+                    'category' => $category
+                ];
+            }
+        } else {
+            // 防御設定がある場合
+            foreach ($defenseSettings as $setting) {
+                $stmt = $pdo->prepare("
+                    SELECT tt.name, tt.icon, tt.attack_power, tt.defense_power,
+                           COALESCE(tt.health_points, 100) as health_points,
+                           COALESCE(tt.troop_category, 'infantry') as troop_category
+                    FROM civilization_troop_types tt
+                    WHERE tt.id = ?
+                ");
+                $stmt->execute([$setting['troop_type_id']]);
+                $troopType = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($troopType && $setting['assigned_count'] > 0) {
+                    $power = ($troopType['attack_power'] + floor($troopType['defense_power'] / 2) + floor($troopType['health_points'] / CIV_TROOP_HEALTH_TO_POWER_RATIO)) * $setting['assigned_count'];
+                    $defenderPower += $power;
+                    
+                    $category = $troopType['troop_category'] ?? 'infantry';
+                    $defenderComposition[$category]['power'] += $power;
+                    $defenderComposition[$category]['count'] += $setting['assigned_count'];
+                    
+                    $defenderTroops[] = [
+                        'troop_type_id' => $setting['troop_type_id'],
+                        'name' => $troopType['name'],
+                        'icon' => $troopType['icon'],
+                        'count' => $setting['assigned_count'],
+                        'power' => $power,
+                        'category' => $category
+                    ];
+                }
+            }
+        }
+        
+        // 装備バフを取得
+        $myEquipmentBuffs = getUserEquipmentBuffs($pdo, $me['id']);
+        $targetEquipmentBuffs = getUserEquipmentBuffs($pdo, $targetUserId);
+        
+        // 兵種相性ボーナスを計算
+        $myAdvantageMultiplier = calculateTroopAdvantageMultiplier($attackerComposition, $defenderComposition);
+        
+        // アーマーによる軽減
+        $targetArmorReduction = min(CIV_ARMOR_MAX_REDUCTION, $targetEquipmentBuffs['armor'] / CIV_ARMOR_PERCENT_DIVISOR);
+        $myArmorReduction = min(CIV_ARMOR_MAX_REDUCTION, $myEquipmentBuffs['armor'] / CIV_ARMOR_PERCENT_DIVISOR);
+        
+        // 装備攻撃力を追加
+        $attackerPower += (int)floor($myEquipmentBuffs['attack']);
+        $defenderPower += (int)floor($targetEquipmentBuffs['attack']);
+        
+        // 最終的な攻撃力
+        $myEffectivePower = $attackerPower * (1 - $targetArmorReduction) * $myAdvantageMultiplier;
+        $targetEffectivePower = $defenderPower * (1 - $myArmorReduction);
+        
+        // 戦闘判定
+        $myRoll = mt_rand(1, 100) + ($myEffectivePower * CIV_ATTACKER_BONUS);
+        $targetRoll = mt_rand(1, 100) + $targetEffectivePower;
+        
+        $attackerWins = $myRoll > $targetRoll;
+        
+        // 損失と負傷兵を計算
+        $attackerLosses = [];
+        $attackerWounded = [];
+        $defenderLosses = [];
+        $defenderWounded = [];
+        
+        $winnerLossRate = CIV_DEATH_RATE;
+        $loserLossRate = CIV_DEATH_RATE * 2;
+        $woundedRate = CIV_WOUNDED_RATE;
+        
+        // 攻撃側の損失処理
+        foreach ($attackerTroops as $troop) {
+            $lossRate = $attackerWins ? $winnerLossRate : $loserLossRate;
+            $deaths = (int)floor($troop['count'] * $lossRate);
+            $wounded = (int)floor($troop['count'] * $woundedRate);
+            
+            if ($deaths > 0) {
+                $attackerLosses[$troop['troop_type_id']] = $deaths;
+            }
+            if ($wounded > 0) {
+                $attackerWounded[$troop['troop_type_id']] = $wounded;
+            }
+            
+            // 兵士を減少
+            $totalLoss = min($troop['count'], $deaths + $wounded);
+            $stmt = $pdo->prepare("
+                UPDATE user_civilization_troops
+                SET count = count - ?
+                WHERE user_id = ? AND troop_type_id = ?
+            ");
+            $stmt->execute([$totalLoss, $me['id'], $troop['troop_type_id']]);
+            
+            // 負傷兵を追加
+            if ($wounded > 0) {
+                $stmt = $pdo->prepare("
+                    INSERT INTO user_civilization_wounded_troops (user_id, troop_type_id, count)
+                    VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE count = count + ?
+                ");
+                $stmt->execute([$me['id'], $troop['troop_type_id'], $wounded, $wounded]);
+            }
+        }
+        
+        // 防御側の損失処理
+        foreach ($defenderTroops as $troop) {
+            $lossRate = $attackerWins ? $loserLossRate : $winnerLossRate;
+            $deaths = (int)floor($troop['count'] * $lossRate);
+            $wounded = (int)floor($troop['count'] * $woundedRate);
+            
+            if ($deaths > 0) {
+                $defenderLosses[$troop['troop_type_id']] = $deaths;
+            }
+            if ($wounded > 0) {
+                $defenderWounded[$troop['troop_type_id']] = $wounded;
+            }
+            
+            // 兵士を減少
+            $totalLoss = min($troop['count'], $deaths + $wounded);
+            $stmt = $pdo->prepare("
+                UPDATE user_civilization_troops
+                SET count = count - ?
+                WHERE user_id = ? AND troop_type_id = ?
+            ");
+            $stmt->execute([$totalLoss, $targetUserId, $troop['troop_type_id']]);
+            
+            // 負傷兵を追加
+            if ($wounded > 0) {
+                $stmt = $pdo->prepare("
+                    INSERT INTO user_civilization_wounded_troops (user_id, troop_type_id, count)
+                    VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE count = count + ?
+                ");
+                $stmt->execute([$targetUserId, $troop['troop_type_id'], $wounded, $wounded]);
+            }
+        }
+        
+        // 略奪処理（勝利時のみ）
+        $lootCoins = 0;
+        $lootResources = [];
+        
+        if ($attackerWins) {
+            // 資源を略奪
+            $stmt = $pdo->prepare("
+                SELECT ucr.resource_type_id, ucr.amount, rt.resource_key
+                FROM user_civilization_resources ucr
+                JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
+                WHERE ucr.user_id = ?
+            ");
+            $stmt->execute([$targetUserId]);
+            $targetResources = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($targetResources as $res) {
+                $loot = floor($res['amount'] * CIV_LOOT_RESOURCE_RATE);
+                if ($loot > 0) {
+                    $lootResources[$res['resource_key']] = $loot;
+                    
+                    // 資源を移動
+                    $stmt = $pdo->prepare("UPDATE user_civilization_resources SET amount = amount - ? WHERE user_id = ? AND resource_type_id = ?");
+                    $stmt->execute([$loot, $targetUserId, $res['resource_type_id']]);
+                    
+                    $stmt = $pdo->prepare("UPDATE user_civilization_resources SET amount = amount + ? WHERE user_id = ? AND resource_type_id = ?");
+                    $stmt->execute([$loot, $me['id'], $res['resource_type_id']]);
+                }
+            }
+            
+            // コインを略奪
+            $stmt = $pdo->prepare("SELECT coins FROM users WHERE id = ?");
+            $stmt->execute([$targetUserId]);
+            $targetCoins = (int)$stmt->fetchColumn();
+            $lootCoins = (int)floor($targetCoins * CIV_LOOT_COINS_RATE);
+            
+            if ($lootCoins > 0) {
+                $stmt = $pdo->prepare("UPDATE users SET coins = coins - ? WHERE id = ?");
+                $stmt->execute([$lootCoins, $targetUserId]);
+                $stmt = $pdo->prepare("UPDATE users SET coins = coins + ? WHERE id = ?");
+                $stmt->execute([$lootCoins, $me['id']]);
+            }
+        }
+        
+        // 戦争ログを記録
+        $stmt = $pdo->prepare("
+            INSERT INTO civilization_war_logs 
+            (attacker_user_id, defender_user_id, attacker_power, defender_power, 
+             winner_user_id, loot_coins, loot_resources,
+             attacker_troops_used, defender_troops_used, 
+             attacker_losses, defender_losses, attacker_wounded, defender_wounded)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $me['id'], $targetUserId, 
+            $attackerPower, $defenderPower,
+            $attackerWins ? $me['id'] : $targetUserId,
+            $lootCoins, json_encode($lootResources),
+            json_encode($attackerTroops), json_encode($defenderTroops),
+            json_encode($attackerLosses), json_encode($defenderLosses),
+            json_encode($attackerWounded), json_encode($defenderWounded)
+        ]);
+        
+        $pdo->commit();
+        
+        $result = $attackerWins ? 'victory' : 'defeat';
+        $message = $attackerWins 
+            ? "勝利！{$lootCoins}コインと資源を略奪しました！" 
+            : "敗北...相手の防御が強すぎました。";
+        
+        echo json_encode([
+            'ok' => true,
+            'result' => $result,
+            'message' => $message,
+            'attacker_power' => $attackerPower,
+            'defender_power' => $defenderPower,
+            'attacker_losses' => $attackerLosses,
+            'attacker_wounded' => $attackerWounded,
+            'defender_losses' => $defenderLosses,
+            'defender_wounded' => $defenderWounded,
+            'loot_coins' => $lootCoins,
+            'loot_resources' => $lootResources
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 防御部隊を設定
+// ===============================================
+if ($action === 'set_defense_troops') {
+    $troops = $input['troops'] ?? []; // [{troop_type_id: 1, count: 10}, ...]
+    
+    $pdo->beginTransaction();
+    try {
+        // 既存の防御設定をクリア
+        $stmt = $pdo->prepare("DELETE FROM user_civilization_defense_troops WHERE user_id = ?");
+        $stmt->execute([$me['id']]);
+        
+        // 新しい防御設定を追加
+        foreach ($troops as $troop) {
+            $troopTypeId = (int)$troop['troop_type_id'];
+            $count = (int)$troop['count'];
+            
+            if ($count <= 0) continue;
+            
+            // 所有兵士数を確認
+            $stmt = $pdo->prepare("SELECT count FROM user_civilization_troops WHERE user_id = ? AND troop_type_id = ?");
+            $stmt->execute([$me['id'], $troopTypeId]);
+            $ownedCount = (int)$stmt->fetchColumn();
+            
+            if ($count > $ownedCount) {
+                $count = $ownedCount;
+            }
+            
+            if ($count > 0) {
+                $stmt = $pdo->prepare("
+                    INSERT INTO user_civilization_defense_troops (user_id, troop_type_id, assigned_count)
+                    VALUES (?, ?, ?)
+                ");
+                $stmt->execute([$me['id'], $troopTypeId, $count]);
+            }
+        }
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => '防御部隊を設定しました'
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 防御部隊設定を取得
+// ===============================================
+if ($action === 'get_defense_troops') {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT udt.*, tt.name, tt.icon, tt.attack_power, tt.defense_power,
+                   COALESCE(tt.health_points, 100) as health_points,
+                   COALESCE(tt.troop_category, 'infantry') as troop_category
+            FROM user_civilization_defense_troops udt
+            JOIN civilization_troop_types tt ON udt.troop_type_id = tt.id
+            WHERE udt.user_id = ?
+        ");
+        $stmt->execute([$me['id']]);
+        $defenseTroops = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'ok' => true,
+            'defense_troops' => $defenseTroops
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 負傷兵一覧を取得
+// ===============================================
+if ($action === 'get_wounded_troops') {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT uwt.*, tt.name, tt.icon, tt.attack_power, tt.defense_power,
+                   COALESCE(tt.heal_time_seconds, 30) as heal_time_seconds,
+                   COALESCE(tt.heal_cost_coins, 10) as heal_cost_coins
+            FROM user_civilization_wounded_troops uwt
+            JOIN civilization_troop_types tt ON uwt.troop_type_id = tt.id
+            WHERE uwt.user_id = ? AND uwt.count > 0
+        ");
+        $stmt->execute([$me['id']]);
+        $woundedTroops = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 治療中のキューを取得
+        $stmt = $pdo->prepare("
+            SELECT ucq.*, tt.name, tt.icon
+            FROM user_civilization_healing_queue ucq
+            JOIN civilization_troop_types tt ON ucq.troop_type_id = tt.id
+            WHERE ucq.user_id = ?
+            ORDER BY ucq.healing_completes_at ASC
+        ");
+        $stmt->execute([$me['id']]);
+        $healingQueue = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 病院の容量を計算
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*) as hospital_count, SUM(ucb.level) as total_level
+            FROM user_civilization_buildings ucb
+            JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+            WHERE ucb.user_id = ? 
+              AND bt.building_key IN ('field_hospital', 'hospital', 'medical_center')
+              AND ucb.is_constructing = FALSE
+        ");
+        $stmt->execute([$me['id']]);
+        $hospitalData = $stmt->fetch(PDO::FETCH_ASSOC);
+        $hospitalCapacity = ($hospitalData['hospital_count'] ?? 0) * 10 + ($hospitalData['total_level'] ?? 0) * 5;
+        
+        echo json_encode([
+            'ok' => true,
+            'wounded_troops' => $woundedTroops,
+            'healing_queue' => $healingQueue,
+            'hospital_capacity' => $hospitalCapacity
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 負傷兵を治療キューに追加
+// ===============================================
+if ($action === 'heal_troops') {
+    $troopTypeId = (int)($input['troop_type_id'] ?? 0);
+    $count = (int)($input['count'] ?? 1);
+    
+    if ($count < 1) {
+        echo json_encode(['ok' => false, 'error' => '治療数を指定してください']);
+        exit;
+    }
+    
+    $pdo->beginTransaction();
+    try {
+        // 負傷兵を確認
+        $stmt = $pdo->prepare("
+            SELECT uwt.count, tt.name, tt.icon,
+                   COALESCE(tt.heal_time_seconds, 30) as heal_time_seconds,
+                   COALESCE(tt.heal_cost_coins, 10) as heal_cost_coins
+            FROM user_civilization_wounded_troops uwt
+            JOIN civilization_troop_types tt ON uwt.troop_type_id = tt.id
+            WHERE uwt.user_id = ? AND uwt.troop_type_id = ?
+        ");
+        $stmt->execute([$me['id'], $troopTypeId]);
+        $wounded = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$wounded || $wounded['count'] < $count) {
+            throw new Exception('負傷兵が不足しています');
+        }
+        
+        // 病院があるか確認
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*) FROM user_civilization_buildings ucb
+            JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+            WHERE ucb.user_id = ? 
+              AND bt.building_key IN ('field_hospital', 'hospital', 'medical_center')
+              AND ucb.is_constructing = FALSE
+        ");
+        $stmt->execute([$me['id']]);
+        $hasHospital = (int)$stmt->fetchColumn() > 0;
+        
+        if (!$hasHospital) {
+            throw new Exception('病院または野戦病院を建設してください');
+        }
+        
+        // コストを計算
+        $totalCost = $wounded['heal_cost_coins'] * $count;
+        
+        // コインを確認
+        $stmt = $pdo->prepare("SELECT coins FROM users WHERE id = ? FOR UPDATE");
+        $stmt->execute([$me['id']]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($user['coins'] < $totalCost) {
+            throw new Exception('コインが不足しています');
+        }
+        
+        // コインを消費
+        $stmt = $pdo->prepare("UPDATE users SET coins = coins - ? WHERE id = ?");
+        $stmt->execute([$totalCost, $me['id']]);
+        
+        // 治療時間を計算
+        $healTime = $wounded['heal_time_seconds'] * $count;
+        $completesAt = date('Y-m-d H:i:s', time() + $healTime);
+        
+        // 負傷兵を減少
+        $stmt = $pdo->prepare("
+            UPDATE user_civilization_wounded_troops
+            SET count = count - ?
+            WHERE user_id = ? AND troop_type_id = ?
+        ");
+        $stmt->execute([$count, $me['id'], $troopTypeId]);
+        
+        // 治療キューに追加
+        $stmt = $pdo->prepare("
+            INSERT INTO user_civilization_healing_queue (user_id, troop_type_id, count, healing_started_at, healing_completes_at)
+            VALUES (?, ?, ?, NOW(), ?)
+        ");
+        $stmt->execute([$me['id'], $troopTypeId, $count, $completesAt]);
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => "{$wounded['name']} ×{$count} の治療を開始しました",
+            'completes_at' => $completesAt
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 治療完了を確認
+// ===============================================
+if ($action === 'complete_healing') {
+    $pdo->beginTransaction();
+    try {
+        // 完了した治療を取得
+        $stmt = $pdo->prepare("
+            SELECT ucq.*, tt.name
+            FROM user_civilization_healing_queue ucq
+            JOIN civilization_troop_types tt ON ucq.troop_type_id = tt.id
+            WHERE ucq.user_id = ? AND ucq.healing_completes_at <= NOW()
+        ");
+        $stmt->execute([$me['id']]);
+        $completedHealing = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $completedNames = [];
+        
+        foreach ($completedHealing as $healing) {
+            // 兵士を追加
+            $stmt = $pdo->prepare("
+                INSERT INTO user_civilization_troops (user_id, troop_type_id, count)
+                VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE count = count + ?
+            ");
+            $stmt->execute([$me['id'], $healing['troop_type_id'], $healing['count'], $healing['count']]);
+            
+            // キューから削除
+            $stmt = $pdo->prepare("DELETE FROM user_civilization_healing_queue WHERE id = ?");
+            $stmt->execute([$healing['id']]);
+            
+            $completedNames[] = "{$healing['name']} ×{$healing['count']}";
+        }
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'completed' => $completedNames,
+            'count' => count($completedNames)
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 訓練キューに兵士を追加
+// ===============================================
+if ($action === 'queue_training') {
+    $troopTypeId = (int)($input['troop_type_id'] ?? 0);
+    $count = (int)($input['count'] ?? 1);
+    
+    if ($count < 1 || $count > 100) {
+        echo json_encode(['ok' => false, 'error' => '訓練数は1〜100の範囲で指定してください']);
+        exit;
+    }
+    
+    $pdo->beginTransaction();
+    try {
+        // 兵種を確認
+        $stmt = $pdo->prepare("SELECT * FROM civilization_troop_types WHERE id = ?");
+        $stmt->execute([$troopTypeId]);
+        $troopType = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$troopType) {
+            throw new Exception('兵種が見つかりません');
+        }
+        
+        // 文明データを確認
+        $civ = getUserCivilization($pdo, $me['id']);
+        
+        // 時代制限チェック
+        if ($troopType['unlock_era_id'] && $troopType['unlock_era_id'] > $civ['current_era_id']) {
+            throw new Exception('この兵種はまだ利用できません');
+        }
+        
+        // コストを計算
+        $totalCoinCost = $troopType['train_cost_coins'] * $count;
+        $resourceCosts = json_decode($troopType['train_cost_resources'], true) ?: [];
+        
+        // コインを確認
+        $stmt = $pdo->prepare("SELECT coins FROM users WHERE id = ? FOR UPDATE");
+        $stmt->execute([$me['id']]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($user['coins'] < $totalCoinCost) {
+            throw new Exception('コインが不足しています');
+        }
+        
+        // 資源コストを確認・消費
+        foreach ($resourceCosts as $resourceKey => $required) {
+            $totalRequired = $required * $count;
+            $stmt = $pdo->prepare("
+                SELECT ucr.amount 
+                FROM user_civilization_resources ucr
+                JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
+                WHERE ucr.user_id = ? AND rt.resource_key = ?
+            ");
+            $stmt->execute([$me['id'], $resourceKey]);
+            $currentAmount = (float)$stmt->fetchColumn();
+            
+            if ($currentAmount < $totalRequired) {
+                throw new Exception("{$resourceKey}が不足しています");
+            }
+            
+            $stmt = $pdo->prepare("
+                UPDATE user_civilization_resources ucr
+                JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
+                SET ucr.amount = ucr.amount - ?
+                WHERE ucr.user_id = ? AND rt.resource_key = ?
+            ");
+            $stmt->execute([$totalRequired, $me['id'], $resourceKey]);
+        }
+        
+        // コインを消費
+        $stmt = $pdo->prepare("UPDATE users SET coins = coins - ? WHERE id = ?");
+        $stmt->execute([$totalCoinCost, $me['id']]);
+        
+        // 訓練時間を計算
+        $trainTime = $troopType['train_time_seconds'] * $count;
+        $completesAt = date('Y-m-d H:i:s', time() + $trainTime);
+        
+        // 訓練キューに追加
+        $stmt = $pdo->prepare("
+            INSERT INTO user_civilization_training_queue (user_id, troop_type_id, count, training_started_at, training_completes_at)
+            VALUES (?, ?, ?, NOW(), ?)
+        ");
+        $stmt->execute([$me['id'], $troopTypeId, $count, $completesAt]);
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => "{$troopType['name']} ×{$count} の訓練を開始しました",
+            'completes_at' => $completesAt
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 訓練キューを取得
+// ===============================================
+if ($action === 'get_training_queue') {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT utq.*, tt.name, tt.icon, tt.attack_power, tt.defense_power
+            FROM user_civilization_training_queue utq
+            JOIN civilization_troop_types tt ON utq.troop_type_id = tt.id
+            WHERE utq.user_id = ?
+            ORDER BY utq.training_completes_at ASC
+        ");
+        $stmt->execute([$me['id']]);
+        $trainingQueue = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'ok' => true,
+            'training_queue' => $trainingQueue
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 訓練完了を確認
+// ===============================================
+if ($action === 'complete_training') {
+    $pdo->beginTransaction();
+    try {
+        // 完了した訓練を取得
+        $stmt = $pdo->prepare("
+            SELECT utq.*, tt.name
+            FROM user_civilization_training_queue utq
+            JOIN civilization_troop_types tt ON utq.troop_type_id = tt.id
+            WHERE utq.user_id = ? AND utq.training_completes_at <= NOW()
+        ");
+        $stmt->execute([$me['id']]);
+        $completedTraining = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $completedNames = [];
+        
+        foreach ($completedTraining as $training) {
+            // 兵士を追加
+            $stmt = $pdo->prepare("
+                INSERT INTO user_civilization_troops (user_id, troop_type_id, count)
+                VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE count = count + ?
+            ");
+            $stmt->execute([$me['id'], $training['troop_type_id'], $training['count'], $training['count']]);
+            
+            // キューから削除
+            $stmt = $pdo->prepare("DELETE FROM user_civilization_training_queue WHERE id = ?");
+            $stmt->execute([$training['id']]);
+            
+            $completedNames[] = "{$training['name']} ×{$training['count']}";
+        }
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'completed' => $completedNames,
+            'count' => count($completedNames)
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 訓練・治療を即座に完了（クリスタルまたはダイヤモンド）
+// ===============================================
+if ($action === 'instant_complete_queue') {
+    $queueType = $input['queue_type'] ?? ''; // 'training' or 'healing'
+    $queueId = (int)($input['queue_id'] ?? 0);
+    $currency = $input['currency'] ?? 'crystal'; // 'crystal' or 'diamond'
+    
+    if (!in_array($queueType, ['training', 'healing'])) {
+        echo json_encode(['ok' => false, 'error' => '無効なキュータイプです']);
+        exit;
+    }
+    
+    if (!in_array($currency, ['crystal', 'diamond'])) {
+        echo json_encode(['ok' => false, 'error' => '無効な通貨です']);
+        exit;
+    }
+    
+    $pdo->beginTransaction();
+    try {
+        // キューを取得
+        $table = $queueType === 'training' ? 'user_civilization_training_queue' : 'user_civilization_healing_queue';
+        $timeColumn = $queueType === 'training' ? 'training_completes_at' : 'healing_completes_at';
+        
+        $stmt = $pdo->prepare("SELECT * FROM {$table} WHERE id = ? AND user_id = ?");
+        $stmt->execute([$queueId, $me['id']]);
+        $queue = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$queue) {
+            throw new Exception('キューが見つかりません');
+        }
+        
+        // 残り時間を計算
+        $remainingSeconds = max(0, strtotime($queue[$timeColumn]) - time());
+        
+        // コストを計算
+        if ($currency === 'crystal') {
+            $minCost = $queueType === 'training' ? CIV_INSTANT_TRAINING_MIN_COST : CIV_INSTANT_HEALING_MIN_COST;
+            $cost = max($minCost, (int)ceil($remainingSeconds / CIV_INSTANT_SECONDS_PER_CRYSTAL));
+            $currencyColumn = 'crystals';
+            $currencyName = 'クリスタル';
+        } else {
+            $minCost = 1;
+            $cost = max($minCost, (int)ceil($remainingSeconds / CIV_INSTANT_SECONDS_PER_DIAMOND));
+            $currencyColumn = 'diamonds';
+            $currencyName = 'ダイヤモンド';
+        }
+        
+        // 通貨を確認
+        $stmt = $pdo->prepare("SELECT {$currencyColumn} FROM users WHERE id = ? FOR UPDATE");
+        $stmt->execute([$me['id']]);
+        $balance = (int)$stmt->fetchColumn();
+        
+        if ($balance < $cost) {
+            throw new Exception("{$currencyName}が不足しています（必要: {$cost}、所持: {$balance}）");
+        }
+        
+        // 通貨を消費
+        $stmt = $pdo->prepare("UPDATE users SET {$currencyColumn} = {$currencyColumn} - ? WHERE id = ?");
+        $stmt->execute([$cost, $me['id']]);
+        
+        // 兵士を追加
+        $stmt = $pdo->prepare("
+            INSERT INTO user_civilization_troops (user_id, troop_type_id, count)
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE count = count + ?
+        ");
+        $stmt->execute([$me['id'], $queue['troop_type_id'], $queue['count'], $queue['count']]);
+        
+        // キューを削除
+        $stmt = $pdo->prepare("DELETE FROM {$table} WHERE id = ?");
+        $stmt->execute([$queueId]);
+        
+        // 兵種名を取得
+        $stmt = $pdo->prepare("SELECT name FROM civilization_troop_types WHERE id = ?");
+        $stmt->execute([$queue['troop_type_id']]);
+        $troopName = $stmt->fetchColumn();
+        
+        $pdo->commit();
+        
+        $actionName = $queueType === 'training' ? '訓練' : '治療';
+        echo json_encode([
+            'ok' => true,
+            'message' => "{$troopName} ×{$queue['count']} の{$actionName}が完了しました！",
+            'currency_spent' => $cost,
+            'currency_type' => $currency
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// ダイヤモンドで建物を即完了
+// ===============================================
+if ($action === 'instant_complete_building_diamond') {
+    $buildingId = (int)($input['building_id'] ?? 0);
+    
+    $pdo->beginTransaction();
+    try {
+        // 建設中の建物を確認
+        $stmt = $pdo->prepare("
+            SELECT ucb.*, bt.name, bt.population_capacity
+            FROM user_civilization_buildings ucb
+            JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+            WHERE ucb.id = ? AND ucb.user_id = ? AND ucb.is_constructing = TRUE
+        ");
+        $stmt->execute([$buildingId, $me['id']]);
+        $building = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$building) {
+            throw new Exception('建設中の建物が見つかりません');
+        }
+        
+        // 残り時間に応じたダイヤモンドコストを計算
+        $remainingSeconds = max(0, strtotime($building['construction_completes_at']) - time());
+        $diamondCost = max(1, (int)ceil($remainingSeconds / CIV_INSTANT_SECONDS_PER_DIAMOND));
+        
+        // ダイヤモンドを確認
+        $stmt = $pdo->prepare("SELECT diamonds FROM users WHERE id = ? FOR UPDATE");
+        $stmt->execute([$me['id']]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($user['diamonds'] < $diamondCost) {
+            throw new Exception("ダイヤモンドが不足しています（必要: {$diamondCost}、所持: {$user['diamonds']}）");
+        }
+        
+        // ダイヤモンドを消費
+        $stmt = $pdo->prepare("UPDATE users SET diamonds = diamonds - ? WHERE id = ?");
+        $stmt->execute([$diamondCost, $me['id']]);
+        
+        // 建設を完了
+        $stmt = $pdo->prepare("
+            UPDATE user_civilization_buildings 
+            SET is_constructing = FALSE, construction_completes_at = NOW()
+            WHERE id = ?
+        ");
+        $stmt->execute([$buildingId]);
+        
+        // 住宅の場合は人口を増やす
+        $populationIncrease = 0;
+        if ($building['population_capacity'] > 0) {
+            $populationIncrease = $building['population_capacity'] * $building['level'];
+            $stmt = $pdo->prepare("
+                UPDATE user_civilizations 
+                SET population = population + ?,
+                    max_population = max_population + ?
+                WHERE user_id = ?
+            ");
+            $stmt->execute([$populationIncrease, $populationIncrease, $me['id']]);
+        }
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => "{$building['name']}の建設が完了しました！",
+            'diamonds_spent' => $diamondCost,
+            'population_increase' => $populationIncrease
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// ダイヤモンドで研究を即完了
+// ===============================================
+if ($action === 'instant_complete_research_diamond') {
+    $researchId = (int)($input['user_research_id'] ?? 0);
+    
+    $pdo->beginTransaction();
+    try {
+        // 研究中の研究を確認
+        $stmt = $pdo->prepare("
+            SELECT ucr.*, r.name, r.unlock_resource_id
+            FROM user_civilization_researches ucr
+            JOIN civilization_researches r ON ucr.research_id = r.id
+            WHERE ucr.id = ? AND ucr.user_id = ? AND ucr.is_researching = TRUE
+        ");
+        $stmt->execute([$researchId, $me['id']]);
+        $research = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$research) {
+            throw new Exception('研究中の研究が見つかりません');
+        }
+        
+        // 残り時間に応じたダイヤモンドコストを計算
+        $remainingSeconds = max(0, strtotime($research['research_completes_at']) - time());
+        $diamondCost = max(1, (int)ceil($remainingSeconds / CIV_INSTANT_SECONDS_PER_DIAMOND));
+        
+        // ダイヤモンドを確認
+        $stmt = $pdo->prepare("SELECT diamonds FROM users WHERE id = ? FOR UPDATE");
+        $stmt->execute([$me['id']]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($user['diamonds'] < $diamondCost) {
+            throw new Exception("ダイヤモンドが不足しています（必要: {$diamondCost}、所持: {$user['diamonds']}）");
+        }
+        
+        // ダイヤモンドを消費
+        $stmt = $pdo->prepare("UPDATE users SET diamonds = diamonds - ? WHERE id = ?");
+        $stmt->execute([$diamondCost, $me['id']]);
+        
+        // 研究を完了
+        $stmt = $pdo->prepare("
+            UPDATE user_civilization_researches 
+            SET is_researching = FALSE, is_completed = TRUE, completed_at = NOW()
+            WHERE id = ?
+        ");
+        $stmt->execute([$researchId]);
+        
+        // 資源アンロック
+        if ($research['unlock_resource_id']) {
+            $stmt = $pdo->prepare("
+                INSERT INTO user_civilization_resources (user_id, resource_type_id, amount, unlocked, unlocked_at)
+                VALUES (?, ?, 0, TRUE, NOW())
+                ON DUPLICATE KEY UPDATE unlocked = TRUE, unlocked_at = NOW()
+            ");
+            $stmt->execute([$me['id'], $research['unlock_resource_id']]);
+        }
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => "{$research['name']}の研究が完了しました！",
+            'diamonds_spent' => $diamondCost
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
     }
     exit;
