@@ -5,6 +5,7 @@
 // ===============================================
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/battle_engine.php';
 
 // 文明システム設定定数
 define('CIV_COINS_TO_RESEARCH_RATIO', 10);     // 研究ポイント1あたりのコイン
@@ -1872,7 +1873,7 @@ if ($action === 'get_military_power') {
 }
 
 // ===============================================
-// 兵士選択による攻撃（新しい戦争システム）
+// 兵士選択による攻撃（ターン制バトルシステム）
 // ===============================================
 if ($action === 'attack_with_troops') {
     $targetUserId = (int)($input['target_user_id'] ?? 0);
@@ -1914,16 +1915,8 @@ if ($action === 'attack_with_troops') {
             throw new Exception('相手の文明が見つかりません');
         }
         
-        // 攻撃部隊を検証し、パワーを計算
+        // 攻撃部隊を検証
         $attackerTroops = [];
-        $attackerPower = 0;
-        $attackerComposition = [
-            'infantry' => ['power' => 0, 'count' => 0],
-            'cavalry' => ['power' => 0, 'count' => 0],
-            'ranged' => ['power' => 0, 'count' => 0],
-            'siege' => ['power' => 0, 'count' => 0]
-        ];
-        
         foreach ($troops as $troop) {
             $troopTypeId = (int)$troop['troop_type_id'];
             $count = (int)$troop['count'];
@@ -1932,50 +1925,28 @@ if ($action === 'attack_with_troops') {
             
             // 所有兵士数を確認
             $stmt = $pdo->prepare("
-                SELECT uct.count, tt.name, tt.icon, tt.attack_power, tt.defense_power,
-                       COALESCE(tt.health_points, 100) as health_points,
-                       COALESCE(tt.troop_category, 'infantry') as troop_category
-                FROM user_civilization_troops uct
-                JOIN civilization_troop_types tt ON uct.troop_type_id = tt.id
+                SELECT uct.count FROM user_civilization_troops uct
                 WHERE uct.user_id = ? AND uct.troop_type_id = ?
             ");
             $stmt->execute([$me['id'], $troopTypeId]);
-            $userTroop = $stmt->fetch(PDO::FETCH_ASSOC);
+            $ownedCount = (int)$stmt->fetchColumn();
             
-            if (!$userTroop || $userTroop['count'] < $count) {
+            if ($ownedCount < $count) {
                 throw new Exception('兵士が不足しています');
             }
             
-            $power = ($userTroop['attack_power'] + floor($userTroop['defense_power'] / 2) + floor($userTroop['health_points'] / CIV_TROOP_HEALTH_TO_POWER_RATIO)) * $count;
-            $attackerPower += $power;
-            
-            $category = $userTroop['troop_category'] ?? 'infantry';
-            $attackerComposition[$category]['power'] += $power;
-            $attackerComposition[$category]['count'] += $count;
-            
             $attackerTroops[] = [
                 'troop_type_id' => $troopTypeId,
-                'name' => $userTroop['name'],
-                'icon' => $userTroop['icon'],
-                'count' => $count,
-                'power' => $power,
-                'category' => $category
+                'count' => $count
             ];
         }
         
-        if ($attackerPower <= 0) {
-            throw new Exception('攻撃部隊のパワーが不足しています');
+        if (empty($attackerTroops)) {
+            throw new Exception('攻撃部隊を選択してください');
         }
         
         // 防御側の部隊を取得
         $defenderTroops = [];
-        $defenderPower = 0;
-        $defenderComposition = [
-            'infantry' => ['power' => 0, 'count' => 0],
-            'cavalry' => ['power' => 0, 'count' => 0],
-            'ranged' => ['power' => 0, 'count' => 0],
-            'siege' => ['power' => 0, 'count' => 0]
-        ];
         
         // 防御部隊設定を確認（なければ全兵士を使用）
         $stmt = $pdo->prepare("SELECT * FROM user_civilization_defense_troops WHERE user_id = ?");
@@ -1985,61 +1956,25 @@ if ($action === 'attack_with_troops') {
         if (empty($defenseSettings)) {
             // 防御設定がない場合は全兵士を使用
             $stmt = $pdo->prepare("
-                SELECT uct.*, tt.name, tt.icon, tt.attack_power, tt.defense_power,
-                       COALESCE(tt.health_points, 100) as health_points,
-                       COALESCE(tt.troop_category, 'infantry') as troop_category
-                FROM user_civilization_troops uct
-                JOIN civilization_troop_types tt ON uct.troop_type_id = tt.id
-                WHERE uct.user_id = ? AND uct.count > 0
+                SELECT troop_type_id, count FROM user_civilization_troops
+                WHERE user_id = ? AND count > 0
             ");
             $stmt->execute([$targetUserId]);
-            $defenseSettings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $allTroops = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            foreach ($defenseSettings as $troop) {
-                $power = ($troop['attack_power'] + floor($troop['defense_power'] / 2) + floor($troop['health_points'] / CIV_TROOP_HEALTH_TO_POWER_RATIO)) * $troop['count'];
-                $defenderPower += $power;
-                
-                $category = $troop['troop_category'] ?? 'infantry';
-                $defenderComposition[$category]['power'] += $power;
-                $defenderComposition[$category]['count'] += $troop['count'];
-                
+            foreach ($allTroops as $troop) {
                 $defenderTroops[] = [
                     'troop_type_id' => $troop['troop_type_id'],
-                    'name' => $troop['name'],
-                    'icon' => $troop['icon'],
-                    'count' => $troop['count'],
-                    'power' => $power,
-                    'category' => $category
+                    'count' => $troop['count']
                 ];
             }
         } else {
             // 防御設定がある場合
             foreach ($defenseSettings as $setting) {
-                $stmt = $pdo->prepare("
-                    SELECT tt.name, tt.icon, tt.attack_power, tt.defense_power,
-                           COALESCE(tt.health_points, 100) as health_points,
-                           COALESCE(tt.troop_category, 'infantry') as troop_category
-                    FROM civilization_troop_types tt
-                    WHERE tt.id = ?
-                ");
-                $stmt->execute([$setting['troop_type_id']]);
-                $troopType = $stmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($troopType && $setting['assigned_count'] > 0) {
-                    $power = ($troopType['attack_power'] + floor($troopType['defense_power'] / 2) + floor($troopType['health_points'] / CIV_TROOP_HEALTH_TO_POWER_RATIO)) * $setting['assigned_count'];
-                    $defenderPower += $power;
-                    
-                    $category = $troopType['troop_category'] ?? 'infantry';
-                    $defenderComposition[$category]['power'] += $power;
-                    $defenderComposition[$category]['count'] += $setting['assigned_count'];
-                    
+                if ($setting['assigned_count'] > 0) {
                     $defenderTroops[] = [
                         'troop_type_id' => $setting['troop_type_id'],
-                        'name' => $troopType['name'],
-                        'icon' => $troopType['icon'],
-                        'count' => $setting['assigned_count'],
-                        'power' => $power,
-                        'category' => $category
+                        'count' => $setting['assigned_count']
                     ];
                 }
             }
@@ -2049,58 +1984,49 @@ if ($action === 'attack_with_troops') {
         $myEquipmentBuffs = getUserEquipmentBuffs($pdo, $me['id']);
         $targetEquipmentBuffs = getUserEquipmentBuffs($pdo, $targetUserId);
         
-        // 兵種相性ボーナスを計算
-        $myAdvantageMultiplier = calculateTroopAdvantageMultiplier($attackerComposition, $defenderComposition);
+        // バトルユニットを準備
+        $attackerUnit = prepareBattleUnit($attackerTroops, $myEquipmentBuffs, $pdo);
+        $defenderUnit = prepareBattleUnit($defenderTroops, $targetEquipmentBuffs, $pdo);
         
-        // アーマーによる軽減
-        $targetArmorReduction = min(CIV_ARMOR_MAX_REDUCTION, $targetEquipmentBuffs['armor'] / CIV_ARMOR_PERCENT_DIVISOR);
-        $myArmorReduction = min(CIV_ARMOR_MAX_REDUCTION, $myEquipmentBuffs['armor'] / CIV_ARMOR_PERCENT_DIVISOR);
+        // ターン制バトルを実行
+        $battleResult = executeTurnBattle($attackerUnit, $defenderUnit);
+        $attackerWins = $battleResult['attacker_wins'];
         
-        // 装備攻撃力を追加
-        $attackerPower += (int)floor($myEquipmentBuffs['attack']);
-        $defenderPower += (int)floor($targetEquipmentBuffs['attack']);
-        
-        // 最終的な攻撃力
-        $myEffectivePower = $attackerPower * (1 - $targetArmorReduction) * $myAdvantageMultiplier;
-        $targetEffectivePower = $defenderPower * (1 - $myArmorReduction);
-        
-        // 戦闘判定
-        $myRoll = mt_rand(1, 100) + ($myEffectivePower * CIV_ATTACKER_BONUS);
-        $targetRoll = mt_rand(1, 100) + $targetEffectivePower;
-        
-        $attackerWins = $myRoll > $targetRoll;
-        
-        // 損失と負傷兵を計算
+        // 損失と負傷兵を計算（HPの減少率に基づく）
         $attackerLosses = [];
         $attackerWounded = [];
         $defenderLosses = [];
         $defenderWounded = [];
         
-        $winnerLossRate = CIV_DEATH_RATE;
-        $loserLossRate = CIV_DEATH_RATE * 2;
-        $woundedRate = CIV_WOUNDED_RATE;
+        $attackerHpLossRate = 1 - ($battleResult['attacker_final_hp'] / max(1, $battleResult['attacker_max_hp']));
+        $defenderHpLossRate = 1 - ($battleResult['defender_final_hp'] / max(1, $battleResult['defender_max_hp']));
         
         // 攻撃側の損失処理
-        foreach ($attackerTroops as $troop) {
-            $lossRate = $attackerWins ? $winnerLossRate : $loserLossRate;
-            $deaths = (int)floor($troop['count'] * $lossRate);
-            $wounded = (int)floor($troop['count'] * $woundedRate);
+        foreach ($attackerUnit['troops'] as $troop) {
+            $troopTypeId = $troop['troop_type_id'];
+            $count = $troop['count'];
+            
+            // HPの減少率に応じた損失（死亡+負傷）
+            $totalLossCount = (int)floor($count * $attackerHpLossRate);
+            $deaths = (int)floor($totalLossCount * CIV_DEATH_RATE / (CIV_DEATH_RATE + CIV_WOUNDED_RATE));
+            $wounded = $totalLossCount - $deaths;
             
             if ($deaths > 0) {
-                $attackerLosses[$troop['troop_type_id']] = $deaths;
+                $attackerLosses[$troopTypeId] = $deaths;
             }
             if ($wounded > 0) {
-                $attackerWounded[$troop['troop_type_id']] = $wounded;
+                $attackerWounded[$troopTypeId] = $wounded;
             }
             
             // 兵士を減少
-            $totalLoss = min($troop['count'], $deaths + $wounded);
-            $stmt = $pdo->prepare("
-                UPDATE user_civilization_troops
-                SET count = count - ?
-                WHERE user_id = ? AND troop_type_id = ?
-            ");
-            $stmt->execute([$totalLoss, $me['id'], $troop['troop_type_id']]);
+            if ($totalLossCount > 0) {
+                $stmt = $pdo->prepare("
+                    UPDATE user_civilization_troops
+                    SET count = count - ?
+                    WHERE user_id = ? AND troop_type_id = ?
+                ");
+                $stmt->execute([$totalLossCount, $me['id'], $troopTypeId]);
+            }
             
             // 負傷兵を追加
             if ($wounded > 0) {
@@ -2109,31 +2035,36 @@ if ($action === 'attack_with_troops') {
                     VALUES (?, ?, ?)
                     ON DUPLICATE KEY UPDATE count = count + ?
                 ");
-                $stmt->execute([$me['id'], $troop['troop_type_id'], $wounded, $wounded]);
+                $stmt->execute([$me['id'], $troopTypeId, $wounded, $wounded]);
             }
         }
         
         // 防御側の損失処理
-        foreach ($defenderTroops as $troop) {
-            $lossRate = $attackerWins ? $loserLossRate : $winnerLossRate;
-            $deaths = (int)floor($troop['count'] * $lossRate);
-            $wounded = (int)floor($troop['count'] * $woundedRate);
+        foreach ($defenderUnit['troops'] as $troop) {
+            $troopTypeId = $troop['troop_type_id'];
+            $count = $troop['count'];
+            
+            // HPの減少率に応じた損失（死亡+負傷）
+            $totalLossCount = (int)floor($count * $defenderHpLossRate);
+            $deaths = (int)floor($totalLossCount * CIV_DEATH_RATE / (CIV_DEATH_RATE + CIV_WOUNDED_RATE));
+            $wounded = $totalLossCount - $deaths;
             
             if ($deaths > 0) {
-                $defenderLosses[$troop['troop_type_id']] = $deaths;
+                $defenderLosses[$troopTypeId] = $deaths;
             }
             if ($wounded > 0) {
-                $defenderWounded[$troop['troop_type_id']] = $wounded;
+                $defenderWounded[$troopTypeId] = $wounded;
             }
             
             // 兵士を減少
-            $totalLoss = min($troop['count'], $deaths + $wounded);
-            $stmt = $pdo->prepare("
-                UPDATE user_civilization_troops
-                SET count = count - ?
-                WHERE user_id = ? AND troop_type_id = ?
-            ");
-            $stmt->execute([$totalLoss, $targetUserId, $troop['troop_type_id']]);
+            if ($totalLossCount > 0) {
+                $stmt = $pdo->prepare("
+                    UPDATE user_civilization_troops
+                    SET count = count - ?
+                    WHERE user_id = ? AND troop_type_id = ?
+                ");
+                $stmt->execute([$totalLossCount, $targetUserId, $troopTypeId]);
+            }
             
             // 負傷兵を追加
             if ($wounded > 0) {
@@ -2142,7 +2073,7 @@ if ($action === 'attack_with_troops') {
                     VALUES (?, ?, ?)
                     ON DUPLICATE KEY UPDATE count = count + ?
                 ");
-                $stmt->execute([$targetUserId, $troop['troop_type_id'], $wounded, $wounded]);
+                $stmt->execute([$targetUserId, $troopTypeId, $wounded, $wounded]);
             }
         }
         
@@ -2189,38 +2120,52 @@ if ($action === 'attack_with_troops') {
             }
         }
         
-        // 戦争ログを記録
+        // 戦争ログを記録（ターン制バトル情報を含む）
+        $battleSummary = generateBattleSummary($battleResult);
         $stmt = $pdo->prepare("
             INSERT INTO civilization_war_logs 
             (attacker_user_id, defender_user_id, attacker_power, defender_power, 
              winner_user_id, loot_coins, loot_resources,
              attacker_troops_used, defender_troops_used, 
-             attacker_losses, defender_losses, attacker_wounded, defender_wounded)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             attacker_losses, defender_losses, attacker_wounded, defender_wounded,
+             total_turns, battle_log_summary, attacker_final_hp, defender_final_hp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $me['id'], $targetUserId, 
-            $attackerPower, $defenderPower,
+            $attackerUnit['attack'], $defenderUnit['attack'],
             $attackerWins ? $me['id'] : $targetUserId,
             $lootCoins, json_encode($lootResources),
-            json_encode($attackerTroops), json_encode($defenderTroops),
+            json_encode($attackerUnit['troops']), json_encode($defenderUnit['troops']),
             json_encode($attackerLosses), json_encode($defenderLosses),
-            json_encode($attackerWounded), json_encode($defenderWounded)
+            json_encode($attackerWounded), json_encode($defenderWounded),
+            $battleResult['total_turns'], $battleSummary,
+            $battleResult['attacker_final_hp'], $battleResult['defender_final_hp']
         ]);
+        $warLogId = $pdo->lastInsertId();
+        
+        // ターン制バトルログを保存
+        saveCivilizationBattleTurnLogs($pdo, $warLogId, $battleResult['turn_logs']);
         
         $pdo->commit();
         
         $result = $attackerWins ? 'victory' : 'defeat';
         $message = $attackerWins 
-            ? "勝利！{$lootCoins}コインと資源を略奪しました！" 
-            : "敗北...相手の防御が強すぎました。";
+            ? "勝利！{$battleResult['total_turns']}ターンの激戦の末、{$lootCoins}コインと資源を略奪しました！" 
+            : "敗北...{$battleResult['total_turns']}ターンの戦いの末、相手の防御に敗れました。";
         
         echo json_encode([
             'ok' => true,
             'result' => $result,
             'message' => $message,
-            'attacker_power' => $attackerPower,
-            'defender_power' => $defenderPower,
+            'battle_result' => [
+                'total_turns' => $battleResult['total_turns'],
+                'attacker_final_hp' => $battleResult['attacker_final_hp'],
+                'attacker_max_hp' => $battleResult['attacker_max_hp'],
+                'defender_final_hp' => $battleResult['defender_final_hp'],
+                'defender_max_hp' => $battleResult['defender_max_hp']
+            ],
+            'war_log_id' => $warLogId,
             'attacker_losses' => $attackerLosses,
             'attacker_wounded' => $attackerWounded,
             'defender_losses' => $defenderLosses,
@@ -2911,6 +2856,134 @@ if ($action === 'instant_complete_research_diamond') {
         ]);
     } catch (Exception $e) {
         $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 戦闘ログ詳細（ターンログ）を取得
+// ===============================================
+if ($action === 'get_battle_turn_logs') {
+    $warLogId = (int)($input['war_log_id'] ?? 0);
+    
+    if ($warLogId <= 0) {
+        echo json_encode(['ok' => false, 'error' => '戦闘ログIDが指定されていません']);
+        exit;
+    }
+    
+    try {
+        // 戦闘ログの基本情報を取得（自分が関係している戦闘のみ）
+        $stmt = $pdo->prepare("
+            SELECT 
+                wl.*,
+                attacker.handle as attacker_handle,
+                attacker.display_name as attacker_name,
+                defender.handle as defender_handle,
+                defender.display_name as defender_name,
+                ac.civilization_name as attacker_civ_name,
+                dc.civilization_name as defender_civ_name
+            FROM civilization_war_logs wl
+            JOIN users attacker ON wl.attacker_user_id = attacker.id
+            JOIN users defender ON wl.defender_user_id = defender.id
+            LEFT JOIN user_civilizations ac ON wl.attacker_user_id = ac.user_id
+            LEFT JOIN user_civilizations dc ON wl.defender_user_id = dc.user_id
+            WHERE wl.id = ? AND (wl.attacker_user_id = ? OR wl.defender_user_id = ?)
+        ");
+        $stmt->execute([$warLogId, $me['id'], $me['id']]);
+        $warLog = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$warLog) {
+            echo json_encode(['ok' => false, 'error' => '戦闘ログが見つかりません']);
+            exit;
+        }
+        
+        // ターンログを取得
+        $stmt = $pdo->prepare("
+            SELECT * FROM civilization_battle_turn_logs
+            WHERE war_log_id = ?
+            ORDER BY turn_number ASC, id ASC
+        ");
+        $stmt->execute([$warLogId]);
+        $turnLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 兵種情報を取得して名前を付与
+        $troopNames = [];
+        $stmt = $pdo->query("SELECT id, name, icon FROM civilization_troop_types");
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $troopNames[$row['id']] = [
+                'name' => $row['name'],
+                'icon' => $row['icon']
+            ];
+        }
+        
+        echo json_encode([
+            'ok' => true,
+            'war_log' => $warLog,
+            'turn_logs' => $turnLogs,
+            'troop_names' => $troopNames,
+            'my_user_id' => $me['id']
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 特殊スキル一覧を取得
+// ===============================================
+if ($action === 'get_special_skills') {
+    try {
+        $stmt = $pdo->query("
+            SELECT ss.*, 
+                   GROUP_CONCAT(tt.name SEPARATOR ', ') as troop_names,
+                   GROUP_CONCAT(tt.icon SEPARATOR '') as troop_icons
+            FROM battle_special_skills ss
+            LEFT JOIN civilization_troop_types tt ON tt.special_skill_id = ss.id
+            GROUP BY ss.id
+            ORDER BY ss.id
+        ");
+        $skills = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'ok' => true,
+            'special_skills' => $skills
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 兵種と特殊スキル情報を取得
+// ===============================================
+if ($action === 'get_troops_with_skills') {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT tt.*, 
+                   ss.skill_key, ss.name as skill_name, ss.icon as skill_icon,
+                   ss.description as skill_description, ss.effect_type,
+                   ss.effect_value, ss.duration_turns, ss.activation_chance,
+                   COALESCE(uct.count, 0) as owned_count
+            FROM civilization_troop_types tt
+            LEFT JOIN battle_special_skills ss ON tt.special_skill_id = ss.id
+            LEFT JOIN user_civilization_troops uct ON uct.troop_type_id = tt.id AND uct.user_id = ?
+            ORDER BY tt.unlock_era_id, tt.id
+        ");
+        $stmt->execute([$me['id']]);
+        $troops = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 文明データを取得して時代情報を付与
+        $civ = getUserCivilization($pdo, $me['id']);
+        
+        echo json_encode([
+            'ok' => true,
+            'troops' => $troops,
+            'current_era_id' => $civ['current_era_id']
+        ]);
+    } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
     }
     exit;

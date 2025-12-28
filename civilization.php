@@ -1964,12 +1964,24 @@ async function loadWarLogs() {
                     lootText += '</div>';
                 }
                 
+                // ターン制バトル情報
+                const totalTurns = log.total_turns || 0;
+                const turnsText = totalTurns > 0 ? `<span style="color: #87ceeb; font-size: 11px; margin-left: 10px;">⚡${totalTurns}ターン</span>` : '';
+                
+                // バトルログ詳細ボタン
+                const detailButton = totalTurns > 0 ? `
+                    <button onclick="showBattleTurnLogs(${log.id})" style="padding: 4px 10px; background: linear-gradient(135deg, #4169e1 0%, #6495ed 100%); color: #fff; border: none; border-radius: 5px; font-size: 11px; cursor: pointer; margin-top: 8px;">
+                        📜 バトルログ詳細
+                    </button>
+                ` : '';
+                
                 return `
                 <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid ${isWinner ? '#32cd32' : '#ff6b6b'};">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <span style="font-weight: bold; ${resultClass}">${resultText}</span>
                             <span style="color: #888;"> - ${actionText}</span>
+                            ${turnsText}
                         </div>
                         <span style="color: #888; font-size: 11px;">${battleTime}</span>
                     </div>
@@ -1980,8 +1992,10 @@ async function loadWarLogs() {
                     </div>
                     <div style="margin-top: 5px; font-size: 12px; color: #888;">
                         ⚔️ ${log.attacker_power} vs 🛡️ ${log.defender_power}
+                        ${log.attacker_final_hp !== undefined ? `| HP: ${log.attacker_final_hp}/${log.defender_final_hp}` : ''}
                     </div>
                     ${lootText}
+                    ${detailButton}
                 </div>
             `}).join('');
         } else {
@@ -1991,6 +2005,119 @@ async function loadWarLogs() {
         console.error(e);
         document.getElementById('warLogsList').innerHTML = '<p style="color: #888;">戦争ログの読み込みに失敗しました</p>';
     }
+}
+
+// バトルログ詳細を表示
+async function showBattleTurnLogs(warLogId) {
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_battle_turn_logs', war_log_id: warLogId})
+        });
+        const data = await res.json();
+        
+        if (!data.ok) {
+            showNotification(data.error || 'バトルログの取得に失敗しました', true);
+            return;
+        }
+        
+        const warLog = data.war_log;
+        const turnLogs = data.turn_logs || [];
+        const myUserId = data.my_user_id;
+        
+        const isAttacker = warLog.attacker_user_id == myUserId;
+        const isWinner = warLog.winner_user_id == myUserId;
+        
+        // モーダルを作成
+        let modalHtml = `
+            <div id="battleLogModal" class="attack-modal-overlay active" onclick="if(event.target.id==='battleLogModal')closeBattleLogModal()">
+                <div class="attack-modal" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
+                    <div class="attack-modal-header">
+                        <h3 class="attack-modal-title">📜 バトルログ詳細</h3>
+                        <button class="attack-modal-close" onclick="closeBattleLogModal()">×</button>
+                    </div>
+                    
+                    <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                            <div>
+                                <div style="color: #ffd700; font-weight: bold; font-size: 16px;">
+                                    ${isWinner ? '🏆 勝利' : '💀 敗北'}
+                                </div>
+                                <div style="color: #888; font-size: 12px; margin-top: 5px;">
+                                    ${isAttacker ? '攻撃側' : '防衛側'}として参戦
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="color: #87ceeb;">⚡ ${warLog.total_turns || 0}ターン</div>
+                                <div style="color: #888; font-size: 11px;">${new Date(warLog.battle_at).toLocaleString('ja-JP')}</div>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: space-around; margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+                            <div style="text-align: center;">
+                                <div style="color: #ff6b6b;">⚔️ 攻撃側</div>
+                                <div style="color: #ffd700; font-size: 18px; font-weight: bold;">${escapeHtml(warLog.attacker_civ_name || '不明')}</div>
+                                <div style="color: #888; font-size: 11px;">HP: ${warLog.attacker_final_hp || 0}</div>
+                            </div>
+                            <div style="color: #888; font-size: 24px; align-self: center;">VS</div>
+                            <div style="text-align: center;">
+                                <div style="color: #32cd32;">🛡️ 防御側</div>
+                                <div style="color: #ffd700; font-size: 18px; font-weight: bold;">${escapeHtml(warLog.defender_civ_name || '不明')}</div>
+                                <div style="color: #888; font-size: 11px;">HP: ${warLog.defender_final_hp || 0}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="max-height: 400px; overflow-y: auto; padding: 5px;">
+                        ${turnLogs.length > 0 ? turnLogs.map(log => {
+                            const isAttackerTurn = log.actor_side === 'attacker';
+                            const turnColor = isAttackerTurn ? '#ff6b6b' : '#32cd32';
+                            const turnIcon = isAttackerTurn ? '⚔️' : '🛡️';
+                            
+                            // ログメッセージを行ごとに分割して表示
+                            const messages = (log.log_message || '').split('\n').filter(m => m.trim());
+                            
+                            return `
+                                <div style="background: rgba(${isAttackerTurn ? '139,0,0' : '0,100,0'},0.2); padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid ${turnColor};">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                        <span style="color: ${turnColor}; font-weight: bold;">${turnIcon} ターン ${log.turn_number}</span>
+                                        <span style="color: #888; font-size: 11px;">
+                                            攻:${log.attacker_hp_after} / 防:${log.defender_hp_after}
+                                        </span>
+                                    </div>
+                                    <div style="font-size: 12px; color: #f5deb3;">
+                                        ${messages.map(m => `<div style="margin-bottom: 3px;">${escapeHtml(m)}</div>`).join('')}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('') : '<p style="color: #888; text-align: center;">詳細なターンログがありません</p>'}
+                    </div>
+                    
+                    <button onclick="closeBattleLogModal()" style="width: 100%; margin-top: 15px; padding: 12px; background: linear-gradient(135deg, #8b4513 0%, #d4a574 100%); color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                        閉じる
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // 既存のモーダルを削除
+        const existingModal = document.getElementById('battleLogModal');
+        if (existingModal) existingModal.remove();
+        
+        // モーダルを追加
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+    } catch (e) {
+        console.error(e);
+        showNotification('バトルログの取得に失敗しました', true);
+    }
+}
+
+// バトルログモーダルを閉じる
+function closeBattleLogModal() {
+    const modal = document.getElementById('battleLogModal');
+    if (modal) modal.remove();
 }
 
 // コイン投資
