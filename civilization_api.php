@@ -16,6 +16,32 @@ define('CIV_INSTANT_BUILDING_MIN_COST', 5);    // 建物即完了の最低クリ
 define('CIV_INSTANT_RESEARCH_MIN_COST', 3);    // 研究即完了の最低クリスタルコスト
 define('CIV_INSTANT_SECONDS_PER_CRYSTAL', 60); // クリスタル1個あたりの秒数
 
+// 資源価値の定義（市場交換レート計算用）
+// 値が高いほど価値が高い資源
+$RESOURCE_VALUES = [
+    'food' => 1.0,       // 基本資源
+    'wood' => 1.0,       // 基本資源
+    'stone' => 1.2,      // やや希少
+    'bronze' => 1.5,     // 中程度の価値
+    'iron' => 2.0,       // 価値が高い
+    'gold' => 3.0,       // 高価値
+    'knowledge' => 2.5,  // 価値が高い
+    'oil' => 3.5,        // かなり高価値
+    'crystal' => 4.0,    // 非常に高価値
+    'mana' => 4.5,       // 非常に高価値
+    'uranium' => 5.0,    // 最高価値
+    'diamond' => 6.0,    // 最高価値
+    // 追加資源
+    'sulfur' => 2.0,
+    'gems' => 4.0,
+    'cloth' => 1.5,
+    'marble' => 2.5,
+    'horses' => 2.0,
+    'coal' => 2.0,
+    'glass' => 2.5,
+    'spices' => 3.0
+];
+
 header('Content-Type: application/json');
 
 $me = user();
@@ -58,6 +84,35 @@ function getUserCivilization($pdo, $userId) {
     }
     
     return $civ;
+}
+
+// 総合軍事力を計算するヘルパー関数
+function calculateTotalMilitaryPower($pdo, $userId) {
+    // 建物からの軍事力
+    $stmt = $pdo->prepare("
+        SELECT COALESCE(SUM(bt.military_power * ucb.level), 0) as building_power
+        FROM user_civilization_buildings ucb
+        JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+        WHERE ucb.user_id = ? AND ucb.is_constructing = FALSE
+    ");
+    $stmt->execute([$userId]);
+    $buildingPower = (int)$stmt->fetchColumn();
+    
+    // 兵士からの軍事力（攻撃力 + 防御力の半分）
+    $stmt = $pdo->prepare("
+        SELECT COALESCE(SUM((tt.attack_power + FLOOR(tt.defense_power / 2)) * uct.count), 0) as troop_power
+        FROM user_civilization_troops uct
+        JOIN civilization_troop_types tt ON uct.troop_type_id = tt.id
+        WHERE uct.user_id = ?
+    ");
+    $stmt->execute([$userId]);
+    $troopPower = (int)$stmt->fetchColumn();
+    
+    return [
+        'building_power' => $buildingPower,
+        'troop_power' => $troopPower,
+        'total_power' => $buildingPower + $troopPower
+    ];
 }
 
 // 資源を収集（時間経過分）
@@ -233,6 +288,14 @@ if ($action === 'get_data') {
         $stmt->execute([$me['id']]);
         $balance = $stmt->fetch(PDO::FETCH_ASSOC);
         
+        // 総合軍事力を計算
+        $militaryPowerData = calculateTotalMilitaryPower($pdo, $me['id']);
+        
+        // 文明データに軍事力を追加
+        $civ['military_power'] = $militaryPowerData['total_power'];
+        $civ['building_power'] = $militaryPowerData['building_power'];
+        $civ['troop_power'] = $militaryPowerData['troop_power'];
+        
         echo json_encode([
             'ok' => true,
             'civilization' => $civ,
@@ -244,7 +307,8 @@ if ($action === 'get_data') {
             'user_researches' => $userResearches,
             'available_researches' => $availableResearches,
             'collected_resources' => $collected,
-            'balance' => $balance
+            'balance' => $balance,
+            'military_power_breakdown' => $militaryPowerData
         ]);
     } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
@@ -616,21 +680,15 @@ if ($action === 'attack') {
             throw new Exception('相手の文明が見つかりません');
         }
         
-        // 軍事力を計算
-        $stmt = $pdo->prepare("
-            SELECT SUM(bt.military_power * ucb.level) as total_power
-            FROM user_civilization_buildings ucb
-            JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
-            WHERE ucb.user_id = ? AND ucb.is_constructing = FALSE
-        ");
-        $stmt->execute([$me['id']]);
-        $myPower = (int)$stmt->fetchColumn() ?: 0;
+        // 軍事力を計算（建物 + 兵士）
+        $myPowerData = calculateTotalMilitaryPower($pdo, $me['id']);
+        $myPower = $myPowerData['total_power'];
         
-        $stmt->execute([$targetUserId]);
-        $targetPower = (int)$stmt->fetchColumn() ?: 0;
+        $targetPowerData = calculateTotalMilitaryPower($pdo, $targetUserId);
+        $targetPower = $targetPowerData['total_power'];
         
         if ($myPower <= 0) {
-            throw new Exception('軍事力がありません。兵舎や軍事施設を建設してください。');
+            throw new Exception('軍事力がありません。兵舎や軍事施設を建設するか、兵士を訓練してください。');
         }
         
         // 戦闘判定（攻撃側ボーナス適用）
@@ -730,10 +788,14 @@ if ($action === 'get_targets') {
     try {
         $stmt = $pdo->prepare("
             SELECT uc.user_id, uc.civilization_name, uc.population, u.handle, u.display_name,
-                   (SELECT SUM(bt.military_power * ucb.level) 
+                   (SELECT COALESCE(SUM(bt.military_power * ucb.level), 0) 
                     FROM user_civilization_buildings ucb
                     JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
-                    WHERE ucb.user_id = uc.user_id AND ucb.is_constructing = FALSE) as military_power
+                    WHERE ucb.user_id = uc.user_id AND ucb.is_constructing = FALSE) +
+                   (SELECT COALESCE(SUM((tt.attack_power + FLOOR(tt.defense_power / 2)) * uct.count), 0)
+                    FROM user_civilization_troops uct
+                    JOIN civilization_troop_types tt ON uct.troop_type_id = tt.id
+                    WHERE uct.user_id = uc.user_id) as military_power
             FROM user_civilizations uc
             JOIN users u ON uc.user_id = u.id
             WHERE uc.user_id != ?
@@ -743,7 +805,14 @@ if ($action === 'get_targets') {
         $stmt->execute([$me['id']]);
         $targets = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        echo json_encode(['ok' => true, 'targets' => $targets]);
+        // 自分の軍事力も取得して返す
+        $myPowerData = calculateTotalMilitaryPower($pdo, $me['id']);
+        
+        echo json_encode([
+            'ok' => true, 
+            'targets' => $targets,
+            'my_military_power' => $myPowerData
+        ]);
     } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
     }
@@ -1199,22 +1268,25 @@ if ($action === 'exchange_resources') {
     
     $pdo->beginTransaction();
     try {
-        // 市場建物を持っているか確認
+        // 市場建物の数を確認（建設数に応じてレートが改善される）
         $stmt = $pdo->prepare("
-            SELECT COUNT(*) FROM user_civilization_buildings ucb
+            SELECT COUNT(*) as market_count, SUM(ucb.level) as total_level
+            FROM user_civilization_buildings ucb
             JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
             WHERE ucb.user_id = ? AND bt.building_key = 'market' AND ucb.is_constructing = FALSE
         ");
         $stmt->execute([$me['id']]);
-        $hasMarket = (int)$stmt->fetchColumn() > 0;
+        $marketData = $stmt->fetch(PDO::FETCH_ASSOC);
+        $marketCount = (int)($marketData['market_count'] ?? 0);
+        $totalMarketLevel = (int)($marketData['total_level'] ?? 0);
         
-        if (!$hasMarket) {
+        if ($marketCount === 0) {
             throw new Exception('市場を建設してから交換してください');
         }
         
         // 資源を確認
         $stmt = $pdo->prepare("
-            SELECT ucr.amount, rt.name as from_name, rt.icon as from_icon
+            SELECT ucr.amount, rt.name as from_name, rt.icon as from_icon, rt.resource_key as from_key
             FROM user_civilization_resources ucr
             JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
             WHERE ucr.user_id = ? AND ucr.resource_type_id = ?
@@ -1232,7 +1304,7 @@ if ($action === 'exchange_resources') {
         
         // 交換先の資源を確認
         $stmt = $pdo->prepare("
-            SELECT rt.name as to_name, rt.icon as to_icon
+            SELECT rt.name as to_name, rt.icon as to_icon, rt.resource_key as to_key
             FROM user_civilization_resources ucr
             JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
             WHERE ucr.user_id = ? AND ucr.resource_type_id = ?
@@ -1244,11 +1316,27 @@ if ($action === 'exchange_resources') {
             throw new Exception('交換先の資源がアンロックされていません');
         }
         
-        // 交換レート: 2:1
-        $received = (int)floor($amount / 2);
+        // グローバルの資源価値定義を使用
+        global $RESOURCE_VALUES;
+        
+        $fromValue = $RESOURCE_VALUES[$fromResource['from_key']] ?? 1.0;
+        $toValue = $RESOURCE_VALUES[$toResource['to_key']] ?? 1.0;
+        
+        // 基本交換レート（価値の比率）
+        $baseRate = $fromValue / $toValue;
+        
+        // 市場建設数によるボーナス（市場1つあたり5%改善、最大50%まで）
+        // 市場レベルも加味（レベル合計 * 2%）
+        $marketBonus = min(0.5, ($marketCount * 0.05) + ($totalMarketLevel * 0.02));
+        
+        // 最終交換レート（市場ボーナス適用）
+        $finalRate = $baseRate * (1 + $marketBonus);
+        
+        // 受け取り量を計算
+        $received = (int)floor($amount * $finalRate);
         
         if ($received < 1) {
-            throw new Exception('交換量が少なすぎます（最低2以上必要）');
+            throw new Exception('交換量が少なすぎます。もう少し多くの量を指定してください。');
         }
         
         // 資源を消費
@@ -1269,14 +1357,123 @@ if ($action === 'exchange_resources') {
         
         $pdo->commit();
         
+        $ratePercent = round($finalRate * 100);
         echo json_encode([
             'ok' => true,
-            'message' => "{$fromResource['from_icon']} {$amount} → {$toResource['to_icon']} {$received} に交換しました！",
+            'message' => "{$fromResource['from_icon']} {$amount} → {$toResource['to_icon']} {$received} に交換しました！（レート: {$ratePercent}%）",
             'from_amount' => $amount,
-            'to_amount' => $received
+            'to_amount' => $received,
+            'exchange_rate' => $finalRate,
+            'market_count' => $marketCount,
+            'market_bonus' => $marketBonus
         ]);
     } catch (Exception $e) {
         $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// 市場情報を取得（交換レート計算用）
+if ($action === 'get_market_info') {
+    try {
+        // 市場建物の数を確認
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*) as market_count, COALESCE(SUM(ucb.level), 0) as total_level
+            FROM user_civilization_buildings ucb
+            JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+            WHERE ucb.user_id = ? AND bt.building_key = 'market' AND ucb.is_constructing = FALSE
+        ");
+        $stmt->execute([$me['id']]);
+        $marketData = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $marketCount = (int)($marketData['market_count'] ?? 0);
+        $totalMarketLevel = (int)($marketData['total_level'] ?? 0);
+        $marketBonus = min(0.5, ($marketCount * 0.05) + ($totalMarketLevel * 0.02));
+        
+        // グローバルの資源価値定義を使用
+        global $RESOURCE_VALUES;
+        
+        echo json_encode([
+            'ok' => true,
+            'market_count' => $marketCount,
+            'total_market_level' => $totalMarketLevel,
+            'market_bonus' => $marketBonus,
+            'resource_values' => $RESOURCE_VALUES
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// 戦争ログを取得
+if ($action === 'get_war_logs') {
+    try {
+        $stmt = $pdo->prepare("
+            SELECT 
+                wl.*,
+                attacker.handle as attacker_handle,
+                attacker.display_name as attacker_name,
+                defender.handle as defender_handle,
+                defender.display_name as defender_name,
+                ac.civilization_name as attacker_civ_name,
+                dc.civilization_name as defender_civ_name
+            FROM civilization_war_logs wl
+            JOIN users attacker ON wl.attacker_user_id = attacker.id
+            JOIN users defender ON wl.defender_user_id = defender.id
+            LEFT JOIN user_civilizations ac ON wl.attacker_user_id = ac.user_id
+            LEFT JOIN user_civilizations dc ON wl.defender_user_id = dc.user_id
+            WHERE wl.attacker_user_id = ? OR wl.defender_user_id = ?
+            ORDER BY wl.battle_at DESC
+            LIMIT 50
+        ");
+        $stmt->execute([$me['id'], $me['id']]);
+        $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'ok' => true,
+            'war_logs' => $logs,
+            'my_user_id' => $me['id']
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// 総合軍事力を計算（建物 + 兵士）
+if ($action === 'get_military_power') {
+    try {
+        // 建物からの軍事力
+        $stmt = $pdo->prepare("
+            SELECT COALESCE(SUM(bt.military_power * ucb.level), 0) as building_power
+            FROM user_civilization_buildings ucb
+            JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+            WHERE ucb.user_id = ? AND ucb.is_constructing = FALSE
+        ");
+        $stmt->execute([$me['id']]);
+        $buildingPower = (int)$stmt->fetchColumn();
+        
+        // 兵士からの軍事力（攻撃力 + 防御力の半分）
+        $stmt = $pdo->prepare("
+            SELECT COALESCE(SUM((tt.attack_power + FLOOR(tt.defense_power / 2)) * uct.count), 0) as troop_power
+            FROM user_civilization_troops uct
+            JOIN civilization_troop_types tt ON uct.troop_type_id = tt.id
+            WHERE uct.user_id = ?
+        ");
+        $stmt->execute([$me['id']]);
+        $troopPower = (int)$stmt->fetchColumn();
+        
+        $totalPower = $buildingPower + $troopPower;
+        
+        echo json_encode([
+            'ok' => true,
+            'building_power' => $buildingPower,
+            'troop_power' => $troopPower,
+            'total_power' => $totalPower
+        ]);
+    } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
     }
     exit;
