@@ -824,10 +824,17 @@ function renderCastleDetail(data) {
                 <div style="max-height: 200px; overflow-y: auto;">
                     ${data.recent_battles.map(battle => {
                         const isWin = battle.castle_captured;
+                        const totalTurns = battle.total_turns || 0;
+                        const turnsText = totalTurns > 0 ? `<span style="color: #87ceeb; font-size: 10px; margin-left: 5px;">⚡${totalTurns}ターン</span>` : '';
+                        const detailBtn = totalTurns > 0 ? `
+                            <button onclick="showConquestBattleLogs(${battle.id})" style="margin-top: 5px; padding: 3px 8px; background: linear-gradient(135deg, #4169e1 0%, #6495ed 100%); color: #fff; border: none; border-radius: 4px; font-size: 10px; cursor: pointer;">
+                                📜 詳細
+                            </button>
+                        ` : '';
                         return `
                             <div class="battle-log-item ${isWin ? 'victory' : 'defeat'}">
                                 <div style="display: flex; justify-content: space-between;">
-                                    <span>${isWin ? '🏆 占領' : '⚔️ 防衛'}</span>
+                                    <span>${isWin ? '🏆 占領' : '⚔️ 防衛'}${turnsText}</span>
                                     <span style="color: #888; font-size: 11px;">${new Date(battle.battle_at).toLocaleString('ja-JP')}</span>
                                 </div>
                                 <div style="margin-top: 5px; font-size: 12px;">
@@ -835,7 +842,9 @@ function renderCastleDetail(data) {
                                 </div>
                                 <div style="font-size: 11px; color: #888;">
                                     ⚔️${battle.attacker_power} vs 🛡️${battle.defender_power}
+                                    ${battle.attacker_final_hp !== undefined ? `| HP: ${battle.attacker_final_hp}/${battle.defender_final_hp}` : ''}
                                 </div>
+                                ${detailBtn}
                             </div>
                         `;
                     }).join('')}
@@ -1230,6 +1239,119 @@ setInterval(() => {
         loadData();
     }
 }, 30000);
+
+// 占領戦バトルログ詳細を表示
+async function showConquestBattleLogs(battleId) {
+    try {
+        const res = await fetch('conquest_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_conquest_battle_turn_logs', battle_id: battleId})
+        });
+        const data = await res.json();
+        
+        if (!data.ok) {
+            showNotification(data.error || 'バトルログの取得に失敗しました', true);
+            return;
+        }
+        
+        const battleLog = data.battle_log;
+        const turnLogs = data.turn_logs || [];
+        const myUserId = data.my_user_id;
+        
+        const isAttacker = battleLog.attacker_user_id == myUserId;
+        const isWinner = battleLog.winner_user_id == myUserId;
+        
+        // モーダルを作成
+        let modalHtml = `
+            <div id="battleLogModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 2000;" onclick="if(event.target.id==='battleLogModal')closeConquestBattleLogModal()">
+                <div style="background: linear-gradient(135deg, #1a0f0a 0%, #2d1810 100%); border-radius: 16px; padding: 25px; max-width: 700px; width: 90%; max-height: 90vh; overflow-y: auto; border: 2px solid #9932cc;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="color: #da70d6; margin: 0;">📜 バトルログ詳細</h3>
+                        <button onclick="closeConquestBattleLogModal()" style="background: none; border: none; color: #c0a080; font-size: 24px; cursor: pointer;">×</button>
+                    </div>
+                    
+                    <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                            <div>
+                                <div style="color: #ffd700; font-weight: bold; font-size: 16px;">
+                                    🏰 ${escapeHtml(battleLog.castle_name || '不明')}
+                                </div>
+                                <div style="color: ${isWinner ? '#32cd32' : '#ff6b6b'}; margin-top: 5px;">
+                                    ${battleLog.castle_captured ? '🏆 占領成功' : '💀 占領失敗'}
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="color: #87ceeb;">⚡ ${battleLog.total_turns || 0}ターン</div>
+                                <div style="color: #888; font-size: 11px;">${new Date(battleLog.battle_at).toLocaleString('ja-JP')}</div>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: space-around; margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+                            <div style="text-align: center;">
+                                <div style="color: #ff6b6b;">⚔️ 攻撃側</div>
+                                <div style="color: #ffd700; font-size: 16px; font-weight: bold;">${escapeHtml(battleLog.attacker_civ_name || '不明')}</div>
+                                <div style="color: #888; font-size: 11px;">HP: ${battleLog.attacker_final_hp || 0}</div>
+                            </div>
+                            <div style="color: #888; font-size: 24px; align-self: center;">VS</div>
+                            <div style="text-align: center;">
+                                <div style="color: #32cd32;">🛡️ 防御側</div>
+                                <div style="color: #ffd700; font-size: 16px; font-weight: bold;">${escapeHtml(battleLog.defender_civ_name || 'NPC')}</div>
+                                <div style="color: #888; font-size: 11px;">HP: ${battleLog.defender_final_hp || 0}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="max-height: 350px; overflow-y: auto; padding: 5px;">
+                        ${turnLogs.length > 0 ? turnLogs.map(log => {
+                            const isAttackerTurn = log.actor_side === 'attacker';
+                            const turnColor = isAttackerTurn ? '#ff6b6b' : '#32cd32';
+                            const turnIcon = isAttackerTurn ? '⚔️' : '🛡️';
+                            
+                            // ログメッセージを行ごとに分割して表示
+                            const messages = (log.log_message || '').split('\n').filter(m => m.trim());
+                            
+                            return `
+                                <div style="background: rgba(${isAttackerTurn ? '139,0,0' : '0,100,0'},0.2); padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid ${turnColor};">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                        <span style="color: ${turnColor}; font-weight: bold;">${turnIcon} ターン ${log.turn_number}</span>
+                                        <span style="color: #888; font-size: 11px;">
+                                            攻:${log.attacker_hp_after} / 防:${log.defender_hp_after}
+                                        </span>
+                                    </div>
+                                    <div style="font-size: 12px; color: #f5deb3;">
+                                        ${messages.map(m => `<div style="margin-bottom: 3px;">${escapeHtml(m)}</div>`).join('')}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('') : '<p style="color: #888; text-align: center;">詳細なターンログがありません</p>'}
+                    </div>
+                    
+                    <button onclick="closeConquestBattleLogModal()" style="width: 100%; margin-top: 15px; padding: 12px; background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%); color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                        閉じる
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // 既存のモーダルを削除
+        const existingModal = document.getElementById('battleLogModal');
+        if (existingModal) existingModal.remove();
+        
+        // モーダルを追加
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+    } catch (e) {
+        console.error(e);
+        showNotification('バトルログの取得に失敗しました', true);
+    }
+}
+
+// バトルログモーダルを閉じる
+function closeConquestBattleLogModal() {
+    const modal = document.getElementById('battleLogModal');
+    if (modal) modal.remove();
+}
 </script>
 </body>
 </html>
