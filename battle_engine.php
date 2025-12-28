@@ -148,11 +148,27 @@ function calculateDamage($baseAttack, $targetArmor, $attackerEffects = [], $defe
             $attackMultiplier += $effect['effect_value'] / 100;
             $messages[] = "⚔️ 攻撃力上昇中 (+{$effect['effect_value']}%)";
         }
+        if ($effect['skill_key'] === 'war_cry') {
+            $attackMultiplier += $effect['effect_value'] / 100;
+            $messages[] = "📣 雄叫び！攻撃力上昇 (+{$effect['effect_value']}%)";
+        }
+        if ($effect['skill_key'] === 'bloodlust') {
+            $attackMultiplier += $effect['effect_value'] / 100;
+            $messages[] = "🩸 血の渇望！攻撃力上昇 (+{$effect['effect_value']}%)";
+        }
     }
     foreach ($defenderEffects as $effect) {
         if ($effect['skill_key'] === 'attack_down') {
             $attackMultiplier -= $effect['effect_value'] / 100;
             $messages[] = "⬇️ 攻撃低下中 (-{$effect['effect_value']}%)";
+        }
+        if ($effect['skill_key'] === 'weakness') {
+            $attackMultiplier -= $effect['effect_value'] / 100;
+            $messages[] = "😵 弱体化中 (-{$effect['effect_value']}%)";
+        }
+        if ($effect['skill_key'] === 'fear') {
+            $attackMultiplier -= $effect['effect_value'] / 100;
+            $messages[] = "😱 恐怖！攻撃力低下 (-{$effect['effect_value']}%)";
         }
     }
     $attackMultiplier = max(0.1, $attackMultiplier);
@@ -173,9 +189,25 @@ function calculateDamage($baseAttack, $targetArmor, $attackerEffects = [], $defe
             $armorMultiplier -= $effect['effect_value'] / 100;
             $messages[] = "💔 無防備状態 (-{$effect['effect_value']}%アーマー)";
         }
+        if ($effect['skill_key'] === 'armor_crush') {
+            $armorMultiplier -= $effect['effect_value'] / 100;
+            $messages[] = "💔 鎧砕き！(-{$effect['effect_value']}%アーマー)";
+        }
         if ($effect['skill_key'] === 'armor_harden') {
             $armorMultiplier += $effect['effect_value'] / 100;
             $messages[] = "🛡️ アーマー硬化中 (+{$effect['effect_value']}%)";
+        }
+        if ($effect['skill_key'] === 'fortify') {
+            $armorMultiplier += $effect['effect_value'] / 100;
+            $messages[] = "🛡️ 防御陣形 (+{$effect['effect_value']}%防御力)";
+        }
+        if ($effect['skill_key'] === 'phalanx_formation') {
+            $armorMultiplier += $effect['effect_value'] / 100;
+            $messages[] = "⚔️ ファランクス陣形 (+{$effect['effect_value']}%防御力)";
+        }
+        if ($effect['skill_key'] === 'shield_wall') {
+            $armorMultiplier += $effect['effect_value'] / 100;
+            $messages[] = "🔰 盾の壁 (+{$effect['effect_value']}%ダメージ軽減)";
         }
     }
     $armorMultiplier = max(0, $armorMultiplier);
@@ -189,14 +221,26 @@ function calculateDamage($baseAttack, $targetArmor, $attackerEffects = [], $defe
     
     // クリティカル判定
     $critChance = BATTLE_BASE_CRITICAL_CHANCE;
+    $critMultiplier = BATTLE_CRITICAL_MULTIPLIER;
     foreach ($attackerEffects as $effect) {
         if ($effect['skill_key'] === 'critical') {
             $critChance += $effect['effect_value'];
         }
+        if ($effect['skill_key'] === 'precision') {
+            $critChance += $effect['effect_value'];
+            $messages[] = "🎯 精密射撃！クリティカル率上昇";
+        }
     }
+    // 相手に弱点露出デバフがある場合はクリティカルダメージ増加
+    foreach ($defenderEffects as $effect) {
+        if ($effect['skill_key'] === 'expose_weakness') {
+            $critMultiplier += $effect['effect_value'] / 100;
+        }
+    }
+    
     $isCritical = mt_rand(1, 100) <= $critChance;
     if ($isCritical) {
-        $attackWithVariance *= BATTLE_CRITICAL_MULTIPLIER;
+        $attackWithVariance *= $critMultiplier;
         $messages[] = "💥 クリティカルヒット！";
     }
     
