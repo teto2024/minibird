@@ -544,9 +544,9 @@ if ($action === 'attack_castle') {
         
         // 攻撃可能かチェック
         $attackableCastles = getAttackableCastles($pdo, $me['id'], $season['id']);
-        $attackableCastleIds = array_column($attackableCastles, 'id');
+        $attackableCastleIds = array_map('intval', array_column($attackableCastles, 'id'));
         
-        if (!in_array($castle['id'], $attackableCastleIds)) {
+        if (!in_array((int)$castle['id'], $attackableCastleIds, true)) {
             throw new Exception('この城は攻撃できません。隣接した城を占領してから攻撃してください。');
         }
         
@@ -892,8 +892,9 @@ if ($action === 'get_ranking') {
 
 // シーズンをリセット（管理者のみ）
 if ($action === 'reset_season') {
-    // 管理者チェック（厳密な比較）
-    if (!isset($me['is_admin']) || $me['is_admin'] != 1) {
+    // 管理者チェック（型を考慮した比較: 1, '1', true などを許容）
+    $isAdmin = !empty($me['is_admin']) && in_array($me['is_admin'], [1, '1', true], true);
+    if (!$isAdmin) {
         echo json_encode(['ok' => false, 'error' => '管理者のみ実行できます']);
         exit;
     }
