@@ -150,22 +150,23 @@ try {
         
         // 報酬付与
         $coins = 2000;
+        $crystals = 0;
         $diamonds = 1;
         
         $pdo->beginTransaction();
         try {
             $stmt = $pdo->prepare("
-                INSERT INTO quest_completions (user_id, completion_type, period_key, reward_coins, reward_diamonds)
-                VALUES (?, 'relay', ?, ?, ?)
+                INSERT INTO quest_completions (user_id, completion_type, period_key, reward_coins, reward_crystals, reward_diamonds)
+                VALUES (?, 'relay', ?, ?, ?, ?)
             ");
-            $stmt->execute([$user_id, $completion_key, $coins, $diamonds]);
+            $stmt->execute([$user_id, $completion_key, $coins, $crystals, $diamonds]);
             
             $stmt = $pdo->prepare("
                 UPDATE users 
-                SET coins = coins + ?, diamonds = diamonds + ?, relay_quest_completions = relay_quest_completions + 1
+                SET coins = coins + ?, crystals = crystals + ?, diamonds = diamonds + ?, relay_quest_completions = relay_quest_completions + 1
                 WHERE id = ?
             ");
-            $stmt->execute([$coins, $diamonds, $user_id]);
+            $stmt->execute([$coins, $crystals, $diamonds, $user_id]);
             
             // リレークエストをリセットして、また最初からプレイできるようにする
             require_once __DIR__ . '/quest_progress.php';

@@ -435,6 +435,212 @@ if (postTextArea) {
 }
 
 // ---------------------
+// メンション補完機能
+// ---------------------
+class MentionAutocomplete {
+    constructor(textarea) {
+        this.textarea = textarea;
+        this.dropdown = null;
+        this.selectedIndex = 0;
+        this.users = [];
+        this.isOpen = false;
+        this.searchTimeout = null;
+        this.mentionStart = -1;
+        
+        this.init();
+    }
+    
+    init() {
+        // ドロップダウン要素を作成
+        this.dropdown = document.createElement('div');
+        this.dropdown.className = 'mention-dropdown';
+        this.dropdown.style.cssText = `
+            position: absolute;
+            background: var(--card, #fff);
+            border: 1px solid var(--border, #ddd);
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        `;
+        this.textarea.parentElement.style.position = 'relative';
+        this.textarea.parentElement.appendChild(this.dropdown);
+        
+        // イベントリスナーを設定
+        this.textarea.addEventListener('input', (e) => this.handleInput(e));
+        this.textarea.addEventListener('keydown', (e) => this.handleKeydown(e));
+        this.textarea.addEventListener('blur', () => setTimeout(() => this.close(), 150));
+        
+        // ドロップダウンのクリック処理
+        this.dropdown.addEventListener('click', (e) => {
+            const item = e.target.closest('.mention-item');
+            if (item) {
+                const index = parseInt(item.dataset.index);
+                this.selectUser(index);
+            }
+        });
+    }
+    
+    handleInput(e) {
+        const text = this.textarea.value;
+        const cursorPos = this.textarea.selectionStart;
+        
+        // カーソル位置から@を探す
+        let start = cursorPos - 1;
+        while (start >= 0 && text[start] !== '@' && text[start] !== ' ' && text[start] !== '\n') {
+            start--;
+        }
+        
+        if (start >= 0 && text[start] === '@') {
+            const query = text.substring(start + 1, cursorPos);
+            
+            // スペースや改行が含まれていたら閉じる
+            if (query.includes(' ') || query.includes('\n')) {
+                this.close();
+                return;
+            }
+            
+            this.mentionStart = start;
+            this.searchUsers(query);
+        } else {
+            this.close();
+        }
+    }
+    
+    handleKeydown(e) {
+        if (!this.isOpen) return;
+        
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                this.selectedIndex = Math.min(this.selectedIndex + 1, this.users.length - 1);
+                this.renderDropdown();
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                this.selectedIndex = Math.max(this.selectedIndex - 1, 0);
+                this.renderDropdown();
+                break;
+            case 'Enter':
+            case 'Tab':
+                if (this.users.length > 0) {
+                    e.preventDefault();
+                    this.selectUser(this.selectedIndex);
+                }
+                break;
+            case 'Escape':
+                e.preventDefault();
+                this.close();
+                break;
+        }
+    }
+    
+    async searchUsers(query) {
+        // デバウンス処理
+        clearTimeout(this.searchTimeout);
+        this.searchTimeout = setTimeout(async () => {
+            try {
+                const res = await fetch(`./mention_api.php?q=${encodeURIComponent(query)}`);
+                const data = await res.json();
+                
+                if (data.ok && data.users.length > 0) {
+                    this.users = data.users;
+                    this.selectedIndex = 0;
+                    this.open();
+                    this.renderDropdown();
+                } else {
+                    this.close();
+                }
+            } catch (err) {
+                console.error('Mention search error:', err);
+                this.close();
+            }
+        }, 150);
+    }
+    
+    renderDropdown() {
+        this.dropdown.innerHTML = this.users.map((user, index) => `
+            <div class="mention-item ${index === this.selectedIndex ? 'selected' : ''}" 
+                 data-index="${index}"
+                 style="
+                    display: flex;
+                    align-items: center;
+                    padding: 8px 12px;
+                    cursor: pointer;
+                    background: ${index === this.selectedIndex ? 'var(--accent-light, #e0e7ff)' : 'transparent'};
+                 ">
+                <img src="${user.icon || '/uploads/icons/default_icon.png'}" 
+                     style="width: 24px; height: 24px; border-radius: 50%; margin-right: 10px; object-fit: cover;">
+                <div>
+                    <div style="font-weight: bold; color: var(--text, #333);">@${user.handle}</div>
+                    ${user.display_name ? `<div style="font-size: 12px; color: var(--muted, #888);">${user.display_name}</div>` : ''}
+                </div>
+            </div>
+        `).join('');
+        
+        // ドロップダウンの位置を調整
+        this.positionDropdown();
+    }
+    
+    positionDropdown() {
+        const rect = this.textarea.getBoundingClientRect();
+        const parentRect = this.textarea.parentElement.getBoundingClientRect();
+        this.dropdown.style.left = '0px';
+        this.dropdown.style.right = '0px';
+        this.dropdown.style.top = (this.textarea.offsetTop + this.textarea.offsetHeight + 5) + 'px';
+    }
+    
+    selectUser(index) {
+        const user = this.users[index];
+        if (!user) return;
+        
+        const text = this.textarea.value;
+        const cursorPos = this.textarea.selectionStart;
+        
+        // @から現在のカーソル位置までを置換
+        const before = text.substring(0, this.mentionStart);
+        const after = text.substring(cursorPos);
+        const newText = before + '@' + user.handle + ' ' + after;
+        
+        this.textarea.value = newText;
+        
+        // カーソル位置を調整
+        const newCursorPos = this.mentionStart + user.handle.length + 2;
+        this.textarea.setSelectionRange(newCursorPos, newCursorPos);
+        this.textarea.focus();
+        
+        this.close();
+    }
+    
+    open() {
+        this.isOpen = true;
+        this.dropdown.style.display = 'block';
+    }
+    
+    close() {
+        this.isOpen = false;
+        this.dropdown.style.display = 'none';
+        this.users = [];
+        this.selectedIndex = 0;
+    }
+}
+
+// 投稿テキストエリアにメンション補完を適用
+if (postTextArea) {
+    new MentionAutocomplete(postTextArea);
+}
+
+// 引用テキストエリアにもメンション補完を適用
+document.addEventListener('DOMContentLoaded', () => {
+    const quoteTextArea = qs('#quoteText');
+    if (quoteTextArea) {
+        new MentionAutocomplete(quoteTextArea);
+    }
+});
+
+// ---------------------
 // Feed switching
 // ---------------------
 //ここだけ残して削除済み
