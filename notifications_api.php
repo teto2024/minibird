@@ -109,7 +109,7 @@ try {
             "actor" => [
                 "id" => (int)$r['actor_id_resolved'],
                 "display_name" => $r['actor_name'] ?: $r['actor_handle'],
-                "icon" => $r['actor_icon'] ?: '/default_icon.png'
+                "icon" => $r['actor_icon'] ?: '/uploads/icons/default_icon.png'
             ],
             "post" => $actual_post_id ? [
                 "id" => (int)$actual_post_id,

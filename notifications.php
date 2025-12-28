@@ -175,7 +175,7 @@ async function loadNotifications(type = '') {
             const typeIcon = getTypeIcon(n.type);
             return `
             <li class="${n.highlight ? 'highlight' : ''}" ${clickAction}>
-                <img src="${n.actor.icon || '/default_icon.png'}" alt="" onerror="this.src='/default_icon.png'">
+                <img src="${n.actor.icon || '/uploads/icons/default_icon.png'}" alt="" onerror="this.src='/uploads/icons/default_icon.png'">
                 <div class="notification-content">
                     <p><span class="notification-type-icon">${typeIcon}</span>${n.message}</p>
                     <small>${n.created_at}</small>

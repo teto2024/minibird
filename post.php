@@ -296,10 +296,16 @@ try {
         }
         
         $pdo = db();
-        $st = $pdo->prepare("SELECT id, content_md, user_id FROM posts WHERE id=?");
+        $st = $pdo->prepare("SELECT id, content_md, user_id, deleted_at, is_deleted FROM posts WHERE id=?");
         $st->execute([$post_id]);
         $ref = $st->fetch();
         if (!$ref) { echo json_encode(['ok'=>false,'error'=>'not_found']); exit; }
+        
+        // 削除された投稿は引用できない
+        if (!empty($ref['deleted_at']) || !empty($ref['is_deleted'])) {
+            echo json_encode(['ok'=>false,'error'=>'post_deleted']);
+            exit;
+        }
         
         // 引用時は埋め込み表示のみで、引用テキストは不要
         $html = markdown_to_html($content);
