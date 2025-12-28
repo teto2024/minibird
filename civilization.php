@@ -2415,8 +2415,27 @@ async function loadTrainingQueue() {
         const container = document.getElementById('trainingQueueList');
         if (!container) return;
         
+        // キュー上限情報を表示
+        const queueUsed = data.queue_used || 0;
+        const queueMax = data.queue_max || 1;
+        const queuePercent = Math.min(100, Math.round((queueUsed / queueMax) * 100));
+        const queueColor = queueUsed >= queueMax ? '#ff6b6b' : (queueUsed >= queueMax * 0.7 ? '#ffa500' : '#32cd32');
+        
+        let queueInfoHtml = `
+            <div style="margin-bottom: 15px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="color: #888;">🏭 訓練キュー:</span>
+                    <span style="color: ${queueColor};">${queueUsed} / ${queueMax}</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.5); border-radius: 4px; height: 8px; overflow: hidden;">
+                    <div style="background: ${queueColor}; height: 100%; width: ${queuePercent}%; transition: width 0.3s;"></div>
+                </div>
+                <div style="color: #888; font-size: 11px; margin-top: 5px;">💡 兵舎を建設するとキュー数が増えます</div>
+            </div>
+        `;
+        
         if (data.ok && data.training_queue && data.training_queue.length > 0) {
-            container.innerHTML = data.training_queue.map(q => {
+            container.innerHTML = queueInfoHtml + data.training_queue.map(q => {
                 const completesAt = new Date(q.training_completes_at);
                 const remaining = Math.max(0, Math.floor((completesAt - Date.now()) / 1000));
                 const remainingText = formatTime(remaining);
@@ -2435,7 +2454,7 @@ async function loadTrainingQueue() {
                 `;
             }).join('');
         } else {
-            container.innerHTML = '<p style="color: #888;">訓練中の兵士はいません</p>';
+            container.innerHTML = queueInfoHtml + '<p style="color: #888;">訓練中の兵士はいません</p>';
         }
     } catch (e) {
         console.error(e);
@@ -2465,10 +2484,25 @@ async function loadWoundedTroops() {
         if (!woundedContainer) return;
         
         if (data.ok) {
+            // キュー上限情報
+            const queueUsed = data.queue_used || 0;
+            const queueMax = data.queue_max || 1;
+            const queuePercent = Math.min(100, Math.round((queueUsed / queueMax) * 100));
+            const queueColor = queueUsed >= queueMax ? '#ff6b6b' : (queueUsed >= queueMax * 0.7 ? '#ffa500' : '#32cd32');
+            
             // 負傷兵リスト
             if (data.wounded_troops && data.wounded_troops.length > 0) {
                 woundedContainer.innerHTML = `
-                    <div style="margin-bottom: 10px; color: #888; font-size: 12px;">病院容量: ${data.hospital_capacity}床</div>
+                    <div style="margin-bottom: 15px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span style="color: #888;">🏥 治療キュー:</span>
+                            <span style="color: ${queueColor};">${queueUsed} / ${queueMax}</span>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.5); border-radius: 4px; height: 8px; overflow: hidden;">
+                            <div style="background: ${queueColor}; height: 100%; width: ${queuePercent}%; transition: width 0.3s;"></div>
+                        </div>
+                        <div style="color: #888; font-size: 11px; margin-top: 5px;">💡 病院を建設するとキュー数が増えます（容量: ${data.hospital_capacity}床）</div>
+                    </div>
                     ${data.wounded_troops.map(w => `
                         <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 8px;">
                             <div>

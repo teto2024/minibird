@@ -2287,9 +2287,9 @@ if ($action === 'get_wounded_troops') {
         $stmt->execute([$me['id']]);
         $healingQueue = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // 病院の容量を計算
+        // 病院の容量とキュー上限を計算
         $stmt = $pdo->prepare("
-            SELECT COUNT(*) as hospital_count, SUM(ucb.level) as total_level
+            SELECT COUNT(*) as hospital_count, COALESCE(SUM(ucb.level), 0) as total_level
             FROM user_civilization_buildings ucb
             JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
             WHERE ucb.user_id = ? 
@@ -2298,13 +2298,20 @@ if ($action === 'get_wounded_troops') {
         ");
         $stmt->execute([$me['id']]);
         $hospitalData = $stmt->fetch(PDO::FETCH_ASSOC);
-        $hospitalCapacity = ($hospitalData['hospital_count'] ?? 0) * 10 + ($hospitalData['total_level'] ?? 0) * 5;
+        $hospitalCount = (int)($hospitalData['hospital_count'] ?? 0);
+        $totalHospitalLevel = (int)($hospitalData['total_level'] ?? 0);
+        $hospitalCapacity = $hospitalCount * 10 + $totalHospitalLevel * 5;
+        
+        // 利用可能な治療キュー数を計算（基本1 + 病院数 + 病院レベル合計/2）
+        $maxHealingQueues = max(1, 1 + $hospitalCount + (int)floor($totalHospitalLevel / 2));
         
         echo json_encode([
             'ok' => true,
             'wounded_troops' => $woundedTroops,
             'healing_queue' => $healingQueue,
-            'hospital_capacity' => $hospitalCapacity
+            'hospital_capacity' => $hospitalCapacity,
+            'queue_used' => count($healingQueue),
+            'queue_max' => $maxHealingQueues
         ]);
     } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
@@ -2326,6 +2333,36 @@ if ($action === 'heal_troops') {
     
     $pdo->beginTransaction();
     try {
+        // 病院の数とレベルを確認（治療キュー数の制限に使用）
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*) as hospital_count, COALESCE(SUM(ucb.level), 0) as total_level
+            FROM user_civilization_buildings ucb
+            JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+            WHERE ucb.user_id = ? 
+              AND bt.building_key IN ('field_hospital', 'hospital', 'medical_center')
+              AND ucb.is_constructing = FALSE
+        ");
+        $stmt->execute([$me['id']]);
+        $hospitalData = $stmt->fetch(PDO::FETCH_ASSOC);
+        $hospitalCount = (int)($hospitalData['hospital_count'] ?? 0);
+        $totalHospitalLevel = (int)($hospitalData['total_level'] ?? 0);
+        
+        if ($hospitalCount === 0) {
+            throw new Exception('病院または野戦病院を建設してください');
+        }
+        
+        // 利用可能な治療キュー数を計算（基本1 + 病院数 + 病院レベル合計/2）
+        $maxHealingQueues = 1 + $hospitalCount + (int)floor($totalHospitalLevel / 2);
+        
+        // 現在の治療キュー数を確認
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM user_civilization_healing_queue WHERE user_id = ?");
+        $stmt->execute([$me['id']]);
+        $currentQueueCount = (int)$stmt->fetchColumn();
+        
+        if ($currentQueueCount >= $maxHealingQueues) {
+            throw new Exception("治療キューが満杯です（最大{$maxHealingQueues}個）。病院を建設するとキュー数が増えます。");
+        }
+        
         // 負傷兵を確認
         $stmt = $pdo->prepare("
             SELECT uwt.count, tt.name, tt.icon,
@@ -2340,21 +2377,6 @@ if ($action === 'heal_troops') {
         
         if (!$wounded || $wounded['count'] < $count) {
             throw new Exception('負傷兵が不足しています');
-        }
-        
-        // 病院があるか確認
-        $stmt = $pdo->prepare("
-            SELECT COUNT(*) FROM user_civilization_buildings ucb
-            JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
-            WHERE ucb.user_id = ? 
-              AND bt.building_key IN ('field_hospital', 'hospital', 'medical_center')
-              AND ucb.is_constructing = FALSE
-        ");
-        $stmt->execute([$me['id']]);
-        $hasHospital = (int)$stmt->fetchColumn() > 0;
-        
-        if (!$hasHospital) {
-            throw new Exception('病院または野戦病院を建設してください');
         }
         
         // コストを計算
@@ -2397,7 +2419,9 @@ if ($action === 'heal_troops') {
         echo json_encode([
             'ok' => true,
             'message' => "{$wounded['name']} ×{$count} の治療を開始しました",
-            'completes_at' => $completesAt
+            'completes_at' => $completesAt,
+            'queue_used' => $currentQueueCount + 1,
+            'queue_max' => $maxHealingQueues
         ]);
     } catch (Exception $e) {
         $pdo->rollBack();
@@ -2468,6 +2492,32 @@ if ($action === 'queue_training') {
     
     $pdo->beginTransaction();
     try {
+        // 兵舎の数とレベルを確認（訓練キュー数の制限に使用）
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*) as barracks_count, COALESCE(SUM(ucb.level), 0) as total_level
+            FROM user_civilization_buildings ucb
+            JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+            WHERE ucb.user_id = ? 
+              AND bt.building_key IN ('barracks', 'training_ground', 'military_academy')
+              AND ucb.is_constructing = FALSE
+        ");
+        $stmt->execute([$me['id']]);
+        $barracksData = $stmt->fetch(PDO::FETCH_ASSOC);
+        $barracksCount = (int)($barracksData['barracks_count'] ?? 0);
+        $totalBarracksLevel = (int)($barracksData['total_level'] ?? 0);
+        
+        // 利用可能なキュー数を計算（基本1 + 兵舎数 + 兵舎レベル合計/2）
+        $maxTrainingQueues = 1 + $barracksCount + (int)floor($totalBarracksLevel / 2);
+        
+        // 現在の訓練キュー数を確認
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM user_civilization_training_queue WHERE user_id = ?");
+        $stmt->execute([$me['id']]);
+        $currentQueueCount = (int)$stmt->fetchColumn();
+        
+        if ($currentQueueCount >= $maxTrainingQueues) {
+            throw new Exception("訓練キューが満杯です（最大{$maxTrainingQueues}個）。兵舎を建設するとキュー数が増えます。");
+        }
+        
         // 兵種を確認
         $stmt = $pdo->prepare("SELECT * FROM civilization_troop_types WHERE id = ?");
         $stmt->execute([$troopTypeId]);
@@ -2543,7 +2593,9 @@ if ($action === 'queue_training') {
         echo json_encode([
             'ok' => true,
             'message' => "{$troopType['name']} ×{$count} の訓練を開始しました",
-            'completes_at' => $completesAt
+            'completes_at' => $completesAt,
+            'queue_used' => $currentQueueCount + 1,
+            'queue_max' => $maxTrainingQueues
         ]);
     } catch (Exception $e) {
         $pdo->rollBack();
@@ -2557,6 +2609,23 @@ if ($action === 'queue_training') {
 // ===============================================
 if ($action === 'get_training_queue') {
     try {
+        // 兵舎の数とレベルを確認（訓練キュー数の上限計算に使用）
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*) as barracks_count, COALESCE(SUM(ucb.level), 0) as total_level
+            FROM user_civilization_buildings ucb
+            JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+            WHERE ucb.user_id = ? 
+              AND bt.building_key IN ('barracks', 'training_ground', 'military_academy')
+              AND ucb.is_constructing = FALSE
+        ");
+        $stmt->execute([$me['id']]);
+        $barracksData = $stmt->fetch(PDO::FETCH_ASSOC);
+        $barracksCount = (int)($barracksData['barracks_count'] ?? 0);
+        $totalBarracksLevel = (int)($barracksData['total_level'] ?? 0);
+        
+        // 利用可能なキュー数を計算（基本1 + 兵舎数 + 兵舎レベル合計/2）
+        $maxTrainingQueues = 1 + $barracksCount + (int)floor($totalBarracksLevel / 2);
+        
         $stmt = $pdo->prepare("
             SELECT utq.*, tt.name, tt.icon, tt.attack_power, tt.defense_power
             FROM user_civilization_training_queue utq
@@ -2569,7 +2638,9 @@ if ($action === 'get_training_queue') {
         
         echo json_encode([
             'ok' => true,
-            'training_queue' => $trainingQueue
+            'training_queue' => $trainingQueue,
+            'queue_used' => count($trainingQueue),
+            'queue_max' => $maxTrainingQueues
         ]);
     } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);

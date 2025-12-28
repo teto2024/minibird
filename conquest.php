@@ -739,6 +739,12 @@ function renderCastleDetail(data) {
     
     document.getElementById('modalCastleName').textContent = `${castle.icon} ${castle.name}`;
     
+    // 耐久度の計算
+    const durability = castle.durability !== undefined ? parseInt(castle.durability) : 100;
+    const maxDurability = castle.max_durability !== undefined ? parseInt(castle.max_durability) : 100;
+    const durabilityPercent = maxDurability > 0 ? Math.round((durability / maxDurability) * 100) : 100;
+    const durabilityColor = durabilityPercent > 60 ? '#32cd32' : (durabilityPercent > 30 ? '#ffa500' : '#ff6b6b');
+    
     let html = `
         <div class="castle-detail-section">
             <h4>📊 城情報</h4>
@@ -758,6 +764,18 @@ function renderCastleDetail(data) {
                 <div>
                     <span style="color: #888;">防御力:</span>
                     <span style="color: #ff6b6b;">⚔️ ${defense.total_power}</span>
+                </div>
+            </div>
+            <div style="margin-top: 15px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="color: #888;">🏰 城壁耐久度:</span>
+                    <span style="color: ${durabilityColor};">${durability} / ${maxDurability} (${durabilityPercent}%)</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.5); border-radius: 4px; height: 12px; overflow: hidden;">
+                    <div style="background: linear-gradient(90deg, ${durabilityColor} 0%, ${durabilityColor}88 100%); height: 100%; width: ${durabilityPercent}%; transition: width 0.3s;"></div>
+                </div>
+                <div style="color: #888; font-size: 11px; margin-top: 5px;">
+                    💡 守備兵がいない城への攻撃は耐久度を削ります。耐久度が0になると城を占領できます。
                 </div>
             </div>
         </div>
