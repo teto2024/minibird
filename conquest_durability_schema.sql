@@ -12,12 +12,12 @@ ALTER TABLE conquest_castles
 ADD COLUMN IF NOT EXISTS durability INT UNSIGNED NOT NULL DEFAULT 100 COMMENT '現在の耐久度' AFTER icon,
 ADD COLUMN IF NOT EXISTS max_durability INT UNSIGNED NOT NULL DEFAULT 100 COMMENT '最大耐久度' AFTER durability;
 
--- 城の種類に応じた耐久度を設定
--- outer: 100, middle: 150, inner: 200, sacred: 500
-UPDATE conquest_castles SET durability = 100, max_durability = 100 WHERE castle_type = 'outer';
-UPDATE conquest_castles SET durability = 150, max_durability = 150 WHERE castle_type = 'middle';
-UPDATE conquest_castles SET durability = 200, max_durability = 200 WHERE castle_type = 'inner';
-UPDATE conquest_castles SET durability = 500, max_durability = 500 WHERE castle_type = 'sacred';
+-- 城の種類に応じた耐久度を設定（高めの値）
+-- outer: 500, middle: 1000, inner: 2000, sacred: 5000
+UPDATE conquest_castles SET durability = 500, max_durability = 500 WHERE castle_type = 'outer';
+UPDATE conquest_castles SET durability = 1000, max_durability = 1000 WHERE castle_type = 'middle';
+UPDATE conquest_castles SET durability = 2000, max_durability = 2000 WHERE castle_type = 'inner';
+UPDATE conquest_castles SET durability = 5000, max_durability = 5000 WHERE castle_type = 'sacred';
 
 -- ===============================================
 -- 戦闘ログに耐久度ダメージを追加
@@ -67,85 +67,93 @@ INSERT IGNORE INTO battle_special_skills (skill_key, name, icon, description, ef
 ('taunt', '挑発', '😤', '敵の攻撃を自分に集中させる', 'special', 'self', 0, 2, 20);
 
 -- ===============================================
--- 兵種ステータスの価格に見合った調整
--- 価格/攻撃力/防御力/体力の比率を統一
--- 基本計算式: 総合力 = 攻撃力 + 防御力/2 + 体力/50
--- 価格に対する総合力の比率を約0.2-0.3に統一
+-- 兵種に新しいバフ/デバフスキルを割り当て
+-- 各兵種の特徴を活かしたスキル設定
+-- 攻撃系バフ: 攻城術(siege_mastery), 雄叫び(war_cry), 血の渇望(bloodlust), 精密射撃(precision)
+-- 防御系バフ: 防御陣形(fortify), 鉄の意志(iron_will), ファランクス陣形(phalanx_formation), 盾の壁(shield_wall)
+-- 攻撃系デバフ: 弱体化(weakness), 武装解除(disarm), 恐怖(fear), 鈍化(slow)
+-- 防御系デバフ: 鎧砕き(armor_crush), 弱点露出(expose_weakness), 呪い(curse), 出血(bleed)
+-- 特殊効果: 鼓舞(rally), 反撃(counter_attack), 回避(evasion), 挑発(taunt)
 -- ===============================================
 
--- 石器時代（安価、低ステータス）
-UPDATE civilization_troop_types SET 
-    attack_power = 8, defense_power = 5, health_points = 60
-    WHERE troop_key = 'hunter';
-UPDATE civilization_troop_types SET 
-    attack_power = 12, defense_power = 8, health_points = 100
-    WHERE troop_key = 'warrior';
+-- スキルIDを変数として取得するために、直接IDで指定
+-- 既存の12スキル + 新規20スキル = 32スキル
+-- 新規スキルは ID 13以降に配置される想定
 
--- 青銅器時代（やや安価、バランス型）
-UPDATE civilization_troop_types SET 
-    attack_power = 15, defense_power = 12, health_points = 120
-    WHERE troop_key = 'spearman';
-UPDATE civilization_troop_types SET 
-    attack_power = 22, defense_power = 10, health_points = 90
-    WHERE troop_key = 'chariot';
+-- 攻城兵器系 - 攻城術(siege_mastery)スキル
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'siege_mastery' LIMIT 1) WHERE troop_key = 'catapult';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'siege_mastery' LIMIT 1) WHERE troop_key = 'trebuchet';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'siege_mastery' LIMIT 1) WHERE troop_key = 'battering_ram';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'siege_mastery' LIMIT 1) WHERE troop_key = 'siege_tower';
 
--- 鉄器時代（中価格、強化ステータス）
-UPDATE civilization_troop_types SET 
-    attack_power = 30, defense_power = 22, health_points = 150
-    WHERE troop_key = 'swordsman';
-UPDATE civilization_troop_types SET 
-    attack_power = 35, defense_power = 18, health_points = 120
-    WHERE troop_key = 'cavalry';
-UPDATE civilization_troop_types SET 
-    attack_power = 25, defense_power = 12, health_points = 80
-    WHERE troop_key = 'archer';
+-- 砲撃系 - 攻城術(siege_mastery)スキル
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'siege_mastery' LIMIT 1) WHERE troop_key = 'cannon';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'siege_mastery' LIMIT 1) WHERE troop_key = 'artillery';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'siege_mastery' LIMIT 1) WHERE troop_key = 'bomber';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'siege_mastery' LIMIT 1) WHERE troop_key = 'missile_launcher';
 
--- 中世（高価格、高ステータス）
-UPDATE civilization_troop_types SET 
-    attack_power = 55, defense_power = 45, health_points = 200
-    WHERE troop_key = 'knight';
-UPDATE civilization_troop_types SET 
-    attack_power = 40, defense_power = 20, health_points = 100
-    WHERE troop_key = 'crossbowman';
-UPDATE civilization_troop_types SET 
-    attack_power = 70, defense_power = 15, health_points = 80
-    WHERE troop_key = 'catapult';
+-- 歩兵系 - 雄叫び(war_cry)スキル
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'war_cry' LIMIT 1) WHERE troop_key = 'warrior';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'war_cry' LIMIT 1) WHERE troop_key = 'infantry';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'war_cry' LIMIT 1) WHERE troop_key = 'marine';
 
--- ルネサンス（高価格、特化型）
-UPDATE civilization_troop_types SET 
-    attack_power = 60, defense_power = 28, health_points = 120
-    WHERE troop_key = 'musketeer';
-UPDATE civilization_troop_types SET 
-    attack_power = 100, defense_power = 20, health_points = 100
-    WHERE troop_key = 'cannon';
-UPDATE civilization_troop_types SET 
-    attack_power = 80, defense_power = 50, health_points = 200
-    WHERE troop_key = 'galleon';
+-- 狂戦士系 - 血の渇望(bloodlust)スキル
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'bloodlust' LIMIT 1) WHERE troop_key = 'berserker';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'bloodlust' LIMIT 1) WHERE troop_key = 'special_forces';
 
--- 産業革命（高価格、近代戦闘）
-UPDATE civilization_troop_types SET 
-    attack_power = 75, defense_power = 50, health_points = 160
-    WHERE troop_key = 'infantry';
-UPDATE civilization_troop_types SET 
-    attack_power = 120, defense_power = 35, health_points = 100
-    WHERE troop_key = 'artillery';
-UPDATE civilization_troop_types SET 
-    attack_power = 150, defense_power = 100, health_points = 350
-    WHERE troop_key = 'ironclad';
+-- 射撃系 - 精密射撃(precision)スキル
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'precision' LIMIT 1) WHERE troop_key = 'hunter';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'precision' LIMIT 1) WHERE troop_key = 'archer';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'precision' LIMIT 1) WHERE troop_key = 'crossbowman';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'precision' LIMIT 1) WHERE troop_key = 'longbowman';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'precision' LIMIT 1) WHERE troop_key = 'rifleman';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'precision' LIMIT 1) WHERE troop_key = 'musketeer';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'precision' LIMIT 1) WHERE troop_key = 'stealth_fighter';
 
--- 現代（最高価格、最高ステータス）
-UPDATE civilization_troop_types SET 
-    attack_power = 180, defense_power = 120, health_points = 400
-    WHERE troop_key = 'tank';
-UPDATE civilization_troop_types SET 
-    attack_power = 200, defense_power = 60, health_points = 180
-    WHERE troop_key = 'fighter';
-UPDATE civilization_troop_types SET 
-    attack_power = 280, defense_power = 40, health_points = 150
-    WHERE troop_key = 'bomber';
-UPDATE civilization_troop_types SET 
-    attack_power = 220, defense_power = 80, health_points = 250
-    WHERE troop_key = 'submarine';
+-- 重装系 - 防御陣形(fortify)スキル
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'fortify' LIMIT 1) WHERE troop_key = 'royal_guard';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'fortify' LIMIT 1) WHERE troop_key = 'swordsman';
+
+-- 精鋭系 - 鉄の意志(iron_will)スキル
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'iron_will' LIMIT 1) WHERE troop_key = 'paratroopers';
+
+-- 槍兵系 - ファランクス陣形(phalanx_formation)スキル
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'phalanx_formation' LIMIT 1) WHERE troop_key = 'spearman';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'phalanx_formation' LIMIT 1) WHERE troop_key = 'phalanx';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'phalanx_formation' LIMIT 1) WHERE troop_key = 'pikeman';
+
+-- 騎士系 - 盾の壁(shield_wall)スキル
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'shield_wall' LIMIT 1) WHERE troop_key = 'knight';
+
+-- 騎兵系 - 恐怖(fear)スキル
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'fear' LIMIT 1) WHERE troop_key = 'cavalry';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'fear' LIMIT 1) WHERE troop_key = 'chariot';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'fear' LIMIT 1) WHERE troop_key = 'war_elephant';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'fear' LIMIT 1) WHERE troop_key = 'dragoon';
+
+-- 戦車系 - 鎧砕き(armor_crush)スキル
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'armor_crush' LIMIT 1) WHERE troop_key = 'tank';
+
+-- 戦闘機系 - 回避(evasion)スキル
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'evasion' LIMIT 1) WHERE troop_key = 'fighter';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'evasion' LIMIT 1) WHERE troop_key = 'scout';
+
+-- 潜水艦系 - 弱点露出(expose_weakness)スキル
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'expose_weakness' LIMIT 1) WHERE troop_key = 'submarine';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'expose_weakness' LIMIT 1) WHERE troop_key = 'nuclear_submarine';
+
+-- 海軍系 - 鈍化(slow)スキル
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'slow' LIMIT 1) WHERE troop_key = 'galleon';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'slow' LIMIT 1) WHERE troop_key = 'frigate';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'slow' LIMIT 1) WHERE troop_key = 'ironclad';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'slow' LIMIT 1) WHERE troop_key = 'aircraft_carrier';
+
+-- 民兵系 - 挑発(taunt)スキル
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'taunt' LIMIT 1) WHERE troop_key = 'militia';
+
+-- 医療系 - 鼓舞(rally)スキル
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'rally' LIMIT 1) WHERE troop_key = 'medic';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'rally' LIMIT 1) WHERE troop_key = 'field_surgeon';
 
 -- 攻城兵器に攻城ダメージボーナスフラグを追加
 ALTER TABLE civilization_troop_types

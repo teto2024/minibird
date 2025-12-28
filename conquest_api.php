@@ -42,10 +42,10 @@ define('CONQUEST_BOMBARDMENT_VARIANCE_RANGE', 20);       // 乱数変動幅（±
 define('CONQUEST_BOMBARDMENT_WARNING_MINUTES', 5);       // 警告表示開始（分）
 
 // 城耐久度システム定数
-define('CONQUEST_DURABILITY_OUTER', 100);                // 外周城の耐久度
-define('CONQUEST_DURABILITY_MIDDLE', 150);               // 中間城の耐久度
-define('CONQUEST_DURABILITY_INNER', 200);                // 内周城の耐久度
-define('CONQUEST_DURABILITY_SACRED', 500);               // 神城の耐久度
+define('CONQUEST_DURABILITY_OUTER', 500);                // 外周城の耐久度
+define('CONQUEST_DURABILITY_MIDDLE', 1000);              // 中間城の耐久度
+define('CONQUEST_DURABILITY_INNER', 2000);               // 内周城の耐久度
+define('CONQUEST_DURABILITY_SACRED', 5000);              // 神城の耐久度
 define('CONQUEST_BASE_DURABILITY_DAMAGE', 10);           // 基本耐久度ダメージ
 define('CONQUEST_BOMBARDMENT_DURABILITY_DAMAGE', 5);     // 砲撃による耐久度ダメージ
 define('CONQUEST_SIEGE_DURABILITY_MULTIPLIER', 3.0);     // 攻城兵器の耐久度ダメージ倍率（デフォルト）
