@@ -704,6 +704,10 @@ function formatTime(datetime) {
 }
 
 function escapeHtml(text, embedYouTube = true) {
+    // Null/undefined safety
+    if (text === null || text === undefined) {
+        text = '';
+    }
     const div = document.createElement('div');
     div.textContent = text;
     let html = div.innerHTML.replace(/\n/g, '<br>');
