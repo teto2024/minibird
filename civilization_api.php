@@ -12,6 +12,9 @@ define('CIV_RESOURCE_BONUS_RATIO', 10);        // 資源ボーナス1あたり�
 define('CIV_ATTACKER_BONUS', 1.1);             // 攻撃側のボーナス倍率
 define('CIV_LOOT_RESOURCE_RATE', 0.1);         // 略奪時の資源比率（10%）
 define('CIV_LOOT_COINS_RATE', 0.05);           // 略奪時のコイン比率（5%）
+define('CIV_INSTANT_BUILDING_MIN_COST', 5);    // 建物即完了の最低クリスタルコスト
+define('CIV_INSTANT_RESEARCH_MIN_COST', 3);    // 研究即完了の最低クリスタルコスト
+define('CIV_INSTANT_SECONDS_PER_CRYSTAL', 60); // クリスタル1個あたりの秒数
 
 header('Content-Type: application/json');
 
@@ -849,7 +852,7 @@ if ($action === 'instant_complete_building') {
         
         // 残り時間に応じたクリスタルコストを計算
         $remainingSeconds = max(0, strtotime($building['construction_completes_at']) - time());
-        $crystalCost = max(5, (int)ceil($remainingSeconds / 60)); // 1分あたり1クリスタル、最低5クリスタル
+        $crystalCost = max(CIV_INSTANT_BUILDING_MIN_COST, (int)ceil($remainingSeconds / CIV_INSTANT_SECONDS_PER_CRYSTAL));
         
         // クリスタルを確認
         $stmt = $pdo->prepare("SELECT crystals FROM users WHERE id = ? FOR UPDATE");
@@ -922,7 +925,7 @@ if ($action === 'instant_complete_research') {
         
         // 残り時間に応じたクリスタルコストを計算
         $remainingSeconds = max(0, strtotime($research['research_completes_at']) - time());
-        $crystalCost = max(3, (int)ceil($remainingSeconds / 60)); // 1分あたり1クリスタル、最低3クリスタル
+        $crystalCost = max(CIV_INSTANT_RESEARCH_MIN_COST, (int)ceil($remainingSeconds / CIV_INSTANT_SECONDS_PER_CRYSTAL));
         
         // クリスタルを確認
         $stmt = $pdo->prepare("SELECT crystals FROM users WHERE id = ? FOR UPDATE");
