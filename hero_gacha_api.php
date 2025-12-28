@@ -397,7 +397,7 @@ function generateEquipmentReward($pdo, $user_id) {
     
     $buffs = [];
     $rarity_index = array_search($rarity, $rarities);
-    $max_rarity_index = count($rarities) - 1;
+    $max_rarity_index = max(1, count($rarities) - 1); // 0除算を防止
     
     foreach ($selected_buffs as $buff_key) {
         $buff_info = $BUFF_TYPES[$buff_key];

@@ -6,6 +6,13 @@
 
 require_once __DIR__ . '/config.php';
 
+// 文明システム設定定数
+define('CIV_COINS_TO_RESEARCH_RATIO', 10);     // 研究ポイント1あたりのコイン
+define('CIV_RESOURCE_BONUS_RATIO', 10);        // 資源ボーナス1あたりのコイン
+define('CIV_ATTACKER_BONUS', 1.1);             // 攻撃側のボーナス倍率
+define('CIV_LOOT_RESOURCE_RATE', 0.1);         // 略奪時の資源比率（10%）
+define('CIV_LOOT_COINS_RATE', 0.05);           // 略奪時のコイン比率（5%）
+
 header('Content-Type: application/json');
 
 $me = user();
@@ -241,11 +248,11 @@ if ($action === 'invest_coins') {
                 research_points = research_points + ?
             WHERE user_id = ?
         ");
-        $researchPointsGained = (int)floor($amount / 10); // 10コイン=1研究ポイント
+        $researchPointsGained = (int)floor($amount / CIV_COINS_TO_RESEARCH_RATIO);
         $stmt->execute([$amount, $researchPointsGained, $me['id']]);
         
-        // 資源をボーナスとして追加（投資額の10%相当の食料・木材・石材）
-        $resourceBonus = (int)floor($amount / 10);
+        // 資源をボーナスとして追加（投資額に応じた食料・木材・石材）
+        $resourceBonus = (int)floor($amount / CIV_RESOURCE_BONUS_RATIO);
         $stmt = $pdo->prepare("
             UPDATE user_civilization_resources 
             SET amount = amount + ?
@@ -590,8 +597,8 @@ if ($action === 'attack') {
             throw new Exception('軍事力がありません。兵舎や軍事施設を建設してください。');
         }
         
-        // 戦闘判定（攻撃側ボーナス +10%）
-        $myRoll = mt_rand(1, 100) + ($myPower * 1.1);
+        // 戦闘判定（攻撃側ボーナス適用）
+        $myRoll = mt_rand(1, 100) + ($myPower * CIV_ATTACKER_BONUS);
         $targetRoll = mt_rand(1, 100) + $targetPower;
         
         $winnerId = ($myRoll > $targetRoll) ? $me['id'] : $targetUserId;
@@ -602,7 +609,7 @@ if ($action === 'attack') {
         $lootResources = [];
         
         if ($winnerId === $me['id']) {
-            // 勝利時：相手の資源の10%を略奪
+            // 勝利時：相手の資源を略奪
             $stmt = $pdo->prepare("
                 SELECT ucr.resource_type_id, ucr.amount, rt.resource_key
                 FROM user_civilization_resources ucr
@@ -613,7 +620,7 @@ if ($action === 'attack') {
             $targetResources = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             foreach ($targetResources as $res) {
-                $loot = floor($res['amount'] * 0.1);
+                $loot = floor($res['amount'] * CIV_LOOT_RESOURCE_RATE);
                 if ($loot > 0) {
                     $lootResources[$res['resource_key']] = $loot;
                     
@@ -634,11 +641,11 @@ if ($action === 'attack') {
                 }
             }
             
-            // コインも略奪（相手の5%）
+            // コインも略奪
             $stmt = $pdo->prepare("SELECT coins FROM users WHERE id = ?");
             $stmt->execute([$targetUserId]);
             $targetCoins = (int)$stmt->fetchColumn();
-            $lootCoins = (int)floor($targetCoins * 0.05);
+            $lootCoins = (int)floor($targetCoins * CIV_LOOT_COINS_RATE);
             
             if ($lootCoins > 0) {
                 $stmt = $pdo->prepare("UPDATE users SET coins = coins - ? WHERE id = ?");

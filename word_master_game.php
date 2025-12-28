@@ -7,6 +7,19 @@
 
 require_once __DIR__ . '/config.php';
 
+// 英単語マスター報酬設定
+define('WM_BASE_COINS_PER_CORRECT', 20);
+define('WM_BASE_CRYSTALS_PER_CORRECT', 1);
+define('WM_INPUT_MODE_BONUS', 1.8);
+define('WM_TEST_MODE_BONUS', 2.5);
+define('WM_PERFECT_SCORE_BONUS', 2.0);
+define('WM_HIGH_SCORE_BONUS', 1.8);      // 90点以上
+define('WM_MID_SCORE_BONUS', 1.4);       // 70点以上
+define('WM_UNIQUE_DROP_RATE_HIGH', 70);  // 90点以上でのユニークドロップ率
+define('WM_UNIQUE_DROP_RATE_MID', 30);   // 70点以上でのユニークドロップ率
+define('WM_LEGEND_DROP_RATE_PERFECT', 50); // パーフェクトでのレジェンドドロップ率
+define('WM_LEGEND_DROP_RATE_HIGH', 25);  // 90点以上でのレジェンドドロップ率
+
 $me = user();
 if (!$me) {
     header('Location: ./login.php');
@@ -212,39 +225,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // スコアを100点満点で計算（小数点3桁）
         $finalScore = round($score, 3);
         
-        // 報酬計算（上方修正）
-        $baseCoins = $correctCount * 20;  // 10から20に上方修正
-        $baseCrystals = $correctCount;    // correctCount/2 から correctCount に上方修正
+        // 報酬計算
+        $baseCoins = $correctCount * WM_BASE_COINS_PER_CORRECT;
+        $baseCrystals = $correctCount * WM_BASE_CRYSTALS_PER_CORRECT;
         
         // 難易度ボーナス
         if ($isInputMode) {
-            $baseCoins *= 1.8;   // 1.5から1.8に上方修正
-            $baseCrystals *= 1.8;
+            $baseCoins *= WM_INPUT_MODE_BONUS;
+            $baseCrystals *= WM_INPUT_MODE_BONUS;
         }
         if ($mode === 'test') {
-            $baseCoins *= 2.5;   // 2から2.5に上方修正
-            $baseCrystals *= 2.5;
+            $baseCoins *= WM_TEST_MODE_BONUS;
+            $baseCrystals *= WM_TEST_MODE_BONUS;
         }
         
-        // スコアボーナス（上方修正）
+        // スコアボーナス
         if ($finalScore >= 100) {
-            $baseCoins *= 2.0;   // パーフェクトボーナス
-            $baseCrystals *= 2.0;
+            $baseCoins *= WM_PERFECT_SCORE_BONUS;
+            $baseCrystals *= WM_PERFECT_SCORE_BONUS;
         } elseif ($finalScore >= 90) {
-            $baseCoins *= 1.8;   // 1.5から1.8に上方修正
-            $baseCrystals *= 1.8;
+            $baseCoins *= WM_HIGH_SCORE_BONUS;
+            $baseCrystals *= WM_HIGH_SCORE_BONUS;
         } elseif ($finalScore >= 70) {
-            $baseCoins *= 1.4;   // 1.2から1.4に上方修正
-            $baseCrystals *= 1.4;
+            $baseCoins *= WM_MID_SCORE_BONUS;
+            $baseCrystals *= WM_MID_SCORE_BONUS;
         }
         
         // バフ適用
         $rewardCoins = (int)floor($baseCoins * $buffMultiplier);
         $rewardCrystals = (int)floor($baseCrystals * $buffMultiplier);
         
-        // トークン報酬（上方修正：確定でノーマル・レア、確率でユニーク・レジェンド）
-        $normalTokens = max(1, (int)floor($correctCount / 5));  // 確定でドロップ
-        $rareTokens = max(1, (int)floor($correctCount / 10));   // 確定でドロップ
+        // トークン報酬（確定でノーマル・レア、確率でユニーク・レジェンド）
+        $normalTokens = max(1, (int)floor($correctCount / 5));
+        $rareTokens = max(1, (int)floor($correctCount / 10));
         $uniqueTokens = 0;
         $legendTokens = 0;
         
@@ -254,24 +267,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $normalTokens += 5;
             $rareTokens += 3;
             $uniqueTokens = 2;
-            if (mt_rand(1, 100) <= 50) {
+            if (mt_rand(1, 100) <= WM_LEGEND_DROP_RATE_PERFECT) {
                 $legendTokens = 1;
             }
         } elseif ($finalScore >= 90) {
             // 90点以上：ノーマル・レア増量、高確率でユニーク、確率でレジェンド
             $normalTokens += 3;
             $rareTokens += 2;
-            if (mt_rand(1, 100) <= 70) {
+            if (mt_rand(1, 100) <= WM_UNIQUE_DROP_RATE_HIGH) {
                 $uniqueTokens = 1;
             }
-            if (mt_rand(1, 100) <= 25) {
+            if (mt_rand(1, 100) <= WM_LEGEND_DROP_RATE_HIGH) {
                 $legendTokens = 1;
             }
         } elseif ($finalScore >= 70) {
             // 70点以上：ノーマル・レア少量増量、確率でユニーク
             $normalTokens += 2;
             $rareTokens += 1;
-            if (mt_rand(1, 100) <= 30) {
+            if (mt_rand(1, 100) <= WM_UNIQUE_DROP_RATE_MID) {
                 $uniqueTokens = 1;
             }
         }
