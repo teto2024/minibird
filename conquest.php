@@ -549,7 +549,7 @@ let seasonData = null;
 let userTroops = [];
 let selectedCastle = null;
 let currentTab = 'map';
-const isAdmin = <?= ($me['is_admin'] ?? 0) ? 'true' : 'false' ?>;
+const isAdmin = <?= (isset($me['role']) && $me['role'] === 'admin') ? 'true' : 'false' ?>;
 
 // 初期データ読み込み
 async function loadData() {
