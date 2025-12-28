@@ -852,9 +852,34 @@ function renderApp() {
         <div class="tab-content ${currentTab === 'war' ? 'active' : ''}" id="tab-war">
             <div class="war-section">
                 <h3>⚔️ 他の文明を攻撃</h3>
+                <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                    <h4 style="color: #ff6b6b; margin: 0 0 10px 0;">あなたの軍事力</h4>
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                        <div>
+                            <span style="color: #888;">🏰 建物:</span>
+                            <span style="color: #ffd700; font-weight: bold;" id="myBuildingPower">${civ.building_power || 0}</span>
+                        </div>
+                        <div>
+                            <span style="color: #888;">🎖️ 兵士:</span>
+                            <span style="color: #ffd700; font-weight: bold;" id="myTroopPower">${civ.troop_power || 0}</span>
+                        </div>
+                        <div>
+                            <span style="color: #888;">⚔️ 合計:</span>
+                            <span style="color: #ff6b6b; font-weight: bold; font-size: 1.2em;" id="myTotalPower">${civ.military_power || 0}</span>
+                        </div>
+                    </div>
+                </div>
                 <p style="color: #c0a080; margin-bottom: 20px;">軍事施設を建設して軍事力を上げ、他の文明から資源を略奪しましょう！</p>
                 <div class="targets-list" id="targetsList">
                     <div class="loading">攻撃対象を読み込み中...</div>
+                </div>
+            </div>
+            
+            <!-- 戦争ログセクション -->
+            <div class="war-section" style="margin-top: 20px;">
+                <h3>📜 戦争ログ</h3>
+                <div id="warLogsList" style="max-height: 400px; overflow-y: auto;">
+                    <div class="loading">戦争ログを読み込み中...</div>
                 </div>
             </div>
         </div>
@@ -1083,9 +1108,11 @@ function renderResearchTree() {
 // 市場交換UIを描画
 function renderMarketExchange(resources) {
     // 市場建物を持っているか確認
-    const hasMarket = civData.buildings.some(b => b.building_key === 'market' && !b.is_constructing);
+    const markets = civData.buildings.filter(b => b.building_key === 'market' && !b.is_constructing);
+    const marketCount = markets.length;
+    const totalMarketLevel = markets.reduce((sum, m) => sum + (parseInt(m.level) || 1), 0);
     
-    if (!hasMarket) {
+    if (marketCount === 0) {
         return `
             <div style="text-align: center; padding: 40px; color: #c0a080;">
                 <p style="font-size: 24px; margin-bottom: 15px;">🏪</p>
@@ -1105,6 +1132,9 @@ function renderMarketExchange(resources) {
         `;
     }
     
+    // 市場ボーナスを計算
+    const marketBonus = Math.min(50, (marketCount * 5) + (totalMarketLevel * 2));
+    
     return `
         <div class="buildings-grid">
             <div class="building-card" style="border-color: #d4a574; grid-column: span 2;">
@@ -1112,20 +1142,38 @@ function renderMarketExchange(resources) {
                     <span class="building-icon">🔄</span>
                     <span class="building-name">資源交換</span>
                 </div>
-                <div class="building-desc">資源を他の資源に交換します（交換レート: 2:1）</div>
+                <div class="building-desc">資源を他の資源に交換します。レートは資源の価値により変動します。</div>
+                
+                <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-top: 10px;">
+                    <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <span style="color: #888;">🏪 市場数:</span>
+                            <span style="color: #ffd700; font-weight: bold;">${marketCount}</span>
+                        </div>
+                        <div>
+                            <span style="color: #888;">📈 合計レベル:</span>
+                            <span style="color: #ffd700; font-weight: bold;">${totalMarketLevel}</span>
+                        </div>
+                        <div>
+                            <span style="color: #888;">✨ レートボーナス:</span>
+                            <span style="color: #32cd32; font-weight: bold;">+${marketBonus}%</span>
+                        </div>
+                    </div>
+                    <p style="color: #888; font-size: 12px; margin-top: 8px;">💡 市場を増やすとレートが改善されます（市場1つ:+5%, レベル:+2%, 最大+50%）</p>
+                </div>
                 
                 <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; margin-top: 15px;">
                     <div style="flex: 1; min-width: 150px;">
                         <label style="display: block; margin-bottom: 8px; color: #c0a080; font-size: 13px;">交換する資源</label>
                         <select id="fromResource" class="invest-input" style="width: 100%;">
-                            ${unlockedResources.map(r => `<option value="${r.resource_type_id}" data-amount="${r.amount}">${r.icon} ${r.name} (${Math.floor(r.amount)})</option>`).join('')}
+                            ${unlockedResources.map(r => `<option value="${r.resource_type_id}" data-key="${r.resource_key}" data-amount="${r.amount}">${r.icon} ${r.name} (${Math.floor(r.amount)})</option>`).join('')}
                         </select>
                     </div>
                     <div style="flex: 0; padding-top: 25px; font-size: 24px;">→</div>
                     <div style="flex: 1; min-width: 150px;">
                         <label style="display: block; margin-bottom: 8px; color: #c0a080; font-size: 13px;">受け取る資源</label>
                         <select id="toResource" class="invest-input" style="width: 100%;">
-                            ${unlockedResources.map(r => `<option value="${r.resource_type_id}">${r.icon} ${r.name}</option>`).join('')}
+                            ${unlockedResources.map(r => `<option value="${r.resource_type_id}" data-key="${r.resource_key}">${r.icon} ${r.name}</option>`).join('')}
                         </select>
                     </div>
                 </div>
@@ -1133,7 +1181,7 @@ function renderMarketExchange(resources) {
                 <div style="margin-top: 15px;">
                     <label style="display: block; margin-bottom: 8px; color: #c0a080; font-size: 13px;">交換する量</label>
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <input type="number" id="exchangeAmount" class="invest-input" value="100" min="2" step="2" style="flex: 1;">
+                        <input type="number" id="exchangeAmount" class="invest-input" value="100" min="1" step="1" style="flex: 1;">
                         <div class="quick-invest-btns">
                             <button class="quick-invest-btn" onclick="setExchangeAmount(10)">10</button>
                             <button class="quick-invest-btn" onclick="setExchangeAmount(50)">50</button>
@@ -1167,6 +1215,28 @@ function loadMarketData() {
         return; // 市場が建設されていない場合などは要素が存在しない
     }
     
+    // 資源の価値を定義（サーバー側と同じ）
+    const resourceValues = {
+        'food': 1.0,
+        'wood': 1.0,
+        'stone': 1.2,
+        'bronze': 1.5,
+        'iron': 2.0,
+        'gold': 3.0,
+        'knowledge': 2.5,
+        'oil': 3.5,
+        'crystal': 4.0,
+        'mana': 4.5,
+        'uranium': 5.0,
+        'diamond': 6.0
+    };
+    
+    // 市場ボーナスを計算
+    const markets = civData.buildings.filter(b => b.building_key === 'market' && !b.is_constructing);
+    const marketCount = markets.length;
+    const totalMarketLevel = markets.reduce((sum, m) => sum + (parseInt(m.level) || 1), 0);
+    const marketBonus = Math.min(0.5, (marketCount * 0.05) + (totalMarketLevel * 0.02));
+    
     const updateResult = () => {
         const resultElement = document.getElementById('exchangeResult');
         if (!resultElement) return;
@@ -1184,9 +1254,18 @@ function loadMarketData() {
         const toOption = toSelect.options[toSelect.selectedIndex];
         const fromName = fromOption.textContent.split('(')[0].trim();
         const toName = toOption.textContent.split('(')[0].trim();
+        const fromKey = fromOption.dataset.key || 'food';
+        const toKey = toOption.dataset.key || 'food';
         
-        const received = Math.floor(amount / 2);
-        resultElement.textContent = `${amount} ${fromName} → ${received} ${toName}`;
+        // 交換レートを計算
+        const fromValue = resourceValues[fromKey] || 1.0;
+        const toValue = resourceValues[toKey] || 1.0;
+        const baseRate = fromValue / toValue;
+        const finalRate = baseRate * (1 + marketBonus);
+        
+        const received = Math.floor(amount * finalRate);
+        const ratePercent = Math.round(finalRate * 100);
+        resultElement.innerHTML = `${amount} ${fromName} → <strong style="color: #32cd32;">${received}</strong> ${toName} <span style="color: #888; font-size: 12px;">(レート: ${ratePercent}%)</span>`;
     };
     
     fromSelect.addEventListener('change', updateResult);
@@ -1214,8 +1293,8 @@ async function exchangeResources() {
         return;
     }
     
-    if (amount < 2) {
-        showNotification('最低交換量は2です', true);
+    if (amount < 1) {
+        showNotification('最低交換量は1です', true);
         return;
     }
     
@@ -1253,26 +1332,111 @@ async function loadTargets() {
         });
         const data = await res.json();
         
+        // 自分の軍事力を更新
+        if (data.my_military_power) {
+            const myBuildingPower = document.getElementById('myBuildingPower');
+            const myTroopPower = document.getElementById('myTroopPower');
+            const myTotalPower = document.getElementById('myTotalPower');
+            if (myBuildingPower) myBuildingPower.textContent = data.my_military_power.building_power || 0;
+            if (myTroopPower) myTroopPower.textContent = data.my_military_power.troop_power || 0;
+            if (myTotalPower) myTotalPower.textContent = data.my_military_power.total_power || 0;
+        }
+        
         if (data.ok && data.targets.length > 0) {
-            document.getElementById('targetsList').innerHTML = data.targets.map(t => `
+            const myPower = data.my_military_power?.total_power || 0;
+            document.getElementById('targetsList').innerHTML = data.targets.map(t => {
+                const targetPower = t.military_power || 0;
+                const powerDiff = myPower - targetPower;
+                const powerClass = powerDiff > 0 ? 'color: #32cd32;' : (powerDiff < 0 ? 'color: #ff6b6b;' : 'color: #ffd700;');
+                const powerIndicator = powerDiff > 0 ? '✅ 有利' : (powerDiff < 0 ? '⚠️ 不利' : '⚖️ 互角');
+                
+                return `
                 <div class="target-card">
                     <div class="target-header">
                         <span class="target-name">${escapeHtml(t.civilization_name)}</span>
-                        <span class="target-power">⚔️ ${t.military_power || 0}</span>
+                        <span class="target-power" style="${powerClass}">⚔️ ${targetPower}</span>
                     </div>
-                    <div style="color: #888; font-size: 13px; margin-bottom: 10px;">
+                    <div style="color: #888; font-size: 13px; margin-bottom: 5px;">
                         @${t.handle} | 👥 ${t.population}人
+                    </div>
+                    <div style="font-size: 12px; margin-bottom: 10px; ${powerClass}">
+                        ${powerIndicator}
                     </div>
                     <button class="attack-btn" onclick="attack(${t.user_id})">
                         攻撃する
                     </button>
                 </div>
-            `).join('');
+            `}).join('');
         } else {
             document.getElementById('targetsList').innerHTML = '<p style="color: #888;">攻撃可能な文明がありません</p>';
         }
+        
+        // 戦争ログも読み込む
+        loadWarLogs();
     } catch (e) {
         console.error(e);
+    }
+}
+
+// 戦争ログを読み込む
+async function loadWarLogs() {
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_war_logs'})
+        });
+        const data = await res.json();
+        
+        const warLogsList = document.getElementById('warLogsList');
+        if (!warLogsList) return;
+        
+        if (data.ok && data.war_logs.length > 0) {
+            const myUserId = data.my_user_id;
+            warLogsList.innerHTML = data.war_logs.map(log => {
+                const isAttacker = log.attacker_user_id == myUserId;
+                const isWinner = log.winner_user_id == myUserId;
+                const resultText = isWinner ? '勝利' : '敗北';
+                const resultClass = isWinner ? 'color: #32cd32;' : 'color: #ff6b6b;';
+                const actionText = isAttacker ? '攻撃' : '防衛';
+                const opponentName = isAttacker ? (log.defender_civ_name || log.defender_handle) : (log.attacker_civ_name || log.attacker_handle);
+                const battleTime = new Date(log.battle_at).toLocaleString('ja-JP');
+                
+                let lootText = '';
+                if (isWinner && (log.loot_coins > 0 || (log.loot_resources && Object.keys(JSON.parse(log.loot_resources || '{}')).length > 0))) {
+                    const lootResources = JSON.parse(log.loot_resources || '{}');
+                    lootText = `<div style="font-size: 11px; color: #32cd32; margin-top: 5px;">💰 ${log.loot_coins}コイン`;
+                    for (const [key, val] of Object.entries(lootResources)) {
+                        lootText += ` | ${key}: +${val}`;
+                    }
+                    lootText += '</div>';
+                }
+                
+                return `
+                <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid ${isWinner ? '#32cd32' : '#ff6b6b'};">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <span style="font-weight: bold; ${resultClass}">${resultText}</span>
+                            <span style="color: #888;"> - ${actionText}</span>
+                        </div>
+                        <span style="color: #888; font-size: 11px;">${battleTime}</span>
+                    </div>
+                    <div style="margin-top: 5px; font-size: 13px;">
+                        <span style="color: #c0a080;">vs</span> 
+                        <span style="color: #ffd700;">${escapeHtml(opponentName || '不明')}</span>
+                    </div>
+                    <div style="margin-top: 5px; font-size: 12px; color: #888;">
+                        ⚔️ ${log.attacker_power} vs 🛡️ ${log.defender_power}
+                    </div>
+                    ${lootText}
+                </div>
+            `}).join('');
+        } else {
+            warLogsList.innerHTML = '<p style="color: #888;">戦争ログがありません</p>';
+        }
+    } catch (e) {
+        console.error(e);
+        document.getElementById('warLogsList').innerHTML = '<p style="color: #888;">戦争ログの読み込みに失敗しました</p>';
     }
 }
 
