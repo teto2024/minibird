@@ -682,6 +682,7 @@ body {
 // 戦闘計算用定数（サーバーサイドと同期）
 const CIV_ARMOR_MAX_REDUCTION = 0.5;    // アーマーによる最大ダメージ軽減率（50%）
 const CIV_ARMOR_PERCENT_DIVISOR = 100;  // アーマー値を軽減率に変換する除数
+const CIV_ADVANTAGE_DISPLAY_THRESHOLD = 0.05; // 相性表示の閾値（±5%）
 
 let civData = null;
 let currentTab = 'buildings'; // 現在のアクティブタブを保持
@@ -1390,17 +1391,49 @@ async function loadTargets() {
                 const myArmorReduction = Math.min(CIV_ARMOR_MAX_REDUCTION, myArmor / CIV_ARMOR_PERCENT_DIVISOR);
                 const targetArmorReduction = Math.min(CIV_ARMOR_MAX_REDUCTION, targetArmor / CIV_ARMOR_PERCENT_DIVISOR);
                 
-                const myEffectivePower = myPower * (1 - targetArmorReduction);
+                // 相性ボーナスを考慮
+                const troopAdvantage = t.troop_advantage_multiplier || 1.0;
+                
+                const myEffectivePower = myPower * (1 - targetArmorReduction) * troopAdvantage;
                 const targetEffectivePower = targetPower * (1 - myArmorReduction);
                 
                 const powerDiff = myEffectivePower - targetEffectivePower;
                 const powerClass = powerDiff > 0 ? 'color: #32cd32;' : (powerDiff < 0 ? 'color: #ff6b6b;' : 'color: #ffd700;');
                 const powerIndicator = powerDiff > 0 ? '✅ 有利' : (powerDiff < 0 ? '⚠️ 不利' : '⚖️ 互角');
                 
+                // 相性ボーナス表示
+                const advantageThresholdHigh = 1.0 + CIV_ADVANTAGE_DISPLAY_THRESHOLD;
+                const advantageThresholdLow = 1.0 - CIV_ADVANTAGE_DISPLAY_THRESHOLD;
+                let advantageText = '';
+                if (troopAdvantage > advantageThresholdHigh) {
+                    const bonusPercent = Math.round((troopAdvantage - 1) * 100);
+                    advantageText = `<div style="color: #32cd32; font-size: 11px; margin-bottom: 5px;">🎯 相性有利 +${bonusPercent}%</div>`;
+                } else if (troopAdvantage < advantageThresholdLow) {
+                    const penaltyPercent = Math.round((1 - troopAdvantage) * 100);
+                    advantageText = `<div style="color: #ff6b6b; font-size: 11px; margin-bottom: 5px;">⚠️ 相性不利 -${penaltyPercent}%</div>`;
+                }
+                
                 // 装備バフ表示
                 const equipBuffs = t.equipment_buffs || {};
                 const hasEquipBuffs = (equipBuffs.attack > 0 || equipBuffs.armor > 0 || equipBuffs.health > 0);
                 const equipBuffText = hasEquipBuffs ? `<div style="color: #9932cc; font-size: 11px; margin-bottom: 5px;">⚔️${Math.floor(equipBuffs.attack || 0)} 🛡️${Math.floor(equipBuffs.armor || 0)} ❤️${Math.floor(equipBuffs.health || 0)}</div>` : '';
+                
+                // 兵種構成表示
+                const troopComp = t.troop_composition || {};
+                let troopCompText = '';
+                const categories = ['infantry', 'cavalry', 'ranged', 'siege'];
+                const categoryIcons = {'infantry': '🗡️', 'cavalry': '🐴', 'ranged': '🏹', 'siege': '💣'};
+                const hasAnyTroops = categories.some(c => (troopComp[c]?.count || 0) > 0);
+                if (hasAnyTroops) {
+                    troopCompText = '<div style="display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 5px;">';
+                    categories.forEach(c => {
+                        const count = troopComp[c]?.count || 0;
+                        if (count > 0) {
+                            troopCompText += `<span style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px; font-size: 10px;">${categoryIcons[c]} ${count}</span>`;
+                        }
+                    });
+                    troopCompText += '</div>';
+                }
                 
                 return `
                 <div class="target-card">
@@ -1411,7 +1444,9 @@ async function loadTargets() {
                     <div style="color: #888; font-size: 13px; margin-bottom: 5px;">
                         @${escapeHtml(t.handle)} | 👥 ${t.population}人
                     </div>
+                    ${troopCompText}
                     ${equipBuffText}
+                    ${advantageText}
                     <div style="font-size: 12px; margin-bottom: 10px; ${powerClass}">
                         ${powerIndicator}
                     </div>
@@ -1607,8 +1642,48 @@ async function loadTroops() {
         
         if (data.ok) {
             const troopsList = document.getElementById('troopsList');
+            
+            // 兵種カテゴリの相性情報
+            const advantageInfo = data.troop_advantage_info || {
+                'infantry': {name: '歩兵', icon: '🗡️', strong_against: 'ranged', weak_against: 'cavalry'},
+                'cavalry': {name: '騎兵', icon: '🐴', strong_against: 'infantry', weak_against: 'ranged'},
+                'ranged': {name: '遠距離', icon: '🏹', strong_against: 'cavalry', weak_against: 'infantry'},
+                'siege': {name: '攻城', icon: '💣', strong_against: 'infantry', weak_against: 'cavalry'}
+            };
+            
             if (data.available_troops && data.available_troops.length > 0) {
-                troopsList.innerHTML = data.available_troops.map(t => {
+                // 相性説明を先頭に追加
+                let advantageHtml = `
+                    <div class="target-card" style="border-color: #ffd700; background: rgba(255, 215, 0, 0.1); grid-column: span 2;">
+                        <div class="target-header">
+                            <span class="target-name">⚔️ 兵種相性システム</span>
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px;">
+                            <div style="flex: 1; min-width: 200px;">
+                                <div style="color: #ffd700; font-weight: bold; margin-bottom: 5px;">🗡️ 歩兵</div>
+                                <div style="color: #32cd32; font-size: 12px;">✓ 遠距離に強い</div>
+                                <div style="color: #ff6b6b; font-size: 12px;">✗ 騎兵に弱い</div>
+                            </div>
+                            <div style="flex: 1; min-width: 200px;">
+                                <div style="color: #ffd700; font-weight: bold; margin-bottom: 5px;">🐴 騎兵</div>
+                                <div style="color: #32cd32; font-size: 12px;">✓ 歩兵に強い</div>
+                                <div style="color: #ff6b6b; font-size: 12px;">✗ 遠距離に弱い</div>
+                            </div>
+                            <div style="flex: 1; min-width: 200px;">
+                                <div style="color: #ffd700; font-weight: bold; margin-bottom: 5px;">🏹 遠距離</div>
+                                <div style="color: #32cd32; font-size: 12px;">✓ 騎兵に強い</div>
+                                <div style="color: #ff6b6b; font-size: 12px;">✗ 歩兵に弱い</div>
+                            </div>
+                            <div style="flex: 1; min-width: 200px;">
+                                <div style="color: #ffd700; font-weight: bold; margin-bottom: 5px;">💣 攻城</div>
+                                <div style="color: #32cd32; font-size: 12px;">✓ 歩兵に強い</div>
+                                <div style="color: #ff6b6b; font-size: 12px;">✗ 騎兵に弱い</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                troopsList.innerHTML = advantageHtml + data.available_troops.map(t => {
                     const owned = data.user_troops.find(ut => ut.troop_type_id == t.id);
                     const ownedCount = owned ? owned.count : 0;
                     
@@ -1627,15 +1702,33 @@ async function loadTroops() {
                         ? `<div style="color: #ff6b6b; font-size: 12px; margin-bottom: 10px;">🔒 必要: ${missingPrereqs.join(', ')}</div>` 
                         : '';
                     
+                    // 兵種カテゴリと相性を表示
+                    const category = t.troop_category || 'infantry';
+                    const categoryInfo = advantageInfo[category] || advantageInfo['infantry'];
+                    const healthPoints = t.health_points || 100;
+                    
                     return `
                         <div class="target-card" style="border-color: #8b4513; ${!canTrain ? 'opacity: 0.7;' : ''}">
                             <div class="target-header">
                                 <span class="target-name">${t.icon} ${t.name}</span>
                                 <span class="target-power">×${ownedCount}</span>
                             </div>
-                            <div style="color: #888; font-size: 13px; margin-bottom: 10px;">
-                                ${t.description || ''}<br>
-                                ⚔️ 攻撃: ${t.attack_power} | 🛡️ 防御: ${t.defense_power}
+                            <div style="color: #888; font-size: 13px; margin-bottom: 5px;">
+                                ${t.description || ''}
+                            </div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+                                <span style="background: rgba(139, 69, 19, 0.5); padding: 3px 8px; border-radius: 4px; font-size: 11px;">
+                                    ${categoryInfo.icon} ${categoryInfo.name}
+                                </span>
+                                <span style="background: rgba(220, 20, 60, 0.3); padding: 3px 8px; border-radius: 4px; font-size: 11px;">
+                                    ⚔️ ${t.attack_power}
+                                </span>
+                                <span style="background: rgba(70, 130, 180, 0.3); padding: 3px 8px; border-radius: 4px; font-size: 11px;">
+                                    🛡️ ${t.defense_power}
+                                </span>
+                                <span style="background: rgba(50, 205, 50, 0.3); padding: 3px 8px; border-radius: 4px; font-size: 11px;">
+                                    ❤️ ${healthPoints}
+                                </span>
                             </div>
                             <div style="color: #c0a080; font-size: 12px; margin-bottom: 10px;">
                                 ${costText}
