@@ -1094,7 +1094,12 @@ function renderBuildingsGrid(availableBuildings, ownedBuildings, resources) {
             } else {
                 statusText = `建設中... ${formatTime(remaining)}`;
                 const crystalCost = Math.max(5, Math.ceil(remaining / 60));
-                instantCompleteBtn = `<button class="instant-btn" onclick="instantCompleteBuilding(${constructing.id})" style="margin-top: 8px; padding: 8px 12px; background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%); color: white; border: none; border-radius: 6px; font-size: 13px; cursor: pointer;">💎 ${crystalCost}で即完了</button>`;
+                const diamondCost = Math.max(1, Math.ceil(remaining / 120));
+                instantCompleteBtn = `
+                    <div style="display: flex; gap: 5px; margin-top: 8px;">
+                        <button class="instant-btn" onclick="instantCompleteBuilding(${constructing.id})" style="flex: 1; padding: 8px 12px; background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%); color: white; border: none; border-radius: 6px; font-size: 11px; cursor: pointer;">💎 ${crystalCost}</button>
+                        <button class="instant-btn" onclick="instantCompleteBuildingDiamond(${constructing.id})" style="flex: 1; padding: 8px 12px; background: linear-gradient(135deg, #00bfff 0%, #1e90ff 100%); color: white; border: none; border-radius: 6px; font-size: 11px; cursor: pointer;">💠 ${diamondCost}</button>
+                    </div>`;
             }
         } else if (ownedCount > 0) {
             statusClass = 'owned';
@@ -1166,7 +1171,12 @@ function renderResearchTree() {
             } else {
                 statusText = `研究中... ${formatTime(remaining)}`;
                 const crystalCost = Math.max(3, Math.ceil(remaining / 60));
-                instantCompleteBtn = `<button class="instant-btn" onclick="instantCompleteResearch(${userResearch.id})" style="margin-top: 8px; padding: 8px 12px; background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%); color: white; border: none; border-radius: 6px; font-size: 13px; cursor: pointer; width: 100%;">💎 ${crystalCost}で即完了</button>`;
+                const diamondCost = Math.max(1, Math.ceil(remaining / 120));
+                instantCompleteBtn = `
+                    <div style="display: flex; gap: 5px; margin-top: 8px;">
+                        <button class="instant-btn" onclick="instantCompleteResearch(${userResearch.id})" style="flex: 1; padding: 8px 12px; background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%); color: white; border: none; border-radius: 6px; font-size: 11px; cursor: pointer;">💎 ${crystalCost}</button>
+                        <button class="instant-btn" onclick="instantCompleteResearchDiamond(${userResearch.id})" style="flex: 1; padding: 8px 12px; background: linear-gradient(135deg, #00bfff 0%, #1e90ff 100%); color: white; border: none; border-radius: 6px; font-size: 11px; cursor: pointer;">💠 ${diamondCost}</button>
+                    </div>`;
             }
         } else if (isLocked) {
             statusClass = 'locked';
@@ -2251,6 +2261,29 @@ async function instantCompleteBuilding(buildingId) {
     }
 }
 
+// 建物をダイヤモンドで即完了
+async function instantCompleteBuildingDiamond(buildingId) {
+    if (!confirm('ダイヤモンドを消費して建設を即完了しますか？')) return;
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'instant_complete_building_diamond', building_id: buildingId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadData();
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
+}
+
 // 研究を即完了
 async function instantCompleteResearch(userResearchId) {
     if (!confirm('クリスタルを消費して研究を即完了しますか？')) return;
@@ -2260,6 +2293,29 @@ async function instantCompleteResearch(userResearchId) {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({action: 'instant_complete_research', user_research_id: userResearchId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadData();
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// 研究をダイヤモンドで即完了
+async function instantCompleteResearchDiamond(userResearchId) {
+    if (!confirm('ダイヤモンドを消費して研究を即完了しますか？')) return;
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'instant_complete_research_diamond', user_research_id: userResearchId})
         });
         const data = await res.json();
         

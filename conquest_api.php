@@ -77,13 +77,13 @@ function createNewSeason($pdo) {
     $lastSeasonNumber = (int)$stmt->fetchColumn();
     $newSeasonNumber = $lastSeasonNumber + 1;
     
-    // 今週の月曜日を起点とする
-    $monday = strtotime('monday this week');
-    if ($monday > time()) {
-        $monday = strtotime('monday last week');
-    }
+    // 今週または先週の月曜日を起点とする（より明確なロジック）
+    $today = strtotime('today');
+    $dayOfWeek = date('N', $today); // 1=月曜, 7=日曜
+    // 現在の週の月曜日を計算
+    $monday = strtotime('-' . ($dayOfWeek - 1) . ' days', $today);
     $startedAt = date('Y-m-d 00:00:00', $monday);
-    $endsAt = date('Y-m-d 23:59:59', strtotime('+' . CONQUEST_SEASON_DURATION_DAYS . ' days', $monday));
+    $endsAt = date('Y-m-d 23:59:59', strtotime('+' . (CONQUEST_SEASON_DURATION_DAYS - 1) . ' days', $monday));
     
     $stmt = $pdo->prepare("
         INSERT INTO conquest_seasons (season_number, started_at, ends_at, is_active)
@@ -804,8 +804,8 @@ if ($action === 'get_ranking') {
 
 // シーズンをリセット（管理者のみ）
 if ($action === 'reset_season') {
-    // 管理者チェック
-    if (empty($me['is_admin'])) {
+    // 管理者チェック（厳密な比較）
+    if (!isset($me['is_admin']) || $me['is_admin'] != 1) {
         echo json_encode(['ok' => false, 'error' => '管理者のみ実行できます']);
         exit;
     }

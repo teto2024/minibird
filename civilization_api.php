@@ -36,6 +36,7 @@ define('CIV_INSTANT_HEALING_MIN_COST', 1);        // 治療即完了の最低ク
 // ダイヤモンド即時完了（クリスタルより安い）
 define('CIV_INSTANT_SECONDS_PER_DIAMOND', 120);   // ダイヤモンド1個あたりの秒数
 define('CIV_DIAMOND_DISCOUNT_RATE', 0.5);         // ダイヤモンドの割引率（クリスタルの50%）
+define('CIV_INSTANT_DIAMOND_MIN_COST', 1);        // ダイヤモンド即完了の最低コスト
 
 // 資源価値の定義（市場交換レート計算用）
 // 値が高いほど価値が高い資源
@@ -2705,7 +2706,7 @@ if ($action === 'instant_complete_queue') {
             $currencyColumn = 'crystals';
             $currencyName = 'クリスタル';
         } else {
-            $minCost = 1;
+            $minCost = CIV_INSTANT_DIAMOND_MIN_COST;
             $cost = max($minCost, (int)ceil($remainingSeconds / CIV_INSTANT_SECONDS_PER_DIAMOND));
             $currencyColumn = 'diamonds';
             $currencyName = 'ダイヤモンド';
