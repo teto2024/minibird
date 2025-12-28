@@ -1159,38 +1159,41 @@ function renderMarketExchange(resources) {
 // 市場データを読み込む
 function loadMarketData() {
     // 交換結果の計算をセットアップ
-    setTimeout(() => {
-        const fromSelect = document.getElementById('fromResource');
-        const toSelect = document.getElementById('toResource');
-        const amountInput = document.getElementById('exchangeAmount');
+    const fromSelect = document.getElementById('fromResource');
+    const toSelect = document.getElementById('toResource');
+    const amountInput = document.getElementById('exchangeAmount');
+    
+    if (!fromSelect || !toSelect || !amountInput) {
+        return; // 市場が建設されていない場合などは要素が存在しない
+    }
+    
+    const updateResult = () => {
+        const resultElement = document.getElementById('exchangeResult');
+        if (!resultElement) return;
         
-        if (fromSelect && toSelect && amountInput) {
-            const updateResult = () => {
-                const fromId = fromSelect.value;
-                const toId = toSelect.value;
-                const amount = parseInt(amountInput.value) || 0;
-                
-                if (fromId === toId) {
-                    document.getElementById('exchangeResult').textContent = '同じ資源は交換できません';
-                    return;
-                }
-                
-                const fromOption = fromSelect.options[fromSelect.selectedIndex];
-                const toOption = toSelect.options[toSelect.selectedIndex];
-                const fromName = fromOption.textContent.split('(')[0].trim();
-                const toName = toOption.textContent.split('(')[0].trim();
-                
-                const received = Math.floor(amount / 2);
-                document.getElementById('exchangeResult').textContent = `${amount} ${fromName} → ${received} ${toName}`;
-            };
-            
-            fromSelect.addEventListener('change', updateResult);
-            toSelect.addEventListener('change', updateResult);
-            amountInput.addEventListener('input', updateResult);
-            
-            updateResult();
+        const fromId = fromSelect.value;
+        const toId = toSelect.value;
+        const amount = parseInt(amountInput.value) || 0;
+        
+        if (fromId === toId) {
+            resultElement.textContent = '同じ資源は交換できません';
+            return;
         }
-    }, 100);
+        
+        const fromOption = fromSelect.options[fromSelect.selectedIndex];
+        const toOption = toSelect.options[toSelect.selectedIndex];
+        const fromName = fromOption.textContent.split('(')[0].trim();
+        const toName = toOption.textContent.split('(')[0].trim();
+        
+        const received = Math.floor(amount / 2);
+        resultElement.textContent = `${amount} ${fromName} → ${received} ${toName}`;
+    };
+    
+    fromSelect.addEventListener('change', updateResult);
+    toSelect.addEventListener('change', updateResult);
+    amountInput.addEventListener('input', updateResult);
+    
+    updateResult();
 }
 
 // 交換量をセット
