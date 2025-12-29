@@ -598,14 +598,16 @@ if ($action === 'attack_boss') {
         // 攻撃側の損失と負傷兵を計算（HPの減少率に基づく）
         $attackerLosses = [];
         $attackerWounded = [];
-        $attackerHpLossRate = 1 - ($battleResult['attacker_final_hp'] / max(1, $battleResult['attacker_max_hp']));
+        $attackerHpLossRate = $battleResult['attacker_max_hp'] > 0 
+            ? 1 - ($battleResult['attacker_final_hp'] / $battleResult['attacker_max_hp'])
+            : 0;
         
         foreach ($attackerUnit['troops'] as $troop) {
             $troopTypeId = $troop['troop_type_id'];
             $count = $troop['count'];
             
-            // HPの減少率に応じた損失（死亡+負傷）
-            $totalLossCount = (int)floor($count * $attackerHpLossRate);
+            // HPの減少率に応じた損失（死亡+負傷）、最大でも投入数まで
+            $totalLossCount = min($count, (int)floor($count * $attackerHpLossRate));
             $deaths = (int)floor($totalLossCount * WORLD_BOSS_DEATH_RATE / (WORLD_BOSS_DEATH_RATE + WORLD_BOSS_WOUNDED_RATE));
             $wounded = $totalLossCount - $deaths;
             
