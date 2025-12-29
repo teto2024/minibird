@@ -69,6 +69,8 @@ try {
         check_mute_and_exit_if_muted();
 
         $content = trim($_POST['content'] ?? '');
+        // Unicode空白文字（全角スペース、ノーブレークスペースなど）もトリム
+        $content = preg_replace('/^[\s\p{Z}]+|[\s\p{Z}]+$/u', '', $content);
         $nsfw = ($_POST['nsfw'] ?? '0') === '1' ? 1 : 0;
 
         // 複数画像の確認（media[]またはmedia_0, media_1...）
@@ -267,6 +269,8 @@ try {
         check_mute_and_exit_if_muted();
         $post_id = (int)($_POST['post_id'] ?? $input['post_id'] ?? 0);
         $content = trim($_POST['content'] ?? $input['content'] ?? '');
+        // Unicode空白文字（全角スペース、ノーブレークスペースなど）もトリム
+        $content = preg_replace('/^[\s\p{Z}]+|[\s\p{Z}]+$/u', '', $content);
         $nsfw = (int)($_POST['nsfw'] ?? $input['nsfw'] ?? 0);
         
         // 複数画像の処理
