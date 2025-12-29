@@ -2105,29 +2105,42 @@ if ($action === 'speed_up_movement') {
             throw new Exception('移動はすでに完了しています');
         }
         
-        // コストを計算
+        // コストを計算と通貨種別の検証
         if ($currency === 'diamond') {
             $cost = max(1, (int)ceil($remainingMinutes * CONQUEST_MOVEMENT_DIAMOND_COST_PER_MINUTE));
-            $currencyColumn = 'diamonds';
             $currencyName = 'ダイヤモンド';
-        } else {
+            
+            // 通貨を確認
+            $stmt = $pdo->prepare("SELECT diamonds FROM users WHERE id = ?");
+            $stmt->execute([$me['id']]);
+            $userCurrency = (int)$stmt->fetchColumn();
+            
+            if ($userCurrency < $cost) {
+                throw new Exception("{$currencyName}が不足しています（必要: {$cost}）");
+            }
+            
+            // 通貨を消費
+            $stmt = $pdo->prepare("UPDATE users SET diamonds = diamonds - ? WHERE id = ?");
+            $stmt->execute([$cost, $me['id']]);
+        } elseif ($currency === 'crystal') {
             $cost = max(1, (int)ceil($remainingMinutes * CONQUEST_MOVEMENT_CRYSTAL_COST_PER_MINUTE));
-            $currencyColumn = 'crystals';
             $currencyName = 'クリスタル';
+            
+            // 通貨を確認
+            $stmt = $pdo->prepare("SELECT crystals FROM users WHERE id = ?");
+            $stmt->execute([$me['id']]);
+            $userCurrency = (int)$stmt->fetchColumn();
+            
+            if ($userCurrency < $cost) {
+                throw new Exception("{$currencyName}が不足しています（必要: {$cost}）");
+            }
+            
+            // 通貨を消費
+            $stmt = $pdo->prepare("UPDATE users SET crystals = crystals - ? WHERE id = ?");
+            $stmt->execute([$cost, $me['id']]);
+        } else {
+            throw new Exception('無効な通貨タイプです（crystal または diamond を指定してください）');
         }
-        
-        // 通貨を確認
-        $stmt = $pdo->prepare("SELECT {$currencyColumn} FROM users WHERE id = ?");
-        $stmt->execute([$me['id']]);
-        $userCurrency = (int)$stmt->fetchColumn();
-        
-        if ($userCurrency < $cost) {
-            throw new Exception("{$currencyName}が不足しています（必要: {$cost}）");
-        }
-        
-        // 通貨を消費
-        $stmt = $pdo->prepare("UPDATE users SET {$currencyColumn} = {$currencyColumn} - ? WHERE id = ?");
-        $stmt->execute([$cost, $me['id']]);
         
         // 即時完了処理
         $stmt = $pdo->prepare("UPDATE conquest_movement_queue SET arrives_at = NOW(), is_completed = TRUE WHERE id = ?");
