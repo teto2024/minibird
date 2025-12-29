@@ -109,15 +109,16 @@ function distributeWorldBossRewards($pdo, $instanceId, $isDefeated) {
     }
     
     // ダメージランキングを取得
-    $stmt = $pdo->prepare("
+    $limit = (int)WORLD_BOSS_MAX_PARTICIPANTS_REWARD;
+    $stmt = $pdo->prepare(sprintf("
         SELECT wbdl.*, u.handle, u.display_name
         FROM world_boss_damage_logs wbdl
         JOIN users u ON wbdl.user_id = u.id
         WHERE wbdl.instance_id = ?
         ORDER BY wbdl.damage_dealt DESC
-        LIMIT ?
-    ");
-    $stmt->execute([$instanceId, WORLD_BOSS_MAX_PARTICIPANTS_REWARD]);
+        LIMIT %d
+    ", $limit));
+    $stmt->execute([$instanceId]);
     $rankings = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // 報酬設定を取得
