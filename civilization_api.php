@@ -68,6 +68,46 @@ $RESOURCE_VALUES = [
     'spices' => 3.0
 ];
 
+// 資源キーから日本語名への変換マップ
+$RESOURCE_KEY_TO_NAME = [
+    'food' => '食料',
+    'wood' => '木材',
+    'stone' => '石材',
+    'bronze' => '青銅',
+    'iron' => '鉄',
+    'gold' => '金',
+    'knowledge' => '知識',
+    'oil' => '石油',
+    'crystal' => 'クリスタル',
+    'mana' => 'マナ',
+    'uranium' => 'ウラニウム',
+    'diamond' => 'ダイヤモンド',
+    'sulfur' => '硫黄',
+    'gems' => '宝石',
+    'cloth' => '布',
+    'marble' => '大理石',
+    'horses' => '馬',
+    'coal' => '石炭',
+    'glass' => 'ガラス',
+    'spices' => '香辛料',
+    'herbs' => '薬草',
+    'medicine' => '医薬品',
+    'steel' => '鋼鉄',
+    'gunpowder' => '火薬',
+    'gunpowder_res' => '火薬資源',
+    'electronics' => '電子部品'
+];
+
+/**
+ * 資源キーを日本語名に変換する
+ * @param string $resourceKey 資源キー
+ * @return string 日本語名
+ */
+function getResourceName($resourceKey) {
+    global $RESOURCE_KEY_TO_NAME;
+    return $RESOURCE_KEY_TO_NAME[$resourceKey] ?? $resourceKey;
+}
+
 header('Content-Type: application/json');
 
 $me = user();
@@ -747,7 +787,8 @@ if ($action === 'build') {
             $currentAmount = (float)$stmt->fetchColumn();
             
             if ($currentAmount < $required) {
-                throw new Exception("{$resourceKey}が不足しています（必要: {$required}、所持: " . round($currentAmount) . "）");
+                $resourceName = getResourceName($resourceKey);
+                throw new Exception("{$resourceName}が不足しています（必要: {$required}、所持: " . round($currentAmount) . "）");
             }
         }
         
@@ -1518,7 +1559,8 @@ if ($action === 'train_troops') {
             $currentAmount = (float)$stmt->fetchColumn();
             
             if ($currentAmount < $totalRequired) {
-                throw new Exception("{$resourceKey}が不足しています");
+                $resourceName = getResourceName($resourceKey);
+                throw new Exception("{$resourceName}が不足しています");
             }
             
             $stmt = $pdo->prepare("
@@ -1593,7 +1635,8 @@ if ($action === 'get_troops') {
                    prereq_r.name as prerequisite_research_name,
                    ss.skill_key, ss.name as skill_name, ss.icon as skill_icon,
                    ss.description as skill_description, ss.effect_type,
-                   ss.effect_value, ss.duration_turns, ss.activation_chance
+                   ss.effect_value, ss.duration_turns, ss.activation_chance,
+                   COALESCE(tt.is_stealth, FALSE) as is_stealth
             FROM civilization_troop_types tt
             LEFT JOIN civilization_eras e ON tt.unlock_era_id = e.id
             LEFT JOIN civilization_building_types prereq_b ON tt.prerequisite_building_id = prereq_b.id
@@ -1632,7 +1675,8 @@ if ($action === 'get_troops') {
         $stmt = $pdo->prepare("
             SELECT uct.*, tt.troop_key, tt.name, tt.icon, tt.attack_power, tt.defense_power, 
                    COALESCE(tt.health_points, 100) as health_points, 
-                   COALESCE(tt.troop_category, 'infantry') as troop_category
+                   COALESCE(tt.troop_category, 'infantry') as troop_category,
+                   COALESCE(tt.is_stealth, FALSE) as is_stealth
             FROM user_civilization_troops uct
             JOIN civilization_troop_types tt ON uct.troop_type_id = tt.id
             WHERE uct.user_id = ?
@@ -2616,7 +2660,8 @@ if ($action === 'queue_training') {
             $currentAmount = (float)$stmt->fetchColumn();
             
             if ($currentAmount < $totalRequired) {
-                throw new Exception("{$resourceKey}が不足しています");
+                $resourceName = getResourceName($resourceKey);
+                throw new Exception("{$resourceName}が不足しています");
             }
             
             $stmt = $pdo->prepare("

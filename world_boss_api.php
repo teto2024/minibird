@@ -16,6 +16,7 @@ define('WORLD_BOSS_DEFENSE_DIVISOR', 200);          // 防御力によるダメ�
 define('WORLD_BOSS_MAX_DEFENSE_REDUCTION', 0.75);   // 防御による最大ダメージ軽減率（75%）
 define('WORLD_BOSS_CRITICAL_CHANCE', 10);           // クリティカル率（%）
 define('WORLD_BOSS_CRITICAL_MULTIPLIER', 1.5);      // クリティカルダメージ倍率
+define('WORLD_BOSS_ANNOUNCEMENT_BOT_ID', 5);        // お知らせbot ユーザーID
 
 header('Content-Type: application/json');
 
@@ -28,6 +29,23 @@ if (!$me) {
 $pdo = db();
 $input = json_decode(file_get_contents('php://input'), true) ?: [];
 $action = $input['action'] ?? '';
+
+/**
+ * ワールドボス召喚を告知
+ * @param PDO $pdo データベース接続
+ * @param string $bossName ボス名
+ * @param string $bossIcon ボスアイコン
+ * @param string $summonerHandle 召喚者のハンドル名
+ */
+function sendWorldBossAnnouncement($pdo, $bossName, $bossIcon, $summonerHandle) {
+    $content = "{$bossIcon} 【ワールドボス出現】 {$bossName} が @{$summonerHandle} によって召喚されました！みんなで討伐しましょう！";
+    $html = markdown_to_html($content);
+    $stmt = $pdo->prepare("
+        INSERT INTO posts (user_id, content_md, content_html, created_at)
+        VALUES (?, ?, ?, NOW())
+    ");
+    $stmt->execute([WORLD_BOSS_ANNOUNCEMENT_BOT_ID, $content, $html]);
+}
 
 /**
  * ユーザーのレベルを取得
@@ -300,6 +318,9 @@ if ($action === 'summon_boss') {
             $endsAt
         ]);
         $instanceId = $pdo->lastInsertId();
+        
+        // 全体フィードに告知を投稿
+        sendWorldBossAnnouncement($pdo, $boss['name'], $boss['icon'], $me['handle']);
         
         $pdo->commit();
         

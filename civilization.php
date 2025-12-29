@@ -869,6 +869,23 @@ const CIV_ARMOR_MAX_REDUCTION = 0.5;    // アーマーによる最大ダメー�
 const CIV_ARMOR_PERCENT_DIVISOR = 100;  // アーマー値を軽減率に変換する除数
 const CIV_ADVANTAGE_DISPLAY_THRESHOLD = 0.05; // 相性表示の閾値（±5%）
 
+// 資源キーから日本語名への変換マップ
+const RESOURCE_KEY_TO_NAME = {
+    'food': '食料', 'wood': '木材', 'stone': '石材', 'bronze': '青銅',
+    'iron': '鉄', 'gold': '金', 'knowledge': '知識', 'oil': '石油',
+    'crystal': 'クリスタル', 'mana': 'マナ', 'uranium': 'ウラニウム',
+    'diamond': 'ダイヤモンド', 'sulfur': '硫黄', 'gems': '宝石',
+    'cloth': '布', 'marble': '大理石', 'horses': '馬', 'coal': '石炭',
+    'glass': 'ガラス', 'spices': '香辛料', 'herbs': '薬草',
+    'medicine': '医薬品', 'steel': '鋼鉄', 'gunpowder': '火薬',
+    'gunpowder_res': '火薬資源', 'electronics': '電子部品'
+};
+
+// 資源キーを日本語名に変換
+function getResourceName(key) {
+    return RESOURCE_KEY_TO_NAME[key] || key;
+}
+
 let civData = null;
 let currentTab = 'buildings'; // 現在のアクティブタブを保持
 let selectedAttackTarget = null; // 攻撃対象のユーザーID
@@ -2423,7 +2440,8 @@ async function loadTroops() {
                     if (t.train_cost_resources) {
                         const costs = JSON.parse(t.train_cost_resources);
                         Object.entries(costs).forEach(([key, val]) => {
-                            costText += ` | ${key}: ${val}`;
+                            const resName = getResourceName(key);
+                            costText += ` | ${resName}: ${val}`;
                         });
                     }
                     
@@ -2467,6 +2485,13 @@ async function loadTroops() {
                         `;
                     }
                     
+                    // ステルス兵種インジケーター
+                    const stealthBadge = t.is_stealth ? `
+                        <span style="background: rgba(128, 0, 128, 0.5); padding: 3px 8px; border-radius: 4px; font-size: 11px;" title="敵から見えない隠密兵種">
+                            👻 ステルス
+                        </span>
+                    ` : '';
+                    
                     return `
                         <div class="target-card" style="border-color: #8b4513; ${!canTrain ? 'opacity: 0.7;' : ''}">
                             <div class="target-header">
@@ -2489,6 +2514,7 @@ async function loadTroops() {
                                 <span style="background: rgba(50, 205, 50, 0.3); padding: 3px 8px; border-radius: 4px; font-size: 11px;">
                                     ❤️ ${healthPoints}
                                 </span>
+                                ${stealthBadge}
                             </div>
                             ${skillHtml}
                             <div style="color: #c0a080; font-size: 12px; margin-bottom: 10px;">
