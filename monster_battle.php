@@ -476,6 +476,106 @@ body {
     color: #ff6b6b;
     font-weight: bold;
 }
+
+/* バトルログ表示 */
+.battle-log-container {
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 10px;
+    padding: 15px;
+    max-height: 400px;
+    overflow-y: auto;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.battle-turn {
+    background: rgba(75, 0, 130, 0.3);
+    border-left: 3px solid #9932cc;
+    padding: 10px 15px;
+    margin-bottom: 10px;
+    border-radius: 0 8px 8px 0;
+}
+
+.battle-turn-header {
+    font-weight: bold;
+    color: #ffd700;
+    margin-bottom: 5px;
+}
+
+.battle-turn-message {
+    color: #e0d0f0;
+    white-space: pre-wrap;
+}
+
+.battle-turn-hp {
+    display: flex;
+    gap: 20px;
+    margin-top: 8px;
+    font-size: 12px;
+}
+
+.battle-turn-hp .attacker-hp {
+    color: #32cd32;
+}
+
+.battle-turn-hp .defender-hp {
+    color: #ff6b6b;
+}
+
+.battle-summary {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 165, 0, 0.2) 100%);
+    border: 1px solid #ffd700;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.battle-summary-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffd700;
+    margin-bottom: 10px;
+}
+
+.battle-summary-stats {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.battle-summary-stat {
+    text-align: center;
+}
+
+.battle-summary-stat-label {
+    font-size: 11px;
+    color: #a090c0;
+}
+
+.battle-summary-stat-value {
+    font-size: 16px;
+    font-weight: bold;
+    color: #e0d0f0;
+}
+
+.view-log-btn {
+    background: linear-gradient(135deg, #4b0082 0%, #9932cc 100%);
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-top: 10px;
+    transition: all 0.3s;
+}
+
+.view-log-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(153, 50, 204, 0.4);
+}
 </style>
 </head>
 <body>
@@ -542,10 +642,24 @@ body {
     </div>
 </div>
 
+<!-- バトルログモーダル -->
+<div class="modal-overlay" id="battleLogModal">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h3 class="modal-title">📜 バトルログ</h3>
+            <button class="modal-close" onclick="closeBattleLogModal()">×</button>
+        </div>
+        <div id="battleLogContent">
+            <div class="loading">読み込み中...</div>
+        </div>
+    </div>
+</div>
+
 <script>
 let userTroops = [];
 let currentTab = 'wandering';
 let activeEncounter = null;
+let lastBattleTurnLogs = [];  // 最後のバトルログを保存
 
 // 初期データ読み込み
 async function loadData() {
@@ -956,6 +1070,9 @@ async function attackMonster(encounterId) {
         const data = await res.json();
         
         if (data.ok) {
+            // バトルログを保存
+            lastBattleTurnLogs = data.turn_logs || [];
+            
             showNotification(data.message, !data.is_defeated);
             
             if (data.is_defeated) {
@@ -969,14 +1086,15 @@ async function attackMonster(encounterId) {
                 }
                 showNotification(`報酬獲得: ${rewardText}`);
                 
-                closeBattleModal();
+                // バトル結果とログを表示
+                showBattleResult(data);
                 await loadActiveEncounter();
                 await loadUserTroops();
             } else {
-                // 継続中 - モーダルを更新
+                // 継続中 - バトルログを表示してからモーダルを更新
+                showBattleResult(data);
                 await loadActiveEncounter();
                 await loadUserTroops();
-                await openBattleModal(encounterId);
             }
         } else {
             showNotification(data.error, true);
@@ -1210,14 +1328,18 @@ async function attackBoss(instanceId) {
         const data = await res.json();
         
         if (data.ok) {
+            // バトルログを保存
+            lastBattleTurnLogs = data.turn_logs || [];
+            
             showNotification(data.message, data.is_defeated ? false : true);
             
+            // バトル結果とログを表示
+            showBattleResult(data, true);
+            
             if (data.is_defeated) {
-                closeBossDetailModal();
                 await loadWorldBosses();
             } else {
                 await loadUserTroops();
-                await openBossDetailModal(instanceId);
             }
         } else {
             showNotification(data.error, true);
@@ -1225,6 +1347,79 @@ async function attackBoss(instanceId) {
     } catch (e) {
         showNotification('エラーが発生しました', true);
     }
+}
+
+// バトル結果を表示
+function showBattleResult(data, isBoss = false) {
+    const battleResult = data.battle_result || {};
+    const turnLogs = data.turn_logs || [];
+    
+    let html = `
+        <div class="battle-summary">
+            <div class="battle-summary-title">⚔️ バトル結果</div>
+            <div class="battle-summary-stats">
+                <div class="battle-summary-stat">
+                    <div class="battle-summary-stat-label">ターン数</div>
+                    <div class="battle-summary-stat-value">${battleResult.total_turns || 0}</div>
+                </div>
+                <div class="battle-summary-stat">
+                    <div class="battle-summary-stat-label">与ダメージ</div>
+                    <div class="battle-summary-stat-value">${formatNumber(data.damage_dealt || data.damage || 0)}</div>
+                </div>
+                <div class="battle-summary-stat">
+                    <div class="battle-summary-stat-label">自軍残HP</div>
+                    <div class="battle-summary-stat-value">${formatNumber(battleResult.attacker_final_hp || 0)} / ${formatNumber(battleResult.attacker_max_hp || 0)}</div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    if (turnLogs.length > 0) {
+        html += `
+            <h4 style="color: #ffd700; margin: 15px 0 10px 0;">📜 バトルログ</h4>
+            <div class="battle-log-container">
+                ${turnLogs.map(log => `
+                    <div class="battle-turn">
+                        <div class="battle-turn-header">ターン ${log.turn}</div>
+                        <div class="battle-turn-message">${log.messages.map(m => escapeHtml(m)).join('<br>')}</div>
+                        <div class="battle-turn-hp">
+                            <span class="attacker-hp">自軍HP: ${formatNumber(log.attacker_hp)}</span>
+                            <span class="defender-hp">敵HP: ${formatNumber(log.defender_hp)}</span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    if (data.is_defeated && !isBoss) {
+        html += `
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="action-btn attack-btn" onclick="closeBattleLogModal()">閉じる</button>
+            </div>
+        `;
+    } else if (!data.is_defeated && !isBoss) {
+        html += `
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="action-btn attack-btn" onclick="closeBattleLogModal(); openBattleModal(${activeEncounter?.id || 0});">続けて攻撃</button>
+                <button class="action-btn retreat-btn" onclick="closeBattleLogModal();">閉じる</button>
+            </div>
+        `;
+    } else {
+        html += `
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="action-btn attack-btn" onclick="closeBattleLogModal();">閉じる</button>
+            </div>
+        `;
+    }
+    
+    document.getElementById('battleLogContent').innerHTML = html;
+    document.getElementById('battleLogModal').classList.add('active');
+}
+
+// バトルログモーダルを閉じる
+function closeBattleLogModal() {
+    document.getElementById('battleLogModal').classList.remove('active');
 }
 
 // モーダルを閉じる
@@ -1312,12 +1507,13 @@ async function loadBattleHistory() {
         if (monsterData.ok && monsterData.battle_history.length > 0) {
             html += '<div style="max-height: 300px; overflow-y: auto; margin-bottom: 20px;">';
             html += monsterData.battle_history.map(b => `
-                <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid ${b.is_defeated ? '#32cd32' : '#ffa500'};">
+                <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid ${b.is_defeated ? '#32cd32' : '#ffa500'}; cursor: pointer;" onclick="viewBattleLogDetail(${b.id})">
                     <div style="display: flex; justify-content: space-between;">
                         <span>${b.icon} ${escapeHtml(b.name)} - ${b.is_defeated ? '討伐完了' : `${b.damage_dealt}ダメージ`}</span>
                         <span style="color: #888; font-size: 11px;">${new Date(b.battle_at).toLocaleString('ja-JP')}</span>
                     </div>
                     ${b.is_defeated ? `<div style="font-size: 11px; color: #ffd700;">💰${b.reward_coins} 💎${b.reward_crystals} 💠${b.reward_diamonds}</div>` : ''}
+                    <div style="font-size: 10px; color: #9932cc; margin-top: 5px;">📜 クリックでバトルログを表示</div>
                 </div>
             `).join('');
             html += '</div>';
@@ -1337,6 +1533,7 @@ async function loadBattleHistory() {
                     </div>
                     <div style="font-size: 11px; color: #ffd700;">
                         ダメージ: ${formatNumber(r.total_damage)} | 💰${r.reward_coins} 💎${r.reward_crystals} 💠${r.reward_diamonds}
+                        ${r.reward_resources ? '<br>資源: ' + JSON.parse(r.reward_resources || '[]').map(res => `${res.icon || '📦'}${formatNumber(res.amount)}`).join(' ') : ''}
                     </div>
                 </div>
             `).join('');
@@ -1352,12 +1549,88 @@ async function loadBattleHistory() {
     }
 }
 
+// バトルログ詳細を表示
+async function viewBattleLogDetail(battleLogId) {
+    document.getElementById('battleLogContent').innerHTML = '<div class="loading">読み込み中...</div>';
+    document.getElementById('battleLogModal').classList.add('active');
+    
+    try {
+        const res = await fetch('wandering_monster_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_battle_detail', battle_log_id: battleLogId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            const battleLog = data.battle_log;
+            const turnLogs = data.turn_logs || [];
+            
+            let html = `
+                <div class="battle-summary">
+                    <div class="battle-summary-title">${battleLog.icon} ${escapeHtml(battleLog.name)}</div>
+                    <div class="battle-summary-stats">
+                        <div class="battle-summary-stat">
+                            <div class="battle-summary-stat-label">与ダメージ</div>
+                            <div class="battle-summary-stat-value">${formatNumber(battleLog.damage_dealt)}</div>
+                        </div>
+                        <div class="battle-summary-stat">
+                            <div class="battle-summary-stat-label">結果</div>
+                            <div class="battle-summary-stat-value">${battleLog.is_defeated == 1 ? '🏆 討伐成功' : '⚔️ 継続中'}</div>
+                        </div>
+                        <div class="battle-summary-stat">
+                            <div class="battle-summary-stat-label">報酬</div>
+                            <div class="battle-summary-stat-value">💰${battleLog.reward_coins} 💎${battleLog.reward_crystals}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            if (turnLogs.length > 0) {
+                html += `
+                    <h4 style="color: #ffd700; margin: 15px 0 10px 0;">📜 バトルログ詳細</h4>
+                    <div class="battle-log-container">
+                        ${turnLogs.map(log => `
+                            <div class="battle-turn">
+                                <div class="battle-turn-header">ターン ${log.turn_number}</div>
+                                <div class="battle-turn-message">${escapeHtml(log.log_message).replace(/\\n/g, '<br>')}</div>
+                                <div class="battle-turn-hp">
+                                    <span class="attacker-hp">自軍HP: ${formatNumber(log.attacker_hp_after)}</span>
+                                    <span class="defender-hp">敵HP: ${formatNumber(log.defender_hp_after)}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else {
+                html += '<p style="color: #888; text-align: center;">詳細ログはありません</p>';
+            }
+            
+            html += `
+                <div style="text-align: center; margin-top: 15px;">
+                    <button class="action-btn attack-btn" onclick="closeBattleLogModal()">閉じる</button>
+                </div>
+            `;
+            
+            document.getElementById('battleLogContent').innerHTML = html;
+        } else {
+            document.getElementById('battleLogContent').innerHTML = `<p style="color: #ff6b6b; text-align: center;">${escapeHtml(data.error)}</p>`;
+        }
+    } catch (e) {
+        console.error(e);
+        document.getElementById('battleLogContent').innerHTML = '<p style="color: #ff6b6b; text-align: center;">エラーが発生しました</p>';
+    }
+}
+
 // モーダル外クリックで閉じる
 document.getElementById('battleModal').addEventListener('click', (e) => {
     if (e.target.id === 'battleModal') closeBattleModal();
 });
 document.getElementById('bossDetailModal').addEventListener('click', (e) => {
     if (e.target.id === 'bossDetailModal') closeBossDetailModal();
+});
+document.getElementById('battleLogModal').addEventListener('click', (e) => {
+    if (e.target.id === 'battleLogModal') closeBattleLogModal();
 });
 
 // 初期読み込み

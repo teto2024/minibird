@@ -511,6 +511,12 @@ if ($action === 'attack_monster') {
             json_encode($rewardResources),
             json_encode($rewardTroops)
         ]);
+        $battleLogId = $pdo->lastInsertId();
+        
+        // 詳細なバトルターンログを保存
+        if (!empty($battleResult['turn_logs'])) {
+            saveWanderingMonsterBattleTurnLogs($pdo, $battleLogId, $battleResult['turn_logs']);
+        }
         
         $pdo->commit();
         
@@ -528,8 +534,11 @@ if ($action === 'attack_monster') {
             'battle_result' => [
                 'total_turns' => $battleResult['total_turns'],
                 'attacker_final_hp' => $battleResult['attacker_final_hp'],
-                'defender_final_hp' => $battleResult['defender_final_hp']
+                'defender_final_hp' => $battleResult['defender_final_hp'],
+                'attacker_max_hp' => $battleResult['attacker_max_hp'],
+                'defender_max_hp' => $battleResult['defender_max_hp']
             ],
+            'turn_logs' => $battleResult['turn_logs'] ?? [],
             'rewards' => [
                 'coins' => $rewardCoins,
                 'crystals' => $rewardCrystals,
@@ -607,6 +616,52 @@ if ($action === 'get_battle_history') {
         echo json_encode([
             'ok' => true,
             'battle_history' => $history
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 特定のバトルログの詳細を取得（ターンログ含む）
+// ===============================================
+if ($action === 'get_battle_detail') {
+    $battleLogId = (int)($input['battle_log_id'] ?? 0);
+    
+    if ($battleLogId <= 0) {
+        echo json_encode(['ok' => false, 'error' => 'バトルログIDが不正です']);
+        exit;
+    }
+    
+    try {
+        // バトルログ本体を取得
+        $stmt = $pdo->prepare("
+            SELECT wmbl.*, wm.name, wm.icon, wm.description
+            FROM wandering_monster_battle_logs wmbl
+            JOIN wandering_monsters wm ON wmbl.monster_id = wm.id
+            WHERE wmbl.id = ? AND wmbl.user_id = ?
+        ");
+        $stmt->execute([$battleLogId, $me['id']]);
+        $battleLog = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$battleLog) {
+            throw new Exception('バトルログが見つかりません');
+        }
+        
+        // ターンログを取得
+        $stmt = $pdo->prepare("
+            SELECT * FROM wandering_monster_turn_logs
+            WHERE battle_log_id = ?
+            ORDER BY turn_number ASC
+        ");
+        $stmt->execute([$battleLogId]);
+        $turnLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'ok' => true,
+            'battle_log' => $battleLog,
+            'turn_logs' => $turnLogs
         ]);
     } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
