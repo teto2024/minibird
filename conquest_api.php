@@ -204,6 +204,107 @@ function sendConquestAnnouncement($pdo, $castleName, $castleType, $playerHandle 
 }
 
 /**
+ * 地形バフを取得
+ * @param PDO $pdo データベース接続
+ * @param string $terrainType 地形タイプ
+ * @param string $troopCategory 兵種カテゴリ
+ * @return array ['attack_buff' => float, 'defense_buff' => float]
+ */
+function getTerrainBuff($pdo, $terrainType, $troopCategory) {
+    $stmt = $pdo->prepare("
+        SELECT attack_buff, defense_buff 
+        FROM conquest_terrain_buffs 
+        WHERE terrain_type = ? AND troop_category = ?
+    ");
+    $stmt->execute([$terrainType, $troopCategory]);
+    $buff = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($buff) {
+        return [
+            'attack_buff' => (float)$buff['attack_buff'],
+            'defense_buff' => (float)$buff['defense_buff']
+        ];
+    }
+    
+    return ['attack_buff' => 1.0, 'defense_buff' => 1.0];
+}
+
+/**
+ * 部隊の地形バフを計算
+ * @param PDO $pdo データベース接続
+ * @param array $troops 部隊情報 [{troop_type_id, count, category}, ...]
+ * @param string $terrainType 地形タイプ
+ * @param bool $isDefender 防御側かどうか
+ * @return float 総合バフ倍率
+ */
+function calculateTerrainBuffMultiplier($pdo, $troops, $terrainType, $isDefender = false) {
+    if (empty($terrainType) || $terrainType === 'plains') {
+        return 1.0; // 平原はデフォルト
+    }
+    
+    $totalPower = 0;
+    $buffedPower = 0;
+    
+    foreach ($troops as $troop) {
+        $count = (int)($troop['count'] ?? 0);
+        if ($count <= 0) continue;
+        
+        // 兵種情報を取得
+        $troopTypeId = (int)$troop['troop_type_id'];
+        $stmt = $pdo->prepare("
+            SELECT attack_power, defense_power, COALESCE(troop_category, 'infantry') as troop_category
+            FROM civilization_troop_types WHERE id = ?
+        ");
+        $stmt->execute([$troopTypeId]);
+        $troopInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$troopInfo) continue;
+        
+        $power = ($troopInfo['attack_power'] + $troopInfo['defense_power']) * $count;
+        $totalPower += $power;
+        
+        // 地形バフを取得
+        $buff = getTerrainBuff($pdo, $terrainType, $troopInfo['troop_category']);
+        $buffMultiplier = $isDefender ? $buff['defense_buff'] : $buff['attack_buff'];
+        $buffedPower += $power * $buffMultiplier;
+    }
+    
+    if ($totalPower <= 0) {
+        return 1.0;
+    }
+    
+    return $buffedPower / $totalPower;
+}
+
+/**
+ * ステルス兵を除外した防御部隊を取得（敵から見えない）
+ * @param PDO $pdo データベース接続
+ * @param array $troops 防御部隊
+ * @return array ステルス以外の部隊
+ */
+function getVisibleDefenseTroops($pdo, $troops) {
+    $visibleTroops = [];
+    
+    foreach ($troops as $troop) {
+        $troopTypeId = (int)($troop['troop_type_id'] ?? 0);
+        
+        $stmt = $pdo->prepare("
+            SELECT COALESCE(is_stealth, FALSE) as is_stealth
+            FROM civilization_troop_types WHERE id = ?
+        ");
+        $stmt->execute([$troopTypeId]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // ステルスでない兵士のみ表示
+        if (!$result || !$result['is_stealth']) {
+            $visibleTroops[] = $troop;
+        }
+    }
+    
+    return $visibleTroops;
+}
+
+/**
  * シーズン終了時に報酬を配布する
  * @param PDO $pdo
  * @param int $seasonId
@@ -691,6 +792,30 @@ if ($action === 'get_castle') {
         // 防御パワーを計算
         $defense = calculateCastleDefensePower($pdo, $castle);
         
+        // 自分の城でない場合、ステルス兵を隠す
+        if ($castle['owner_user_id'] != $me['id'] && !empty($defense['troops'])) {
+            $defense['visible_troops'] = getVisibleDefenseTroops($pdo, $defense['troops']);
+        } else {
+            $defense['visible_troops'] = $defense['troops'];
+        }
+        
+        // 地形情報を追加
+        $terrainType = $castle['terrain_type'] ?? 'plains';
+        $terrainDefenseBonus = (float)($castle['terrain_defense_bonus'] ?? 1.0);
+        $movementCost = (int)($castle['movement_cost'] ?? 1);
+        
+        // 地形バフ情報を取得
+        $stmt = $pdo->prepare("SELECT * FROM conquest_terrain_buffs WHERE terrain_type = ?");
+        $stmt->execute([$terrainType]);
+        $terrainBuffs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $terrainInfo = [
+            'type' => $terrainType,
+            'defense_bonus' => $terrainDefenseBonus,
+            'movement_cost' => $movementCost,
+            'buffs' => $terrainBuffs
+        ];
+        
         // ユーザーの総軍事力を取得（戦力比較用）
         $myEquipmentBuffs = getConquestUserEquipmentBuffs($pdo, $me['id']);
         $myEquipmentPower = calculateEquipmentPower($myEquipmentBuffs);
@@ -707,9 +832,11 @@ if ($action === 'get_castle') {
         
         $myTotalPower = $myTroopPower + $myEquipmentPower;
         
-        // 隣接城を取得
+        // 隣接城を取得（地形情報を含む）
         $stmt = $pdo->prepare("
-            SELECT cc.id, cc.name, cc.icon, cc.owner_user_id, uc.civilization_name
+            SELECT cc.id, cc.name, cc.icon, cc.owner_user_id, uc.civilization_name,
+                   COALESCE(cc.terrain_type, 'plains') as terrain_type,
+                   COALESCE(cc.movement_cost, 1) as movement_cost
             FROM conquest_castle_adjacency cca
             JOIN conquest_castles cc ON cca.adjacent_castle_id = cc.id
             LEFT JOIN user_civilizations uc ON cc.owner_user_id = uc.user_id
@@ -749,6 +876,7 @@ if ($action === 'get_castle') {
             'ok' => true,
             'castle' => $castle,
             'defense' => $defense,
+            'terrain_info' => $terrainInfo,
             'my_power' => $myTotalPower,
             'my_troop_power' => $myTroopPower,
             'my_equipment_power' => $myEquipmentPower,
@@ -836,10 +964,24 @@ if ($action === 'attack_castle') {
         // バトルユニットを準備
         $attackerUnit = prepareBattleUnit($attackerTroops, $attackerEquipmentBuffs, $pdo);
         
+        // 地形バフを計算（防御側が有利）
+        $terrainType = $castle['terrain_type'] ?? 'plains';
+        $terrainDefenseBonus = (float)($castle['terrain_defense_bonus'] ?? 1.0);
+        
+        // 攻撃側の地形バフを計算
+        $attackerTerrainBuff = calculateTerrainBuffMultiplier($pdo, $attackerTroops, $terrainType, false);
+        // 防御側の地形バフを計算
+        $defenderTerrainBuff = calculateTerrainBuffMultiplier($pdo, $defense['troops'] ?? [], $terrainType, true);
+        
+        // 攻撃側に地形バフを適用
+        $attackerUnit['attack'] = (int)floor($attackerUnit['attack'] * $attackerTerrainBuff);
+        
         // 防御側ユニットを準備
         if ($defense['is_npc']) {
             // NPC防御ユニット
             $defenderUnit = prepareNpcDefenseUnit($defense['total_power']);
+            // NPCにも地形防御ボーナスを適用
+            $defenderUnit['armor'] = (int)floor($defenderUnit['armor'] * $terrainDefenseBonus);
         } else {
             // プレイヤー防御ユニット
             $defenderTroops = [];
@@ -851,6 +993,8 @@ if ($action === 'attack_castle') {
             }
             $defenderEquipmentBuffs = $defense['equipment_buffs'];
             $defenderUnit = prepareBattleUnit($defenderTroops, $defenderEquipmentBuffs, $pdo);
+            // 防御側に地形バフを適用
+            $defenderUnit['armor'] = (int)floor($defenderUnit['armor'] * $defenderTerrainBuff * $terrainDefenseBonus);
         }
         
         // ターン制バトルを実行
@@ -1742,6 +1886,317 @@ if ($action === 'get_castle_bombardment_status') {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
     }
     exit;
+}
+
+// ===============================================
+// 移動システムAPI
+// ===============================================
+
+// 移動時間の計算定数（秒）
+define('CONQUEST_MOVEMENT_BASE_TIME', 300); // 基本移動時間（5分）
+define('CONQUEST_MOVEMENT_CRYSTAL_COST_PER_MINUTE', 1); // 1分短縮あたりのクリスタルコスト
+define('CONQUEST_MOVEMENT_DIAMOND_COST_PER_MINUTE', 0.5); // 1分短縮あたりのダイヤモンドコスト
+
+/**
+ * 2つの城間の移動時間を計算
+ * @param array $fromCastle 出発城
+ * @param array $toCastle 到着城
+ * @return int 移動時間（秒）
+ */
+function calculateMovementTime($fromCastle, $toCastle) {
+    // 基本時間 * 到着城の移動コスト
+    $movementCost = (int)($toCastle['movement_cost'] ?? 1);
+    
+    // 城の距離に基づいて時間を調整
+    $fromType = $fromCastle['castle_type'] ?? 'outer';
+    $toType = $toCastle['castle_type'] ?? 'outer';
+    
+    $typeMultiplier = [
+        'outer' => 1,
+        'middle' => 2,
+        'inner' => 3,
+        'sacred' => 4
+    ];
+    
+    $fromMultiplier = $typeMultiplier[$fromType] ?? 1;
+    $toMultiplier = $typeMultiplier[$toType] ?? 1;
+    
+    // 外周から内側へ行くほど時間がかかる
+    $distanceMultiplier = max(1, abs($toMultiplier - $fromMultiplier));
+    
+    return CONQUEST_MOVEMENT_BASE_TIME * $movementCost * $distanceMultiplier;
+}
+
+// 移動キューを取得
+if ($action === 'get_movement_queue') {
+    try {
+        $season = getOrCreateActiveSeason($pdo);
+        
+        $stmt = $pdo->prepare("
+            SELECT cmq.*, 
+                   fc.name as from_castle_name, fc.icon as from_castle_icon,
+                   tc.name as to_castle_name, tc.icon as to_castle_icon,
+                   TIMESTAMPDIFF(SECOND, NOW(), cmq.arrives_at) as seconds_remaining
+            FROM conquest_movement_queue cmq
+            JOIN conquest_castles fc ON cmq.from_castle_id = fc.id
+            JOIN conquest_castles tc ON cmq.to_castle_id = tc.id
+            WHERE cmq.user_id = ? AND cmq.season_id = ? AND cmq.is_completed = FALSE AND cmq.is_cancelled = FALSE
+            ORDER BY cmq.arrives_at ASC
+        ");
+        $stmt->execute([$me['id'], $season['id']]);
+        $queue = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 完了した移動を処理
+        foreach ($queue as &$movement) {
+            if ($movement['seconds_remaining'] <= 0) {
+                // 移動完了処理
+                processCompletedMovement($pdo, $movement);
+                $movement['is_completed'] = true;
+            }
+        }
+        
+        echo json_encode([
+            'ok' => true,
+            'movement_queue' => $queue
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// 移動を開始
+if ($action === 'start_movement') {
+    $fromCastleId = (int)($input['from_castle_id'] ?? 0);
+    $toCastleId = (int)($input['to_castle_id'] ?? 0);
+    $troops = $input['troops'] ?? [];
+    
+    if (empty($troops) || $fromCastleId <= 0 || $toCastleId <= 0) {
+        echo json_encode(['ok' => false, 'error' => '移動情報が不足しています']);
+        exit;
+    }
+    
+    $pdo->beginTransaction();
+    try {
+        $season = getOrCreateActiveSeason($pdo);
+        
+        // 出発城を確認
+        $stmt = $pdo->prepare("SELECT * FROM conquest_castles WHERE id = ? AND season_id = ? AND owner_user_id = ?");
+        $stmt->execute([$fromCastleId, $season['id'], $me['id']]);
+        $fromCastle = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$fromCastle) {
+            throw new Exception('出発城を所有していません');
+        }
+        
+        // 到着城を確認（隣接している必要がある）
+        $stmt = $pdo->prepare("
+            SELECT cc.* FROM conquest_castles cc
+            JOIN conquest_castle_adjacency cca ON cc.id = cca.adjacent_castle_id
+            WHERE cca.castle_id = ? AND cc.id = ? AND cc.season_id = ?
+        ");
+        $stmt->execute([$fromCastleId, $toCastleId, $season['id']]);
+        $toCastle = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$toCastle) {
+            throw new Exception('隣接していない城には移動できません');
+        }
+        
+        // 兵士を確認し消費
+        $movingTroops = [];
+        foreach ($troops as $troop) {
+            $troopTypeId = (int)$troop['troop_type_id'];
+            $count = (int)$troop['count'];
+            
+            if ($count <= 0) continue;
+            
+            // 城の防御部隊から取得
+            $stmt = $pdo->prepare("
+                SELECT count FROM conquest_castle_defense 
+                WHERE castle_id = ? AND user_id = ? AND troop_type_id = ?
+            ");
+            $stmt->execute([$fromCastleId, $me['id'], $troopTypeId]);
+            $ownedCount = (int)$stmt->fetchColumn();
+            
+            if ($ownedCount < $count) {
+                throw new Exception('城に配置されている兵士が不足しています');
+            }
+            
+            // 城の防御部隊から減少
+            $stmt = $pdo->prepare("
+                UPDATE conquest_castle_defense 
+                SET count = count - ?
+                WHERE castle_id = ? AND user_id = ? AND troop_type_id = ?
+            ");
+            $stmt->execute([$count, $fromCastleId, $me['id'], $troopTypeId]);
+            
+            $movingTroops[] = ['troop_type_id' => $troopTypeId, 'count' => $count];
+        }
+        
+        if (empty($movingTroops)) {
+            throw new Exception('移動する兵士を選択してください');
+        }
+        
+        // 移動時間を計算
+        $movementTime = calculateMovementTime($fromCastle, $toCastle);
+        $arrivesAt = date('Y-m-d H:i:s', time() + $movementTime);
+        
+        // 移動キューに追加
+        $stmt = $pdo->prepare("
+            INSERT INTO conquest_movement_queue 
+            (season_id, user_id, from_castle_id, to_castle_id, troops, arrives_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $season['id'],
+            $me['id'],
+            $fromCastleId,
+            $toCastleId,
+            json_encode($movingTroops),
+            $arrivesAt
+        ]);
+        $movementId = $pdo->lastInsertId();
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => '移動を開始しました',
+            'movement_id' => $movementId,
+            'movement_time' => $movementTime,
+            'arrives_at' => $arrivesAt
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// 移動を短縮（クリスタル/ダイヤモンド使用）
+if ($action === 'speed_up_movement') {
+    $movementId = (int)($input['movement_id'] ?? 0);
+    $currency = $input['currency'] ?? 'crystal'; // 'crystal' or 'diamond'
+    
+    if ($movementId <= 0) {
+        echo json_encode(['ok' => false, 'error' => '移動IDが不正です']);
+        exit;
+    }
+    
+    $pdo->beginTransaction();
+    try {
+        // 移動を取得
+        $stmt = $pdo->prepare("
+            SELECT * FROM conquest_movement_queue 
+            WHERE id = ? AND user_id = ? AND is_completed = FALSE AND is_cancelled = FALSE
+        ");
+        $stmt->execute([$movementId, $me['id']]);
+        $movement = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$movement) {
+            throw new Exception('移動が見つかりません');
+        }
+        
+        // 残り時間を計算
+        $remainingSeconds = max(0, strtotime($movement['arrives_at']) - time());
+        $remainingMinutes = ceil($remainingSeconds / 60);
+        
+        if ($remainingMinutes <= 0) {
+            throw new Exception('移動はすでに完了しています');
+        }
+        
+        // コストを計算
+        if ($currency === 'diamond') {
+            $cost = max(1, (int)ceil($remainingMinutes * CONQUEST_MOVEMENT_DIAMOND_COST_PER_MINUTE));
+            $currencyColumn = 'diamonds';
+            $currencyName = 'ダイヤモンド';
+        } else {
+            $cost = max(1, (int)ceil($remainingMinutes * CONQUEST_MOVEMENT_CRYSTAL_COST_PER_MINUTE));
+            $currencyColumn = 'crystals';
+            $currencyName = 'クリスタル';
+        }
+        
+        // 通貨を確認
+        $stmt = $pdo->prepare("SELECT {$currencyColumn} FROM users WHERE id = ?");
+        $stmt->execute([$me['id']]);
+        $userCurrency = (int)$stmt->fetchColumn();
+        
+        if ($userCurrency < $cost) {
+            throw new Exception("{$currencyName}が不足しています（必要: {$cost}）");
+        }
+        
+        // 通貨を消費
+        $stmt = $pdo->prepare("UPDATE users SET {$currencyColumn} = {$currencyColumn} - ? WHERE id = ?");
+        $stmt->execute([$cost, $me['id']]);
+        
+        // 即時完了処理
+        $stmt = $pdo->prepare("UPDATE conquest_movement_queue SET arrives_at = NOW(), is_completed = TRUE WHERE id = ?");
+        $stmt->execute([$movementId]);
+        
+        // 兵士を到着城に配置
+        $troops = json_decode($movement['troops'], true) ?: [];
+        foreach ($troops as $troop) {
+            $stmt = $pdo->prepare("
+                INSERT INTO conquest_castle_defense (castle_id, user_id, troop_type_id, count)
+                VALUES (?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE count = count + ?
+            ");
+            $stmt->execute([
+                $movement['to_castle_id'],
+                $me['id'],
+                $troop['troop_type_id'],
+                $troop['count'],
+                $troop['count']
+            ]);
+        }
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => '移動を即時完了しました',
+            'cost' => $cost,
+            'currency' => $currencyName
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+/**
+ * 完了した移動を処理
+ */
+function processCompletedMovement($pdo, $movement) {
+    $pdo->beginTransaction();
+    try {
+        // 移動を完了としてマーク
+        $stmt = $pdo->prepare("UPDATE conquest_movement_queue SET is_completed = TRUE WHERE id = ?");
+        $stmt->execute([$movement['id']]);
+        
+        // 到着城に兵士を配置
+        $troops = json_decode($movement['troops'], true) ?: [];
+        foreach ($troops as $troop) {
+            $stmt = $pdo->prepare("
+                INSERT INTO conquest_castle_defense (castle_id, user_id, troop_type_id, count)
+                VALUES (?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE count = count + ?
+            ");
+            $stmt->execute([
+                $movement['to_castle_id'],
+                $movement['user_id'],
+                $troop['troop_type_id'],
+                $troop['count'],
+                $troop['count']
+            ]);
+        }
+        
+        $pdo->commit();
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        error_log("Movement completion error: " . $e->getMessage());
+    }
 }
 
 echo json_encode(['ok' => false, 'error' => 'invalid_action']);
