@@ -3261,11 +3261,16 @@ if ($action === 'request_alliance') {
             }
         }
         
-        // 同盟申請を作成
+        // 同盟申請を作成（既存の非アクティブ/拒否済みのみ上書き可能）
         $stmt = $pdo->prepare("
             INSERT INTO civilization_alliances (requester_user_id, target_user_id, status, requested_at)
             VALUES (?, ?, 'pending', NOW())
-            ON DUPLICATE KEY UPDATE status = 'pending', requested_at = NOW(), is_active = TRUE, responded_at = NULL, ended_at = NULL
+            ON DUPLICATE KEY UPDATE 
+                status = IF(status != 'accepted' OR is_active = FALSE, 'pending', status), 
+                requested_at = IF(status != 'accepted' OR is_active = FALSE, NOW(), requested_at), 
+                is_active = IF(status != 'accepted' OR is_active = FALSE, TRUE, is_active), 
+                responded_at = IF(status != 'accepted' OR is_active = FALSE, NULL, responded_at), 
+                ended_at = IF(status != 'accepted' OR is_active = FALSE, NULL, ended_at)
         ");
         $stmt->execute([$me['id'], $targetUserId]);
         

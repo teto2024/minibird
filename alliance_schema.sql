@@ -8,6 +8,8 @@ USE microblog;
 -- ===============================================
 -- 同盟テーブル
 -- ステータス: pending（申請中）, accepted（締結済み）, rejected（拒否）
+-- 注意: アプリケーションロジックで双方向の重複チェックを行う
+-- （A→BとB→Aの両方を同時に作成しないようにする）
 -- ===============================================
 CREATE TABLE IF NOT EXISTS civilization_alliances (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

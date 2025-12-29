@@ -3368,14 +3368,17 @@ async function loadTransferSections() {
         
         if (troopsData.ok && troopsData.user_troops && troopsData.user_troops.length > 0) {
             const availableTroops = troopsData.user_troops.filter(t => t.count > 0);
-            document.getElementById('troopTransferSection').innerHTML = availableTroops.length > 0 ? availableTroops.map(t => `
+            document.getElementById('troopTransferSection').innerHTML = availableTroops.length > 0 ? availableTroops.map(t => {
+                const troopId = parseInt(t.troop_type_id) || 0;
+                const troopCount = parseInt(t.count) || 0;
+                return `
                 <div style="display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; margin-bottom: 6px;">
-                    <span style="min-width: 120px;">${t.icon} ${t.name}</span>
-                    <input type="range" id="transfer-troop-slider-${t.troop_type_id}" min="0" max="${t.count}" value="0" style="flex: 1;" oninput="document.getElementById('transfer-troop-count-${t.troop_type_id}').value = this.value">
-                    <input type="number" id="transfer-troop-count-${t.troop_type_id}" min="0" max="${t.count}" value="0" style="width: 60px; padding: 5px; background: rgba(0,0,0,0.3); border: 1px solid #8b4513; border-radius: 4px; color: #f5deb3;" oninput="document.getElementById('transfer-troop-slider-${t.troop_type_id}').value = this.value">
-                    <span style="color: #888; font-size: 11px;">/ ${t.count}</span>
+                    <span style="min-width: 120px;">${escapeHtml(t.icon)} ${escapeHtml(t.name)}</span>
+                    <input type="range" id="transfer-troop-slider-${troopId}" min="0" max="${troopCount}" value="0" style="flex: 1;" oninput="document.getElementById('transfer-troop-count-${troopId}').value = this.value">
+                    <input type="number" id="transfer-troop-count-${troopId}" min="0" max="${troopCount}" value="0" style="width: 60px; padding: 5px; background: rgba(0,0,0,0.3); border: 1px solid #8b4513; border-radius: 4px; color: #f5deb3;" oninput="document.getElementById('transfer-troop-slider-${troopId}').value = this.value">
+                    <span style="color: #888; font-size: 11px;">/ ${troopCount}</span>
                 </div>
-            `).join('') : '<p style="color: #888;">送れる兵士がいません</p>';
+            `}).join('') : '<p style="color: #888;">送れる兵士がいません</p>';
         } else {
             document.getElementById('troopTransferSection').innerHTML = '<p style="color: #888;">兵士がいません</p>';
         }
@@ -3383,14 +3386,17 @@ async function loadTransferSections() {
         // 資源データを取得（civDataから）
         if (civData && civData.resources) {
             const availableResources = civData.resources.filter(r => r.unlocked && r.amount > 0);
-            document.getElementById('resourceTransferSection').innerHTML = availableResources.length > 0 ? availableResources.map(r => `
+            document.getElementById('resourceTransferSection').innerHTML = availableResources.length > 0 ? availableResources.map(r => {
+                const resourceId = parseInt(r.resource_type_id) || 0;
+                const resourceAmount = Math.floor(parseFloat(r.amount) || 0);
+                return `
                 <div style="display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; margin-bottom: 6px;">
-                    <span style="min-width: 120px;">${r.icon} ${r.name}</span>
-                    <input type="range" id="transfer-resource-slider-${r.resource_type_id}" min="0" max="${Math.floor(r.amount)}" value="0" style="flex: 1;" oninput="document.getElementById('transfer-resource-count-${r.resource_type_id}').value = this.value">
-                    <input type="number" id="transfer-resource-count-${r.resource_type_id}" min="0" max="${Math.floor(r.amount)}" value="0" style="width: 80px; padding: 5px; background: rgba(0,0,0,0.3); border: 1px solid #228b22; border-radius: 4px; color: #f5deb3;" oninput="document.getElementById('transfer-resource-slider-${r.resource_type_id}').value = this.value">
-                    <span style="color: #888; font-size: 11px;">/ ${Math.floor(r.amount)}</span>
+                    <span style="min-width: 120px;">${escapeHtml(r.icon)} ${escapeHtml(r.name)}</span>
+                    <input type="range" id="transfer-resource-slider-${resourceId}" min="0" max="${resourceAmount}" value="0" style="flex: 1;" oninput="document.getElementById('transfer-resource-count-${resourceId}').value = this.value">
+                    <input type="number" id="transfer-resource-count-${resourceId}" min="0" max="${resourceAmount}" value="0" style="width: 80px; padding: 5px; background: rgba(0,0,0,0.3); border: 1px solid #228b22; border-radius: 4px; color: #f5deb3;" oninput="document.getElementById('transfer-resource-slider-${resourceId}').value = this.value">
+                    <span style="color: #888; font-size: 11px;">/ ${resourceAmount}</span>
                 </div>
-            `).join('') : '<p style="color: #888;">送れる資源がありません</p>';
+            `}).join('') : '<p style="color: #888;">送れる資源がありません</p>';
         }
     } catch (e) {
         console.error(e);
