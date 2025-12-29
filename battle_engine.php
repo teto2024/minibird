@@ -15,6 +15,8 @@ define('BATTLE_MIN_DAMAGE', 1);                     // 最小ダメージ
 define('BATTLE_EQUIPMENT_ATTACK_MULTIPLIER', 0.5);  // 装備攻撃力の適用倍率
 define('BATTLE_EQUIPMENT_ARMOR_MULTIPLIER', 1.0);   // 装備アーマーの適用倍率
 define('BATTLE_EQUIPMENT_HEALTH_MULTIPLIER', 2.0);  // 装備体力の適用倍率
+define('BATTLE_DOT_BASE_HEALTH', 1000);              // 継続ダメージ計算用の基準HP
+define('BATTLE_DOT_SCALING_FACTOR', 0.3);            // 継続ダメージのスケーリング係数（0.3 = 30%）
 
 /**
  * 特殊スキル情報を取得
@@ -308,7 +310,37 @@ function tryActivateSkill($unit, $target, $isAttacker) {
 }
 
 /**
+ * 継続ダメージを計算（毒、燃焼など）
+ * 平方根スケーリングを使用して、兵数/HPが増えても緩やかに増加
+ * @param int $maxHealth ユニットの最大HP
+ * @param float $effectValue 効果値（パーセンテージ）
+ * @return int 計算されたダメージ
+ */
+function calculateDoTDamage($maxHealth, $effectValue) {
+    // ゼロ除算防止
+    $baseHealth = max(1, BATTLE_DOT_BASE_HEALTH);
+    
+    // HP比率を計算（最大HP / 基準HP）
+    $healthRatio = $maxHealth / $baseHealth;
+    
+    // 平方根スケーリング係数を適用
+    $scalingFactor = sqrt($healthRatio);
+    
+    // 効果値のパーセンテージを適用
+    $effectMultiplier = $effectValue / 100;
+    
+    // 最終ダメージ計算
+    $baseDamage = $baseHealth * $scalingFactor * BATTLE_DOT_SCALING_FACTOR * $effectMultiplier;
+    $dotDamage = (int)floor($baseDamage);
+    
+    // 最小ダメージを保証
+    return max(BATTLE_MIN_DAMAGE, $dotDamage);
+}
+
+/**
  * 継続ダメージを処理（毒、燃焼など）
+ * 兵数やHPが増えても継続ダメージが比例して大きくならないよう、
+ * 平方根スケーリングを使用して調整
  * @param array $unit ユニット
  * @return array [damage, messages, updated_effects]
  */
@@ -319,8 +351,8 @@ function processDamageOverTime($unit) {
     
     foreach ($unit['active_effects'] as $effect) {
         if ($effect['effect_type'] === 'damage_over_time') {
-            // 最大HPの割合でダメージ
-            $dotDamage = (int)floor($unit['max_health'] * ($effect['effect_value'] / 100));
+            // 平方根スケーリングを使用して継続ダメージを計算
+            $dotDamage = calculateDoTDamage($unit['max_health'], $effect['effect_value']);
             $totalDamage += $dotDamage;
             $messages[] = "{$effect['skill_icon']} {$effect['skill_name']}により{$dotDamage}ダメージ！";
         }
