@@ -28,6 +28,8 @@ try {
             $pdo = db();
             $st = $pdo->prepare("UPDATE users SET icon=? WHERE id=?");
             $st->execute([$icon_url, $me['id']]);
+            // キャッシュバスティング用にタイムスタンプを付与
+            $icon_url = $dst . '?v=' . time();
         }
     }
 

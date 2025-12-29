@@ -551,7 +551,13 @@ $levelInfo = get_user_level_info($targetId);
         <div class="profile-header">
             <div class="profile-info">
                 <!-- アイコン -->
-                <img src="<?= htmlspecialchars($user['icon'] ?? 'assets/default_icon.png') ?>" 
+                <?php 
+                $iconPath = $user['icon'] ?? 'assets/default_icon.png';
+                // キャッシュバスティング: アイコンファイルの更新時刻を使用
+                $iconMtime = file_exists($iconPath) ? filemtime($iconPath) : time();
+                $iconUrl = $iconPath . '?v=' . $iconMtime;
+                ?>
+                <img src="<?= htmlspecialchars($iconUrl) ?>" 
                      class="user-icon" alt="アイコン">
 
                 <!-- 表示名 -->
