@@ -53,13 +53,14 @@ WHERE building_key = 'glassworks';
 -- ===============================================
 
 -- 織物工場（布を生産するはず）
+-- 既に設定されている場合はスキップ（冪等性を保証）
 UPDATE civilization_building_types 
 SET produces_resource_id = (
     SELECT id FROM civilization_resource_types WHERE resource_key = 'cloth'
 ),
 production_rate = 6.0,  -- 1時間あたり6個の布を生産
 category = 'production'
-WHERE building_key = 'weaving_mill' AND produces_resource_id IS NULL;
+WHERE building_key = 'weaving_mill';
 
 -- クリスタル鉱山（クリスタルを生産するはず）
 UPDATE civilization_building_types 
@@ -67,7 +68,7 @@ SET produces_resource_id = (
     SELECT id FROM civilization_resource_types WHERE resource_key = 'crystal'
 ),
 production_rate = 1.0  -- 1時間あたり1個のクリスタルを生産（希少資源）
-WHERE building_key = 'crystal_mine' AND produces_resource_id IS NULL;
+WHERE building_key = 'crystal_mine';
 
 -- 調剤所（医薬品を生産するはず）
 UPDATE civilization_building_types 
@@ -76,7 +77,7 @@ SET produces_resource_id = (
 ),
 production_rate = 3.0,  -- 1時間あたり3個の医薬品を生産
 category = 'production'
-WHERE building_key = 'apothecary' AND produces_resource_id IS NULL;
+WHERE building_key = 'apothecary';
 
 -- 製鋼所（鋼鉄を生産するはず）
 UPDATE civilization_building_types 
@@ -85,7 +86,7 @@ SET produces_resource_id = (
 ),
 production_rate = 3.0,  -- 1時間あたり3個の鋼鉄を生産
 category = 'production'
-WHERE building_key = 'steel_mill' AND produces_resource_id IS NULL;
+WHERE building_key = 'steel_mill';
 
 -- 火薬工場（火薬を生産するはず）
 UPDATE civilization_building_types 
@@ -94,7 +95,7 @@ SET produces_resource_id = (
 ),
 production_rate = 2.0,  -- 1時間あたり2個の火薬を生産
 category = 'production'
-WHERE building_key = 'gunpowder_factory' AND produces_resource_id IS NULL;
+WHERE building_key = 'gunpowder_factory';
 
 -- 電子部品工場（電子部品を生産するはず）
 UPDATE civilization_building_types 
@@ -103,7 +104,7 @@ SET produces_resource_id = (
 ),
 production_rate = 1.5,  -- 1時間あたり1.5個の電子部品を生産
 category = 'production'
-WHERE building_key = 'electronics_factory' AND produces_resource_id IS NULL;
+WHERE building_key = 'electronics_factory';
 
 -- ===============================================
 -- 修正内容の確認
