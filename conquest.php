@@ -549,6 +549,7 @@ let seasonData = null;
 let userTroops = [];
 let selectedCastle = null;
 let currentTab = 'map';
+let deploymentLimit = { base_limit: 100, building_bonus: 0, total_limit: 100 }; // 出撃上限
 const isAdmin = <?= (isset($me['role']) && $me['role'] === 'admin') ? 'true' : 'false' ?>;
 
 // 初期データ読み込み
@@ -577,6 +578,10 @@ async function loadData() {
         
         if (troopsData.ok) {
             userTroops = troopsData.user_troops || [];
+            // 出撃上限を保存
+            if (troopsData.deployment_limit) {
+                deploymentLimit = troopsData.deployment_limit;
+            }
         }
         
         renderApp();
@@ -958,7 +963,17 @@ function renderTroopSelector(type) {
         return '<p style="color: #888;">兵士がいません。文明育成で兵士を訓練してください。</p>';
     }
     
-    return userTroops.filter(t => t.count > 0).map(troop => `
+    const availableTroops = userTroops.filter(t => t.count > 0);
+    if (availableTroops.length === 0) {
+        return '<p style="color: #888;">出撃可能な兵士がいません。</p>';
+    }
+    
+    return `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 6px;">
+            <div style="color: #da70d6; font-size: 12px;">出撃兵数: <span id="${type}-troop-count" style="color: #32cd32;">0</span>/${deploymentLimit.total_limit}人</div>
+            <button type="button" onclick="selectMaxByStrongest('${type}')" style="padding: 4px 10px; font-size: 11px; background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%); color: #fff; border: none; border-radius: 4px; cursor: pointer;">💪 強い順に一括選択</button>
+        </div>
+    ` + availableTroops.map(troop => `
         <div class="troop-select-row">
             <div class="troop-info">
                 <span class="troop-icon">${troop.icon}</span>
@@ -969,6 +984,8 @@ function renderTroopSelector(type) {
                    id="${type}-slider-${troop.troop_type_id}"
                    min="0" max="${troop.count}" value="0"
                    data-troop-id="${troop.troop_type_id}"
+                   data-attack="${troop.attack_power}"
+                   data-defense="${troop.defense_power}"
                    data-type="${type}">
             <input type="number" class="troop-count-input" 
                    id="${type}-count-${troop.troop_type_id}"
@@ -980,6 +997,64 @@ function renderTroopSelector(type) {
     `).join('');
 }
 
+// 強い順に一括選択
+function selectMaxByStrongest(type) {
+    // まずすべてをリセット
+    document.querySelectorAll(`[id^="${type}-count-"]`).forEach(input => {
+        input.value = 0;
+        const troopId = input.dataset.troopId;
+        const slider = document.getElementById(`${type}-slider-${troopId}`);
+        if (slider) slider.value = 0;
+    });
+    
+    // 兵種を攻撃力+防御力/2でソート（強い順）
+    const sortedTroops = [...userTroops].filter(t => t.count > 0).sort((a, b) => {
+        const powerA = parseInt(a.attack_power) + Math.floor(parseInt(a.defense_power) / 2);
+        const powerB = parseInt(b.attack_power) + Math.floor(parseInt(b.defense_power) / 2);
+        return powerB - powerA;
+    });
+    
+    let remaining = deploymentLimit.total_limit;
+    
+    for (const troop of sortedTroops) {
+        if (remaining <= 0) break;
+        
+        const troopId = troop.troop_type_id;
+        const available = parseInt(troop.count);
+        const toSelect = Math.min(available, remaining);
+        
+        const input = document.getElementById(`${type}-count-${troopId}`);
+        const slider = document.getElementById(`${type}-slider-${troopId}`);
+        
+        if (input && slider) {
+            input.value = toSelect;
+            slider.value = toSelect;
+            remaining -= toSelect;
+        }
+    }
+    
+    updateTroopCountDisplay(type);
+}
+
+// 合計兵数を更新
+function updateTroopCountDisplay(type) {
+    let totalCount = 0;
+    document.querySelectorAll(`[id^="${type}-count-"]`).forEach(input => {
+        const count = parseInt(input.value) || 0;
+        totalCount += count;
+    });
+    
+    const countEl = document.getElementById(`${type}-troop-count`);
+    if (countEl) {
+        countEl.textContent = totalCount;
+        if (totalCount > deploymentLimit.total_limit) {
+            countEl.style.color = '#ff6b6b';
+        } else {
+            countEl.style.color = '#32cd32';
+        }
+    }
+}
+
 // スライダーのイベントを設定
 function setupTroopSliders() {
     document.querySelectorAll('.troop-slider').forEach(slider => {
@@ -989,6 +1064,7 @@ function setupTroopSliders() {
         
         slider.addEventListener('input', () => {
             countInput.value = slider.value;
+            updateTroopCountDisplay(type);
         });
         
         countInput.addEventListener('input', () => {
@@ -997,6 +1073,7 @@ function setupTroopSliders() {
             value = Math.max(0, Math.min(max, value));
             countInput.value = value;
             slider.value = value;
+            updateTroopCountDisplay(type);
         });
     });
 }

@@ -42,6 +42,9 @@ define('CIV_INSTANT_SECONDS_PER_DIAMOND', 120);   // ダイヤモンド1個あ�
 define('CIV_DIAMOND_DISCOUNT_RATE', 0.5);         // ダイヤモンドの割引率（クリスタルの50%）
 define('CIV_INSTANT_DIAMOND_MIN_COST', 1);        // ダイヤモンド即完了の最低コスト
 
+// 出撃兵士数上限システム定数
+define('CIV_BASE_TROOP_DEPLOYMENT_LIMIT', 100);   // 基本出撃兵士数上限
+
 // 資源価値の定義（市場交換レート計算用）
 // 値が高いほど価値が高い資源
 $RESOURCE_VALUES = [
@@ -183,6 +186,46 @@ function getUserEquipmentBuffs($pdo, $userId) {
     }
     
     return $totalBuffs;
+}
+
+/**
+ * 出撃兵士数上限を計算するヘルパー関数
+ * 建物のtroop_deployment_bonus列をレベルと掛け合わせて計算
+ * 
+ * @param PDO $pdo データベース接続
+ * @param int $userId ユーザーID
+ * @return array ['base_limit' => int, 'building_bonus' => int, 'total_limit' => int, 'buildings' => array]
+ */
+function calculateTroopDeploymentLimit($pdo, $userId) {
+    // 軍事建物からの出撃上限ボーナスを取得
+    $stmt = $pdo->prepare("
+        SELECT bt.name, bt.icon, bt.building_key, ucb.level, 
+               COALESCE(bt.troop_deployment_bonus, 0) as bonus_per_level,
+               COALESCE(bt.troop_deployment_bonus, 0) * ucb.level as total_bonus
+        FROM user_civilization_buildings ucb
+        JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+        WHERE ucb.user_id = ? 
+          AND ucb.is_constructing = FALSE
+          AND COALESCE(bt.troop_deployment_bonus, 0) > 0
+        ORDER BY total_bonus DESC
+    ");
+    $stmt->execute([$userId]);
+    $buildings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    $buildingBonus = 0;
+    foreach ($buildings as $building) {
+        $buildingBonus += (int)$building['total_bonus'];
+    }
+    
+    $baseLimit = CIV_BASE_TROOP_DEPLOYMENT_LIMIT;
+    $totalLimit = $baseLimit + $buildingBonus;
+    
+    return [
+        'base_limit' => $baseLimit,
+        'building_bonus' => $buildingBonus,
+        'total_limit' => $totalLimit,
+        'buildings' => $buildings
+    ];
 }
 
 /**
@@ -1692,11 +1735,15 @@ if ($action === 'get_troops') {
             'siege' => ['name' => '攻城', 'icon' => '💣', 'strong_against' => 'infantry', 'weak_against' => 'cavalry']
         ];
         
+        // 出撃兵士数上限を計算
+        $deploymentLimit = calculateTroopDeploymentLimit($pdo, $me['id']);
+        
         echo json_encode([
             'ok' => true,
             'available_troops' => $availableTroops,
             'user_troops' => $userTroops,
-            'troop_advantage_info' => $troopAdvantageInfo
+            'troop_advantage_info' => $troopAdvantageInfo,
+            'deployment_limit' => $deploymentLimit
         ]);
     } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
@@ -2087,6 +2134,16 @@ if ($action === 'attack_with_troops') {
         
         if (empty($attackerTroops)) {
             throw new Exception('攻撃部隊を選択してください');
+        }
+        
+        // 出撃兵士数上限チェック
+        $totalTroopCount = 0;
+        foreach ($attackerTroops as $troop) {
+            $totalTroopCount += $troop['count'];
+        }
+        $deploymentLimit = calculateTroopDeploymentLimit($pdo, $me['id']);
+        if ($totalTroopCount > $deploymentLimit['total_limit']) {
+            throw new Exception('出撃兵士数の上限（' . $deploymentLimit['total_limit'] . '人）を超えています。司令部や軍事センターを建設すると上限が増加します。');
         }
         
         // 防御側の部隊を取得

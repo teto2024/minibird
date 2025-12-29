@@ -53,6 +53,9 @@ define('CONQUEST_SIEGE_DURABILITY_MULTIPLIER', 3.0);     // 攻城兵器の耐�
 define('CONQUEST_DEFENDER_BONUS', 1.2);                  // 占領戦防御側ボーナス（20%増加）
 define('CONQUEST_ANNOUNCEMENT_BOT_ID', 5);               // お知らせbot ユーザーID
 
+// 出撃兵士数上限システム定数（civilization_api.phpと同じ）
+define('CONQUEST_BASE_TROOP_DEPLOYMENT_LIMIT', 100);     // 基本出撃兵士数上限
+
 header('Content-Type: application/json');
 
 $me = user();
@@ -106,6 +109,37 @@ function getConquestUserEquipmentBuffs($pdo, $userId) {
     }
     
     return $totalBuffs;
+}
+
+/**
+ * 出撃兵士数上限を計算するヘルパー関数
+ * 建物のtroop_deployment_bonus列をレベルと掛け合わせて計算
+ * 
+ * @param PDO $pdo データベース接続
+ * @param int $userId ユーザーID
+ * @return array ['base_limit' => int, 'building_bonus' => int, 'total_limit' => int]
+ */
+function calculateConquestTroopDeploymentLimit($pdo, $userId) {
+    // 軍事建物からの出撃上限ボーナスを取得
+    $stmt = $pdo->prepare("
+        SELECT COALESCE(SUM(COALESCE(bt.troop_deployment_bonus, 0) * ucb.level), 0) as total_bonus
+        FROM user_civilization_buildings ucb
+        JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+        WHERE ucb.user_id = ? 
+          AND ucb.is_constructing = FALSE
+          AND COALESCE(bt.troop_deployment_bonus, 0) > 0
+    ");
+    $stmt->execute([$userId]);
+    $buildingBonus = (int)$stmt->fetchColumn();
+    
+    $baseLimit = CONQUEST_BASE_TROOP_DEPLOYMENT_LIMIT;
+    $totalLimit = $baseLimit + $buildingBonus;
+    
+    return [
+        'base_limit' => $baseLimit,
+        'building_bonus' => $buildingBonus,
+        'total_limit' => $totalLimit
+    ];
 }
 
 /**
@@ -995,6 +1029,16 @@ if ($action === 'attack_castle') {
         
         if (empty($attackerTroops)) {
             throw new Exception('攻撃部隊を選択してください');
+        }
+        
+        // 出撃兵士数上限チェック
+        $totalTroopCount = 0;
+        foreach ($attackerTroops as $troop) {
+            $totalTroopCount += $troop['count'];
+        }
+        $deploymentLimit = calculateConquestTroopDeploymentLimit($pdo, $me['id']);
+        if ($totalTroopCount > $deploymentLimit['total_limit']) {
+            throw new Exception('出撃兵士数の上限（' . $deploymentLimit['total_limit'] . '人）を超えています。司令部や軍事センターを建設すると上限が増加します。');
         }
         
         // 防御側のデータを取得

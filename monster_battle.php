@@ -660,6 +660,7 @@ let userTroops = [];
 let currentTab = 'wandering';
 let activeEncounter = null;
 let lastBattleTurnLogs = [];  // 最後のバトルログを保存
+let deploymentLimit = { base_limit: 100, building_bonus: 0, total_limit: 100 }; // 出撃上限
 
 // 初期データ読み込み
 async function loadData() {
@@ -682,6 +683,10 @@ async function loadUserTroops() {
         const data = await res.json();
         if (data.ok) {
             userTroops = data.user_troops || [];
+            // 出撃上限を保存
+            if (data.deployment_limit) {
+                deploymentLimit = data.deployment_limit;
+            }
         }
     } catch (e) {
         console.error(e);
@@ -993,7 +998,12 @@ function renderTroopSelector() {
         return '<p style="color: #888;">使用できる兵士がいません</p>';
     }
     
-    return userTroops.filter(t => t.count > 0).map(troop => `
+    return `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 6px;">
+            <div style="color: #da70d6; font-size: 12px;">出撃兵数: <span id="monster-troop-count" style="color: #32cd32;">0</span>/${deploymentLimit.total_limit}人</div>
+            <button type="button" onclick="selectMaxByStrongest('monster')" style="padding: 4px 10px; font-size: 11px; background: linear-gradient(135deg, #dc143c 0%, #ff6b6b 100%); color: #fff; border: none; border-radius: 4px; cursor: pointer;">💪 強い順に一括選択</button>
+        </div>
+    ` + userTroops.filter(t => t.count > 0).map(troop => `
         <div class="troop-select-row">
             <div class="troop-info">
                 <span class="troop-icon">${troop.icon}</span>
@@ -1003,7 +1013,9 @@ function renderTroopSelector() {
             <input type="range" class="troop-slider" 
                    id="attack-slider-${troop.troop_type_id}"
                    min="0" max="${troop.count}" value="0"
-                   data-troop-id="${troop.troop_type_id}">
+                   data-troop-id="${troop.troop_type_id}"
+                   data-attack="${troop.attack_power}"
+                   data-defense="${troop.defense_power}">
             <input type="number" class="troop-count-input" 
                    id="attack-count-${troop.troop_type_id}"
                    min="0" max="${troop.count}" value="0"
@@ -1013,14 +1025,82 @@ function renderTroopSelector() {
     `).join('');
 }
 
+// 強い順に一括選択
+function selectMaxByStrongest(type) {
+    const prefix = type === 'monster' ? 'attack' : 'boss';
+    const limit = type === 'boss' ? 1000 : deploymentLimit.total_limit; // ワールドボスは1000固定
+    
+    // まずすべてをリセット
+    document.querySelectorAll(`[id^="${prefix}-count-"]`).forEach(input => {
+        input.value = 0;
+        const troopId = input.dataset.troopId;
+        const slider = document.getElementById(`${prefix}-slider-${troopId}`);
+        if (slider) slider.value = 0;
+    });
+    
+    // 兵種を攻撃力+防御力/2でソート（強い順）
+    const sortedTroops = [...userTroops].filter(t => t.count > 0).sort((a, b) => {
+        const powerA = parseInt(a.attack_power) + Math.floor(parseInt(a.defense_power) / 2);
+        const powerB = parseInt(b.attack_power) + Math.floor(parseInt(b.defense_power) / 2);
+        return powerB - powerA;
+    });
+    
+    let remaining = limit;
+    
+    for (const troop of sortedTroops) {
+        if (remaining <= 0) break;
+        
+        const troopId = troop.troop_type_id;
+        const available = parseInt(troop.count);
+        const toSelect = Math.min(available, remaining);
+        
+        const input = document.getElementById(`${prefix}-count-${troopId}`);
+        const slider = document.getElementById(`${prefix}-slider-${troopId}`);
+        
+        if (input && slider) {
+            input.value = toSelect;
+            slider.value = toSelect;
+            remaining -= toSelect;
+        }
+    }
+    
+    updateMonsterTroopCount(type);
+}
+
+// 合計兵数を更新
+function updateMonsterTroopCount(type) {
+    const prefix = type === 'monster' ? 'attack' : 'boss';
+    const countId = type === 'monster' ? 'monster-troop-count' : 'boss-troop-count';
+    const limit = type === 'boss' ? 1000 : deploymentLimit.total_limit;
+    
+    let totalCount = 0;
+    document.querySelectorAll(`[id^="${prefix}-count-"]`).forEach(input => {
+        const count = parseInt(input.value) || 0;
+        totalCount += count;
+    });
+    
+    const countEl = document.getElementById(countId);
+    if (countEl) {
+        countEl.textContent = totalCount;
+        if (totalCount > limit) {
+            countEl.style.color = '#ff6b6b';
+        } else {
+            countEl.style.color = '#32cd32';
+        }
+    }
+}
+
 // スライダーのイベント設定
 function setupTroopSliders() {
     document.querySelectorAll('.troop-slider').forEach(slider => {
         const troopId = slider.dataset.troopId;
-        const countInput = document.getElementById(`attack-count-${troopId}`);
+        const isBoss = slider.id.startsWith('boss-');
+        const prefix = isBoss ? 'boss' : 'attack';
+        const countInput = document.getElementById(`${prefix}-count-${troopId}`);
         
         slider.addEventListener('input', () => {
             countInput.value = slider.value;
+            updateMonsterTroopCount(isBoss ? 'boss' : 'monster');
         });
         
         countInput.addEventListener('input', () => {
@@ -1029,6 +1109,7 @@ function setupTroopSliders() {
             value = Math.max(0, Math.min(max, value));
             countInput.value = value;
             slider.value = value;
+            updateMonsterTroopCount(isBoss ? 'boss' : 'monster');
         });
     });
 }
@@ -1253,7 +1334,15 @@ function renderBossTroopSelector() {
         return '<p style="color: #888;">使用できる兵士がいません</p>';
     }
     
-    return userTroops.filter(t => t.count > 0).map(troop => `
+    // ワールドボスは1000人固定
+    const bossLimit = 1000;
+    
+    return `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 6px;">
+            <div style="color: #ffd700; font-size: 12px;">出撃兵数: <span id="boss-troop-count" style="color: #32cd32;">0</span>/${bossLimit}人（固定）</div>
+            <button type="button" onclick="selectMaxByStrongest('boss')" style="padding: 4px 10px; font-size: 11px; background: linear-gradient(135deg, #dc143c 0%, #ff6b6b 100%); color: #fff; border: none; border-radius: 4px; cursor: pointer;">💪 強い順に一括選択</button>
+        </div>
+    ` + userTroops.filter(t => t.count > 0).map(troop => `
         <div class="troop-select-row">
             <div class="troop-info">
                 <span class="troop-icon">${troop.icon}</span>
@@ -1263,7 +1352,9 @@ function renderBossTroopSelector() {
             <input type="range" class="troop-slider" 
                    id="boss-slider-${troop.troop_type_id}"
                    min="0" max="${troop.count}" value="0"
-                   data-troop-id="${troop.troop_type_id}">
+                   data-troop-id="${troop.troop_type_id}"
+                   data-attack="${troop.attack_power}"
+                   data-defense="${troop.defense_power}">
             <input type="number" class="troop-count-input" 
                    id="boss-count-${troop.troop_type_id}"
                    min="0" max="${troop.count}" value="0"
@@ -1280,6 +1371,7 @@ function setupBossTroopSliders() {
         
         slider.addEventListener('input', () => {
             countInput.value = slider.value;
+            updateMonsterTroopCount('boss');
         });
         
         countInput.addEventListener('input', () => {
@@ -1288,6 +1380,7 @@ function setupBossTroopSliders() {
             value = Math.max(0, Math.min(max, value));
             countInput.value = value;
             slider.value = value;
+            updateMonsterTroopCount('boss');
         });
     });
 }
