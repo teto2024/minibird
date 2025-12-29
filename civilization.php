@@ -1188,6 +1188,7 @@ function renderApp() {
             <button class="tab-btn ${currentTab === 'alliance' ? 'active' : ''}" data-tab="alliance">🤝 同盟</button>
             <button class="tab-btn ${currentTab === 'war' ? 'active' : ''}" data-tab="war">⚔️ 戦争</button>
             <button class="tab-btn ${currentTab === 'conquest' ? 'active' : ''}" data-tab="conquest">🏰 占領戦</button>
+            <button class="tab-btn ${currentTab === 'monster' ? 'active' : ''}" data-tab="monster">🐉 モンスター</button>
             <button class="tab-btn ${currentTab === 'shop' ? 'active' : ''}" data-tab="shop">💠 VIPショップ</button>
         </div>
         
@@ -1270,6 +1271,37 @@ function renderApp() {
                 </div>
                 <a href="./conquest.php" class="invest-btn" style="display: inline-block; text-decoration: none; padding: 15px 30px; font-size: 18px; background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%);">
                     ⚔️ 占領戦に参加する
+                </a>
+            </div>
+        </div>
+        
+        <!-- モンスタータブ -->
+        <div class="tab-content ${currentTab === 'monster' ? 'active' : ''}" id="tab-monster">
+            <div class="war-section" style="background: linear-gradient(135deg, rgba(139, 0, 0, 0.5) 0%, rgba(75, 0, 130, 0.5) 100%); border-color: #dc143c;">
+                <h3 style="color: #ff6b6b;">🐉 モンスター討伐</h3>
+                <p style="color: #c0a080; margin-bottom: 20px;">
+                    放浪モンスターを倒してコイン、クリスタル、ダイヤモンド、資源、兵士を獲得しよう！<br>
+                    ワールドボスはみんなで協力して討伐する強敵です。ダメージランキング上位者には豪華報酬！
+                </p>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
+                    <div class="stat-box" style="background: rgba(0,0,0,0.3);">
+                        <div style="font-size: 32px;">🐺</div>
+                        <div style="color: #ffa500; font-size: 14px;">放浪モンスター</div>
+                        <div style="color: #888; font-size: 11px;">レベルに応じた敵</div>
+                    </div>
+                    <div class="stat-box" style="background: rgba(0,0,0,0.3);">
+                        <div style="font-size: 32px;">🐉</div>
+                        <div style="color: #dc143c; font-size: 14px;">ワールドボス</div>
+                        <div style="color: #888; font-size: 11px;">みんなで討伐</div>
+                    </div>
+                    <div class="stat-box" style="background: rgba(0,0,0,0.3);">
+                        <div style="font-size: 32px;">💎</div>
+                        <div style="color: #ffd700; font-size: 14px;">豪華報酬</div>
+                        <div style="color: #888; font-size: 11px;">コイン・資源・兵士</div>
+                    </div>
+                </div>
+                <a href="./monster_battle.php" class="invest-btn" style="display: inline-block; text-decoration: none; padding: 15px 30px; font-size: 18px; background: linear-gradient(135deg, #dc143c 0%, #ff6b6b 100%);">
+                    ⚔️ モンスター討伐に挑戦
                 </a>
             </div>
         </div>

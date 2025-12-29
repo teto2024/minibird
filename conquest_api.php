@@ -46,9 +46,11 @@ define('CONQUEST_DURABILITY_OUTER', 500);                // 外周城の耐久�
 define('CONQUEST_DURABILITY_MIDDLE', 1000);              // 中間城の耐久度
 define('CONQUEST_DURABILITY_INNER', 2000);               // 内周城の耐久度
 define('CONQUEST_DURABILITY_SACRED', 5000);              // 神城の耐久度
-define('CONQUEST_BASE_DURABILITY_DAMAGE', 10);           // 基本耐久度ダメージ
-define('CONQUEST_BOMBARDMENT_DURABILITY_DAMAGE', 5);     // 砲撃による耐久度ダメージ
+define('CONQUEST_BASE_DURABILITY_DAMAGE', 100);          // 基本耐久度ダメージ（砲撃基準値）
+define('CONQUEST_BOMBARDMENT_DURABILITY_DAMAGE', 100);   // 砲撃による耐久度ダメージ基準値
+define('CONQUEST_DURABILITY_DAMAGE_VARIANCE', 0.2);      // 砲撃ダメージの乱数変動幅（±20%）
 define('CONQUEST_SIEGE_DURABILITY_MULTIPLIER', 3.0);     // 攻城兵器の耐久度ダメージ倍率（デフォルト）
+define('CONQUEST_DEFENDER_BONUS', 1.2);                  // 占領戦防御側ボーナス（20%増加）
 define('CONQUEST_ANNOUNCEMENT_BOT_ID', 5);               // お知らせbot ユーザーID
 
 header('Content-Type: application/json');
@@ -457,6 +459,16 @@ function generateConquestMap($pdo, $seasonId) {
     $center = floor($size / 2);
     $maxDistance = $center; // 中心から端までの最大距離
     
+    // 地形タイプとその設定
+    $terrainTypes = [
+        'plains' => ['movement_cost' => 1, 'defense_bonus' => 1.00],
+        'forest' => ['movement_cost' => 2, 'defense_bonus' => 1.15],
+        'mountain' => ['movement_cost' => 3, 'defense_bonus' => 1.25],
+        'river' => ['movement_cost' => 2, 'defense_bonus' => 1.10],
+        'coastal' => ['movement_cost' => 1, 'defense_bonus' => 1.05],
+        'fortress' => ['movement_cost' => 2, 'defense_bonus' => 1.30]
+    ];
+    
     $castleData = [];
     $castleKeys = [];
     
@@ -471,6 +483,7 @@ function generateConquestMap($pdo, $seasonId) {
             $isSacred = false;
             $npcPower = CONQUEST_NPC_BASE_POWER;
             $icon = '🏰';
+            $terrainType = 'plains';
             
             if ($x == $center && $y == $center) {
                 // 中心は神城
@@ -478,21 +491,38 @@ function generateConquestMap($pdo, $seasonId) {
                 $isSacred = true;
                 $npcPower = CONQUEST_SACRED_NPC_POWER;
                 $icon = '⛩️';
+                $terrainType = 'fortress';
             } elseif ($distance == 1) {
                 // 内周（神城の周り）
                 $castleType = 'inner';
                 $npcPower = CONQUEST_NPC_BASE_POWER * CONQUEST_NPC_POWER_MULTIPLIER_INNER;
                 $icon = '🏯';
+                $terrainType = 'fortress';
             } elseif ($distance == $maxDistance) {
                 // 最外周（外周）- 城を持っていないプレイヤーが最初に攻撃できる
                 $castleType = 'outer';
                 $npcPower = CONQUEST_NPC_BASE_POWER;
                 $icon = '🏰';
+                // 外周は位置に応じて地形を割り当て
+                if ($x == 0) {
+                    $terrainType = 'plains';
+                } elseif ($x == $size - 1) {
+                    $terrainType = 'forest';
+                } elseif ($y == 0) {
+                    $terrainType = 'coastal';
+                } elseif ($y == $size - 1) {
+                    $terrainType = 'mountain';
+                } else {
+                    // コーナーはランダムに割り当て
+                    $outerTerrains = ['plains', 'forest', 'coastal', 'mountain'];
+                    $terrainType = $outerTerrains[($x + $y) % count($outerTerrains)];
+                }
             } else {
                 // 中間（内周と外周の間）
                 $castleType = 'middle';
                 $npcPower = CONQUEST_NPC_BASE_POWER * CONQUEST_NPC_POWER_MULTIPLIER_MIDDLE;
                 $icon = '🏰';
+                $terrainType = 'river';
             }
             
             $castleKey = "castle_{$x}_{$y}";
@@ -511,6 +541,9 @@ function generateConquestMap($pdo, $seasonId) {
             // 耐久度を取得
             $durability = getCastleMaxDurability($castleType);
             
+            // 地形設定を取得
+            $terrainSettings = $terrainTypes[$terrainType];
+            
             $castleData[] = [
                 'key' => $castleKey,
                 'name' => $name,
@@ -521,15 +554,18 @@ function generateConquestMap($pdo, $seasonId) {
                 'npc_power' => $npcPower,
                 'icon' => $icon,
                 'durability' => $durability,
-                'max_durability' => $durability
+                'max_durability' => $durability,
+                'terrain_type' => $terrainType,
+                'movement_cost' => $terrainSettings['movement_cost'],
+                'terrain_defense_bonus' => $terrainSettings['defense_bonus']
             ];
         }
     }
     
-    // 城を挿入（耐久度カラムを含む - conquest_durability_schema.sql の適用が必要）
+    // 城を挿入（地形情報を含む）
     $stmt = $pdo->prepare("
-        INSERT INTO conquest_castles (season_id, castle_key, name, position_x, position_y, castle_type, is_sacred, npc_defense_power, icon, durability, max_durability)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO conquest_castles (season_id, castle_key, name, position_x, position_y, castle_type, is_sacred, npc_defense_power, icon, durability, max_durability, terrain_type, movement_cost, terrain_defense_bonus)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     
     foreach ($castleData as $castle) {
@@ -544,7 +580,10 @@ function generateConquestMap($pdo, $seasonId) {
             $castle['npc_power'],
             $castle['icon'],
             $castle['durability'],
-            $castle['max_durability']
+            $castle['max_durability'],
+            $castle['terrain_type'],
+            $castle['movement_cost'],
+            $castle['terrain_defense_bonus']
         ]);
     }
     
@@ -996,6 +1035,10 @@ if ($action === 'attack_castle') {
             // 防御側に地形バフを適用
             $defenderUnit['armor'] = (int)floor($defenderUnit['armor'] * $defenderTerrainBuff * $terrainDefenseBonus);
         }
+        
+        // 占領戦で防御側に有利なボーナスを適用（20%増加）
+        $defenderUnit['armor'] = (int)floor($defenderUnit['armor'] * CONQUEST_DEFENDER_BONUS);
+        $defenderUnit['attack'] = (int)floor($defenderUnit['attack'] * CONQUEST_DEFENDER_BONUS);
         
         // ターン制バトルを実行
         $battleResult = executeTurnBattle($attackerUnit, $defenderUnit);
@@ -1611,8 +1654,11 @@ function processBombardment($pdo, $castleId, $seasonId) {
     $logMessages = ["💥 砲撃発生！ ({$castle['name']})"];
     
     if (empty($defenseTroops)) {
-        // 防御部隊がない場合は耐久度を削る
-        $durabilityDamage = CONQUEST_BOMBARDMENT_DURABILITY_DAMAGE;
+        // 防御部隊がない場合は耐久度を削る（乱数変動を適用）
+        $varianceRange = CONQUEST_DURABILITY_DAMAGE_VARIANCE;
+        $randomVariance = 1 + (mt_rand(-100, 100) / 100) * $varianceRange;
+        $durabilityDamage = (int)floor(CONQUEST_BOMBARDMENT_DURABILITY_DAMAGE * $randomVariance);
+        $durabilityDamage = max(1, $durabilityDamage); // 最低1ダメージ
         $newDurability = max(0, $currentDurability - $durabilityDamage);
         $logMessages[] = "🏰 城壁へのダメージ: {$durabilityDamage}（残り耐久度: {$newDurability}/{$maxDurability}）";
         
