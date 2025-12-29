@@ -345,15 +345,17 @@ function processDamageOverTime($unit) {
  * ターン制バトルを実行
  * @param array $attacker 攻撃側ユニット
  * @param array $defender 防御側ユニット
+ * @param int|null $maxTurns 最大ターン数（nullの場合はBATTLE_MAX_TURNSを使用）
  * @return array バトル結果
  */
-function executeTurnBattle($attacker, $defender) {
+function executeTurnBattle($attacker, $defender, $maxTurns = null) {
     $turnLogs = [];
     $currentTurn = 0;
     $battleSummary = [];
+    $maxTurnsLimit = $maxTurns ?? BATTLE_MAX_TURNS;
     
     // バトルループ
-    while ($attacker['current_health'] > 0 && $defender['current_health'] > 0 && $currentTurn < BATTLE_MAX_TURNS) {
+    while ($attacker['current_health'] > 0 && $defender['current_health'] > 0 && $currentTurn < $maxTurnsLimit) {
         $currentTurn++;
         $turnMessages = [];
         $turnMessages[] = "===== ターン {$currentTurn} =====";
@@ -581,7 +583,7 @@ function executeTurnBattle($attacker, $defender) {
     }
     
     // 最大ターン数に達した場合
-    if ($currentTurn >= BATTLE_MAX_TURNS) {
+    if ($currentTurn >= $maxTurnsLimit) {
         // HPが多い方が勝ち
         if ($attacker['current_health'] > $defender['current_health']) {
             $battleSummary[] = "⏰ 時間切れ！攻撃側の勝利！（残りHP: {$attacker['current_health']} vs {$defender['current_health']}）";

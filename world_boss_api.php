@@ -14,12 +14,14 @@ define('WORLD_BOSS_SUMMON_COOLDOWN_SECONDS', 3600); // 召喚クールダウン�
 define('WORLD_BOSS_DAMAGE_VARIANCE', 0.2);          // ダメージの乱数幅（±20%）
 define('WORLD_BOSS_WOUNDED_RATE', 0.3);             // 負傷兵発生率（30%）
 define('WORLD_BOSS_DEATH_RATE', 0.1);               // 戦死率（10%）
-define('WORLD_BOSS_MAX_PARTICIPANTS_REWARD', 100);  // 報酬対象の最大人数
+define('WORLD_BOSS_MAX_PARTICIPANTS_REWARD', 1000); // 報酬対象の最大人数
 define('WORLD_BOSS_DEFENSE_DIVISOR', 200);          // 防御力によるダメージ軽減計算用除数
 define('WORLD_BOSS_MAX_DEFENSE_REDUCTION', 0.75);   // 防御による最大ダメージ軽減率（75%）
 define('WORLD_BOSS_CRITICAL_CHANCE', 10);           // クリティカル率（%）
 define('WORLD_BOSS_CRITICAL_MULTIPLIER', 1.5);      // クリティカルダメージ倍率
 define('WORLD_BOSS_ANNOUNCEMENT_BOT_ID', 5);        // お知らせbot ユーザーID
+define('WORLD_BOSS_MAX_BATTLE_TURNS', 10);          // ワールドボス戦の最大ターン数
+define('WORLD_BOSS_MAX_TROOP_DEPLOYMENT', 1000);    // ワールドボス戦での出撃兵士数上限
 
 header('Content-Type: application/json');
 
@@ -507,6 +509,7 @@ if ($action === 'attack_boss') {
         
         // 攻撃部隊を検証
         $attackerTroops = [];
+        $totalTroopCount = 0;
         foreach ($troops as $troop) {
             $troopTypeId = (int)$troop['troop_type_id'];
             $count = (int)$troop['count'];
@@ -529,10 +532,16 @@ if ($action === 'attack_boss') {
                 'troop_type_id' => $troopTypeId,
                 'count' => $count
             ];
+            $totalTroopCount += $count;
         }
         
         if (empty($attackerTroops)) {
             throw new Exception('攻撃部隊を選択してください');
+        }
+        
+        // 出撃兵士数上限チェック
+        if ($totalTroopCount > WORLD_BOSS_MAX_TROOP_DEPLOYMENT) {
+            throw new Exception('出撃兵士数の上限は' . WORLD_BOSS_MAX_TROOP_DEPLOYMENT . '人です');
         }
         
         // 装備バフを取得
@@ -581,8 +590,8 @@ if ($action === 'attack_boss') {
             'extra_attacks' => 0
         ];
         
-        // ターン制バトルを実行
-        $battleResult = executeTurnBattle($attackerUnit, $bossUnit);
+        // ターン制バトルを実行（ワールドボス戦は10ターン制限）
+        $battleResult = executeTurnBattle($attackerUnit, $bossUnit, WORLD_BOSS_MAX_BATTLE_TURNS);
         
         // ダメージを計算（ボスのHP減少量）
         $damage = max(0, (int)$instance['current_health'] - $battleResult['defender_final_hp']);
