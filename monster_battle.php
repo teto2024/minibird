@@ -784,7 +784,7 @@ function renderMonsterList(monsters, userLevel) {
                 </div>
             </div>
             <div style="margin-top: 10px; text-align: center; font-size: 11px; color: #888;">
-                💰 ${m.reward_coins_min}~${m.reward_coins_max} 💎 ${m.reward_diamonds_min}~${m.reward_diamonds_max}
+                💰 ${m.reward_coins_min}~${m.reward_coins_max} 💠 ${m.reward_diamonds_min}~${m.reward_diamonds_max}
             </div>
         </div>
     `).join('');
@@ -895,7 +895,7 @@ function renderBossList(bosses, userLevel) {
                 </div>
                 <div style="margin-top: 10px; text-align: center;">
                     <button class="action-btn summon-btn" ${canSummon ? '' : 'disabled'}>
-                        💎 ${b.summon_cost_diamonds} で召喚
+                        💠 ${b.summon_cost_diamonds} で召喚
                     </button>
                 </div>
             </div>
