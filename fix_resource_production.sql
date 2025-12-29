@@ -110,16 +110,16 @@ WHERE building_key = 'electronics_factory';
 -- 修正内容の確認
 -- ===============================================
 SELECT 
-    building_key,
-    name,
-    icon,
-    category,
+    bt.building_key,
+    bt.name,
+    bt.icon,
+    bt.category,
     rt.name as produces_resource,
-    production_rate,
-    unlock_era_id
+    bt.production_rate,
+    bt.unlock_era_id
 FROM civilization_building_types bt
 LEFT JOIN civilization_resource_types rt ON bt.produces_resource_id = rt.id
-WHERE building_key IN (
+WHERE bt.building_key IN (
     'herb_garden', 
     'glassworks', 
     'weaving_mill', 
@@ -129,7 +129,7 @@ WHERE building_key IN (
     'gunpowder_factory',
     'electronics_factory'
 )
-ORDER BY unlock_era_id, building_key;
+ORDER BY bt.unlock_era_id, bt.building_key;
 
 -- 修正完了メッセージ
 SELECT '資源生産の修正が完了しました。薬草、ガラス、その他の特殊資源が正常に生産されるようになります。' AS status;
