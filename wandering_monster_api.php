@@ -32,11 +32,11 @@ $action = $input['action'] ?? '';
  * ユーザーのレベルを取得（経験値ベースまたはユーザーテーブルから）
  */
 function getUserLevel($pdo, $userId) {
-    // まずusersテーブルのlevelを確認
-    $stmt = $pdo->prepare("SELECT COALESCE(level, 1) as level FROM users WHERE id = ?");
+    // usersテーブルのuser_levelを確認
+    $stmt = $pdo->prepare("SELECT COALESCE(user_level, 1) as user_level FROM users WHERE id = ?");
     $stmt->execute([$userId]);
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    return $result ? (int)$result['level'] : 1;
+    return $result ? (int)$result['user_level'] : 1;
 }
 
 /**
