@@ -739,3 +739,87 @@ function generateBattleSummary($battleResult) {
     
     return implode("\n", $summary);
 }
+
+/**
+ * バトルログをデータベースに保存（放浪モンスター用）
+ * @param PDO $pdo
+ * @param int $battleLogId wandering_monster_battle_logs.id
+ * @param array $turnLogs ターンログ配列
+ */
+function saveWanderingMonsterBattleTurnLogs($pdo, $battleLogId, $turnLogs) {
+    $stmt = $pdo->prepare("
+        INSERT INTO wandering_monster_turn_logs 
+        (battle_log_id, turn_number, actor_side, action_type, 
+         attacker_hp_before, attacker_hp_after, defender_hp_before, defender_hp_after,
+         log_message, status_effects)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+    
+    $prevAttackerHp = null;
+    $prevDefenderHp = null;
+    
+    foreach ($turnLogs as $log) {
+        $attackerHpBefore = $prevAttackerHp ?? $log['attacker_hp'];
+        $defenderHpBefore = $prevDefenderHp ?? $log['defender_hp'];
+        
+        $stmt->execute([
+            $battleLogId,
+            $log['turn'],
+            $log['actor'] === 'both' ? 'attacker' : $log['actor'],
+            $log['action'],
+            $attackerHpBefore,
+            $log['attacker_hp'],
+            $defenderHpBefore,
+            $log['defender_hp'],
+            implode("\n", $log['messages']),
+            json_encode($log['status_effects'] ?? [])
+        ]);
+        
+        $prevAttackerHp = $log['attacker_hp'];
+        $prevDefenderHp = $log['defender_hp'];
+    }
+}
+
+/**
+ * バトルログをデータベースに保存（ワールドボス用）
+ * @param PDO $pdo
+ * @param int $instanceId world_boss_instances.id
+ * @param int $userId ユーザーID
+ * @param int $attackNumber 攻撃回数（このユーザーの何回目の攻撃か）
+ * @param array $turnLogs ターンログ配列
+ */
+function saveWorldBossBattleTurnLogs($pdo, $instanceId, $userId, $attackNumber, $turnLogs) {
+    $stmt = $pdo->prepare("
+        INSERT INTO world_boss_turn_logs 
+        (instance_id, user_id, attack_number, turn_number, actor_side, action_type, 
+         attacker_hp_before, attacker_hp_after, defender_hp_before, defender_hp_after,
+         log_message, status_effects)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+    
+    $prevAttackerHp = null;
+    $prevDefenderHp = null;
+    
+    foreach ($turnLogs as $log) {
+        $attackerHpBefore = $prevAttackerHp ?? $log['attacker_hp'];
+        $defenderHpBefore = $prevDefenderHp ?? $log['defender_hp'];
+        
+        $stmt->execute([
+            $instanceId,
+            $userId,
+            $attackNumber,
+            $log['turn'],
+            $log['actor'] === 'both' ? 'attacker' : $log['actor'],
+            $log['action'],
+            $attackerHpBefore,
+            $log['attacker_hp'],
+            $defenderHpBefore,
+            $log['defender_hp'],
+            implode("\n", $log['messages']),
+            json_encode($log['status_effects'] ?? [])
+        ]);
+        
+        $prevAttackerHp = $log['attacker_hp'];
+        $prevDefenderHp = $log['defender_hp'];
+    }
+}

@@ -2521,8 +2521,11 @@ async function loadTroops() {
                                 ${costText}
                             </div>
                             ${prereqText}
-                            <div style="display: flex; gap: 8px; align-items: center;">
-                                <input type="number" id="troop-count-${t.id}" value="1" min="1" max="100" style="width: 60px; padding: 8px; background: rgba(0,0,0,0.3); border: 1px solid #8b4513; border-radius: 4px; color: #f5deb3;" ${!canTrain ? 'disabled' : ''}>
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                <input type="range" class="troop-select-slider" id="train-slider-${t.id}" min="1" max="100" value="1" 
+                                       oninput="document.getElementById('troop-count-${t.id}').value = this.value" ${!canTrain ? 'disabled' : ''}>
+                                <input type="number" id="troop-count-${t.id}" value="1" min="1" max="100" style="width: 60px; padding: 8px; background: rgba(0,0,0,0.3); border: 1px solid #8b4513; border-radius: 4px; color: #f5deb3;" 
+                                       oninput="document.getElementById('train-slider-${t.id}').value = Math.min(100, Math.max(1, this.value))" ${!canTrain ? 'disabled' : ''}>
                                 <button class="attack-btn" onclick="trainTroops(${t.id})" style="background: linear-gradient(135deg, #8b4513 0%, #d4a574 100%); flex: 1;" ${!canTrain ? 'disabled' : ''}>
                                     ${!canTrain ? '🔒 ロック中' : '訓練する'}
                                 </button>
@@ -2675,14 +2678,19 @@ async function loadWoundedTroops() {
                         <div style="color: #888; font-size: 11px; margin-top: 5px;">💡 病院を建設するとキュー数が増えます（容量: ${data.hospital_capacity}床）</div>
                     </div>
                     ${data.wounded_troops.map(w => `
-                        <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 8px;">
-                            <div>
-                                <span>${w.icon} ${w.name} ×${w.count}</span>
-                                <span style="color: #888; font-size: 11px; margin-left: 10px;">治療: ${w.heal_time_seconds}秒/体 🪙${w.heal_cost_coins}/体</span>
+                        <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 8px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                <div>
+                                    <span>${w.icon} ${w.name} ×${w.count}</span>
+                                    <span style="color: #888; font-size: 11px; margin-left: 10px;">治療: ${w.heal_time_seconds}秒/体 🪙${w.heal_cost_coins}/体</span>
+                                </div>
                             </div>
-                            <div style="display: flex; gap: 5px; align-items: center;">
-                                <input type="number" id="heal-count-${w.troop_type_id}" value="1" min="1" max="${w.count}" style="width: 50px; padding: 5px; background: rgba(0,0,0,0.3); border: 1px solid #dc143c; border-radius: 4px; color: #f5deb3;">
-                                <button class="quick-invest-btn" onclick="healTroops(${w.troop_type_id})" style="background: linear-gradient(135deg, #32cd32 0%, #228b22 100%); color: #fff;">🏥 治療</button>
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                <input type="range" class="troop-select-slider" id="heal-slider-${w.troop_type_id}" min="1" max="${w.count}" value="1" 
+                                       style="background: #dc143c;" oninput="document.getElementById('heal-count-${w.troop_type_id}').value = this.value">
+                                <input type="number" id="heal-count-${w.troop_type_id}" value="1" min="1" max="${w.count}" style="width: 50px; padding: 5px; background: rgba(0,0,0,0.3); border: 1px solid #dc143c; border-radius: 4px; color: #f5deb3;"
+                                       oninput="document.getElementById('heal-slider-${w.troop_type_id}').value = Math.min(${w.count}, Math.max(1, this.value))">
+                                <button class="quick-invest-btn" onclick="healTroops(${w.troop_type_id})" style="background: linear-gradient(135deg, #32cd32 0%, #228b22 100%); color: #fff; flex: 1;">🏥 治療</button>
                             </div>
                         </div>
                     `).join('')}

@@ -467,11 +467,12 @@ if ($action === 'attack_boss') {
         
         // クールダウンチェック
         $stmt = $pdo->prepare("
-            SELECT last_attack_at FROM world_boss_damage_logs 
+            SELECT last_attack_at, attack_count FROM world_boss_damage_logs 
             WHERE instance_id = ? AND user_id = ?
         ");
         $stmt->execute([$instanceId, $me['id']]);
         $lastAttack = $stmt->fetch(PDO::FETCH_ASSOC);
+        $currentAttackCount = $lastAttack ? (int)$lastAttack['attack_count'] + 1 : 1;
         
         if ($lastAttack) {
             $lastAttackTime = strtotime($lastAttack['last_attack_at']);
@@ -531,28 +532,41 @@ if ($action === 'attack_boss') {
         // バトルユニットを準備
         $attackerUnit = prepareBattleUnit($attackerTroops, $equipmentBuffs, $pdo);
         
-        // ワールドボスへのダメージ計算（乱数変動あり）
-        $baseDamage = $attackerUnit['attack'];
-        $bossDefense = (int)$instance['base_defense'];
+        // ワールドボスユニットを準備（現在のHPを使用）
+        $bossUnit = [
+            'attack' => (int)$instance['base_attack'],
+            'armor' => (int)$instance['base_defense'],
+            'max_health' => (int)$instance['max_health'],
+            'current_health' => (int)$instance['current_health'],
+            'troops' => [
+                [
+                    'troop_type_id' => 0,
+                    'name' => $instance['boss_name'],
+                    'icon' => $instance['boss_icon'],
+                    'count' => 1,
+                    'attack' => (int)$instance['base_attack'],
+                    'defense' => (int)$instance['base_defense'],
+                    'health' => (int)$instance['current_health'],
+                    'category' => 'boss'
+                ]
+            ],
+            'skills' => [],
+            'equipment_buffs' => ['attack' => 0, 'armor' => 0, 'health' => 0],
+            'active_effects' => [],
+            'is_frozen' => false,
+            'is_stunned' => false,
+            'extra_attacks' => 0
+        ];
         
-        // 防御によるダメージ軽減
-        $defenseReduction = min(WORLD_BOSS_MAX_DEFENSE_REDUCTION, $bossDefense / WORLD_BOSS_DEFENSE_DIVISOR);
-        $damage = (int)floor($baseDamage * (1 - $defenseReduction));
+        // ターン制バトルを実行
+        $battleResult = executeTurnBattle($attackerUnit, $bossUnit);
         
-        // 乱数変動を適用
-        $variance = 1 + (mt_rand(-100, 100) / 100) * WORLD_BOSS_DAMAGE_VARIANCE;
-        $damage = (int)floor($damage * $variance);
-        
-        // クリティカル判定
-        $isCritical = mt_rand(1, 100) <= WORLD_BOSS_CRITICAL_CHANCE;
-        if ($isCritical) {
-            $damage = (int)floor($damage * WORLD_BOSS_CRITICAL_MULTIPLIER);
-        }
-        
-        $damage = max(1, $damage);
+        // ダメージを計算（ボスのHP減少量）
+        $damage = max(0, (int)$instance['current_health'] - $battleResult['defender_final_hp']);
+        $isCritical = false; // ターンベースなのでクリティカルは各ターンで判定済み
         
         // ボスのHPを減少
-        $newHealth = max(0, $instance['current_health'] - $damage);
+        $newHealth = max(0, $battleResult['defender_final_hp']);
         $stmt = $pdo->prepare("UPDATE world_boss_instances SET current_health = ? WHERE id = ?");
         $stmt->execute([$newHealth, $instanceId]);
         
@@ -569,6 +583,11 @@ if ($action === 'attack_boss') {
         ");
         $stmt->execute([$instanceId, $me['id'], $damage]);
         
+        // 詳細なバトルターンログを保存
+        if (!empty($battleResult['turn_logs'])) {
+            saveWorldBossBattleTurnLogs($pdo, $instanceId, $me['id'], $currentAttackCount, $battleResult['turn_logs']);
+        }
+        
         // 討伐完了時の処理
         if ($isDefeated) {
             $stmt = $pdo->prepare("
@@ -584,10 +603,9 @@ if ($action === 'attack_boss') {
         
         $pdo->commit();
         
-        $critText = $isCritical ? 'クリティカル！' : '';
         $message = $isDefeated 
             ? "{$instance['boss_icon']} {$instance['boss_name']}を討伐しました！報酬が配布されます！"
-            : "{$critText}{$instance['boss_icon']} {$instance['boss_name']}に{$damage}ダメージ！";
+            : "{$instance['boss_icon']} {$instance['boss_name']}に{$damage}ダメージ！";
         
         echo json_encode([
             'ok' => true,
@@ -598,7 +616,15 @@ if ($action === 'attack_boss') {
             'is_defeated' => $isDefeated,
             'boss_remaining_health' => $newHealth,
             'boss_max_health' => $instance['max_health'],
-            'health_percentage' => $instance['max_health'] > 0 ? round($newHealth / $instance['max_health'] * 100, 2) : 0
+            'health_percentage' => $instance['max_health'] > 0 ? round($newHealth / $instance['max_health'] * 100, 2) : 0,
+            'battle_result' => [
+                'total_turns' => $battleResult['total_turns'],
+                'attacker_final_hp' => $battleResult['attacker_final_hp'],
+                'defender_final_hp' => $battleResult['defender_final_hp'],
+                'attacker_max_hp' => $battleResult['attacker_max_hp'],
+                'defender_max_hp' => $battleResult['defender_max_hp']
+            ],
+            'turn_logs' => $battleResult['turn_logs'] ?? []
         ]);
     } catch (Exception $e) {
         $pdo->rollBack();
@@ -627,6 +653,62 @@ if ($action === 'get_my_rewards') {
         echo json_encode([
             'ok' => true,
             'rewards' => $rewards
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 自分のバトルログ詳細を取得（ワールドボス用）
+// ===============================================
+if ($action === 'get_battle_logs') {
+    $instanceId = (int)($input['instance_id'] ?? 0);
+    
+    if ($instanceId <= 0) {
+        echo json_encode(['ok' => false, 'error' => 'インスタンスIDが不正です']);
+        exit;
+    }
+    
+    try {
+        // インスタンス情報を取得
+        $stmt = $pdo->prepare("
+            SELECT wbi.*, wb.name as boss_name, wb.icon as boss_icon
+            FROM world_boss_instances wbi
+            JOIN world_bosses wb ON wbi.boss_id = wb.id
+            WHERE wbi.id = ?
+        ");
+        $stmt->execute([$instanceId]);
+        $instance = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$instance) {
+            throw new Exception('ボスインスタンスが見つかりません');
+        }
+        
+        // 自分の全バトルターンログを取得
+        $stmt = $pdo->prepare("
+            SELECT * FROM world_boss_turn_logs
+            WHERE instance_id = ? AND user_id = ?
+            ORDER BY attack_number ASC, turn_number ASC
+        ");
+        $stmt->execute([$instanceId, $me['id']]);
+        $turnLogs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 攻撃回数ごとにグループ化
+        $attackLogs = [];
+        foreach ($turnLogs as $log) {
+            $attackNum = $log['attack_number'];
+            if (!isset($attackLogs[$attackNum])) {
+                $attackLogs[$attackNum] = [];
+            }
+            $attackLogs[$attackNum][] = $log;
+        }
+        
+        echo json_encode([
+            'ok' => true,
+            'instance' => $instance,
+            'attack_logs' => $attackLogs
         ]);
     } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
