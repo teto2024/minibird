@@ -890,6 +890,7 @@ let civData = null;
 let currentTab = 'buildings'; // 現在のアクティブタブを保持
 let selectedAttackTarget = null; // 攻撃対象のユーザーID
 let userTroops = []; // ユーザーの兵士データ
+let deploymentLimit = { base_limit: 100, building_bonus: 0, total_limit: 100 }; // 出撃上限
 
 // 攻撃モーダルを開く
 function openAttackModal(targetUserId, targetCivName, targetPower) {
@@ -932,7 +933,17 @@ async function loadAttackTroops() {
         if (data.ok && data.user_troops && data.user_troops.filter(t => t.count > 0).length > 0) {
             userTroops = data.user_troops.filter(t => t.count > 0);
             
-            container.innerHTML = userTroops.map(troop => `
+            // 出撃上限を保存
+            if (data.deployment_limit) {
+                deploymentLimit = data.deployment_limit;
+            }
+            
+            container.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div style="color: #ffd700; font-size: 12px;">出撃上限: <span id="attackTroopCount">0</span>/${deploymentLimit.total_limit}人</div>
+                    <button type="button" class="quick-invest-btn" style="font-size: 11px;" onclick="selectMaxByStrongest()">💪 強い順に一括選択</button>
+                </div>
+            ` + userTroops.map(troop => `
                 <div class="troop-select-row">
                     <div class="troop-select-info">
                         <span class="troop-select-icon">${troop.icon}</span>
@@ -964,6 +975,45 @@ async function loadAttackTroops() {
     }
 }
 
+// 強い順に一括選択
+function selectMaxByStrongest() {
+    // まずすべてをリセット
+    document.querySelectorAll('[id^="attack-count-"]').forEach(input => {
+        input.value = 0;
+        const troopId = input.dataset.troopId;
+        const slider = document.getElementById(`attack-slider-${troopId}`);
+        if (slider) slider.value = 0;
+    });
+    
+    // 兵種を攻撃力+防御力/2でソート（強い順）
+    const sortedTroops = [...userTroops].sort((a, b) => {
+        const powerA = parseInt(a.attack_power) + Math.floor(parseInt(a.defense_power) / 2);
+        const powerB = parseInt(b.attack_power) + Math.floor(parseInt(b.defense_power) / 2);
+        return powerB - powerA;
+    });
+    
+    let remaining = deploymentLimit.total_limit;
+    
+    for (const troop of sortedTroops) {
+        if (remaining <= 0) break;
+        
+        const troopId = troop.troop_type_id;
+        const available = parseInt(troop.count);
+        const toSelect = Math.min(available, remaining);
+        
+        const input = document.getElementById(`attack-count-${troopId}`);
+        const slider = document.getElementById(`attack-slider-${troopId}`);
+        
+        if (input && slider) {
+            input.value = toSelect;
+            slider.value = toSelect;
+            remaining -= toSelect;
+        }
+    }
+    
+    updateAttackPowerDisplay();
+}
+
 // スライダーと数値入力を同期
 function syncAttackTroopInput(troopId, value) {
     const countInput = document.getElementById(`attack-count-${troopId}`);
@@ -988,11 +1038,13 @@ function syncAttackTroopSlider(troopId, value) {
 // 攻撃パワーを計算・表示
 function updateAttackPowerDisplay() {
     let totalPower = 0;
+    let totalTroops = 0;
     
     document.querySelectorAll('[id^="attack-count-"]').forEach(input => {
         const count = parseInt(input.value) || 0;
         const troopId = input.dataset.troopId;
         if (count > 0 && troopId) {
+            totalTroops += count;
             const slider = document.getElementById(`attack-slider-${troopId}`);
             if (slider) {
                 const attack = parseInt(slider.dataset.attack) || 0;
@@ -1003,7 +1055,22 @@ function updateAttackPowerDisplay() {
     });
     
     document.getElementById('attackPowerDisplay').textContent = totalPower;
-    document.getElementById('confirmAttackBtn').disabled = totalPower === 0;
+    
+    // 合計兵数を更新
+    const troopCountEl = document.getElementById('attackTroopCount');
+    if (troopCountEl) {
+        troopCountEl.textContent = totalTroops;
+        // 上限超えの場合は赤くする
+        if (totalTroops > deploymentLimit.total_limit) {
+            troopCountEl.style.color = '#ff6b6b';
+        } else {
+            troopCountEl.style.color = '#32cd32';
+        }
+    }
+    
+    // 出撃ボタンの有効/無効
+    const overLimit = totalTroops > deploymentLimit.total_limit;
+    document.getElementById('confirmAttackBtn').disabled = totalPower === 0 || overLimit;
 }
 
 // 攻撃を実行

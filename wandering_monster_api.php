@@ -16,6 +16,9 @@ define('MONSTER_CRITICAL_MULTIPLIER', 1.5);         // クリティカルダメ�
 define('MONSTER_DEATH_RATE', 0.1);                  // 戦死率（10%）
 define('MONSTER_WOUNDED_RATE', 0.3);                // 負傷兵発生率（30%）
 
+// 出撃兵士数上限システム定数
+define('MONSTER_BASE_TROOP_DEPLOYMENT_LIMIT', 100); // 基本出撃兵士数上限
+
 header('Content-Type: application/json');
 
 $me = user();
@@ -37,6 +40,36 @@ function getUserLevel($pdo, $userId) {
     $stmt->execute([$userId]);
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
     return $result ? (int)$result['user_level'] : 1;
+}
+
+/**
+ * 出撃兵士数上限を計算するヘルパー関数
+ * 
+ * @param PDO $pdo データベース接続
+ * @param int $userId ユーザーID
+ * @return array ['base_limit' => int, 'building_bonus' => int, 'total_limit' => int]
+ */
+function calculateMonsterTroopDeploymentLimit($pdo, $userId) {
+    // 軍事建物からの出撃上限ボーナスを取得
+    $stmt = $pdo->prepare("
+        SELECT COALESCE(SUM(COALESCE(bt.troop_deployment_bonus, 0) * ucb.level), 0) as total_bonus
+        FROM user_civilization_buildings ucb
+        JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+        WHERE ucb.user_id = ? 
+          AND ucb.is_constructing = FALSE
+          AND COALESCE(bt.troop_deployment_bonus, 0) > 0
+    ");
+    $stmt->execute([$userId]);
+    $buildingBonus = (int)$stmt->fetchColumn();
+    
+    $baseLimit = MONSTER_BASE_TROOP_DEPLOYMENT_LIMIT;
+    $totalLimit = $baseLimit + $buildingBonus;
+    
+    return [
+        'base_limit' => $baseLimit,
+        'building_bonus' => $buildingBonus,
+        'total_limit' => $totalLimit
+    ];
 }
 
 /**
@@ -334,6 +367,16 @@ if ($action === 'attack_monster') {
         
         if (empty($attackerTroops)) {
             throw new Exception('攻撃部隊を選択してください');
+        }
+        
+        // 出撃兵士数上限チェック
+        $totalTroopCount = 0;
+        foreach ($attackerTroops as $troop) {
+            $totalTroopCount += $troop['count'];
+        }
+        $deploymentLimit = calculateMonsterTroopDeploymentLimit($pdo, $me['id']);
+        if ($totalTroopCount > $deploymentLimit['total_limit']) {
+            throw new Exception('出撃兵士数の上限（' . $deploymentLimit['total_limit'] . '人）を超えています。司令部や軍事センターを建設すると上限が増加します。');
         }
         
         // 装備バフを取得
