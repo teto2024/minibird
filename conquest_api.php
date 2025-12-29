@@ -691,6 +691,22 @@ if ($action === 'get_castle') {
         // 防御パワーを計算
         $defense = calculateCastleDefensePower($pdo, $castle);
         
+        // ユーザーの総軍事力を取得（戦力比較用）
+        $myEquipmentBuffs = getConquestUserEquipmentBuffs($pdo, $me['id']);
+        $myEquipmentPower = calculateEquipmentPower($myEquipmentBuffs);
+        
+        // ユーザーの兵士合計パワーを計算
+        $stmt = $pdo->prepare("
+            SELECT COALESCE(SUM((tt.attack_power + FLOOR(tt.defense_power / 2) + FLOOR(COALESCE(tt.health_points, 100) / 50)) * uct.count), 0) as troop_power
+            FROM user_civilization_troops uct
+            JOIN civilization_troop_types tt ON uct.troop_type_id = tt.id
+            WHERE uct.user_id = ?
+        ");
+        $stmt->execute([$me['id']]);
+        $myTroopPower = (int)$stmt->fetchColumn();
+        
+        $myTotalPower = $myTroopPower + $myEquipmentPower;
+        
         // 隣接城を取得
         $stmt = $pdo->prepare("
             SELECT cc.id, cc.name, cc.icon, cc.owner_user_id, uc.civilization_name
@@ -733,6 +749,9 @@ if ($action === 'get_castle') {
             'ok' => true,
             'castle' => $castle,
             'defense' => $defense,
+            'my_power' => $myTotalPower,
+            'my_troop_power' => $myTroopPower,
+            'my_equipment_power' => $myEquipmentPower,
             'adjacent_castles' => $adjacentCastles,
             'recent_battles' => $recentBattles,
             'bombardment_status' => $bombardmentStatus

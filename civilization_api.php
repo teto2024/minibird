@@ -1150,6 +1150,17 @@ if ($action === 'attack') {
 // 攻撃可能なプレイヤー一覧
 if ($action === 'get_targets') {
     try {
+        // 同盟相手のIDリストを取得
+        $stmt = $pdo->prepare("
+            SELECT 
+                CASE WHEN requester_user_id = ? THEN target_user_id ELSE requester_user_id END as ally_user_id
+            FROM civilization_alliances 
+            WHERE status = 'accepted' AND is_active = TRUE
+              AND (requester_user_id = ? OR target_user_id = ?)
+        ");
+        $stmt->execute([$me['id'], $me['id'], $me['id']]);
+        $allyIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
         $stmt = $pdo->prepare("
             SELECT uc.user_id, uc.civilization_name, uc.population, u.handle, u.display_name
             FROM user_civilizations uc
@@ -1176,6 +1187,9 @@ if ($action === 'get_targets') {
             $advantageMultiplier = calculateTroopAdvantageMultiplier($myTroopComposition, $targetTroopComposition);
             $target['troop_advantage_multiplier'] = round($advantageMultiplier, 2);
             $target['troop_composition'] = $targetTroopComposition;
+            
+            // 同盟相手かどうかをマーク
+            $target['is_ally'] = in_array($target['user_id'], $allyIds);
         }
         unset($target);
         
@@ -1974,6 +1988,19 @@ if ($action === 'attack_with_troops') {
         $stmt->execute([$targetUserId]);
         if (!$stmt->fetch()) {
             throw new Exception('攻撃対象のユーザーが存在しません');
+        }
+        
+        // 同盟関係チェック（同盟相手は攻撃できない）
+        $stmt = $pdo->prepare("
+            SELECT 1 FROM civilization_alliances 
+            WHERE status = 'accepted' AND is_active = TRUE
+              AND ((requester_user_id = ? AND target_user_id = ?)
+                   OR (requester_user_id = ? AND target_user_id = ?))
+            LIMIT 1
+        ");
+        $stmt->execute([$me['id'], $targetUserId, $targetUserId, $me['id']]);
+        if ($stmt->fetch()) {
+            throw new Exception('同盟相手を攻撃することはできません');
         }
         
         // 攻撃者の文明
@@ -3072,6 +3099,587 @@ if ($action === 'get_troops_with_skills') {
             'ok' => true,
             'troops' => $troops,
             'current_era_id' => $civ['current_era_id']
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 同盟システム API
+// ===============================================
+
+/**
+ * 2人のユーザーが同盟関係にあるかチェック
+ * @param PDO $pdo
+ * @param int $userId1
+ * @param int $userId2
+ * @return bool
+ */
+function isAllied($pdo, $userId1, $userId2) {
+    $stmt = $pdo->prepare("
+        SELECT 1 FROM civilization_alliances 
+        WHERE status = 'accepted' AND is_active = TRUE
+          AND ((requester_user_id = ? AND target_user_id = ?)
+               OR (requester_user_id = ? AND target_user_id = ?))
+        LIMIT 1
+    ");
+    $stmt->execute([$userId1, $userId2, $userId2, $userId1]);
+    return (bool)$stmt->fetch();
+}
+
+// 同盟一覧を取得
+if ($action === 'get_alliances') {
+    try {
+        // 自分に関連する同盟を取得（申請中・締結済み）
+        $stmt = $pdo->prepare("
+            SELECT 
+                ca.*,
+                requester.handle as requester_handle,
+                requester.display_name as requester_name,
+                target.handle as target_handle,
+                target.display_name as target_name,
+                requester_civ.civilization_name as requester_civ_name,
+                target_civ.civilization_name as target_civ_name
+            FROM civilization_alliances ca
+            JOIN users requester ON ca.requester_user_id = requester.id
+            JOIN users target ON ca.target_user_id = target.id
+            LEFT JOIN user_civilizations requester_civ ON ca.requester_user_id = requester_civ.user_id
+            LEFT JOIN user_civilizations target_civ ON ca.target_user_id = target_civ.user_id
+            WHERE (ca.requester_user_id = ? OR ca.target_user_id = ?)
+              AND ca.is_active = TRUE
+            ORDER BY ca.requested_at DESC
+        ");
+        $stmt->execute([$me['id'], $me['id']]);
+        $alliances = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 受信した申請（未処理）
+        $stmt = $pdo->prepare("
+            SELECT 
+                ca.*,
+                requester.handle as requester_handle,
+                requester.display_name as requester_name,
+                requester_civ.civilization_name as requester_civ_name
+            FROM civilization_alliances ca
+            JOIN users requester ON ca.requester_user_id = requester.id
+            LEFT JOIN user_civilizations requester_civ ON ca.requester_user_id = requester_civ.user_id
+            WHERE ca.target_user_id = ? AND ca.status = 'pending' AND ca.is_active = TRUE
+            ORDER BY ca.requested_at DESC
+        ");
+        $stmt->execute([$me['id']]);
+        $pendingReceived = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 送信した申請（未処理）
+        $stmt = $pdo->prepare("
+            SELECT 
+                ca.*,
+                target.handle as target_handle,
+                target.display_name as target_name,
+                target_civ.civilization_name as target_civ_name
+            FROM civilization_alliances ca
+            JOIN users target ON ca.target_user_id = target.id
+            LEFT JOIN user_civilizations target_civ ON ca.target_user_id = target_civ.user_id
+            WHERE ca.requester_user_id = ? AND ca.status = 'pending' AND ca.is_active = TRUE
+            ORDER BY ca.requested_at DESC
+        ");
+        $stmt->execute([$me['id']]);
+        $pendingSent = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 締結済み同盟
+        $stmt = $pdo->prepare("
+            SELECT 
+                ca.id,
+                CASE WHEN ca.requester_user_id = ? THEN ca.target_user_id ELSE ca.requester_user_id END as ally_user_id,
+                CASE WHEN ca.requester_user_id = ? THEN target.handle ELSE requester.handle END as ally_handle,
+                CASE WHEN ca.requester_user_id = ? THEN target.display_name ELSE requester.display_name END as ally_name,
+                CASE WHEN ca.requester_user_id = ? THEN target_civ.civilization_name ELSE requester_civ.civilization_name END as ally_civ_name,
+                ca.responded_at as allied_at
+            FROM civilization_alliances ca
+            JOIN users requester ON ca.requester_user_id = requester.id
+            JOIN users target ON ca.target_user_id = target.id
+            LEFT JOIN user_civilizations requester_civ ON ca.requester_user_id = requester_civ.user_id
+            LEFT JOIN user_civilizations target_civ ON ca.target_user_id = target_civ.user_id
+            WHERE (ca.requester_user_id = ? OR ca.target_user_id = ?)
+              AND ca.status = 'accepted' AND ca.is_active = TRUE
+            ORDER BY ca.responded_at DESC
+        ");
+        $stmt->execute([$me['id'], $me['id'], $me['id'], $me['id'], $me['id'], $me['id']]);
+        $activeAlliances = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'ok' => true,
+            'alliances' => $alliances,
+            'pending_received' => $pendingReceived,
+            'pending_sent' => $pendingSent,
+            'active_alliances' => $activeAlliances
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// 同盟を申請
+if ($action === 'request_alliance') {
+    $targetUserId = (int)($input['target_user_id'] ?? 0);
+    
+    if ($targetUserId <= 0) {
+        echo json_encode(['ok' => false, 'error' => '対象ユーザーが指定されていません']);
+        exit;
+    }
+    
+    if ($targetUserId === $me['id']) {
+        echo json_encode(['ok' => false, 'error' => '自分自身と同盟することはできません']);
+        exit;
+    }
+    
+    $pdo->beginTransaction();
+    try {
+        // 対象ユーザーが存在するか確認
+        $stmt = $pdo->prepare("SELECT 1 FROM users WHERE id = ?");
+        $stmt->execute([$targetUserId]);
+        if (!$stmt->fetch()) {
+            throw new Exception('ユーザーが見つかりません');
+        }
+        
+        // 既存の同盟/申請をチェック
+        $stmt = $pdo->prepare("
+            SELECT * FROM civilization_alliances 
+            WHERE ((requester_user_id = ? AND target_user_id = ?)
+                   OR (requester_user_id = ? AND target_user_id = ?))
+              AND is_active = TRUE
+        ");
+        $stmt->execute([$me['id'], $targetUserId, $targetUserId, $me['id']]);
+        $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($existing) {
+            if ($existing['status'] === 'accepted') {
+                throw new Exception('既に同盟を結んでいます');
+            } elseif ($existing['status'] === 'pending') {
+                throw new Exception('既に同盟申請が進行中です');
+            }
+        }
+        
+        // 同盟申請を作成
+        $stmt = $pdo->prepare("
+            INSERT INTO civilization_alliances (requester_user_id, target_user_id, status, requested_at)
+            VALUES (?, ?, 'pending', NOW())
+            ON DUPLICATE KEY UPDATE status = 'pending', requested_at = NOW(), is_active = TRUE, responded_at = NULL, ended_at = NULL
+        ");
+        $stmt->execute([$me['id'], $targetUserId]);
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => '同盟申請を送信しました'
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// 同盟申請に応答
+if ($action === 'respond_alliance') {
+    $allianceId = (int)($input['alliance_id'] ?? 0);
+    $accept = (bool)($input['accept'] ?? false);
+    
+    if ($allianceId <= 0) {
+        echo json_encode(['ok' => false, 'error' => '同盟IDが指定されていません']);
+        exit;
+    }
+    
+    $pdo->beginTransaction();
+    try {
+        // 同盟申請を取得（自分が対象者であること）
+        $stmt = $pdo->prepare("
+            SELECT * FROM civilization_alliances 
+            WHERE id = ? AND target_user_id = ? AND status = 'pending' AND is_active = TRUE
+        ");
+        $stmt->execute([$allianceId, $me['id']]);
+        $alliance = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$alliance) {
+            throw new Exception('同盟申請が見つかりません');
+        }
+        
+        if ($accept) {
+            $stmt = $pdo->prepare("
+                UPDATE civilization_alliances 
+                SET status = 'accepted', responded_at = NOW()
+                WHERE id = ?
+            ");
+            $stmt->execute([$allianceId]);
+            $message = '同盟を締結しました';
+        } else {
+            $stmt = $pdo->prepare("
+                UPDATE civilization_alliances 
+                SET status = 'rejected', responded_at = NOW(), is_active = FALSE
+                WHERE id = ?
+            ");
+            $stmt->execute([$allianceId]);
+            $message = '同盟申請を拒否しました';
+        }
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => $message
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// 同盟を解消
+if ($action === 'break_alliance') {
+    $allianceId = (int)($input['alliance_id'] ?? 0);
+    
+    if ($allianceId <= 0) {
+        echo json_encode(['ok' => false, 'error' => '同盟IDが指定されていません']);
+        exit;
+    }
+    
+    $pdo->beginTransaction();
+    try {
+        // 同盟を取得（自分が関係者であること）
+        $stmt = $pdo->prepare("
+            SELECT * FROM civilization_alliances 
+            WHERE id = ? AND (requester_user_id = ? OR target_user_id = ?) AND status = 'accepted' AND is_active = TRUE
+        ");
+        $stmt->execute([$allianceId, $me['id'], $me['id']]);
+        $alliance = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$alliance) {
+            throw new Exception('同盟が見つかりません');
+        }
+        
+        $stmt = $pdo->prepare("
+            UPDATE civilization_alliances 
+            SET is_active = FALSE, ended_at = NOW()
+            WHERE id = ?
+        ");
+        $stmt->execute([$allianceId]);
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => '同盟を解消しました'
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// 同盟申請をキャンセル
+if ($action === 'cancel_alliance_request') {
+    $allianceId = (int)($input['alliance_id'] ?? 0);
+    
+    if ($allianceId <= 0) {
+        echo json_encode(['ok' => false, 'error' => '同盟IDが指定されていません']);
+        exit;
+    }
+    
+    $pdo->beginTransaction();
+    try {
+        // 同盟申請を取得（自分が申請者であること）
+        $stmt = $pdo->prepare("
+            SELECT * FROM civilization_alliances 
+            WHERE id = ? AND requester_user_id = ? AND status = 'pending' AND is_active = TRUE
+        ");
+        $stmt->execute([$allianceId, $me['id']]);
+        $alliance = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$alliance) {
+            throw new Exception('同盟申請が見つかりません');
+        }
+        
+        $stmt = $pdo->prepare("
+            UPDATE civilization_alliances 
+            SET is_active = FALSE, ended_at = NOW()
+            WHERE id = ?
+        ");
+        $stmt->execute([$allianceId]);
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => '同盟申請をキャンセルしました'
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 送兵（兵士援助）API
+// ===============================================
+if ($action === 'transfer_troops') {
+    $targetUserId = (int)($input['target_user_id'] ?? 0);
+    $troops = $input['troops'] ?? []; // [{troop_type_id: 1, count: 10}, ...]
+    
+    if ($targetUserId <= 0) {
+        echo json_encode(['ok' => false, 'error' => '対象ユーザーが指定されていません']);
+        exit;
+    }
+    
+    if ($targetUserId === $me['id']) {
+        echo json_encode(['ok' => false, 'error' => '自分自身に送ることはできません']);
+        exit;
+    }
+    
+    if (empty($troops)) {
+        echo json_encode(['ok' => false, 'error' => '兵士を選択してください']);
+        exit;
+    }
+    
+    $pdo->beginTransaction();
+    try {
+        // 同盟関係を確認
+        if (!isAllied($pdo, $me['id'], $targetUserId)) {
+            throw new Exception('同盟相手にのみ兵士を送ることができます');
+        }
+        
+        // 対象ユーザーが存在するか確認
+        $stmt = $pdo->prepare("SELECT 1 FROM users WHERE id = ?");
+        $stmt->execute([$targetUserId]);
+        if (!$stmt->fetch()) {
+            throw new Exception('ユーザーが見つかりません');
+        }
+        
+        $totalTransferred = 0;
+        
+        foreach ($troops as $troop) {
+            $troopTypeId = (int)$troop['troop_type_id'];
+            $count = (int)$troop['count'];
+            
+            if ($count <= 0) continue;
+            
+            // 所有兵士数を確認
+            $stmt = $pdo->prepare("
+                SELECT count FROM user_civilization_troops 
+                WHERE user_id = ? AND troop_type_id = ?
+            ");
+            $stmt->execute([$me['id'], $troopTypeId]);
+            $ownedCount = (int)$stmt->fetchColumn();
+            
+            if ($ownedCount < $count) {
+                throw new Exception('兵士が不足しています');
+            }
+            
+            // 自分から兵士を減少
+            $stmt = $pdo->prepare("
+                UPDATE user_civilization_troops 
+                SET count = count - ?
+                WHERE user_id = ? AND troop_type_id = ?
+            ");
+            $stmt->execute([$count, $me['id'], $troopTypeId]);
+            
+            // 相手に兵士を追加
+            $stmt = $pdo->prepare("
+                INSERT INTO user_civilization_troops (user_id, troop_type_id, count)
+                VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE count = count + ?
+            ");
+            $stmt->execute([$targetUserId, $troopTypeId, $count, $count]);
+            
+            // 転送ログを記録
+            $stmt = $pdo->prepare("
+                INSERT INTO civilization_troop_transfers (sender_user_id, receiver_user_id, troop_type_id, count, transferred_at)
+                VALUES (?, ?, ?, ?, NOW())
+            ");
+            $stmt->execute([$me['id'], $targetUserId, $troopTypeId, $count]);
+            
+            $totalTransferred += $count;
+        }
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => "兵士{$totalTransferred}体を送りました"
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 物資援助（資源援助）API
+// ===============================================
+if ($action === 'transfer_resources') {
+    $targetUserId = (int)($input['target_user_id'] ?? 0);
+    $resources = $input['resources'] ?? []; // [{resource_type_id: 1, amount: 100}, ...]
+    
+    if ($targetUserId <= 0) {
+        echo json_encode(['ok' => false, 'error' => '対象ユーザーが指定されていません']);
+        exit;
+    }
+    
+    if ($targetUserId === $me['id']) {
+        echo json_encode(['ok' => false, 'error' => '自分自身に送ることはできません']);
+        exit;
+    }
+    
+    if (empty($resources)) {
+        echo json_encode(['ok' => false, 'error' => '資源を選択してください']);
+        exit;
+    }
+    
+    $pdo->beginTransaction();
+    try {
+        // 同盟関係を確認
+        if (!isAllied($pdo, $me['id'], $targetUserId)) {
+            throw new Exception('同盟相手にのみ資源を送ることができます');
+        }
+        
+        // 対象ユーザーが存在するか確認
+        $stmt = $pdo->prepare("SELECT 1 FROM users WHERE id = ?");
+        $stmt->execute([$targetUserId]);
+        if (!$stmt->fetch()) {
+            throw new Exception('ユーザーが見つかりません');
+        }
+        
+        $totalTransferred = 0;
+        
+        foreach ($resources as $resource) {
+            $resourceTypeId = (int)$resource['resource_type_id'];
+            $amount = (float)$resource['amount'];
+            
+            if ($amount <= 0) continue;
+            
+            // 所有資源量を確認
+            $stmt = $pdo->prepare("
+                SELECT amount FROM user_civilization_resources 
+                WHERE user_id = ? AND resource_type_id = ?
+            ");
+            $stmt->execute([$me['id'], $resourceTypeId]);
+            $ownedAmount = (float)$stmt->fetchColumn();
+            
+            if ($ownedAmount < $amount) {
+                throw new Exception('資源が不足しています');
+            }
+            
+            // 自分から資源を減少
+            $stmt = $pdo->prepare("
+                UPDATE user_civilization_resources 
+                SET amount = amount - ?
+                WHERE user_id = ? AND resource_type_id = ?
+            ");
+            $stmt->execute([$amount, $me['id'], $resourceTypeId]);
+            
+            // 相手に資源を追加（まだ持っていない場合は作成）
+            $stmt = $pdo->prepare("
+                INSERT INTO user_civilization_resources (user_id, resource_type_id, amount, unlocked, unlocked_at)
+                VALUES (?, ?, ?, TRUE, NOW())
+                ON DUPLICATE KEY UPDATE amount = amount + ?, unlocked = TRUE
+            ");
+            $stmt->execute([$targetUserId, $resourceTypeId, $amount, $amount]);
+            
+            // 転送ログを記録
+            $stmt = $pdo->prepare("
+                INSERT INTO civilization_resource_transfers (sender_user_id, receiver_user_id, resource_type_id, amount, transferred_at)
+                VALUES (?, ?, ?, ?, NOW())
+            ");
+            $stmt->execute([$me['id'], $targetUserId, $resourceTypeId, $amount]);
+            
+            $totalTransferred += $amount;
+        }
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => "資源を送りました（合計{$totalTransferred}）"
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 援助ログを取得
+// ===============================================
+if ($action === 'get_transfer_logs') {
+    try {
+        // 兵士の受信ログ
+        $stmt = $pdo->prepare("
+            SELECT ctt.*, tt.name as troop_name, tt.icon as troop_icon, u.handle as sender_handle, uc.civilization_name as sender_civ_name
+            FROM civilization_troop_transfers ctt
+            JOIN civilization_troop_types tt ON ctt.troop_type_id = tt.id
+            JOIN users u ON ctt.sender_user_id = u.id
+            LEFT JOIN user_civilizations uc ON ctt.sender_user_id = uc.user_id
+            WHERE ctt.receiver_user_id = ?
+            ORDER BY ctt.transferred_at DESC
+            LIMIT 20
+        ");
+        $stmt->execute([$me['id']]);
+        $troopReceived = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 兵士の送信ログ
+        $stmt = $pdo->prepare("
+            SELECT ctt.*, tt.name as troop_name, tt.icon as troop_icon, u.handle as receiver_handle, uc.civilization_name as receiver_civ_name
+            FROM civilization_troop_transfers ctt
+            JOIN civilization_troop_types tt ON ctt.troop_type_id = tt.id
+            JOIN users u ON ctt.receiver_user_id = u.id
+            LEFT JOIN user_civilizations uc ON ctt.receiver_user_id = uc.user_id
+            WHERE ctt.sender_user_id = ?
+            ORDER BY ctt.transferred_at DESC
+            LIMIT 20
+        ");
+        $stmt->execute([$me['id']]);
+        $troopSent = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 資源の受信ログ
+        $stmt = $pdo->prepare("
+            SELECT crt.*, rt.name as resource_name, rt.icon as resource_icon, u.handle as sender_handle, uc.civilization_name as sender_civ_name
+            FROM civilization_resource_transfers crt
+            JOIN civilization_resource_types rt ON crt.resource_type_id = rt.id
+            JOIN users u ON crt.sender_user_id = u.id
+            LEFT JOIN user_civilizations uc ON crt.sender_user_id = uc.user_id
+            WHERE crt.receiver_user_id = ?
+            ORDER BY crt.transferred_at DESC
+            LIMIT 20
+        ");
+        $stmt->execute([$me['id']]);
+        $resourceReceived = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 資源の送信ログ
+        $stmt = $pdo->prepare("
+            SELECT crt.*, rt.name as resource_name, rt.icon as resource_icon, u.handle as receiver_handle, uc.civilization_name as receiver_civ_name
+            FROM civilization_resource_transfers crt
+            JOIN civilization_resource_types rt ON crt.resource_type_id = rt.id
+            JOIN users u ON crt.receiver_user_id = u.id
+            LEFT JOIN user_civilizations uc ON crt.receiver_user_id = uc.user_id
+            WHERE crt.sender_user_id = ?
+            ORDER BY crt.transferred_at DESC
+            LIMIT 20
+        ");
+        $stmt->execute([$me['id']]);
+        $resourceSent = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'ok' => true,
+            'troop_received' => $troopReceived,
+            'troop_sent' => $troopSent,
+            'resource_received' => $resourceReceived,
+            'resource_sent' => $resourceSent
         ]);
     } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);

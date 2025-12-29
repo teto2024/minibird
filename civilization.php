@@ -1185,6 +1185,7 @@ function renderApp() {
             <button class="tab-btn ${currentTab === 'research' ? 'active' : ''}" data-tab="research">📚 研究</button>
             <button class="tab-btn ${currentTab === 'market' ? 'active' : ''}" data-tab="market">🏪 市場</button>
             <button class="tab-btn ${currentTab === 'troops' ? 'active' : ''}" data-tab="troops">🎖️ 兵士</button>
+            <button class="tab-btn ${currentTab === 'alliance' ? 'active' : ''}" data-tab="alliance">🤝 同盟</button>
             <button class="tab-btn ${currentTab === 'war' ? 'active' : ''}" data-tab="war">⚔️ 戦争</button>
             <button class="tab-btn ${currentTab === 'conquest' ? 'active' : ''}" data-tab="conquest">🏰 占領戦</button>
             <button class="tab-btn ${currentTab === 'shop' ? 'active' : ''}" data-tab="shop">💠 VIPショップ</button>
@@ -1376,6 +1377,90 @@ function renderApp() {
             </div>
         </div>
         
+        <!-- 同盟タブ -->
+        <div class="tab-content ${currentTab === 'alliance' ? 'active' : ''}" id="tab-alliance">
+            <div class="invest-section" style="background: linear-gradient(135deg, rgba(70, 130, 180, 0.5) 0%, rgba(25, 25, 112, 0.5) 100%); border-color: #4682b4;">
+                <h3 style="color: #87ceeb;">🤝 同盟システム</h3>
+                <p style="color: #c0a080; margin-bottom: 20px;">同盟を結ぶと、互いに攻撃できなくなり、兵士や資源を援助できるようになります。</p>
+                
+                <!-- 同盟申請 -->
+                <div style="margin-bottom: 25px;">
+                    <h4 style="color: #ffd700; margin-bottom: 10px;">📝 同盟を申請</h4>
+                    <div id="allianceRequestSection">
+                        <div class="loading">読み込み中...</div>
+                    </div>
+                </div>
+                
+                <!-- 受信した申請 -->
+                <div style="margin-bottom: 25px;">
+                    <h4 style="color: #ffd700; margin-bottom: 10px;">📩 受信した同盟申請</h4>
+                    <div id="pendingAlliancesReceived">
+                        <div class="loading">読み込み中...</div>
+                    </div>
+                </div>
+                
+                <!-- 送信した申請 -->
+                <div style="margin-bottom: 25px;">
+                    <h4 style="color: #ffd700; margin-bottom: 10px;">📤 送信した同盟申請</h4>
+                    <div id="pendingAlliancesSent">
+                        <div class="loading">読み込み中...</div>
+                    </div>
+                </div>
+                
+                <!-- 締結済み同盟 -->
+                <div style="margin-bottom: 25px;">
+                    <h4 style="color: #ffd700; margin-bottom: 10px;">🤝 同盟国</h4>
+                    <div id="activeAlliancesList">
+                        <div class="loading">読み込み中...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 援助機能 -->
+            <div class="invest-section" style="background: linear-gradient(135deg, rgba(50, 205, 50, 0.3) 0%, rgba(0, 100, 0, 0.3) 100%); border-color: #32cd32; margin-top: 20px;">
+                <h3 style="color: #90ee90;">🎁 同盟国への援助</h3>
+                <p style="color: #c0a080; margin-bottom: 20px;">同盟国に兵士や資源を送ることができます。</p>
+                
+                <!-- 援助対象選択 -->
+                <div style="margin-bottom: 20px;">
+                    <label style="color: #888; display: block; margin-bottom: 5px;">援助対象を選択:</label>
+                    <select id="transferTarget" style="width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid #32cd32; border-radius: 8px; color: #f5deb3; font-size: 14px;">
+                        <option value="">-- 同盟国を選択 --</option>
+                    </select>
+                </div>
+                
+                <!-- 送兵 -->
+                <div style="margin-bottom: 20px;">
+                    <h4 style="color: #ffd700; margin-bottom: 10px;">🎖️ 送兵</h4>
+                    <div id="troopTransferSection">
+                        <p style="color: #888;">上で同盟国を選択してください</p>
+                    </div>
+                    <button class="invest-btn" onclick="transferTroops()" style="margin-top: 10px; background: linear-gradient(135deg, #8b4513 0%, #d4a574 100%);">
+                        🎖️ 兵士を送る
+                    </button>
+                </div>
+                
+                <!-- 物資援助 -->
+                <div>
+                    <h4 style="color: #ffd700; margin-bottom: 10px;">📦 物資援助</h4>
+                    <div id="resourceTransferSection">
+                        <p style="color: #888;">上で同盟国を選択してください</p>
+                    </div>
+                    <button class="invest-btn" onclick="transferResources()" style="margin-top: 10px; background: linear-gradient(135deg, #228b22 0%, #32cd32 100%);">
+                        📦 資源を送る
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 援助ログ -->
+            <div class="invest-section" style="background: linear-gradient(135deg, rgba(100, 100, 100, 0.3) 0%, rgba(50, 50, 50, 0.3) 100%); border-color: #888; margin-top: 20px;">
+                <h3 style="color: #c0c0c0;">📜 援助ログ</h3>
+                <div id="transferLogsSection">
+                    <div class="loading">読み込み中...</div>
+                </div>
+            </div>
+        </div>
+        
         <!-- 市場タブ -->
         <div class="tab-content ${currentTab === 'market' ? 'active' : ''}" id="tab-market">
             <div class="invest-section" style="background: linear-gradient(135deg, rgba(139, 115, 85, 0.5) 0%, rgba(100, 80, 60, 0.5) 100%); border-color: #d4a574;">
@@ -1410,6 +1495,10 @@ function renderApp() {
             if (btn.dataset.tab === 'market') {
                 loadMarketData();
             }
+            // 同盟タブの場合、同盟情報を読み込む
+            if (btn.dataset.tab === 'alliance') {
+                loadAllianceData();
+            }
         });
     });
     
@@ -1427,6 +1516,10 @@ function renderApp() {
         loadTrainingQueue();
         loadWoundedTroops();
         loadDefenseSettings();
+    }
+    // 同盟タブがアクティブな場合、同盟情報を読み込む
+    if (currentTab === 'alliance') {
+        loadAllianceData();
     }
 }
 
@@ -1829,6 +1922,26 @@ async function loadTargets() {
             document.getElementById('targetsList').innerHTML = data.targets.map(t => {
                 const targetPower = t.military_power || 0;
                 const targetArmor = t.equipment_buffs?.armor || 0;
+                const isAlly = t.is_ally || false;
+                
+                // 同盟相手の場合は特別表示
+                if (isAlly) {
+                    return `
+                    <div class="target-card" style="border-color: #4682b4; background: linear-gradient(135deg, rgba(70, 130, 180, 0.3) 0%, rgba(25, 25, 112, 0.3) 100%);">
+                        <div class="target-header">
+                            <span class="target-name">🤝 ${escapeHtml(t.civilization_name)}</span>
+                            <span class="target-power" style="color: #87ceeb;">⚔️ ${targetPower}</span>
+                        </div>
+                        <div style="color: #888; font-size: 13px; margin-bottom: 5px;">
+                            @${escapeHtml(t.handle)} | 👥 ${t.population}人
+                        </div>
+                        <div style="background: rgba(70, 130, 180, 0.3); padding: 8px; border-radius: 6px; text-align: center; color: #87ceeb;">
+                            <span style="font-weight: bold;">🤝 同盟国</span>
+                            <span style="color: #888; font-size: 11px; display: block; margin-top: 3px;">攻撃できません</span>
+                        </div>
+                    </div>
+                `;
+                }
                 
                 // アーマーによる軽減を考慮した有利不利計算
                 // 自分のアーマーは相手の攻撃を軽減、相手のアーマーは自分の攻撃を軽減
@@ -3024,6 +3137,421 @@ function startUpdateTimer() {
             renderApp();
         }
     }, 10000); // 10秒ごと
+}
+
+// ===============================================
+// 同盟システムの関数
+// ===============================================
+
+// 同盟データを読み込む
+async function loadAllianceData() {
+    try {
+        // 同盟情報を取得
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_alliances'})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            // 同盟申請フォーム（攻撃対象リストから選択可能にする）
+            const targetsRes = await fetch('civilization_api.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'get_targets'})
+            });
+            const targetsData = await targetsRes.json();
+            
+            // 同盟申請セクション
+            if (targetsData.ok && targetsData.targets) {
+                const allyIds = data.active_alliances.map(a => a.ally_user_id);
+                const pendingIds = [...data.pending_sent.map(p => p.target_user_id), ...data.pending_received.map(p => p.requester_user_id)];
+                const availableTargets = targetsData.targets.filter(t => !allyIds.includes(t.user_id) && !pendingIds.includes(t.user_id));
+                
+                document.getElementById('allianceRequestSection').innerHTML = availableTargets.length > 0 ? `
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <select id="allianceRequestTarget" style="flex: 1; min-width: 200px; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid #4682b4; border-radius: 8px; color: #f5deb3;">
+                            <option value="">-- 対象を選択 --</option>
+                            ${availableTargets.map(t => `<option value="${t.user_id}">${escapeHtml(t.civilization_name)} (@${escapeHtml(t.handle)})</option>`).join('')}
+                        </select>
+                        <button class="invest-btn" onclick="requestAlliance()" style="background: linear-gradient(135deg, #4682b4 0%, #6495ed 100%);">
+                            🤝 同盟を申請
+                        </button>
+                    </div>
+                ` : '<p style="color: #888;">同盟申請可能な文明がありません</p>';
+            }
+            
+            // 受信した申請
+            const receivedHtml = data.pending_received.length > 0 ? data.pending_received.map(p => `
+                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid #ffa500;">
+                    <div>
+                        <span style="color: #ffd700; font-weight: bold;">${escapeHtml(p.requester_civ_name || '不明')}</span>
+                        <span style="color: #888; margin-left: 10px;">(@${escapeHtml(p.requester_handle)})</span>
+                        <div style="color: #888; font-size: 11px; margin-top: 3px;">${new Date(p.requested_at).toLocaleString('ja-JP')}</div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="respondAlliance(${p.id}, true)" style="padding: 8px 15px; background: linear-gradient(135deg, #32cd32 0%, #228b22 100%); color: #fff; border: none; border-radius: 6px; cursor: pointer;">
+                            ✅ 承認
+                        </button>
+                        <button onclick="respondAlliance(${p.id}, false)" style="padding: 8px 15px; background: linear-gradient(135deg, #dc143c 0%, #8b0000 100%); color: #fff; border: none; border-radius: 6px; cursor: pointer;">
+                            ❌ 拒否
+                        </button>
+                    </div>
+                </div>
+            `).join('') : '<p style="color: #888;">受信した申請はありません</p>';
+            document.getElementById('pendingAlliancesReceived').innerHTML = receivedHtml;
+            
+            // 送信した申請
+            const sentHtml = data.pending_sent.length > 0 ? data.pending_sent.map(p => `
+                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid #4682b4;">
+                    <div>
+                        <span style="color: #87ceeb; font-weight: bold;">${escapeHtml(p.target_civ_name || '不明')}</span>
+                        <span style="color: #888; margin-left: 10px;">(@${escapeHtml(p.target_handle)})</span>
+                        <div style="color: #888; font-size: 11px; margin-top: 3px;">申請日: ${new Date(p.requested_at).toLocaleString('ja-JP')}</div>
+                    </div>
+                    <button onclick="cancelAllianceRequest(${p.id})" style="padding: 8px 15px; background: rgba(255,255,255,0.1); color: #888; border: 1px solid #888; border-radius: 6px; cursor: pointer;">
+                        キャンセル
+                    </button>
+                </div>
+            `).join('') : '<p style="color: #888;">送信した申請はありません</p>';
+            document.getElementById('pendingAlliancesSent').innerHTML = sentHtml;
+            
+            // 締結済み同盟
+            const activeHtml = data.active_alliances.length > 0 ? data.active_alliances.map(a => `
+                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid #32cd32;">
+                    <div>
+                        <span style="color: #32cd32; font-weight: bold;">🤝 ${escapeHtml(a.ally_civ_name || '不明')}</span>
+                        <span style="color: #888; margin-left: 10px;">(@${escapeHtml(a.ally_handle)})</span>
+                        <div style="color: #888; font-size: 11px; margin-top: 3px;">同盟締結: ${new Date(a.allied_at).toLocaleString('ja-JP')}</div>
+                    </div>
+                    <button onclick="breakAlliance(${a.id})" style="padding: 8px 15px; background: linear-gradient(135deg, #dc143c 0%, #8b0000 100%); color: #fff; border: none; border-radius: 6px; cursor: pointer;">
+                        💔 解消
+                    </button>
+                </div>
+            `).join('') : '<p style="color: #888;">同盟国はいません</p>';
+            document.getElementById('activeAlliancesList').innerHTML = activeHtml;
+            
+            // 援助対象ドロップダウンを更新
+            const transferSelect = document.getElementById('transferTarget');
+            if (transferSelect && data.active_alliances.length > 0) {
+                transferSelect.innerHTML = '<option value="">-- 同盟国を選択 --</option>' + 
+                    data.active_alliances.map(a => `<option value="${a.ally_user_id}">${escapeHtml(a.ally_civ_name)} (@${escapeHtml(a.ally_handle)})</option>`).join('');
+                transferSelect.onchange = () => loadTransferSections();
+            }
+            
+            // 援助ログを読み込む
+            loadTransferLogs();
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// 同盟を申請
+async function requestAlliance() {
+    const select = document.getElementById('allianceRequestTarget');
+    const targetUserId = parseInt(select ? select.value : 0);
+    
+    if (!targetUserId) {
+        showNotification('対象を選択してください', true);
+        return;
+    }
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'request_alliance', target_user_id: targetUserId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadAllianceData();
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// 同盟申請に応答
+async function respondAlliance(allianceId, accept) {
+    const confirmMsg = accept ? '同盟を承認しますか？' : '同盟申請を拒否しますか？';
+    if (!confirm(confirmMsg)) return;
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'respond_alliance', alliance_id: allianceId, accept: accept})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadAllianceData();
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// 同盟を解消
+async function breakAlliance(allianceId) {
+    if (!confirm('本当に同盟を解消しますか？この操作は取り消せません。')) return;
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'break_alliance', alliance_id: allianceId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadAllianceData();
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// 同盟申請をキャンセル
+async function cancelAllianceRequest(allianceId) {
+    if (!confirm('同盟申請をキャンセルしますか？')) return;
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'cancel_alliance_request', alliance_id: allianceId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadAllianceData();
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// 援助セクションを読み込む
+async function loadTransferSections() {
+    const targetUserId = parseInt(document.getElementById('transferTarget').value) || 0;
+    
+    if (!targetUserId) {
+        document.getElementById('troopTransferSection').innerHTML = '<p style="color: #888;">同盟国を選択してください</p>';
+        document.getElementById('resourceTransferSection').innerHTML = '<p style="color: #888;">同盟国を選択してください</p>';
+        return;
+    }
+    
+    try {
+        // 兵士データを取得
+        const troopsRes = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_troops'})
+        });
+        const troopsData = await troopsRes.json();
+        
+        if (troopsData.ok && troopsData.user_troops && troopsData.user_troops.length > 0) {
+            const availableTroops = troopsData.user_troops.filter(t => t.count > 0);
+            document.getElementById('troopTransferSection').innerHTML = availableTroops.length > 0 ? availableTroops.map(t => `
+                <div style="display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; margin-bottom: 6px;">
+                    <span style="min-width: 120px;">${t.icon} ${t.name}</span>
+                    <input type="range" id="transfer-troop-slider-${t.troop_type_id}" min="0" max="${t.count}" value="0" style="flex: 1;" oninput="document.getElementById('transfer-troop-count-${t.troop_type_id}').value = this.value">
+                    <input type="number" id="transfer-troop-count-${t.troop_type_id}" min="0" max="${t.count}" value="0" style="width: 60px; padding: 5px; background: rgba(0,0,0,0.3); border: 1px solid #8b4513; border-radius: 4px; color: #f5deb3;" oninput="document.getElementById('transfer-troop-slider-${t.troop_type_id}').value = this.value">
+                    <span style="color: #888; font-size: 11px;">/ ${t.count}</span>
+                </div>
+            `).join('') : '<p style="color: #888;">送れる兵士がいません</p>';
+        } else {
+            document.getElementById('troopTransferSection').innerHTML = '<p style="color: #888;">兵士がいません</p>';
+        }
+        
+        // 資源データを取得（civDataから）
+        if (civData && civData.resources) {
+            const availableResources = civData.resources.filter(r => r.unlocked && r.amount > 0);
+            document.getElementById('resourceTransferSection').innerHTML = availableResources.length > 0 ? availableResources.map(r => `
+                <div style="display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; margin-bottom: 6px;">
+                    <span style="min-width: 120px;">${r.icon} ${r.name}</span>
+                    <input type="range" id="transfer-resource-slider-${r.resource_type_id}" min="0" max="${Math.floor(r.amount)}" value="0" style="flex: 1;" oninput="document.getElementById('transfer-resource-count-${r.resource_type_id}').value = this.value">
+                    <input type="number" id="transfer-resource-count-${r.resource_type_id}" min="0" max="${Math.floor(r.amount)}" value="0" style="width: 80px; padding: 5px; background: rgba(0,0,0,0.3); border: 1px solid #228b22; border-radius: 4px; color: #f5deb3;" oninput="document.getElementById('transfer-resource-slider-${r.resource_type_id}').value = this.value">
+                    <span style="color: #888; font-size: 11px;">/ ${Math.floor(r.amount)}</span>
+                </div>
+            `).join('') : '<p style="color: #888;">送れる資源がありません</p>';
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// 兵士を送る
+async function transferTroops() {
+    const targetUserId = parseInt(document.getElementById('transferTarget').value) || 0;
+    if (!targetUserId) {
+        showNotification('同盟国を選択してください', true);
+        return;
+    }
+    
+    const troops = [];
+    document.querySelectorAll('[id^="transfer-troop-count-"]').forEach(input => {
+        const count = parseInt(input.value) || 0;
+        const troopTypeId = parseInt(input.id.replace('transfer-troop-count-', ''));
+        if (count > 0 && troopTypeId) {
+            troops.push({troop_type_id: troopTypeId, count: count});
+        }
+    });
+    
+    if (troops.length === 0) {
+        showNotification('送る兵士を選択してください', true);
+        return;
+    }
+    
+    if (!confirm('選択した兵士を送りますか？')) return;
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'transfer_troops', target_user_id: targetUserId, troops: troops})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadData();
+            loadAllianceData();
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// 資源を送る
+async function transferResources() {
+    const targetUserId = parseInt(document.getElementById('transferTarget').value) || 0;
+    if (!targetUserId) {
+        showNotification('同盟国を選択してください', true);
+        return;
+    }
+    
+    const resources = [];
+    document.querySelectorAll('[id^="transfer-resource-count-"]').forEach(input => {
+        const amount = parseFloat(input.value) || 0;
+        const resourceTypeId = parseInt(input.id.replace('transfer-resource-count-', ''));
+        if (amount > 0 && resourceTypeId) {
+            resources.push({resource_type_id: resourceTypeId, amount: amount});
+        }
+    });
+    
+    if (resources.length === 0) {
+        showNotification('送る資源を選択してください', true);
+        return;
+    }
+    
+    if (!confirm('選択した資源を送りますか？')) return;
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'transfer_resources', target_user_id: targetUserId, resources: resources})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadData();
+            loadAllianceData();
+        } else {
+            showNotification(data.error, true);
+        }
+    } catch (e) {
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// 援助ログを読み込む
+async function loadTransferLogs() {
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_transfer_logs'})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            let html = '';
+            
+            // 受信ログ（兵士）
+            if (data.troop_received && data.troop_received.length > 0) {
+                html += '<h4 style="color: #90ee90; margin-bottom: 10px;">🎁 受け取った兵士</h4>';
+                html += data.troop_received.slice(0, 5).map(log => `
+                    <div style="background: rgba(50, 205, 50, 0.1); padding: 8px; border-radius: 6px; margin-bottom: 5px; font-size: 12px;">
+                        <span style="color: #32cd32;">${log.troop_icon} ${log.troop_name} ×${log.count}</span>
+                        <span style="color: #888;"> from ${escapeHtml(log.sender_civ_name || log.sender_handle)}</span>
+                        <span style="color: #666; font-size: 10px; margin-left: 10px;">${new Date(log.transferred_at).toLocaleString('ja-JP')}</span>
+                    </div>
+                `).join('');
+            }
+            
+            // 送信ログ（兵士）
+            if (data.troop_sent && data.troop_sent.length > 0) {
+                html += '<h4 style="color: #87ceeb; margin: 15px 0 10px 0;">📤 送った兵士</h4>';
+                html += data.troop_sent.slice(0, 5).map(log => `
+                    <div style="background: rgba(70, 130, 180, 0.1); padding: 8px; border-radius: 6px; margin-bottom: 5px; font-size: 12px;">
+                        <span style="color: #4682b4;">${log.troop_icon} ${log.troop_name} ×${log.count}</span>
+                        <span style="color: #888;"> to ${escapeHtml(log.receiver_civ_name || log.receiver_handle)}</span>
+                        <span style="color: #666; font-size: 10px; margin-left: 10px;">${new Date(log.transferred_at).toLocaleString('ja-JP')}</span>
+                    </div>
+                `).join('');
+            }
+            
+            // 受信ログ（資源）
+            if (data.resource_received && data.resource_received.length > 0) {
+                html += '<h4 style="color: #90ee90; margin: 15px 0 10px 0;">🎁 受け取った資源</h4>';
+                html += data.resource_received.slice(0, 5).map(log => `
+                    <div style="background: rgba(50, 205, 50, 0.1); padding: 8px; border-radius: 6px; margin-bottom: 5px; font-size: 12px;">
+                        <span style="color: #32cd32;">${log.resource_icon} ${log.resource_name} ×${Math.floor(log.amount)}</span>
+                        <span style="color: #888;"> from ${escapeHtml(log.sender_civ_name || log.sender_handle)}</span>
+                        <span style="color: #666; font-size: 10px; margin-left: 10px;">${new Date(log.transferred_at).toLocaleString('ja-JP')}</span>
+                    </div>
+                `).join('');
+            }
+            
+            // 送信ログ（資源）
+            if (data.resource_sent && data.resource_sent.length > 0) {
+                html += '<h4 style="color: #87ceeb; margin: 15px 0 10px 0;">📤 送った資源</h4>';
+                html += data.resource_sent.slice(0, 5).map(log => `
+                    <div style="background: rgba(70, 130, 180, 0.1); padding: 8px; border-radius: 6px; margin-bottom: 5px; font-size: 12px;">
+                        <span style="color: #4682b4;">${log.resource_icon} ${log.resource_name} ×${Math.floor(log.amount)}</span>
+                        <span style="color: #888;"> to ${escapeHtml(log.receiver_civ_name || log.receiver_handle)}</span>
+                        <span style="color: #666; font-size: 10px; margin-left: 10px;">${new Date(log.transferred_at).toLocaleString('ja-JP')}</span>
+                    </div>
+                `).join('');
+            }
+            
+            document.getElementById('transferLogsSection').innerHTML = html || '<p style="color: #888;">援助ログはありません</p>';
+        }
+    } catch (e) {
+        console.error(e);
+        document.getElementById('transferLogsSection').innerHTML = '<p style="color: #888;">ログの読み込みに失敗しました</p>';
+    }
 }
 
 // 初期読み込み
