@@ -310,6 +310,34 @@ function tryActivateSkill($unit, $target, $isAttacker) {
 }
 
 /**
+ * 継続ダメージを計算（毒、燃焼など）
+ * 平方根スケーリングを使用して、兵数/HPが増えても緩やかに増加
+ * @param int $maxHealth ユニットの最大HP
+ * @param float $effectValue 効果値（パーセンテージ）
+ * @return int 計算されたダメージ
+ */
+function calculateDoTDamage($maxHealth, $effectValue) {
+    // ゼロ除算防止
+    $baseHealth = max(1, BATTLE_DOT_BASE_HEALTH);
+    
+    // HP比率を計算（最大HP / 基準HP）
+    $healthRatio = $maxHealth / $baseHealth;
+    
+    // 平方根スケーリング係数を適用
+    $scalingFactor = sqrt($healthRatio);
+    
+    // 効果値のパーセンテージを適用
+    $effectMultiplier = $effectValue / 100;
+    
+    // 最終ダメージ計算
+    $baseDamage = $baseHealth * $scalingFactor * BATTLE_DOT_SCALING_FACTOR * $effectMultiplier;
+    $dotDamage = (int)floor($baseDamage);
+    
+    // 最小ダメージを保証
+    return max(BATTLE_MIN_DAMAGE, $dotDamage);
+}
+
+/**
  * 継続ダメージを処理（毒、燃焼など）
  * 兵数やHPが増えても継続ダメージが比例して大きくならないよう、
  * 平方根スケーリングを使用して調整
@@ -324,12 +352,7 @@ function processDamageOverTime($unit) {
     foreach ($unit['active_effects'] as $effect) {
         if ($effect['effect_type'] === 'damage_over_time') {
             // 平方根スケーリングを使用して継続ダメージを計算
-            // 大量の兵数/HPでも継続ダメージが比例して増加しないように調整
-            // 計算式: sqrt(max_health / 基準HP) * 基準HP * スケーリング係数 * (effect_value / 100)
-            $scalingFactor = sqrt($unit['max_health'] / BATTLE_DOT_BASE_HEALTH);
-            $dotDamage = (int)floor(BATTLE_DOT_BASE_HEALTH * $scalingFactor * BATTLE_DOT_SCALING_FACTOR * ($effect['effect_value'] / 100));
-            // 最小ダメージを保証
-            $dotDamage = max(BATTLE_MIN_DAMAGE, $dotDamage);
+            $dotDamage = calculateDoTDamage($unit['max_health'], $effect['effect_value']);
             $totalDamage += $dotDamage;
             $messages[] = "{$effect['skill_icon']} {$effect['skill_name']}により{$dotDamage}ダメージ！";
         }
