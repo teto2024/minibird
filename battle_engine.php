@@ -15,6 +15,8 @@ define('BATTLE_MIN_DAMAGE', 1);                     // 最小ダメージ
 define('BATTLE_EQUIPMENT_ATTACK_MULTIPLIER', 0.5);  // 装備攻撃力の適用倍率
 define('BATTLE_EQUIPMENT_ARMOR_MULTIPLIER', 1.0);   // 装備アーマーの適用倍率
 define('BATTLE_EQUIPMENT_HEALTH_MULTIPLIER', 2.0);  // 装備体力の適用倍率
+define('BATTLE_DOT_BASE_HEALTH', 1000);              // 継続ダメージ計算用の基準HP
+define('BATTLE_DOT_SCALING_FACTOR', 0.3);            // 継続ダメージのスケーリング係数（0.3 = 30%）
 
 /**
  * 特殊スキル情報を取得
@@ -309,6 +311,8 @@ function tryActivateSkill($unit, $target, $isAttacker) {
 
 /**
  * 継続ダメージを処理（毒、燃焼など）
+ * 兵数やHPが増えても継続ダメージが比例して大きくならないよう、
+ * 平方根スケーリングを使用して調整
  * @param array $unit ユニット
  * @return array [damage, messages, updated_effects]
  */
@@ -319,8 +323,13 @@ function processDamageOverTime($unit) {
     
     foreach ($unit['active_effects'] as $effect) {
         if ($effect['effect_type'] === 'damage_over_time') {
-            // 最大HPの割合でダメージ
-            $dotDamage = (int)floor($unit['max_health'] * ($effect['effect_value'] / 100));
+            // 平方根スケーリングを使用して継続ダメージを計算
+            // 大量の兵数/HPでも継続ダメージが比例して増加しないように調整
+            // 計算式: sqrt(max_health / 基準HP) * 基準HP * スケーリング係数 * (effect_value / 100)
+            $scalingFactor = sqrt($unit['max_health'] / BATTLE_DOT_BASE_HEALTH);
+            $dotDamage = (int)floor(BATTLE_DOT_BASE_HEALTH * $scalingFactor * BATTLE_DOT_SCALING_FACTOR * ($effect['effect_value'] / 100));
+            // 最小ダメージを保証
+            $dotDamage = max(BATTLE_MIN_DAMAGE, $dotDamage);
             $totalDamage += $dotDamage;
             $messages[] = "{$effect['skill_icon']} {$effect['skill_name']}により{$dotDamage}ダメージ！";
         }
