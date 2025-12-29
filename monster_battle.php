@@ -585,7 +585,10 @@ async function loadMonsters() {
         const data = await res.json();
         
         if (data.ok) {
-            renderMonsterList(data.monsters, data.user_level);
+            renderMonsterList(data.monsters || [], data.user_level);
+        } else {
+            console.error('loadMonsters error:', data.error);
+            document.getElementById('monsterList').innerHTML = '<p style="color: #888;">モンスターデータの読み込みに失敗しました: ' + escapeHtml(data.error || '不明なエラー') + '</p>';
         }
     } catch (e) {
         console.error(e);
@@ -626,11 +629,16 @@ async function loadWorldBosses() {
         const data = await res.json();
         
         if (data.ok) {
-            renderActiveBosses(data.active_instances);
-            renderBossList(data.bosses, data.user_level);
+            renderActiveBosses(data.active_instances || []);
+            renderBossList(data.bosses || [], data.user_level);
+        } else {
+            console.error('loadWorldBosses error:', data.error);
+            document.getElementById('activeBosses').innerHTML = '<p style="color: #888;">アクティブボスの読み込みに失敗しました</p>';
+            document.getElementById('bossList').innerHTML = '<p style="color: #888;">ボスデータの読み込みに失敗しました: ' + escapeHtml(data.error || '不明なエラー') + '</p>';
         }
     } catch (e) {
         console.error(e);
+        document.getElementById('activeBosses').innerHTML = '<p style="color: #888;">エラーが発生しました</p>';
         document.getElementById('bossList').innerHTML = '<div class="loading">エラーが発生しました</div>';
     }
 }
