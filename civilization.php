@@ -869,6 +869,23 @@ const CIV_ARMOR_MAX_REDUCTION = 0.5;    // アーマーによる最大ダメー�
 const CIV_ARMOR_PERCENT_DIVISOR = 100;  // アーマー値を軽減率に変換する除数
 const CIV_ADVANTAGE_DISPLAY_THRESHOLD = 0.05; // 相性表示の閾値（±5%）
 
+// 資源キーから日本語名への変換マップ
+const RESOURCE_KEY_TO_NAME = {
+    'food': '食料', 'wood': '木材', 'stone': '石材', 'bronze': '青銅',
+    'iron': '鉄', 'gold': '金', 'knowledge': '知識', 'oil': '石油',
+    'crystal': 'クリスタル', 'mana': 'マナ', 'uranium': 'ウラニウム',
+    'diamond': 'ダイヤモンド', 'sulfur': '硫黄', 'gems': '宝石',
+    'cloth': '布', 'marble': '大理石', 'horses': '馬', 'coal': '石炭',
+    'glass': 'ガラス', 'spices': '香辛料', 'herbs': '薬草',
+    'medicine': '医薬品', 'steel': '鋼鉄', 'gunpowder': '火薬',
+    'gunpowder_res': '火薬資源', 'electronics': '電子部品'
+};
+
+// 資源キーを日本語名に変換
+function getResourceName(key) {
+    return RESOURCE_KEY_TO_NAME[key] || key;
+}
+
 let civData = null;
 let currentTab = 'buildings'; // 現在のアクティブタブを保持
 let selectedAttackTarget = null; // 攻撃対象のユーザーID
@@ -1188,6 +1205,7 @@ function renderApp() {
             <button class="tab-btn ${currentTab === 'alliance' ? 'active' : ''}" data-tab="alliance">🤝 同盟</button>
             <button class="tab-btn ${currentTab === 'war' ? 'active' : ''}" data-tab="war">⚔️ 戦争</button>
             <button class="tab-btn ${currentTab === 'conquest' ? 'active' : ''}" data-tab="conquest">🏰 占領戦</button>
+            <button class="tab-btn ${currentTab === 'monster' ? 'active' : ''}" data-tab="monster">🐉 モンスター</button>
             <button class="tab-btn ${currentTab === 'shop' ? 'active' : ''}" data-tab="shop">💠 VIPショップ</button>
         </div>
         
@@ -1270,6 +1288,37 @@ function renderApp() {
                 </div>
                 <a href="./conquest.php" class="invest-btn" style="display: inline-block; text-decoration: none; padding: 15px 30px; font-size: 18px; background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%);">
                     ⚔️ 占領戦に参加する
+                </a>
+            </div>
+        </div>
+        
+        <!-- モンスタータブ -->
+        <div class="tab-content ${currentTab === 'monster' ? 'active' : ''}" id="tab-monster">
+            <div class="war-section" style="background: linear-gradient(135deg, rgba(139, 0, 0, 0.5) 0%, rgba(75, 0, 130, 0.5) 100%); border-color: #dc143c;">
+                <h3 style="color: #ff6b6b;">🐉 モンスター討伐</h3>
+                <p style="color: #c0a080; margin-bottom: 20px;">
+                    放浪モンスターを倒してコイン、クリスタル、ダイヤモンド、資源、兵士を獲得しよう！<br>
+                    ワールドボスはみんなで協力して討伐する強敵です。ダメージランキング上位者には豪華報酬！
+                </p>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
+                    <div class="stat-box" style="background: rgba(0,0,0,0.3);">
+                        <div style="font-size: 32px;">🐺</div>
+                        <div style="color: #ffa500; font-size: 14px;">放浪モンスター</div>
+                        <div style="color: #888; font-size: 11px;">レベルに応じた敵</div>
+                    </div>
+                    <div class="stat-box" style="background: rgba(0,0,0,0.3);">
+                        <div style="font-size: 32px;">🐉</div>
+                        <div style="color: #dc143c; font-size: 14px;">ワールドボス</div>
+                        <div style="color: #888; font-size: 11px;">みんなで討伐</div>
+                    </div>
+                    <div class="stat-box" style="background: rgba(0,0,0,0.3);">
+                        <div style="font-size: 32px;">💎</div>
+                        <div style="color: #ffd700; font-size: 14px;">豪華報酬</div>
+                        <div style="color: #888; font-size: 11px;">コイン・資源・兵士</div>
+                    </div>
+                </div>
+                <a href="./monster_battle.php" class="invest-btn" style="display: inline-block; text-decoration: none; padding: 15px 30px; font-size: 18px; background: linear-gradient(135deg, #dc143c 0%, #ff6b6b 100%);">
+                    ⚔️ モンスター討伐に挑戦
                 </a>
             </div>
         </div>
@@ -2391,7 +2440,8 @@ async function loadTroops() {
                     if (t.train_cost_resources) {
                         const costs = JSON.parse(t.train_cost_resources);
                         Object.entries(costs).forEach(([key, val]) => {
-                            costText += ` | ${key}: ${val}`;
+                            const resName = getResourceName(key);
+                            costText += ` | ${resName}: ${val}`;
                         });
                     }
                     
@@ -2435,6 +2485,13 @@ async function loadTroops() {
                         `;
                     }
                     
+                    // ステルス兵種インジケーター
+                    const stealthBadge = t.is_stealth ? `
+                        <span style="background: rgba(128, 0, 128, 0.5); padding: 3px 8px; border-radius: 4px; font-size: 11px;" title="敵から見えない隠密兵種">
+                            👻 ステルス
+                        </span>
+                    ` : '';
+                    
                     return `
                         <div class="target-card" style="border-color: #8b4513; ${!canTrain ? 'opacity: 0.7;' : ''}">
                             <div class="target-header">
@@ -2457,6 +2514,7 @@ async function loadTroops() {
                                 <span style="background: rgba(50, 205, 50, 0.3); padding: 3px 8px; border-radius: 4px; font-size: 11px;">
                                     ❤️ ${healthPoints}
                                 </span>
+                                ${stealthBadge}
                             </div>
                             ${skillHtml}
                             <div style="color: #c0a080; font-size: 12px; margin-bottom: 10px;">
