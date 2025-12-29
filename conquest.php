@@ -799,9 +799,34 @@ function renderCastleDetail(data) {
     
     // 攻撃UI（攻撃可能な場合）
     if (isAttackable && !isOwned) {
+        // 有利/不利を計算
+        const myPower = data.my_power || 0;
+        const defPower = defense.total_power || 0;
+        const powerDiff = myPower - defPower;
+        let advantageHtml = '';
+        if (powerDiff > defPower * 0.2) {
+            advantageHtml = '<div style="background: rgba(50, 205, 50, 0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;"><span style="color: #32cd32; font-weight: bold;">✅ 有利</span><span style="color: #888; margin-left: 10px;">あなたの戦力が上回っています</span></div>';
+        } else if (powerDiff < -defPower * 0.2) {
+            advantageHtml = '<div style="background: rgba(255, 100, 100, 0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;"><span style="color: #ff6b6b; font-weight: bold;">⚠️ 不利</span><span style="color: #888; margin-left: 10px;">相手の戦力が上回っています</span></div>';
+        } else {
+            advantageHtml = '<div style="background: rgba(255, 215, 0, 0.2); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;"><span style="color: #ffd700; font-weight: bold;">⚖️ 互角</span><span style="color: #888; margin-left: 10px;">戦力は拮抗しています</span></div>';
+        }
+        
         html += `
             <div class="castle-detail-section">
                 <h4>⚔️ 攻撃部隊を選択</h4>
+                ${advantageHtml}
+                <div style="display: flex; justify-content: space-between; margin-bottom: 15px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
+                    <div style="text-align: center;">
+                        <div style="color: #888; font-size: 11px;">あなたの戦力</div>
+                        <div style="color: #32cd32; font-weight: bold; font-size: 18px;">⚔️ ${myPower}</div>
+                    </div>
+                    <div style="align-self: center; color: #888;">VS</div>
+                    <div style="text-align: center;">
+                        <div style="color: #888; font-size: 11px;">城の防御力</div>
+                        <div style="color: #ff6b6b; font-weight: bold; font-size: 18px;">🛡️ ${defPower}</div>
+                    </div>
+                </div>
                 <div class="troop-selector" id="attackTroopSelector">
                     ${renderTroopSelector('attack')}
                 </div>
