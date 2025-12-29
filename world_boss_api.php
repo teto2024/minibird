@@ -10,6 +10,7 @@ require_once __DIR__ . '/battle_engine.php';
 
 // ワールドボス定数
 define('WORLD_BOSS_ATTACK_COOLDOWN_SECONDS', 60);   // 攻撃クールダウン（秒）
+define('WORLD_BOSS_SUMMON_COOLDOWN_SECONDS', 3600); // 召喚クールダウン（秒）- 1時間
 define('WORLD_BOSS_DAMAGE_VARIANCE', 0.2);          // ダメージの乱数幅（±20%）
 define('WORLD_BOSS_MAX_PARTICIPANTS_REWARD', 100);  // 報酬対象の最大人数
 define('WORLD_BOSS_DEFENSE_DIVISOR', 200);          // 防御力によるダメージ軽減計算用除数
@@ -280,6 +281,25 @@ if ($action === 'summon_boss') {
         // レベル制限をチェック
         if ($userLevel < $boss['min_user_level']) {
             throw new Exception("このボスを召喚するにはレベル{$boss['min_user_level']}以上が必要です");
+        }
+        
+        // 召喚クールダウンをチェック（1人1時間に1回まで）
+        $stmt = $pdo->prepare("
+            SELECT started_at FROM world_boss_instances 
+            WHERE summoner_user_id = ?
+            ORDER BY started_at DESC
+            LIMIT 1
+        ");
+        $stmt->execute([$me['id']]);
+        $lastSummon = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($lastSummon) {
+            $lastSummonTime = strtotime($lastSummon['started_at']);
+            $cooldownRemaining = WORLD_BOSS_SUMMON_COOLDOWN_SECONDS - (time() - $lastSummonTime);
+            if ($cooldownRemaining > 0) {
+                $remainingMinutes = ceil($cooldownRemaining / 60);
+                throw new Exception("召喚クールダウン中です（残り{$remainingMinutes}分）");
+            }
         }
         
         // このボスのアクティブインスタンスがあるかチェック
