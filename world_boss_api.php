@@ -12,6 +12,8 @@ require_once __DIR__ . '/battle_engine.php';
 define('WORLD_BOSS_ATTACK_COOLDOWN_SECONDS', 60);   // 攻撃クールダウン（秒）
 define('WORLD_BOSS_SUMMON_COOLDOWN_SECONDS', 3600); // 召喚クールダウン（秒）- 1時間
 define('WORLD_BOSS_DAMAGE_VARIANCE', 0.2);          // ダメージの乱数幅（±20%）
+define('WORLD_BOSS_WOUNDED_RATE', 0.3);             // 負傷兵発生率（30%）
+define('WORLD_BOSS_DEATH_RATE', 0.1);               // 戦死率（10%）
 define('WORLD_BOSS_MAX_PARTICIPANTS_REWARD', 100);  // 報酬対象の最大人数
 define('WORLD_BOSS_DEFENSE_DIVISOR', 200);          // 防御力によるダメージ軽減計算用除数
 define('WORLD_BOSS_MAX_DEFENSE_REDUCTION', 0.75);   // 防御による最大ダメージ軽減率（75%）
@@ -593,6 +595,48 @@ if ($action === 'attack_boss') {
         
         $isDefeated = $newHealth <= 0;
         
+        // 攻撃側の損失と負傷兵を計算（HPの減少率に基づく）
+        $attackerLosses = [];
+        $attackerWounded = [];
+        $attackerHpLossRate = 1 - ($battleResult['attacker_final_hp'] / max(1, $battleResult['attacker_max_hp']));
+        
+        foreach ($attackerUnit['troops'] as $troop) {
+            $troopTypeId = $troop['troop_type_id'];
+            $count = $troop['count'];
+            
+            // HPの減少率に応じた損失（死亡+負傷）
+            $totalLossCount = (int)floor($count * $attackerHpLossRate);
+            $deaths = (int)floor($totalLossCount * WORLD_BOSS_DEATH_RATE / (WORLD_BOSS_DEATH_RATE + WORLD_BOSS_WOUNDED_RATE));
+            $wounded = $totalLossCount - $deaths;
+            
+            if ($deaths > 0) {
+                $attackerLosses[$troopTypeId] = $deaths;
+            }
+            if ($wounded > 0) {
+                $attackerWounded[$troopTypeId] = $wounded;
+            }
+            
+            // 兵士を減少（死亡 + 負傷分を引く）
+            if ($totalLossCount > 0) {
+                $stmt = $pdo->prepare("
+                    UPDATE user_civilization_troops 
+                    SET count = count - ?
+                    WHERE user_id = ? AND troop_type_id = ?
+                ");
+                $stmt->execute([$totalLossCount, $me['id'], $troopTypeId]);
+            }
+            
+            // 負傷兵を追加
+            if ($wounded > 0) {
+                $stmt = $pdo->prepare("
+                    INSERT INTO user_civilization_wounded_troops (user_id, troop_type_id, count)
+                    VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE count = count + ?
+                ");
+                $stmt->execute([$me['id'], $troopTypeId, $wounded, $wounded]);
+            }
+        }
+        
         // ダメージログを更新
         $stmt = $pdo->prepare("
             INSERT INTO world_boss_damage_logs (instance_id, user_id, damage_dealt, attack_count, last_attack_at)
@@ -645,7 +689,9 @@ if ($action === 'attack_boss') {
                 'attacker_max_hp' => $battleResult['attacker_max_hp'],
                 'defender_max_hp' => $battleResult['defender_max_hp']
             ],
-            'turn_logs' => $battleResult['turn_logs'] ?? []
+            'turn_logs' => $battleResult['turn_logs'] ?? [],
+            'losses' => $attackerLosses,
+            'wounded' => $attackerWounded
         ]);
     } catch (Exception $e) {
         $pdo->rollBack();
