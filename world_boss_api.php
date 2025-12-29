@@ -11,7 +11,11 @@ require_once __DIR__ . '/battle_engine.php';
 // ワールドボス定数
 define('WORLD_BOSS_ATTACK_COOLDOWN_SECONDS', 60);   // 攻撃クールダウン（秒）
 define('WORLD_BOSS_DAMAGE_VARIANCE', 0.2);          // ダメージの乱数幅（±20%）
-define('WORLD_BOSS_MAX_PARTICIPANTS_REWARD', 100);   // 報酬対象の最大人数
+define('WORLD_BOSS_MAX_PARTICIPANTS_REWARD', 100);  // 報酬対象の最大人数
+define('WORLD_BOSS_DEFENSE_DIVISOR', 200);          // 防御力によるダメージ軽減計算用除数
+define('WORLD_BOSS_MAX_DEFENSE_REDUCTION', 0.75);   // 防御による最大ダメージ軽減率（75%）
+define('WORLD_BOSS_CRITICAL_CHANCE', 10);           // クリティカル率（%）
+define('WORLD_BOSS_CRITICAL_MULTIPLIER', 1.5);      // クリティカルダメージ倍率
 
 header('Content-Type: application/json');
 
@@ -510,7 +514,7 @@ if ($action === 'attack_boss') {
         $bossDefense = (int)$instance['base_defense'];
         
         // 防御によるダメージ軽減
-        $defenseReduction = min(0.75, $bossDefense / 200);
+        $defenseReduction = min(WORLD_BOSS_MAX_DEFENSE_REDUCTION, $bossDefense / WORLD_BOSS_DEFENSE_DIVISOR);
         $damage = (int)floor($baseDamage * (1 - $defenseReduction));
         
         // 乱数変動を適用
@@ -518,9 +522,9 @@ if ($action === 'attack_boss') {
         $damage = (int)floor($damage * $variance);
         
         // クリティカル判定
-        $isCritical = mt_rand(1, 100) <= 10;
+        $isCritical = mt_rand(1, 100) <= WORLD_BOSS_CRITICAL_CHANCE;
         if ($isCritical) {
-            $damage = (int)floor($damage * 1.5);
+            $damage = (int)floor($damage * WORLD_BOSS_CRITICAL_MULTIPLIER);
         }
         
         $damage = max(1, $damage);

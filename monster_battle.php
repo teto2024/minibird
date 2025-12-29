@@ -1356,12 +1356,13 @@ document.getElementById('bossDetailModal').addEventListener('click', (e) => {
 loadData();
 
 // 定期的にデータを更新（30秒ごと）
+const DATA_REFRESH_INTERVAL_MS = 30000;
 setInterval(() => {
     if (currentTab === 'worldboss') {
         loadWorldBosses();
     }
     loadActiveEncounter();
-}, 30000);
+}, DATA_REFRESH_INTERVAL_MS);
 </script>
 </body>
 </html>

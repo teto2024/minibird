@@ -13,6 +13,8 @@ define('MONSTER_BATTLE_COST_STAMINA', 10);          // 戦闘に必要なスタ�
 define('MONSTER_DAMAGE_VARIANCE', 0.2);             // ダメージの乱数幅（±20%）
 define('MONSTER_CRITICAL_CHANCE', 10);              // クリティカル率（%）
 define('MONSTER_CRITICAL_MULTIPLIER', 1.5);         // クリティカルダメージ倍率
+define('MONSTER_DEATH_RATE', 0.1);                  // 戦死率（10%）
+define('MONSTER_WOUNDED_RATE', 0.3);                // 負傷兵発生率（30%）
 
 header('Content-Type: application/json');
 
@@ -394,7 +396,7 @@ if ($action === 'attack_monster') {
             $count = $troop['count'];
             
             $totalLossCount = (int)floor($count * $attackerHpLossRate);
-            $deaths = (int)floor($totalLossCount * 0.1);
+            $deaths = (int)floor($totalLossCount * MONSTER_DEATH_RATE);
             $wounded = $totalLossCount - $deaths;
             
             if ($deaths > 0) {

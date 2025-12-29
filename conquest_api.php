@@ -1036,7 +1036,7 @@ if ($action === 'attack_castle') {
             $defenderUnit['armor'] = (int)floor($defenderUnit['armor'] * $defenderTerrainBuff * $terrainDefenseBonus);
         }
         
-        // 占領戦で防御側に有利なボーナスを適用（20%増加）
+        // 占領戦で防御側に有利なボーナスを適用（防御力と攻撃力を20%増加）
         $defenderUnit['armor'] = (int)floor($defenderUnit['armor'] * CONQUEST_DEFENDER_BONUS);
         $defenderUnit['attack'] = (int)floor($defenderUnit['attack'] * CONQUEST_DEFENDER_BONUS);
         
