@@ -833,6 +833,310 @@ body {
     cursor: not-allowed;
     transform: none;
 }
+
+/* チュートリアルモーダル */
+.tutorial-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    animation: fadeIn 0.3s ease;
+}
+
+.tutorial-modal-overlay.show {
+    display: flex;
+}
+
+.tutorial-modal {
+    background: linear-gradient(135deg, #2d1810 0%, #4a2c2a 100%);
+    border: 3px solid #ffd700;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.tutorial-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.tutorial-modal-title {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffd700;
+    margin: 0;
+}
+
+.tutorial-modal-close {
+    background: none;
+    border: none;
+    color: #f5deb3;
+    font-size: 28px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: all 0.3s;
+}
+
+.tutorial-modal-close:hover {
+    opacity: 1;
+    color: #ff6b6b;
+}
+
+.tutorial-modal-content {
+    color: #f5deb3;
+    line-height: 1.8;
+    margin-bottom: 20px;
+}
+
+.tutorial-modal-content p {
+    margin: 10px 0;
+}
+
+.tutorial-modal-content strong {
+    color: #ffd700;
+}
+
+.tutorial-hint {
+    background: rgba(255, 215, 0, 0.1);
+    border-left: 4px solid #ffd700;
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 0 10px 10px 0;
+}
+
+.tutorial-hint-title {
+    font-weight: bold;
+    color: #ffd700;
+    margin-bottom: 5px;
+}
+
+.tutorial-modal-footer {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.tutorial-btn {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.tutorial-btn-primary {
+    background: linear-gradient(135deg, #ffd700 0%, #ffb800 100%);
+    color: #1a0f0a;
+}
+
+.tutorial-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.5);
+}
+
+.tutorial-btn-secondary {
+    background: rgba(255,255,255,0.1);
+    color: #f5deb3;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.tutorial-btn-secondary:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+/* クエストタブ */
+.quest-tab-content {
+    display: none;
+}
+
+.quest-tab-content.active {
+    display: block;
+}
+
+.quest-category-section {
+    margin-bottom: 25px;
+}
+
+.quest-category-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid rgba(212, 165, 116, 0.3);
+}
+
+.quest-category-icon {
+    font-size: 24px;
+}
+
+.quest-category-name {
+    font-size: 18px;
+    font-weight: bold;
+    color: #ffd700;
+}
+
+.quest-card {
+    background: rgba(0,0,0,0.3);
+    border: 2px solid rgba(212, 165, 116, 0.4);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 12px;
+    transition: all 0.3s;
+}
+
+.quest-card:hover {
+    border-color: #d4a574;
+    background: rgba(0,0,0,0.4);
+}
+
+.quest-card.completed {
+    border-color: #48bb78;
+    background: rgba(72, 187, 120, 0.1);
+}
+
+.quest-card.claimed {
+    opacity: 0.6;
+}
+
+.quest-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.quest-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #f5deb3;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.quest-era-badge {
+    font-size: 12px;
+    padding: 2px 8px;
+    background: rgba(255, 215, 0, 0.2);
+    border-radius: 10px;
+    color: #ffd700;
+}
+
+.quest-description {
+    font-size: 14px;
+    color: #c4a882;
+    margin-bottom: 12px;
+}
+
+.quest-progress-bar {
+    height: 8px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.quest-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #d4a574 0%, #ffd700 100%);
+    border-radius: 4px;
+    transition: width 0.5s;
+}
+
+.quest-progress-fill.completed {
+    background: linear-gradient(90deg, #48bb78 0%, #38a169 100%);
+}
+
+.quest-progress-text {
+    font-size: 12px;
+    color: #c4a882;
+    margin-bottom: 10px;
+}
+
+.quest-rewards {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.quest-reward-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    padding: 4px 10px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 15px;
+}
+
+.quest-claim-btn {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.quest-claim-btn.available {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+}
+
+.quest-claim-btn.available:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(72, 187, 120, 0.5);
+}
+
+.quest-claim-btn.in-progress {
+    background: rgba(255,255,255,0.1);
+    color: #c4a882;
+    cursor: default;
+}
+
+.quest-claim-btn.claimed {
+    background: rgba(0,0,0,0.2);
+    color: #666;
+    cursor: default;
+}
+
+.quest-cooldown {
+    font-size: 12px;
+    color: #ff9800;
+    margin-top: 5px;
+}
 </style>
 </head>
 <body>
@@ -860,6 +1164,27 @@ body {
         <button class="attack-confirm-btn" id="confirmAttackBtn" onclick="confirmAttack()">
             ⚔️ 攻撃開始
         </button>
+    </div>
+</div>
+
+<!-- チュートリアルガイドモーダル -->
+<div class="tutorial-modal-overlay" id="tutorialModal">
+    <div class="tutorial-modal">
+        <div class="tutorial-modal-header">
+            <h3 class="tutorial-modal-title" id="tutorialModalTitle">📖 チュートリアル</h3>
+            <button class="tutorial-modal-close" onclick="closeTutorialModal()">×</button>
+        </div>
+        <div class="tutorial-modal-content" id="tutorialModalContent">
+            <!-- 動的にコンテンツが挿入される -->
+        </div>
+        <div class="tutorial-hint" id="tutorialHint" style="display: none;">
+            <div class="tutorial-hint-title">💡 ヒント</div>
+            <div id="tutorialHintText"></div>
+        </div>
+        <div class="tutorial-modal-footer">
+            <button class="tutorial-btn tutorial-btn-secondary" onclick="closeTutorialModal()">後で見る</button>
+            <button class="tutorial-btn tutorial-btn-primary" onclick="closeTutorialModal()">わかった！</button>
+        </div>
     </div>
 </div>
 
@@ -1273,6 +1598,7 @@ function renderApp() {
             <button class="tab-btn ${currentTab === 'war' ? 'active' : ''}" data-tab="war">⚔️ 戦争</button>
             <button class="tab-btn ${currentTab === 'conquest' ? 'active' : ''}" data-tab="conquest">🏰 占領戦</button>
             <button class="tab-btn ${currentTab === 'monster' ? 'active' : ''}" data-tab="monster">🐉 モンスター</button>
+            <button class="tab-btn ${currentTab === 'quests' ? 'active' : ''}" data-tab="quests" style="background: linear-gradient(135deg, rgba(72, 187, 120, 0.3) 0%, rgba(56, 161, 105, 0.3) 100%);">📋 クエスト</button>
             <button class="tab-btn ${currentTab === 'shop' ? 'active' : ''}" data-tab="shop">💠 VIPショップ</button>
             <button class="tab-btn ${currentTab === 'tutorial' ? 'active' : ''}" data-tab="tutorial" style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 140, 0, 0.3) 100%);">📜 チュートリアル</button>
         </div>
@@ -1600,6 +1926,20 @@ function renderApp() {
                 </div>
             </div>
         </div>
+        
+        <!-- クエストタブ -->
+        <div class="tab-content ${currentTab === 'quests' ? 'active' : ''}" id="tab-quests">
+            <div class="invest-section" style="background: linear-gradient(135deg, rgba(72, 187, 120, 0.2) 0%, rgba(56, 161, 105, 0.2) 100%); border-color: #48bb78;">
+                <h3 style="color: #48bb78;">📋 文明クエスト</h3>
+                <p style="color: #c0a080; margin-bottom: 20px;">
+                    時代に合わせた様々なクエストをクリアして報酬を獲得しましょう！<br>
+                    <span style="color: #ffd700;">⭐ 報酬: コイン、クリスタル、ダイヤモンド、各種資源</span>
+                </p>
+                <div id="civilizationQuestsSection">
+                    <div class="loading">読み込み中...</div>
+                </div>
+            </div>
+        </div>
     `;
     
     // タブ切り替え
@@ -1634,6 +1974,10 @@ function renderApp() {
             if (btn.dataset.tab === 'tutorial') {
                 loadTutorial();
             }
+            // クエストタブの場合、文明クエストを読み込む
+            if (btn.dataset.tab === 'quests') {
+                loadCivilizationQuests();
+            }
         });
     });
     
@@ -1660,6 +2004,13 @@ function renderApp() {
     if (currentTab === 'tutorial') {
         loadTutorial();
     }
+    // クエストタブがアクティブな場合、文明クエストを読み込む
+    if (currentTab === 'quests') {
+        loadCivilizationQuests();
+    }
+    
+    // 初回アクセス時にチュートリアルモーダルを表示
+    checkTutorialModal();
 }
 
 // 建物グリッドを描画
@@ -2767,14 +3118,30 @@ async function loadWoundedTroops() {
                         </div>
                         <div style="color: #888; font-size: 11px; margin-top: 5px;">💡 病院を建設するとキュー数が増えます（容量: ${data.hospital_capacity}床）</div>
                     </div>
-                    ${data.wounded_troops.map(w => `
+                    ${data.wounded_troops.map(w => {
+                        let healCostText = `🪙${w.heal_cost_coins}/体`;
+                        if (w.heal_cost_resources) {
+                            try {
+                                const healCosts = typeof w.heal_cost_resources === 'string' ? JSON.parse(w.heal_cost_resources) : w.heal_cost_resources;
+                                if (healCosts) {
+                                    Object.entries(healCosts).forEach(([key, val]) => {
+                                        const resName = getResourceName(key);
+                                        healCostText += ` | ${resName}: ${val}`;
+                                    });
+                                }
+                            } catch(e) {
+                                console.warn('Failed to parse heal_cost_resources:', e);
+                            }
+                        }
+                        return `
                         <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 8px;">
                             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                                 <div>
                                     <span>${w.icon} ${w.name} ×${w.count}</span>
-                                    <span style="color: #888; font-size: 11px; margin-left: 10px;">治療: ${w.heal_time_seconds}秒/体 🪙${w.heal_cost_coins}/体</span>
+                                    <span style="color: #888; font-size: 11px; margin-left: 10px;">治療: ${w.heal_time_seconds}秒/体</span>
                                 </div>
                             </div>
+                            <div style="color: #48bb78; font-size: 11px; margin-bottom: 8px;">💊 コスト: ${healCostText}</div>
                             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                                 <input type="range" class="troop-select-slider" id="heal-slider-${w.troop_type_id}" min="1" max="${w.count}" value="1" 
                                        style="background: #dc143c;" oninput="document.getElementById('heal-count-${w.troop_type_id}').value = this.value">
@@ -2783,7 +3150,7 @@ async function loadWoundedTroops() {
                                 <button class="quick-invest-btn" onclick="healTroops(${w.troop_type_id})" style="background: linear-gradient(135deg, #32cd32 0%, #228b22 100%); color: #fff; flex: 1;">🏥 治療</button>
                             </div>
                         </div>
-                    `).join('')}
+                    `}).join('')}
                 `;
             } else {
                 woundedContainer.innerHTML = '<p style="color: #888;">負傷兵はいません</p>';
@@ -3854,6 +4221,237 @@ async function completeTutorialQuest() {
         if (data.ok) {
             showNotification(data.message, 'success');
             loadTutorial();
+            loadData(); // コイン等の更新のため
+            
+            // 次のクエストのモーダルを表示するためにリセット
+            try {
+                await fetch('civilization_api.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({action: 'reset_tutorial_modal'})
+                });
+                setTimeout(() => checkTutorialModal(), 500);
+            } catch (e) {}
+        } else {
+            showNotification(data.error || '報酬の受け取りに失敗しました', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        showNotification('エラーが発生しました', 'error');
+    }
+}
+
+// ===============================================
+// チュートリアルモーダル機能
+// ===============================================
+let tutorialModalShown = false;
+
+async function checkTutorialModal() {
+    if (tutorialModalShown) return;
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_tutorial_modal_config'})
+        });
+        const data = await res.json();
+        
+        if (data.ok && data.show_modal && data.modal_config) {
+            showTutorialModal(data.modal_config);
+            tutorialModalShown = true;
+        }
+    } catch (e) {
+        console.error('Tutorial modal check failed:', e);
+    }
+}
+
+function showTutorialModal(config) {
+    const modal = document.getElementById('tutorialModal');
+    if (!modal) return;
+    
+    document.getElementById('tutorialModalTitle').innerHTML = config.modal_title || '📖 チュートリアル';
+    document.getElementById('tutorialModalContent').innerHTML = config.modal_content || '';
+    
+    const hintEl = document.getElementById('tutorialHint');
+    const hintText = document.getElementById('tutorialHintText');
+    if (config.action_hint) {
+        hintText.textContent = config.action_hint;
+        hintEl.style.display = 'block';
+    } else {
+        hintEl.style.display = 'none';
+    }
+    
+    modal.classList.add('show');
+    
+    // ハイライト表示
+    if (config.highlight_selector) {
+        const targetEl = document.querySelector(config.highlight_selector);
+        if (targetEl) {
+            targetEl.style.boxShadow = '0 0 20px 5px rgba(255, 215, 0, 0.6)';
+            targetEl.style.transition = 'box-shadow 0.3s';
+            setTimeout(() => {
+                targetEl.style.boxShadow = '';
+            }, 5000);
+        }
+    }
+}
+
+async function closeTutorialModal() {
+    const modal = document.getElementById('tutorialModal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+    
+    // モーダルを閉じた状態を保存
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_tutorial_modal_config'})
+        });
+        const data = await res.json();
+        if (data.ok && data.current_quest_id) {
+            await fetch('civilization_api.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'dismiss_tutorial_modal', quest_id: data.current_quest_id})
+            });
+        }
+    } catch (e) {}
+}
+
+// ===============================================
+// 文明クエスト機能（チュートリアル以外）
+// ===============================================
+async function loadCivilizationQuests() {
+    const section = document.getElementById('civilizationQuestsSection');
+    if (!section) return;
+    
+    section.innerHTML = '<div class="loading">読み込み中...</div>';
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_civilization_quests'})
+        });
+        const data = await res.json();
+        
+        if (!data.ok) {
+            section.innerHTML = `<p style="color: #ff6b6b;">エラー: ${data.error}</p>`;
+            return;
+        }
+        
+        if (!data.quests_available) {
+            section.innerHTML = '<p style="color: #c0a080;">クエストシステムはまだ初期化されていません</p>';
+            return;
+        }
+        
+        let html = '';
+        const categoryInfo = data.category_info || {};
+        const questsByCategory = data.quests_by_category || {};
+        
+        // 各カテゴリのクエストを表示
+        for (const [category, quests] of Object.entries(questsByCategory)) {
+            const catInfo = categoryInfo[category] || {name: category, icon: '📋'};
+            
+            html += `
+                <div class="quest-category-section">
+                    <div class="quest-category-header">
+                        <span class="quest-category-icon">${catInfo.icon}</span>
+                        <span class="quest-category-name">${catInfo.name}</span>
+                        <span style="color: #888; font-size: 13px;">(${quests.length}件)</span>
+                    </div>
+            `;
+            
+            for (const quest of quests) {
+                const progressPercent = Math.min(100, (quest.current_progress / quest.target_count) * 100);
+                const isCompleted = quest.is_completed;
+                const isClaimed = quest.is_claimed;
+                
+                let btnClass = 'in-progress';
+                let btnText = `進行中 (${quest.current_progress}/${quest.target_count})`;
+                let btnOnclick = '';
+                
+                if (isClaimed && !quest.is_repeatable) {
+                    btnClass = 'claimed';
+                    btnText = '✅ 受取済み';
+                } else if (isClaimed && quest.is_repeatable && quest.cooldown_remaining > 0) {
+                    btnClass = 'claimed';
+                    const hours = Math.ceil(quest.cooldown_remaining / 3600);
+                    btnText = `🕐 ${hours}時間後に再挑戦可能`;
+                } else if (isCompleted) {
+                    btnClass = 'available';
+                    btnText = '🎁 報酬を受け取る';
+                    btnOnclick = `onclick="claimCivilizationQuestReward(${quest.id})"`;
+                }
+                
+                // 報酬表示
+                let rewardsHtml = '';
+                if (quest.reward_coins > 0) {
+                    rewardsHtml += `<span class="quest-reward-item">🪙 ${Number(quest.reward_coins).toLocaleString()}</span>`;
+                }
+                if (quest.reward_crystals > 0) {
+                    rewardsHtml += `<span class="quest-reward-item">💎 ${Number(quest.reward_crystals).toLocaleString()}</span>`;
+                }
+                if (quest.reward_diamonds > 0) {
+                    rewardsHtml += `<span class="quest-reward-item">💠 ${Number(quest.reward_diamonds).toLocaleString()}</span>`;
+                }
+                if (quest.reward_resources) {
+                    for (const [key, amount] of Object.entries(quest.reward_resources)) {
+                        const resourceName = getResourceName(key);
+                        rewardsHtml += `<span class="quest-reward-item">📦 ${resourceName} ${Number(amount).toLocaleString()}</span>`;
+                    }
+                }
+                
+                html += `
+                    <div class="quest-card ${isCompleted ? 'completed' : ''} ${isClaimed && !quest.is_repeatable ? 'claimed' : ''}">
+                        <div class="quest-header">
+                            <div class="quest-title">
+                                <span>${quest.icon}</span>
+                                <span>${escapeHtml(quest.title)}</span>
+                                ${quest.is_repeatable ? '<span style="font-size: 10px; color: #48bb78;">🔄</span>' : ''}
+                            </div>
+                            <span class="quest-era-badge">${quest.era_icon} ${quest.era_name}</span>
+                        </div>
+                        <div class="quest-description">${escapeHtml(quest.description)}</div>
+                        <div class="quest-progress-bar">
+                            <div class="quest-progress-fill ${isCompleted ? 'completed' : ''}" style="width: ${progressPercent}%;"></div>
+                        </div>
+                        <div class="quest-progress-text">${quest.current_progress} / ${quest.target_count}</div>
+                        <div class="quest-rewards">${rewardsHtml}</div>
+                        <button class="quest-claim-btn ${btnClass}" ${btnOnclick}>${btnText}</button>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+        }
+        
+        if (Object.keys(questsByCategory).length === 0) {
+            html = '<p style="color: #c0a080; text-align: center;">現在の時代で利用可能なクエストはありません</p>';
+        }
+        
+        section.innerHTML = html;
+    } catch (e) {
+        console.error(e);
+        section.innerHTML = '<p style="color: #ff6b6b;">クエストの読み込みに失敗しました</p>';
+    }
+}
+
+async function claimCivilizationQuestReward(questId) {
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'claim_civilization_quest_reward', quest_id: questId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message, 'success');
+            loadCivilizationQuests();
             loadData(); // コイン等の更新のため
         } else {
             showNotification(data.error || '報酬の受け取りに失敗しました', 'error');
