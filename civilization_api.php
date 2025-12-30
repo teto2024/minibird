@@ -664,7 +664,7 @@ function collectResources($pdo, $userId) {
             $stmt->execute([$userId, $prod['produces_resource_id'], $produced, $produced]);
             
             // 資源名を取得
-            $stmt = $pdo->prepare("SELECT name, icon FROM civilization_resource_types WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT name, icon, resource_key FROM civilization_resource_types WHERE id = ?");
             $stmt->execute([$prod['produces_resource_id']]);
             $resInfo = $stmt->fetch(PDO::FETCH_ASSOC);
             
@@ -673,8 +673,15 @@ function collectResources($pdo, $userId) {
                     'resource_id' => $prod['produces_resource_id'],
                     'name' => $resInfo['name'],
                     'icon' => $resInfo['icon'],
-                    'amount' => round($produced, 2)
+                    'amount' => round($produced, 2),
+                    'resource_key' => $resInfo['resource_key']
                 ];
+                
+                // 資源収集クエストの進捗を更新
+                $intProduced = (int)floor($produced);
+                if ($intProduced > 0) {
+                    updateCivilizationQuestProgress($pdo, $userId, 'collect', $resInfo['resource_key'], $intProduced);
+                }
             }
         }
     }
