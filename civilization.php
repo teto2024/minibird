@@ -4518,15 +4518,22 @@ async function loadLeaderboard(rankingType = null) {
             return;
         }
         
-        // 資源タイプのボタンを生成（初回のみ）
-        if (data.resource_types && resourceButtonsContainer && leaderboardResourceTypes.length === 0) {
-            leaderboardResourceTypes = data.resource_types;
-            resourceButtonsContainer.innerHTML = data.resource_types.map(rt => 
-                `<button class="resource-ranking-btn" data-ranking="resource_${rt.resource_key}" style="padding: 6px 10px; background: rgba(0,0,0,0.3); border: 2px solid #48bb78; border-radius: 6px; color: #888; cursor: pointer; font-size: 11px; transition: all 0.2s;">${rt.icon} ${rt.name}</button>`
-            ).join('');
-            
-            // 資源ボタンにイベントリスナーを追加
-            setupResourceButtonListeners();
+        // 資源タイプのボタンを生成（DOMが空の場合は再生成）
+        if (data.resource_types && resourceButtonsContainer) {
+            // 資源ボタンが存在しない場合はボタンを生成
+            const needsRender = resourceButtonsContainer.querySelector('.resource-ranking-btn') === null;
+            if (needsRender) {
+                leaderboardResourceTypes = data.resource_types;
+                resourceButtonsContainer.innerHTML = data.resource_types.map(rt => 
+                    `<button class="resource-ranking-btn" data-ranking="resource_${rt.resource_key}" style="padding: 6px 10px; background: rgba(0,0,0,0.3); border: 2px solid #48bb78; border-radius: 6px; color: #888; cursor: pointer; font-size: 11px; transition: all 0.2s;">${rt.icon} ${rt.name}</button>`
+                ).join('');
+                
+                // 資源ボタンにイベントリスナーを追加
+                setupResourceButtonListeners();
+                
+                // 現在選択中のランキングのボタンスタイルを更新
+                updateRankingButtonStyles(currentLeaderboardType);
+            }
         }
         
         // 自分の順位を表示
@@ -4607,35 +4614,30 @@ function updateRankingButtonStyles(activeRanking) {
 // 資源ボタンのイベントリスナーを設定
 function setupResourceButtonListeners() {
     document.querySelectorAll('.resource-ranking-btn').forEach(btn => {
+        // 既にリスナーが追加されている場合はスキップ
+        if (btn.dataset.listenerAdded) return;
+        
         btn.addEventListener('click', () => {
             loadLeaderboard(btn.dataset.ranking);
         });
+        btn.dataset.listenerAdded = 'true';
     });
 }
 
 // リーダーボードのイベントリスナーを設定
-let leaderboardListenersInitialized = false;
-
 function setupLeaderboardListeners() {
-    // 重複を防ぐためにフラグをチェック
-    if (leaderboardListenersInitialized) return;
-    
     // メインランキングボタンにイベントリスナーを追加
     const mainButtons = document.querySelectorAll('.ranking-btn');
     
-    let listenersAdded = false;
-    
     mainButtons.forEach(btn => {
+        // 既にリスナーが追加されている場合はスキップ
+        if (btn.dataset.listenerAdded) return;
+        
         btn.addEventListener('click', () => {
             loadLeaderboard(btn.dataset.ranking);
         });
-        listenersAdded = true;
+        btn.dataset.listenerAdded = 'true';
     });
-    
-    // リスナーが正常に追加された場合のみフラグを立てる
-    if (listenersAdded) {
-        leaderboardListenersInitialized = true;
-    }
 }
 
 // ===============================================
