@@ -4829,26 +4829,59 @@ if ($action === 'get_leaderboards') {
                 break;
                 
             case 'military_power':
-                // 軍事力ランキング
+                // 軍事力ランキング（動的に計算）
+                // 建物パワー + 兵士パワー + 装備パワーを計算
                 $stmt = $pdo->query("
-                    SELECT uc.user_id, uc.civilization_name, uc.military_power as value, u.handle
+                    SELECT 
+                        uc.user_id, 
+                        uc.civilization_name, 
+                        u.handle,
+                        (
+                            COALESCE((
+                                SELECT SUM(bt.military_power * ucb.level)
+                                FROM user_civilization_buildings ucb
+                                JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+                                WHERE ucb.user_id = uc.user_id AND ucb.is_constructing = FALSE
+                            ), 0) +
+                            COALESCE((
+                                SELECT SUM((tt.attack_power + FLOOR(tt.defense_power / 2) + FLOOR(COALESCE(tt.health_points, 100) / " . CIV_TROOP_HEALTH_TO_POWER_RATIO . ")) * uct.count)
+                                FROM user_civilization_troops uct
+                                JOIN civilization_troop_types tt ON uct.troop_type_id = tt.id
+                                WHERE uct.user_id = uc.user_id
+                            ), 0)
+                        ) as value
                     FROM user_civilizations uc
                     JOIN users u ON uc.user_id = u.id
-                    ORDER BY uc.military_power DESC
+                    ORDER BY value DESC
                     LIMIT {$limit}
                 ");
                 $rankings = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
+                // 自分の軍事力を計算（装備は含めない - SQLと同じ計算）
+                $myPowerData = calculateTotalMilitaryPower($pdo, $me['id'], false);
+                $myValue = $myPowerData['building_power'] + $myPowerData['troop_power'];
+                
+                // 自分の順位を取得
                 $stmt = $pdo->prepare("
-                    SELECT COUNT(*) + 1 as rank_position,
-                           (SELECT military_power FROM user_civilizations WHERE user_id = ?) as value
-                    FROM user_civilizations 
-                    WHERE military_power > (SELECT military_power FROM user_civilizations WHERE user_id = ?)
+                    SELECT COUNT(*) + 1 as rank_position
+                    FROM user_civilizations uc
+                    WHERE (
+                        COALESCE((
+                            SELECT SUM(bt.military_power * ucb.level)
+                            FROM user_civilization_buildings ucb
+                            JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+                            WHERE ucb.user_id = uc.user_id AND ucb.is_constructing = FALSE
+                        ), 0) +
+                        COALESCE((
+                            SELECT SUM((tt.attack_power + FLOOR(tt.defense_power / 2) + FLOOR(COALESCE(tt.health_points, 100) / " . CIV_TROOP_HEALTH_TO_POWER_RATIO . ")) * uct.count)
+                            FROM user_civilization_troops uct
+                            JOIN civilization_troop_types tt ON uct.troop_type_id = tt.id
+                            WHERE uct.user_id = uc.user_id
+                        ), 0)
+                    ) > ?
                 ");
-                $stmt->execute([$me['id'], $me['id']]);
-                $myRankData = $stmt->fetch(PDO::FETCH_ASSOC);
-                $myRank = $myRankData['rank_position'] ?? null;
-                $myValue = $myRankData['value'] ?? 0;
+                $stmt->execute([$myValue]);
+                $myRank = (int)$stmt->fetchColumn();
                 break;
                 
             case 'total_soldiers':
