@@ -282,9 +282,16 @@ function calculateTrainingQueueLimit($pdo, $userId) {
  * @param int $userId ユーザーID
  * @return array ['count' => int, 'level' => int, 'max_queues' => int, 'capacity' => int] 病院数、レベル合計、最大キュー数、容量
  */
+
 function calculateHealingQueueLimit($pdo, $userId) {
     $stmt = $pdo->prepare("
-        SELECT COUNT(*) as hospital_count, COALESCE(SUM(ucb.level), 0) as total_level
+        SELECT COUNT(*) as hospital_count, COALESCE(SUM(ucb.level), 0) as total_level,
+               SUM(CASE 
+                   WHEN bt.building_key = 'field_hospital' THEN 10
+                   WHEN bt.building_key = 'hospital' THEN 50
+                   WHEN bt.building_key = 'medical_center' THEN 100
+                   ELSE 0
+               END) as building_capacity
         FROM user_civilization_buildings ucb
         JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
         WHERE ucb.user_id = ? 
@@ -295,12 +302,13 @@ function calculateHealingQueueLimit($pdo, $userId) {
     $data = $stmt->fetch(PDO::FETCH_ASSOC);
     $count = (int)($data['hospital_count'] ?? 0);
     $level = (int)($data['total_level'] ?? 0);
+    $buildingCapacity = (int)($data['building_capacity'] ?? 0);
     
     // 利用可能なキュー数を計算（最低1 + 病院数 + 病院レベル合計/2）
     $maxQueues = max(1, CIV_BASE_QUEUE_SLOTS + ($count * CIV_QUEUE_SLOTS_PER_BUILDING) + (int)floor($level * CIV_QUEUE_SLOTS_PER_LEVEL));
     
-    // 病院容量（10床/病院 + 5床/レベル）
-    $capacity = $count * 10 + $level * 5;
+    // 病院容量（建物別ロジックに基づく総合値 + 5床/レベル）
+    $capacity = $buildingCapacity + $level * 5;
     
     return [
         'count' => $count,
@@ -309,7 +317,6 @@ function calculateHealingQueueLimit($pdo, $userId) {
         'capacity' => $capacity
     ];
 }
-
 /**
  * 大使館の援助制限を計算するヘルパー関数
  * 
