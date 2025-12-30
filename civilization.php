@@ -2087,6 +2087,9 @@ function renderApp() {
     
     // タブバッジを更新（報酬受け取り待ちクエスト、負傷兵など）
     updateTabBadges();
+    
+    // リーダーボードのイベントリスナーを設定
+    setupLeaderboardListeners();
 }
 
 // タブバッジを更新する関数
@@ -4564,25 +4567,36 @@ async function loadLeaderboard(rankingType = null) {
 }
 
 // リーダーボードのイベントリスナーを設定
+let leaderboardListenersInitialized = false;
+
 function setupLeaderboardListeners() {
+    // 重複を防ぐためにフラグをチェック
+    if (leaderboardListenersInitialized) return;
+    
     const typeSelect = document.getElementById('leaderboard-type');
     const resourceSelect = document.getElementById('resource-type-select');
+    
+    let listenersAdded = false;
     
     if (typeSelect) {
         typeSelect.addEventListener('change', () => {
             loadLeaderboard(typeSelect.value);
         });
+        listenersAdded = true;
     }
     
     if (resourceSelect) {
         resourceSelect.addEventListener('change', () => {
             loadLeaderboard(resourceSelect.value);
         });
+        listenersAdded = true;
+    }
+    
+    // リスナーが正常に追加された場合のみフラグを立てる
+    if (listenersAdded) {
+        leaderboardListenersInitialized = true;
     }
 }
-
-// ページ読み込み時にリスナーを設定
-document.addEventListener('DOMContentLoaded', setupLeaderboardListeners);
 
 // ===============================================
 // 文明クエスト機能（チュートリアル以外）
