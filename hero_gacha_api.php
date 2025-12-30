@@ -30,41 +30,51 @@ if ($action === 'pull') {
         $stmt->execute([$me['id']]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
+        $cost_coins = 0;
+        $cost_crystals = 0;
+        $cost_diamonds = 0;
+        
         if ($type === 'normal') {
             $cost_coins = 1000;
-            $cost_crystals = 0;
             if ($user['coins'] < $cost_coins) {
                 throw new Exception('コインが不足しています');
             }
-        } else {
-            $cost_coins = 0;
+        } else if ($type === 'crystal') {
             $cost_crystals = 100;
             if ($user['crystals'] < $cost_crystals) {
                 throw new Exception('クリスタルが不足しています');
             }
+        } else if ($type === 'diamond') {
+            $cost_diamonds = 10;
+            if ($user['diamonds'] < $cost_diamonds) {
+                throw new Exception('ダイヤモンドが不足しています');
+            }
+        } else {
+            throw new Exception('無効なガチャタイプです');
         }
         
         // コスト消費
-        $stmt = $pdo->prepare("UPDATE users SET coins = coins - ?, crystals = crystals - ? WHERE id = ?");
-        $stmt->execute([$cost_coins, $cost_crystals, $me['id']]);
+        $stmt = $pdo->prepare("UPDATE users SET coins = coins - ?, crystals = crystals - ?, diamonds = diamonds - ? WHERE id = ?");
+        $stmt->execute([$cost_coins, $cost_crystals, $cost_diamonds, $me['id']]);
         
-        // 報酬決定
-        $reward = determineGachaReward($type, $pdo, $me['id']);
+        // 報酬決定（ダイヤモンドガチャはクリスタルガチャと同じ報酬テーブル）
+        $rewardType = $type === 'diamond' ? 'crystal' : $type;
+        $reward = determineGachaReward($rewardType, $pdo, $me['id']);
         
         // 報酬付与
         applyGachaReward($reward, $pdo, $me['id']);
         
         // 履歴記録
         $stmt = $pdo->prepare("
-            INSERT INTO hero_gacha_history (user_id, gacha_type, reward_type, reward_data, cost_coins, cost_crystals)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO hero_gacha_history (user_id, gacha_type, reward_type, reward_data, cost_coins, cost_crystals, cost_diamonds)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$me['id'], $type, $reward['type'], json_encode($reward), $cost_coins, $cost_crystals]);
+        $stmt->execute([$me['id'], $type, $reward['type'], json_encode($reward), $cost_coins, $cost_crystals, $cost_diamonds]);
         
         $pdo->commit();
         
         // 更新後の残高を取得
-        $stmt = $pdo->prepare("SELECT coins, crystals FROM users WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT coins, crystals, diamonds FROM users WHERE id = ?");
         $stmt->execute([$me['id']]);
         $balance = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -92,46 +102,57 @@ if ($action === 'pull_10') {
         $stmt->execute([$me['id']]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
+        $cost_coins = 0;
+        $cost_crystals = 0;
+        $cost_diamonds = 0;
+        
         if ($type === 'normal') {
             $cost_coins = 9000; // 10連で10%割引（通常10,000）
-            $cost_crystals = 0;
             if ($user['coins'] < $cost_coins) {
                 throw new Exception('コインが不足しています（必要: ' . number_format($cost_coins) . '）');
             }
-        } else {
-            $cost_coins = 0;
+        } else if ($type === 'crystal') {
             $cost_crystals = 900; // 10連で10%割引（通常1,000）
             if ($user['crystals'] < $cost_crystals) {
                 throw new Exception('クリスタルが不足しています（必要: ' . number_format($cost_crystals) . '）');
             }
+        } else if ($type === 'diamond') {
+            $cost_diamonds = 90; // 10連で10%割引（通常100）
+            if ($user['diamonds'] < $cost_diamonds) {
+                throw new Exception('ダイヤモンドが不足しています（必要: ' . number_format($cost_diamonds) . '）');
+            }
+        } else {
+            throw new Exception('無効なガチャタイプです');
         }
         
         // コスト消費
-        $stmt = $pdo->prepare("UPDATE users SET coins = coins - ?, crystals = crystals - ? WHERE id = ?");
-        $stmt->execute([$cost_coins, $cost_crystals, $me['id']]);
+        $stmt = $pdo->prepare("UPDATE users SET coins = coins - ?, crystals = crystals - ?, diamonds = diamonds - ? WHERE id = ?");
+        $stmt->execute([$cost_coins, $cost_crystals, $cost_diamonds, $me['id']]);
         
-        // 10回分の報酬を決定・付与
+        // 10回分の報酬を決定・付与（ダイヤモンドガチャはクリスタルガチャと同じ報酬テーブル）
+        $rewardType = $type === 'diamond' ? 'crystal' : $type;
         $rewards = [];
         for ($i = 0; $i < 10; $i++) {
-            $reward = determineGachaReward($type, $pdo, $me['id']);
+            $reward = determineGachaReward($rewardType, $pdo, $me['id']);
             applyGachaReward($reward, $pdo, $me['id']);
             $rewards[] = $reward;
             
             // 履歴記録
             // 10連ガチャの場合、総コストを各エントリに1/10ずつ記録（分析しやすくするため）
             $stmt = $pdo->prepare("
-                INSERT INTO hero_gacha_history (user_id, gacha_type, reward_type, reward_data, cost_coins, cost_crystals)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO hero_gacha_history (user_id, gacha_type, reward_type, reward_data, cost_coins, cost_crystals, cost_diamonds)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             ");
             $individual_coins = (int)floor($cost_coins / 10);
             $individual_crystals = (int)floor($cost_crystals / 10);
-            $stmt->execute([$me['id'], $type . '_10', $reward['type'], json_encode($reward), $individual_coins, $individual_crystals]);
+            $individual_diamonds = (int)floor($cost_diamonds / 10);
+            $stmt->execute([$me['id'], $type . '_10', $reward['type'], json_encode($reward), $individual_coins, $individual_crystals, $individual_diamonds]);
         }
         
         $pdo->commit();
         
         // 更新後の残高を取得
-        $stmt = $pdo->prepare("SELECT coins, crystals FROM users WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT coins, crystals, diamonds FROM users WHERE id = ?");
         $stmt->execute([$me['id']]);
         $balance = $stmt->fetch(PDO::FETCH_ASSOC);
         
