@@ -719,6 +719,33 @@ function executeTurnBattle($attacker, $defender, $maxTurns = null) {
                 }
             }
             
+            // ヒーロースキルの効果を適用（ダメージ/回復/敵へのデバフ）
+            if ($skillResult['hero_skill_result']) {
+                $heroResult = $skillResult['hero_skill_result'];
+                
+                // ヒーロースキルのダメージを適用
+                if ($heroResult['damage'] > 0) {
+                    $defender['current_health'] -= $heroResult['damage'];
+                    $defender['current_health'] = max(0, $defender['current_health']);
+                    $turnMessages[] = "🦸 ヒーロースキル: {$heroResult['damage']}ダメージを与えた！";
+                    $turnMessages[] = "防御側HP: {$defender['current_health']}/{$defender['max_health']}";
+                }
+                
+                // ヒーロースキルの回復を適用
+                if ($heroResult['heal'] > 0) {
+                    $attacker['current_health'] = min($attacker['max_health'], $attacker['current_health'] + $heroResult['heal']);
+                    $turnMessages[] = "🦸 ヒーロースキル: {$heroResult['heal']}回復！";
+                    $turnMessages[] = "攻撃側HP: {$attacker['current_health']}/{$attacker['max_health']}";
+                }
+                
+                // ヒーロースキルの敵へのデバフを適用
+                if (!empty($heroResult['defender_effects'])) {
+                    foreach ($heroResult['defender_effects'] as $effect) {
+                        $defender['active_effects'][] = $effect;
+                    }
+                }
+            }
+            
             // 攻撃回数（通常 + 加速）
             $attackCount = 1 + $skillResult['extra_attacks'];
             
@@ -826,6 +853,33 @@ function executeTurnBattle($attacker, $defender, $maxTurns = null) {
                     $defender['active_effects'][] = $effect;
                 } else if ($effect['effect_target'] === 'enemy') {
                     $attacker['active_effects'][] = $effect;
+                }
+            }
+            
+            // ヒーロースキルの効果を適用（ダメージ/回復/敵へのデバフ）
+            if ($skillResult['hero_skill_result']) {
+                $heroResult = $skillResult['hero_skill_result'];
+                
+                // ヒーロースキルのダメージを適用
+                if ($heroResult['damage'] > 0) {
+                    $attacker['current_health'] -= $heroResult['damage'];
+                    $attacker['current_health'] = max(0, $attacker['current_health']);
+                    $turnMessages[] = "🦸 ヒーロースキル: {$heroResult['damage']}ダメージを与えた！";
+                    $turnMessages[] = "攻撃側HP: {$attacker['current_health']}/{$attacker['max_health']}";
+                }
+                
+                // ヒーロースキルの回復を適用
+                if ($heroResult['heal'] > 0) {
+                    $defender['current_health'] = min($defender['max_health'], $defender['current_health'] + $heroResult['heal']);
+                    $turnMessages[] = "🦸 ヒーロースキル: {$heroResult['heal']}回復！";
+                    $turnMessages[] = "防御側HP: {$defender['current_health']}/{$defender['max_health']}";
+                }
+                
+                // ヒーロースキルの敵へのデバフを適用
+                if (!empty($heroResult['defender_effects'])) {
+                    foreach ($heroResult['defender_effects'] as $effect) {
+                        $attacker['active_effects'][] = $effect;
+                    }
                 }
             }
             

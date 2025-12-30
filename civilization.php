@@ -1709,6 +1709,7 @@ function renderApp() {
             <button class="tab-btn ${currentTab === 'research' ? 'active' : ''}" data-tab="research">📚 研究</button>
             <button class="tab-btn ${currentTab === 'market' ? 'active' : ''}" data-tab="market">🏪 市場</button>
             <button class="tab-btn ${currentTab === 'troops' ? 'active' : ''}" data-tab="troops">🎖️ 兵士<span id="wounded-badge" class="tab-badge" style="display:none;"></span></button>
+            <button class="tab-btn ${currentTab === 'heroes' ? 'active' : ''}" data-tab="heroes" style="background: linear-gradient(135deg, rgba(255, 107, 107, 0.3) 0%, rgba(255, 193, 7, 0.3) 100%);">🦸 ヒーロー</button>
             <button class="tab-btn ${currentTab === 'alliance' ? 'active' : ''}" data-tab="alliance">🤝 同盟</button>
             <button class="tab-btn ${currentTab === 'war' ? 'active' : ''}" data-tab="war">⚔️ 戦争</button>
             <button class="tab-btn ${currentTab === 'conquest' ? 'active' : ''}" data-tab="conquest">🏰 占領戦</button>
@@ -2069,6 +2070,20 @@ function renderApp() {
             </div>
         </div>
         
+        <!-- ヒーロータブ -->
+        <div class="tab-content ${currentTab === 'heroes' ? 'active' : ''}" id="tab-heroes">
+            <div class="war-section" style="background: linear-gradient(135deg, rgba(255, 107, 107, 0.3) 0%, rgba(255, 193, 7, 0.3) 100%); border-color: #ff6b6b;">
+                <h3 style="color: #ffd700;">🦸 ヒーロー編成</h3>
+                <p style="color: #c0a080; margin-bottom: 20px;">
+                    ヒーローをバトルに出陣させて戦闘を有利に進めましょう！<br>
+                    <span style="color: #ff6b6b;">⚔️ ヒーローはバトルタイプごとに設定できます。ヒーローの取得は<a href="./hero_system.php" style="color: #ffd700; text-decoration: underline;">ヒーローシステム</a>から行えます。</span>
+                </p>
+                <div id="heroAssignmentSection">
+                    <div class="loading">ヒーロー情報を読み込み中...</div>
+                </div>
+            </div>
+        </div>
+        
         <!-- 市場タブ -->
         <div class="tab-content ${currentTab === 'market' ? 'active' : ''}" id="tab-market">
             <div class="invest-section" style="background: linear-gradient(135deg, rgba(139, 115, 85, 0.5) 0%, rgba(100, 80, 60, 0.5) 100%); border-color: #d4a574;">
@@ -2131,6 +2146,10 @@ function renderApp() {
             if (btn.dataset.tab === 'market') {
                 loadMarketData();
             }
+            // ヒーロータブの場合、ヒーロー編成を読み込む
+            if (btn.dataset.tab === 'heroes') {
+                loadHeroAssignments();
+            }
             // 同盟タブの場合、同盟情報を読み込む
             if (btn.dataset.tab === 'alliance') {
                 loadAllianceData();
@@ -2168,6 +2187,10 @@ function renderApp() {
     // 同盟タブがアクティブな場合、同盟情報を読み込む
     if (currentTab === 'alliance') {
         loadAllianceData();
+    }
+    // ヒーロータブがアクティブな場合、ヒーロー編成を読み込む
+    if (currentTab === 'heroes') {
+        loadHeroAssignments();
     }
     // チュートリアルタブがアクティブな場合、チュートリアルを読み込む
     if (currentTab === 'tutorial') {
@@ -4964,6 +4987,273 @@ async function claimCivilizationQuestReward(questId) {
     } catch (e) {
         console.error(e);
         showNotification('エラーが発生しました', 'error');
+    }
+}
+
+// ===============================================
+// ヒーロー編成機能
+// ===============================================
+
+// ヒーロー編成データを読み込む
+async function loadHeroAssignments() {
+    const section = document.getElementById('heroAssignmentSection');
+    section.innerHTML = '<div class="loading">読み込み中...</div>';
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_all_hero_assignments'})
+        });
+        const data = await res.json();
+        
+        if (!data.ok) {
+            section.innerHTML = `<p style="color: #ff6b6b;">ヒーロー情報の読み込みに失敗しました: ${data.error || '不明なエラー'}</p>`;
+            return;
+        }
+        
+        // ヒーローがいない場合
+        if (data.hero_count === 0) {
+            section.innerHTML = `
+                <div style="text-align: center; padding: 30px;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">🦸</div>
+                    <h3 style="color: #ffd700; margin-bottom: 15px;">まだヒーローがいません</h3>
+                    <p style="color: #c0a080; margin-bottom: 20px;">ヒーローガチャを回してヒーローを獲得しましょう！<br>ヒーローはバトルで強力なスキルを発動して戦闘を有利にします。</p>
+                    <a href="./hero_system.php" class="invest-btn" style="display: inline-block; text-decoration: none; padding: 15px 30px; background: linear-gradient(135deg, #ff6b6b 0%, #ffd93d 100%);">
+                        🎰 ヒーローガチャへ
+                    </a>
+                </div>
+            `;
+            return;
+        }
+        
+        // バトルタイプごとの編成表示
+        let html = '<div class="targets-list" style="gap: 20px;">';
+        
+        // バトルタイプごとに表示
+        for (const [battleType, info] of Object.entries(data.battle_types)) {
+            const assignment = data.assignments[battleType];
+            
+            html += `
+                <div class="target-card" style="border-color: ${assignment ? '#ffd700' : '#555'}; background: ${assignment ? 'rgba(255, 215, 0, 0.1)' : 'rgba(50, 50, 50, 0.5)'};">
+                    <div class="target-header" style="margin-bottom: 15px;">
+                        <span class="target-name" style="font-size: 18px;">${info.icon} ${info.name}</span>
+                    </div>
+                    <div id="hero-slot-${battleType}">
+                        ${renderHeroSlot(battleType, assignment)}
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <button onclick="openHeroSelectModal('${battleType}')" class="action-btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 10px 20px; border-radius: 8px; border: none; color: white; cursor: pointer; width: 100%;">
+                            ${assignment ? '🔄 変更' : '➕ ヒーローを設定'}
+                        </button>
+                        ${assignment ? `<button onclick="removeHeroAssignment('${battleType}')" class="action-btn" style="background: rgba(255, 100, 100, 0.3); padding: 10px 20px; border-radius: 8px; border: 1px solid #ff6b6b; color: #ff6b6b; cursor: pointer; width: 100%; margin-top: 10px;">
+                            ❌ 解除
+                        </button>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+        
+        html += '</div>';
+        
+        // 所有ヒーロー一覧
+        html += `
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid rgba(255, 215, 0, 0.3);">
+                <h3 style="color: #ffd700; margin-bottom: 15px;">📋 所有ヒーロー一覧 (${data.hero_count}体)</h3>
+                <div class="targets-list" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+                    ${data.available_heroes.map(hero => `
+                        <div class="target-card" style="border-color: ${getRarityColor(hero.rarity)}; text-align: center;">
+                            <div style="font-size: 48px;">${hero.icon}</div>
+                            <div style="color: #ffd700; font-weight: bold; margin: 10px 0;">${hero.name}</div>
+                            <div style="color: #c0a080; font-size: 12px; margin-bottom: 5px;">${hero.title || ''}</div>
+                            <div style="color: #ffd700;">${'⭐'.repeat(hero.star_level)}</div>
+                            <div style="margin-top: 10px; font-size: 12px; color: #87ceeb;">
+                                <div>⚔️ ${hero.battle_skill_name || '未設定'}</div>
+                                ${hero.battle_skill_2_name ? `<div>⚔️ ${hero.battle_skill_2_name}</div>` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        
+        section.innerHTML = html;
+        
+        // ヒーローデータをグローバルに保存（モーダルで使用）
+        window.heroAssignmentData = data;
+        
+    } catch (e) {
+        console.error(e);
+        section.innerHTML = '<p style="color: #ff6b6b;">ヒーロー情報の読み込みに失敗しました</p>';
+    }
+}
+
+// ヒーロースロットを描画
+function renderHeroSlot(battleType, assignment) {
+    if (!assignment) {
+        return `
+            <div style="text-align: center; padding: 20px; color: #888;">
+                <div style="font-size: 32px; opacity: 0.5;">👤</div>
+                <div style="margin-top: 10px;">ヒーロー未設定</div>
+            </div>
+        `;
+    }
+    
+    const skill1Name = assignment.skill_1_type === 2 ? assignment.battle_skill_2_name : assignment.battle_skill_name;
+    const skill2Name = assignment.skill_2_type ? (assignment.skill_2_type === 2 ? assignment.battle_skill_2_name : assignment.battle_skill_name) : null;
+    
+    return `
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <div style="font-size: 48px;">${assignment.hero_icon}</div>
+            <div style="flex: 1;">
+                <div style="color: #ffd700; font-weight: bold; font-size: 16px;">${assignment.hero_name}</div>
+                <div style="color: #c0a080; font-size: 12px;">${assignment.hero_title || ''}</div>
+                <div style="color: #ffd700; margin: 5px 0;">${'⭐'.repeat(assignment.star_level || 1)}</div>
+                <div style="color: #87ceeb; font-size: 12px;">
+                    ⚔️ ${skill1Name || 'スキル1'}
+                    ${skill2Name ? ` / ⚔️ ${skill2Name}` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// レアリティ色を取得
+function getRarityColor(rarity) {
+    const colors = {
+        'common': '#808080',
+        'uncommon': '#00cc00',
+        'rare': '#0080ff',
+        'epic': '#cc00ff',
+        'legendary': '#ffcc00'
+    };
+    return colors[rarity] || '#808080';
+}
+
+// ヒーロー選択モーダルを開く
+function openHeroSelectModal(battleType) {
+    const data = window.heroAssignmentData;
+    if (!data) {
+        showNotification('データが読み込まれていません', true);
+        return;
+    }
+    
+    const battleInfo = data.battle_types[battleType];
+    const currentAssignment = data.assignments[battleType];
+    
+    let modalHtml = `
+        <div id="heroSelectModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #1e1e2f 0%, #2d2d44 100%); border-radius: 16px; padding: 30px; max-width: 600px; width: 100%; max-height: 80vh; overflow-y: auto; border: 2px solid #ffd700;">
+                <h2 style="color: #ffd700; margin: 0 0 20px 0; text-align: center;">
+                    ${battleInfo.icon} ${battleInfo.name}のヒーローを選択
+                </h2>
+                
+                <div id="heroSelectList" style="display: grid; gap: 15px;">
+    `;
+    
+    for (const hero of data.available_heroes) {
+        const isSelected = currentAssignment && currentAssignment.hero_id === hero.hero_id;
+        modalHtml += `
+            <div class="hero-select-item" onclick="selectHeroForBattle('${battleType}', ${hero.hero_id})" 
+                 style="background: ${isSelected ? 'rgba(255, 215, 0, 0.2)' : 'rgba(50, 50, 50, 0.5)'}; 
+                        border: 2px solid ${isSelected ? '#ffd700' : getRarityColor(hero.rarity)}; 
+                        border-radius: 12px; padding: 15px; cursor: pointer; display: flex; align-items: center; gap: 15px;
+                        transition: all 0.3s;">
+                <div style="font-size: 48px;">${hero.icon}</div>
+                <div style="flex: 1;">
+                    <div style="color: #ffd700; font-weight: bold;">${hero.name}</div>
+                    <div style="color: #c0a080; font-size: 12px;">${hero.title || ''}</div>
+                    <div style="color: #ffd700; margin: 5px 0;">${'⭐'.repeat(hero.star_level)}</div>
+                    <div style="font-size: 12px; color: #87ceeb;">
+                        ⚔️ ${hero.battle_skill_name || 'スキル1'}
+                        ${hero.battle_skill_2_name ? ` | ⚔️ ${hero.battle_skill_2_name}` : ''}
+                    </div>
+                </div>
+                ${isSelected ? '<div style="color: #ffd700; font-size: 24px;">✓</div>' : ''}
+            </div>
+        `;
+    }
+    
+    modalHtml += `
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button onclick="closeHeroSelectModal()" style="padding: 12px 30px; background: rgba(100, 100, 100, 0.5); color: white; border: 1px solid #888; border-radius: 8px; cursor: pointer; font-size: 16px;">
+                        キャンセル
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// ヒーロー選択モーダルを閉じる
+function closeHeroSelectModal() {
+    const modal = document.getElementById('heroSelectModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// バトルタイプにヒーローを設定
+async function selectHeroForBattle(battleType, heroId) {
+    closeHeroSelectModal();
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                action: 'set_battle_hero',
+                battle_type: battleType,
+                hero_id: heroId,
+                skill_1_type: 1,  // デフォルトで第1スキルを使用
+                skill_2_type: null
+            })
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadHeroAssignments(); // 再読み込み
+        } else {
+            showNotification(data.error || 'ヒーローの設定に失敗しました', true);
+        }
+    } catch (e) {
+        console.error(e);
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// ヒーロー割り当てを解除
+async function removeHeroAssignment(battleType) {
+    if (!confirm('このヒーローの編成を解除しますか？')) {
+        return;
+    }
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                action: 'set_battle_hero',
+                battle_type: battleType,
+                hero_id: null
+            })
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            loadHeroAssignments(); // 再読み込み
+        } else {
+            showNotification(data.error || 'ヒーローの解除に失敗しました', true);
+        }
+    } catch (e) {
+        console.error(e);
+        showNotification('エラーが発生しました', true);
     }
 }
 

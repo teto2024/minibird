@@ -588,6 +588,26 @@ $RARITY_NAMES = [
                         </ul>
                     </div>
                 </div>
+                
+                <div class="gacha-option">
+                    <h3>💠 ダイヤモンドガチャ</h3>
+                    <div class="gacha-cost" style="color: #00d9ff;">10 ダイヤモンド</div>
+                    <button class="gacha-btn" onclick="pullGacha('diamond')" style="background: linear-gradient(135deg, #00d9ff 0%, #00b4d8 100%);">1回ガチャを回す</button>
+                    <div style="margin-top: 10px;">
+                        <div class="gacha-cost" style="color: #00d9ff;">10連: 90 ダイヤモンド <span style="font-size: 12px; color: #48bb78;">(10%OFF!)</span></div>
+                        <button class="gacha-btn" onclick="pullGacha10('diamond')" style="margin-top: 5px; background: linear-gradient(135deg, #00d9ff 0%, #00b4d8 100%);">🔥 10連ガチャ</button>
+                    </div>
+                    <div class="gacha-rewards">
+                        <p>🎁 報酬内容 (クリスタルガチャと同等!):</p>
+                        <ul>
+                            <li>ヒーローの欠片 (2-5個)</li>
+                            <li>経験値 (100-500)</li>
+                            <li>クリスタル (10-50)</li>
+                            <li>レアトークン</li>
+                            <li>稀に装備そのもの!</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
