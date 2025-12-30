@@ -1523,7 +1523,7 @@ if ($action === 'instant_complete_building') {
     try {
         // 建設中の建物を確認
         $stmt = $pdo->prepare("
-            SELECT ucb.*, bt.name, bt.population_capacity
+            SELECT ucb.*, bt.name, bt.population_capacity, bt.building_key
             FROM user_civilization_buildings ucb
             JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
             WHERE ucb.id = ? AND ucb.user_id = ? AND ucb.is_constructing = TRUE
@@ -1573,6 +1573,9 @@ if ($action === 'instant_complete_building') {
             $stmt->execute([$populationIncrease, $populationIncrease, $me['id']]);
         }
         
+        // クエスト進捗を更新（即完了時もクエスト進捗に反映）
+        updateCivilizationQuestProgress($pdo, $me['id'], 'build', $building['building_key'], 1);
+        
         $pdo->commit();
         
         echo json_encode([
@@ -1596,7 +1599,7 @@ if ($action === 'instant_complete_research') {
     try {
         // 研究中の研究を確認
         $stmt = $pdo->prepare("
-            SELECT ucr.*, r.name, r.unlock_resource_id
+            SELECT ucr.*, r.name, r.unlock_resource_id, r.research_key
             FROM user_civilization_researches ucr
             JOIN civilization_researches r ON ucr.research_id = r.id
             WHERE ucr.id = ? AND ucr.user_id = ? AND ucr.is_researching = TRUE
@@ -1642,6 +1645,9 @@ if ($action === 'instant_complete_research') {
             ");
             $stmt->execute([$me['id'], $research['unlock_resource_id']]);
         }
+        
+        // クエスト進捗を更新（即完了時もクエスト進捗に反映）
+        updateCivilizationQuestProgress($pdo, $me['id'], 'research', $research['research_key'] ?? null, 1);
         
         $pdo->commit();
         
@@ -3078,9 +3084,16 @@ if ($action === 'instant_complete_queue') {
         $stmt->execute([$queueId]);
         
         // 兵種名を取得
-        $stmt = $pdo->prepare("SELECT name FROM civilization_troop_types WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT name, troop_key FROM civilization_troop_types WHERE id = ?");
         $stmt->execute([$queue['troop_type_id']]);
-        $troopName = $stmt->fetchColumn();
+        $troopInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+        $troopName = $troopInfo['name'] ?? '';
+        $troopKey = $troopInfo['troop_key'] ?? null;
+        
+        // クエスト進捗を更新（訓練即完了時もクエスト進捗に反映）
+        if ($queueType === 'training') {
+            updateCivilizationQuestProgress($pdo, $me['id'], 'train', $troopKey, $queue['count']);
+        }
         
         $pdo->commit();
         
@@ -3108,7 +3121,7 @@ if ($action === 'instant_complete_building_diamond') {
     try {
         // 建設中の建物を確認
         $stmt = $pdo->prepare("
-            SELECT ucb.*, bt.name, bt.population_capacity
+            SELECT ucb.*, bt.name, bt.population_capacity, bt.building_key
             FROM user_civilization_buildings ucb
             JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
             WHERE ucb.id = ? AND ucb.user_id = ? AND ucb.is_constructing = TRUE
@@ -3158,6 +3171,9 @@ if ($action === 'instant_complete_building_diamond') {
             $stmt->execute([$populationIncrease, $populationIncrease, $me['id']]);
         }
         
+        // クエスト進捗を更新（即完了時もクエスト進捗に反映）
+        updateCivilizationQuestProgress($pdo, $me['id'], 'build', $building['building_key'], 1);
+        
         $pdo->commit();
         
         echo json_encode([
@@ -3183,7 +3199,7 @@ if ($action === 'instant_complete_research_diamond') {
     try {
         // 研究中の研究を確認
         $stmt = $pdo->prepare("
-            SELECT ucr.*, r.name, r.unlock_resource_id
+            SELECT ucr.*, r.name, r.unlock_resource_id, r.research_key
             FROM user_civilization_researches ucr
             JOIN civilization_researches r ON ucr.research_id = r.id
             WHERE ucr.id = ? AND ucr.user_id = ? AND ucr.is_researching = TRUE
@@ -3229,6 +3245,9 @@ if ($action === 'instant_complete_research_diamond') {
             ");
             $stmt->execute([$me['id'], $research['unlock_resource_id']]);
         }
+        
+        // クエスト進捗を更新（即完了時もクエスト進捗に反映）
+        updateCivilizationQuestProgress($pdo, $me['id'], 'research', $research['research_key'] ?? null, 1);
         
         $pdo->commit();
         
