@@ -1806,6 +1806,8 @@ function renderApp() {
                         <button class="ranking-btn" data-ranking="military_power" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 2px solid #666; border-radius: 6px; color: #888; cursor: pointer; font-size: 12px; transition: all 0.2s;">⚔️ 軍事力</button>
                         <button class="ranking-btn" data-ranking="total_soldiers" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 2px solid #666; border-radius: 6px; color: #888; cursor: pointer; font-size: 12px; transition: all 0.2s;">🎖️ 総兵士数</button>
                         <button class="ranking-btn" data-ranking="total_buildings" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 2px solid #666; border-radius: 6px; color: #888; cursor: pointer; font-size: 12px; transition: all 0.2s;">🏠 総建築物数</button>
+                        <button class="ranking-btn" data-ranking="battle_wins" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 2px solid #666; border-radius: 6px; color: #888; cursor: pointer; font-size: 12px; transition: all 0.2s;">🏅 戦闘勝利数</button>
+                        <button class="ranking-btn" data-ranking="battle_losses" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 2px solid #666; border-radius: 6px; color: #888; cursor: pointer; font-size: 12px; transition: all 0.2s;">💀 戦闘敗北数</button>
                         <button class="ranking-btn" data-ranking="conquest_wins" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 2px solid #666; border-radius: 6px; color: #888; cursor: pointer; font-size: 12px; transition: all 0.2s;">🏆 占領戦優勝</button>
                         <button class="ranking-btn" data-ranking="castle_captures" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 2px solid #666; border-radius: 6px; color: #888; cursor: pointer; font-size: 12px; transition: all 0.2s;">🏰 拠点占領</button>
                     </div>
@@ -3776,7 +3778,7 @@ function handleScrollThrottled() {
 function setupInteractionListeners() {
     // 入力フィールドのフォーカスと入力
     document.addEventListener('focusin', (e) => {
-        if (e.target.matches('input, select, textarea')) {
+        if (e.target.matches('input, select, textarea, button, [contenteditable]')) {
             setUserInteracting();
         }
     });
@@ -3787,21 +3789,45 @@ function setupInteractionListeners() {
         }
     });
     
-    // スクロール操作（スロットリング済み）
-    document.addEventListener('scroll', handleScrollThrottled, true);
-    
-    // スライダー操作
-    document.addEventListener('mousedown', (e) => {
-        if (e.target.matches('input[type="range"]')) {
+    // セレクトボックスの操作（特にドロップダウンを開いている時）
+    document.addEventListener('change', (e) => {
+        if (e.target.matches('select, input')) {
             setUserInteracting();
         }
     });
     
+    // スクロール操作（スロットリング済み）
+    document.addEventListener('scroll', handleScrollThrottled, true);
+    
+    // マウスダウン（スライダー、ボタン操作など）
+    document.addEventListener('mousedown', (e) => {
+        if (e.target.matches('input[type="range"], button, .ranking-btn, .resource-ranking-btn, select')) {
+            setUserInteracting();
+        }
+    });
+    
+    // タッチ操作（モバイル対応）
     document.addEventListener('touchstart', (e) => {
-        if (e.target.matches('input[type="range"], input[type="number"]')) {
+        if (e.target.matches('input[type="range"], input[type="number"], button, .ranking-btn, .resource-ranking-btn, select')) {
             setUserInteracting();
         }
     }, { passive: true });
+    
+    // モーダル表示中はインタラクションとみなす
+    document.addEventListener('click', (e) => {
+        // モーダルやダイアログ内のクリック
+        if (e.target.closest('.modal, .dialog, [role="dialog"]')) {
+            setUserInteracting();
+        }
+    });
+    
+    // キーボード操作
+    document.addEventListener('keydown', (e) => {
+        // 入力フィールド内のキー操作
+        if (e.target.matches('input, select, textarea, [contenteditable]')) {
+            setUserInteracting();
+        }
+    });
 }
 
 function startUpdateTimer() {

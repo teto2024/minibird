@@ -881,6 +881,9 @@ if ($action === 'invest_coins') {
         ");
         $stmt->execute([$resourceBonus, $me['id']]);
         
+        // クエスト進捗を更新（投資額をカウント）
+        updateCivilizationQuestProgress($pdo, $me['id'], 'invest', null, $amount);
+        
         $pdo->commit();
         
         echo json_encode([
@@ -4945,6 +4948,87 @@ if ($action === 'get_leaderboards') {
                         GROUP BY user_id
                     ) as totals
                     WHERE total > ?
+                ");
+                $stmt->execute([$myValue]);
+                $myRank = (int)$stmt->fetchColumn();
+                break;
+            
+            case 'battle_wins':
+                // 戦闘勝利数ランキング
+                $stmt = $pdo->query("
+                    SELECT wl.winner_user_id as user_id, uc.civilization_name, COUNT(*) as value, u.handle
+                    FROM civilization_war_logs wl
+                    JOIN user_civilizations uc ON wl.winner_user_id = uc.user_id
+                    JOIN users u ON wl.winner_user_id = u.id
+                    GROUP BY wl.winner_user_id, uc.civilization_name, u.handle
+                    ORDER BY value DESC
+                    LIMIT {$limit}
+                ");
+                $rankings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) as my_total FROM civilization_war_logs WHERE winner_user_id = ?
+                ");
+                $stmt->execute([$me['id']]);
+                $myValue = (int)$stmt->fetchColumn();
+                
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) + 1 as rank_position
+                    FROM (
+                        SELECT winner_user_id, COUNT(*) as total
+                        FROM civilization_war_logs
+                        GROUP BY winner_user_id
+                    ) as totals
+                    WHERE total > ?
+                ");
+                $stmt->execute([$myValue]);
+                $myRank = (int)$stmt->fetchColumn();
+                break;
+            
+            case 'battle_losses':
+                // 戦闘敗北数ランキング（攻撃者として敗北 OR 防御者として敗北）
+                $stmt = $pdo->query("
+                    SELECT user_id, civilization_name, value, handle
+                    FROM (
+                        SELECT 
+                            CASE 
+                                WHEN wl.winner_user_id = wl.attacker_user_id THEN wl.defender_user_id
+                                ELSE wl.attacker_user_id
+                            END as user_id,
+                            COUNT(*) as value
+                        FROM civilization_war_logs wl
+                        GROUP BY user_id
+                    ) as losses
+                    JOIN user_civilizations uc ON losses.user_id = uc.user_id
+                    JOIN users u ON losses.user_id = u.id
+                    ORDER BY value DESC
+                    LIMIT {$limit}
+                ");
+                $rankings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // 自分の敗北数を取得
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) as my_total 
+                    FROM civilization_war_logs 
+                    WHERE (attacker_user_id = ? AND winner_user_id != ?) 
+                       OR (defender_user_id = ? AND winner_user_id != ?)
+                ");
+                $stmt->execute([$me['id'], $me['id'], $me['id'], $me['id']]);
+                $myValue = (int)$stmt->fetchColumn();
+                
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) + 1 as rank_position
+                    FROM (
+                        SELECT 
+                            CASE 
+                                WHEN wl.winner_user_id = wl.attacker_user_id THEN wl.defender_user_id
+                                ELSE wl.attacker_user_id
+                            END as user_id,
+                            COUNT(*) as value
+                        FROM civilization_war_logs wl
+                        GROUP BY user_id
+                    ) as losses
+                    WHERE value > ?
                 ");
                 $stmt->execute([$myValue]);
                 $myRank = (int)$stmt->fetchColumn();
