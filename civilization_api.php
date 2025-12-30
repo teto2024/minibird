@@ -1111,7 +1111,7 @@ if ($action === 'complete_researches') {
     try {
         // 完了した研究を取得
         $stmt = $pdo->prepare("
-            SELECT ucr.*, r.name, r.unlock_building_id, r.unlock_resource_id
+            SELECT ucr.*, r.name, r.research_key, r.unlock_building_id, r.unlock_resource_id
             FROM user_civilization_researches ucr
             JOIN civilization_researches r ON ucr.research_id = r.id
             WHERE ucr.user_id = ? AND ucr.is_researching = TRUE AND ucr.research_completes_at <= NOW()
@@ -1141,6 +1141,9 @@ if ($action === 'complete_researches') {
             }
             
             $completedNames[] = $research['name'];
+            
+            // クエスト進捗を更新（研究完了ごとに1回カウント）
+            updateCivilizationQuestProgress($pdo, $me['id'], 'research', $research['research_key'] ?? null, 1);
         }
         
         $pdo->commit();
@@ -1455,7 +1458,7 @@ if ($action === 'complete_buildings') {
     try {
         // 完了した建設を取得
         $stmt = $pdo->prepare("
-            SELECT ucb.id, ucb.level, bt.name, bt.population_capacity
+            SELECT ucb.id, ucb.level, bt.name, bt.population_capacity, bt.building_key
             FROM user_civilization_buildings ucb
             JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
             WHERE ucb.user_id = ? AND ucb.is_constructing = TRUE AND ucb.construction_completes_at <= NOW()
@@ -1481,6 +1484,9 @@ if ($action === 'complete_buildings') {
             }
             
             $completedNames[] = $building['name'];
+            
+            // クエスト進捗を更新（建物タイプごとに1回カウント）
+            updateCivilizationQuestProgress($pdo, $me['id'], 'build', $building['building_key'], 1);
         }
         
         // 人口を増加
@@ -1775,6 +1781,9 @@ if ($action === 'train_troops') {
             WHERE user_id = ?
         ");
         $stmt->execute([$totalMilitaryPower, $me['id']]);
+        
+        // クエスト進捗を更新（訓練した兵士数でカウント）
+        updateCivilizationQuestProgress($pdo, $me['id'], 'train', $troopType['troop_key'], $count);
         
         $pdo->commit();
         
@@ -2487,6 +2496,12 @@ if ($action === 'attack_with_troops') {
         
         // ターン制バトルログを保存
         saveCivilizationBattleTurnLogs($pdo, $warLogId, $battleResult['turn_logs']);
+        
+        // クエスト進捗を更新（攻撃を1回カウント、勝利時は conquest も更新）
+        updateCivilizationQuestProgress($pdo, $me['id'], 'attack', null, 1);
+        if ($attackerWins) {
+            updateCivilizationQuestProgress($pdo, $me['id'], 'conquest', null, 1);
+        }
         
         $pdo->commit();
         
@@ -4341,6 +4356,45 @@ function updateCivilizationQuestProgress($pdo, $userId, $questType, $targetKey, 
     }
 }
 
+/**
+ * 繰り返し可能クエストを毎日自動リセットするヘルパー関数
+ * クールダウン期間が経過した繰り返し可能クエストの進捗をリセットする
+ * CRONを使わずに、クエスト一覧取得時に遅延リセットを行う
+ * 
+ * @param PDO $pdo データベース接続
+ * @param int $userId ユーザーID
+ */
+function resetDailyRepeatableQuests($pdo, $userId) {
+    try {
+        // 繰り返し可能クエストで、報酬を受け取り済みかつクールダウン期間が経過したものを一括リセット
+        // DATE_ADD(claimed_at, INTERVAL cooldown_hours HOUR) <= NOW() でクールダウン経過を判定
+        $stmt = $pdo->prepare("
+            UPDATE user_civilization_quest_progress ucqp
+            JOIN civilization_quests cq ON ucqp.quest_id = cq.id
+            SET ucqp.current_progress = 0, 
+                ucqp.is_completed = FALSE, 
+                ucqp.is_claimed = FALSE, 
+                ucqp.completed_at = NULL, 
+                ucqp.claimed_at = NULL, 
+                ucqp.last_reset_at = NOW()
+            WHERE ucqp.user_id = ?
+              AND ucqp.is_claimed = TRUE
+              AND cq.is_repeatable = TRUE
+              AND cq.cooldown_hours IS NOT NULL
+              AND cq.cooldown_hours > 0
+              AND ucqp.claimed_at IS NOT NULL
+              AND DATE_ADD(ucqp.claimed_at, INTERVAL cq.cooldown_hours HOUR) <= NOW()
+        ");
+        $stmt->execute([$userId]);
+    } catch (PDOException $e) {
+        // データベースエラーのみログに記録（ユーザー体験を妨げないため例外は投げない）
+        error_log("Daily quest reset DB error for user {$userId}: " . $e->getMessage());
+    } catch (Exception $e) {
+        // その他のエラーもログに記録
+        error_log("Daily quest reset error for user {$userId}: " . $e->getMessage());
+    }
+}
+
 // 文明クエスト一覧を取得
 if ($action === 'get_civilization_quests') {
     try {
@@ -4354,6 +4408,9 @@ if ($action === 'get_civilization_quests') {
             ]);
             exit;
         }
+        
+        // 毎日リセット処理（CRONを使わずに遅延リセット）
+        resetDailyRepeatableQuests($pdo, $me['id']);
         
         $civ = getUserCivilization($pdo, $me['id']);
         
