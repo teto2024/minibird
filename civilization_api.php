@@ -4366,44 +4366,31 @@ function updateCivilizationQuestProgress($pdo, $userId, $questType, $targetKey, 
  */
 function resetDailyRepeatableQuests($pdo, $userId) {
     try {
-        // 繰り返し可能クエストで、報酬を受け取り済みかつクールダウン期間が経過したものを取得
+        // 繰り返し可能クエストで、報酬を受け取り済みかつクールダウン期間が経過したものを一括リセット
+        // DATE_ADD(claimed_at, INTERVAL cooldown_hours HOUR) <= NOW() でクールダウン経過を判定
         $stmt = $pdo->prepare("
-            SELECT ucqp.id as progress_id, ucqp.quest_id, ucqp.claimed_at, cq.cooldown_hours
-            FROM user_civilization_quest_progress ucqp
+            UPDATE user_civilization_quest_progress ucqp
             JOIN civilization_quests cq ON ucqp.quest_id = cq.id
+            SET ucqp.current_progress = 0, 
+                ucqp.is_completed = FALSE, 
+                ucqp.is_claimed = FALSE, 
+                ucqp.completed_at = NULL, 
+                ucqp.claimed_at = NULL, 
+                ucqp.last_reset_at = NOW()
             WHERE ucqp.user_id = ?
               AND ucqp.is_claimed = TRUE
               AND cq.is_repeatable = TRUE
               AND cq.cooldown_hours IS NOT NULL
               AND cq.cooldown_hours > 0
+              AND ucqp.claimed_at IS NOT NULL
+              AND DATE_ADD(ucqp.claimed_at, INTERVAL cq.cooldown_hours HOUR) <= NOW()
         ");
         $stmt->execute([$userId]);
-        $progressRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        $now = time();
-        foreach ($progressRecords as $record) {
-            if ($record['claimed_at']) {
-                $claimedTime = strtotime($record['claimed_at']);
-                $cooldownEnd = $claimedTime + ($record['cooldown_hours'] * 3600);
-                
-                // クールダウン期間が経過していたらリセット
-                if ($now >= $cooldownEnd) {
-                    $stmt = $pdo->prepare("
-                        UPDATE user_civilization_quest_progress 
-                        SET current_progress = 0, 
-                            is_completed = FALSE, 
-                            is_claimed = FALSE, 
-                            completed_at = NULL, 
-                            claimed_at = NULL, 
-                            last_reset_at = NOW()
-                        WHERE id = ?
-                    ");
-                    $stmt->execute([$record['progress_id']]);
-                }
-            }
-        }
+    } catch (PDOException $e) {
+        // データベースエラーのみログに記録（ユーザー体験を妨げないため例外は投げない）
+        error_log("Daily quest reset DB error for user {$userId}: " . $e->getMessage());
     } catch (Exception $e) {
-        // リセットエラーは黙って無視（メインの処理に影響を与えない）
+        // その他のエラーもログに記録
         error_log("Daily quest reset error for user {$userId}: " . $e->getMessage());
     }
 }
