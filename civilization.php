@@ -1798,24 +1798,26 @@ function renderApp() {
                 <h3 style="color: #ffd700;">🏆 リーダーボード</h3>
                 <p style="color: #c0a080; margin-bottom: 15px;">各カテゴリのトップランキングを確認しましょう</p>
                 
-                <!-- ランキング種類選択 -->
-                <div style="margin-bottom: 20px;">
-                    <select id="leaderboard-type" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.5); border: 2px solid #ffd700; border-radius: 8px; color: #f5deb3; font-size: 14px;">
-                        <option value="population">👥 人口</option>
-                        <option value="military_power">⚔️ 軍事力</option>
-                        <option value="total_soldiers">🎖️ 総兵士数</option>
-                        <option value="total_buildings">🏠 総建築物数</option>
-                        <option value="conquest_wins">🏆 占領戦優勝回数</option>
-                        <option value="castle_captures">🏰 拠点占領回数</option>
-                    </select>
+                <!-- メインランキングカテゴリボタン -->
+                <div style="margin-bottom: 15px;">
+                    <div style="color: #c0a080; margin-bottom: 8px; font-size: 14px;">📊 メインランキング</div>
+                    <div id="main-ranking-buttons" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        <button class="ranking-btn active" data-ranking="population" style="padding: 8px 12px; background: rgba(255, 215, 0, 0.3); border: 2px solid #ffd700; border-radius: 6px; color: #f5deb3; cursor: pointer; font-size: 12px; transition: all 0.2s;">👥 人口</button>
+                        <button class="ranking-btn" data-ranking="military_power" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 2px solid #666; border-radius: 6px; color: #888; cursor: pointer; font-size: 12px; transition: all 0.2s;">⚔️ 軍事力</button>
+                        <button class="ranking-btn" data-ranking="total_soldiers" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 2px solid #666; border-radius: 6px; color: #888; cursor: pointer; font-size: 12px; transition: all 0.2s;">🎖️ 総兵士数</button>
+                        <button class="ranking-btn" data-ranking="total_buildings" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 2px solid #666; border-radius: 6px; color: #888; cursor: pointer; font-size: 12px; transition: all 0.2s;">🏠 総建築物数</button>
+                        <button class="ranking-btn" data-ranking="conquest_wins" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 2px solid #666; border-radius: 6px; color: #888; cursor: pointer; font-size: 12px; transition: all 0.2s;">🏆 占領戦優勝</button>
+                        <button class="ranking-btn" data-ranking="castle_captures" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 2px solid #666; border-radius: 6px; color: #888; cursor: pointer; font-size: 12px; transition: all 0.2s;">🏰 拠点占領</button>
+                    </div>
                 </div>
                 
-                <!-- 資源別ランキング選択 -->
+                <!-- 資源別ランキングボタン -->
                 <div id="resource-ranking-section" style="margin-bottom: 20px;">
-                    <label style="color: #c0a080; display: block; margin-bottom: 8px;">📦 資源別ランキング:</label>
-                    <select id="resource-type-select" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.5); border: 2px solid #48bb78; border-radius: 8px; color: #f5deb3; font-size: 14px;">
+                    <div style="color: #c0a080; margin-bottom: 8px; font-size: 14px;">📦 資源別ランキング</div>
+                    <div id="resource-ranking-buttons" style="display: flex; flex-wrap: wrap; gap: 6px;">
                         <!-- 資源タイプは動的に読み込み -->
-                    </select>
+                        <span style="color: #666; font-size: 12px;">読み込み中...</span>
+                    </div>
                 </div>
                 
                 <!-- 自分の順位 -->
@@ -4489,17 +4491,17 @@ let leaderboardResourceTypes = [];
 async function loadLeaderboard(rankingType = null) {
     const listContainer = document.getElementById('leaderboard-list');
     const myRankDisplay = document.getElementById('my-rank-display');
-    const resourceSelect = document.getElementById('resource-type-select');
-    const typeSelect = document.getElementById('leaderboard-type');
+    const resourceButtonsContainer = document.getElementById('resource-ranking-buttons');
     
     if (!listContainer) return;
     
     // ランキングタイプを決定
     if (rankingType) {
         currentLeaderboardType = rankingType;
-    } else if (typeSelect) {
-        currentLeaderboardType = typeSelect.value;
     }
+    
+    // アクティブなボタンを更新
+    updateRankingButtonStyles(currentLeaderboardType);
     
     listContainer.innerHTML = '<div class="loading">ランキングを読み込み中...</div>';
     
@@ -4516,12 +4518,15 @@ async function loadLeaderboard(rankingType = null) {
             return;
         }
         
-        // 資源タイプのドロップダウンを更新（初回のみ）
-        if (data.resource_types && resourceSelect && leaderboardResourceTypes.length === 0) {
+        // 資源タイプのボタンを生成（初回のみ）
+        if (data.resource_types && resourceButtonsContainer && leaderboardResourceTypes.length === 0) {
             leaderboardResourceTypes = data.resource_types;
-            resourceSelect.innerHTML = data.resource_types.map(rt => 
-                `<option value="resource_${rt.resource_key}">${rt.icon} ${rt.name}</option>`
+            resourceButtonsContainer.innerHTML = data.resource_types.map(rt => 
+                `<button class="resource-ranking-btn" data-ranking="resource_${rt.resource_key}" style="padding: 6px 10px; background: rgba(0,0,0,0.3); border: 2px solid #48bb78; border-radius: 6px; color: #888; cursor: pointer; font-size: 11px; transition: all 0.2s;">${rt.icon} ${rt.name}</button>`
             ).join('');
+            
+            // 資源ボタンにイベントリスナーを追加
+            setupResourceButtonListeners();
         }
         
         // 自分の順位を表示
@@ -4566,6 +4571,48 @@ async function loadLeaderboard(rankingType = null) {
     }
 }
 
+// ランキングボタンのスタイルを更新
+function updateRankingButtonStyles(activeRanking) {
+    // メインランキングボタン
+    document.querySelectorAll('.ranking-btn').forEach(btn => {
+        if (btn.dataset.ranking === activeRanking) {
+            btn.style.background = 'rgba(255, 215, 0, 0.3)';
+            btn.style.borderColor = '#ffd700';
+            btn.style.color = '#f5deb3';
+            btn.classList.add('active');
+        } else {
+            btn.style.background = 'rgba(0,0,0,0.3)';
+            btn.style.borderColor = '#666';
+            btn.style.color = '#888';
+            btn.classList.remove('active');
+        }
+    });
+    
+    // 資源ランキングボタン
+    document.querySelectorAll('.resource-ranking-btn').forEach(btn => {
+        if (btn.dataset.ranking === activeRanking) {
+            btn.style.background = 'rgba(72, 187, 120, 0.3)';
+            btn.style.borderColor = '#48bb78';
+            btn.style.color = '#f5deb3';
+            btn.classList.add('active');
+        } else {
+            btn.style.background = 'rgba(0,0,0,0.3)';
+            btn.style.borderColor = '#48bb78';
+            btn.style.color = '#888';
+            btn.classList.remove('active');
+        }
+    });
+}
+
+// 資源ボタンのイベントリスナーを設定
+function setupResourceButtonListeners() {
+    document.querySelectorAll('.resource-ranking-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            loadLeaderboard(btn.dataset.ranking);
+        });
+    });
+}
+
 // リーダーボードのイベントリスナーを設定
 let leaderboardListenersInitialized = false;
 
@@ -4573,24 +4620,17 @@ function setupLeaderboardListeners() {
     // 重複を防ぐためにフラグをチェック
     if (leaderboardListenersInitialized) return;
     
-    const typeSelect = document.getElementById('leaderboard-type');
-    const resourceSelect = document.getElementById('resource-type-select');
+    // メインランキングボタンにイベントリスナーを追加
+    const mainButtons = document.querySelectorAll('.ranking-btn');
     
     let listenersAdded = false;
     
-    if (typeSelect) {
-        typeSelect.addEventListener('change', () => {
-            loadLeaderboard(typeSelect.value);
+    mainButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            loadLeaderboard(btn.dataset.ranking);
         });
         listenersAdded = true;
-    }
-    
-    if (resourceSelect) {
-        resourceSelect.addEventListener('change', () => {
-            loadLeaderboard(resourceSelect.value);
-        });
-        listenersAdded = true;
-    }
+    });
     
     // リスナーが正常に追加された場合のみフラグを立てる
     if (listenersAdded) {
