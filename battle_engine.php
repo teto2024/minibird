@@ -739,8 +739,10 @@ function executeTurnBattle($attacker, $defender, $maxTurns = null) {
                 }
                 
                 // ヒーロースキルの敵へのデバフを適用
-                foreach ($heroResult['defender_effects'] as $effect) {
-                    $defender['active_effects'][] = $effect;
+                if (!empty($heroResult['defender_effects'])) {
+                    foreach ($heroResult['defender_effects'] as $effect) {
+                        $defender['active_effects'][] = $effect;
+                    }
                 }
             }
             
@@ -874,8 +876,10 @@ function executeTurnBattle($attacker, $defender, $maxTurns = null) {
                 }
                 
                 // ヒーロースキルの敵へのデバフを適用
-                foreach ($heroResult['defender_effects'] as $effect) {
-                    $attacker['active_effects'][] = $effect;
+                if (!empty($heroResult['defender_effects'])) {
+                    foreach ($heroResult['defender_effects'] as $effect) {
+                        $attacker['active_effects'][] = $effect;
+                    }
                 }
             }
             
