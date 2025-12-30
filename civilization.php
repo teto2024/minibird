@@ -5099,8 +5099,8 @@ function renderHeroSlot(battleType, assignment) {
         `;
     }
     
-    const skill1Name = assignment.skill_1_type == 2 ? assignment.battle_skill_2_name : assignment.battle_skill_name;
-    const skill2Name = assignment.skill_2_type ? (assignment.skill_2_type == 2 ? assignment.battle_skill_2_name : assignment.battle_skill_name) : null;
+    const skill1Name = assignment.skill_1_type === 2 ? assignment.battle_skill_2_name : assignment.battle_skill_name;
+    const skill2Name = assignment.skill_2_type ? (assignment.skill_2_type === 2 ? assignment.battle_skill_2_name : assignment.battle_skill_name) : null;
     
     return `
         <div style="display: flex; align-items: center; gap: 15px;">
@@ -5152,7 +5152,7 @@ function openHeroSelectModal(battleType) {
     `;
     
     for (const hero of data.available_heroes) {
-        const isSelected = currentAssignment && currentAssignment.hero_id == hero.hero_id;
+        const isSelected = currentAssignment && currentAssignment.hero_id === hero.hero_id;
         modalHtml += `
             <div class="hero-select-item" onclick="selectHeroForBattle('${battleType}', ${hero.hero_id})" 
                  style="background: ${isSelected ? 'rgba(255, 215, 0, 0.2)' : 'rgba(50, 50, 50, 0.5)'}; 
