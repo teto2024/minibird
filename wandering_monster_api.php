@@ -400,6 +400,14 @@ if ($action === 'attack_monster') {
         // バトルユニットを準備
         $attackerUnit = prepareBattleUnit($attackerTroops, $equipmentBuffs, $pdo);
         
+        // 攻撃側にヒーロースキルを適用
+        $attackerHero = getUserBattleHero($pdo, $me['id'], 'wandering_monster');
+        if ($attackerHero) {
+            $skillType1 = (int)($attackerHero['skill_1_type'] ?? 1);
+            $skillType2 = isset($attackerHero['skill_2_type']) ? (int)$attackerHero['skill_2_type'] : null;
+            $attackerUnit = applyHeroSkillsToUnit($attackerUnit, $attackerHero, $skillType1, $skillType2);
+        }
+        
         // モンスターユニットを準備
         $monsterUnit = [
             'attack' => (int)$encounter['attack_power'],

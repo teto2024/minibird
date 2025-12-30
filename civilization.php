@@ -2021,7 +2021,13 @@ function renderApp() {
             <!-- 援助機能 -->
             <div class="invest-section" style="background: linear-gradient(135deg, rgba(50, 205, 50, 0.3) 0%, rgba(0, 100, 0, 0.3) 100%); border-color: #32cd32; margin-top: 20px;">
                 <h3 style="color: #90ee90;">🎁 同盟国への援助</h3>
-                <p style="color: #c0a080; margin-bottom: 20px;">同盟国に兵士や資源を送ることができます。</p>
+                <p style="color: #c0a080; margin-bottom: 10px;">同盟国に兵士や資源を送ることができます。</p>
+                
+                <!-- 大使館制限表示 -->
+                <div id="embassyLimitsInfo" style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #4682b4;">
+                    <div style="color: #87ceeb; font-weight: bold; margin-bottom: 10px;">🏛️ 大使館レベルによる援助制限 (1時間あたり)</div>
+                    <div class="loading">読み込み中...</div>
+                </div>
                 
                 <!-- 援助対象選択 -->
                 <div style="margin-bottom: 20px;">
@@ -2301,6 +2307,8 @@ function renderBuildingsGrid(availableBuildings, ownedBuildings, resources) {
                     ${bt.production_rate > 0 ? `<span class="building-stat">⚡ ${bt.production_rate}/h</span>` : ''}
                     ${bt.population_capacity > 0 ? `<span class="building-stat">👥 +${bt.population_capacity}</span>` : ''}
                     ${bt.military_power > 0 ? `<span class="building-stat">⚔️ +${bt.military_power}</span>` : ''}
+                    ${bt.troop_deployment_bonus > 0 ? `<span class="building-stat" title="出撃兵士数上限">🚀 +${bt.troop_deployment_bonus}/Lv</span>` : ''}
+                    ${bt.transfer_limit_bonus > 0 ? `<span class="building-stat" title="援助上限ボーナス">🤝 援助+</span>` : ''}
                 </div>
                 <div class="building-cost">${costText} | ⏱️ ${formatTime(bt.base_build_time_seconds)}</div>
                 ${prereqText}
@@ -4042,6 +4050,55 @@ async function loadAllianceData() {
             
             // 援助ログを読み込む
             loadTransferLogs();
+            
+            // 大使館制限情報を読み込む
+            loadEmbassyLimits();
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// 大使館制限情報を読み込む
+async function loadEmbassyLimits() {
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_embassy_limits'})
+        });
+        const data = await res.json();
+        
+        const infoDiv = document.getElementById('embassyLimitsInfo');
+        if (!infoDiv) return;
+        
+        if (data.ok) {
+            if (data.embassy_level === 0) {
+                infoDiv.innerHTML = `
+                    <div style="color: #ff6b6b; font-weight: bold; margin-bottom: 10px;">🏛️ 大使館未建設</div>
+                    <p style="color: #888; margin: 0;">大使館を建設すると同盟国への援助が可能になります。</p>
+                    <p style="color: #888; margin: 5px 0 0 0; font-size: 12px;">建築タブから大使館を建設してください。</p>
+                `;
+            } else {
+                infoDiv.innerHTML = `
+                    <div style="color: #87ceeb; font-weight: bold; margin-bottom: 10px;">🏛️ 大使館レベル ${data.embassy_level} - 援助制限 (1時間あたり)</div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                        <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px;">
+                            <div style="color: #f5deb3; font-size: 13px;">🎖️ 兵士援助上限</div>
+                            <div style="color: #ffd700; font-size: 16px; font-weight: bold;">${data.troops_used_this_hour} / ${data.troop_limit_per_hour}人</div>
+                            <div style="color: #888; font-size: 11px;">残り ${data.troops_available}人</div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px;">
+                            <div style="color: #f5deb3; font-size: 13px;">📦 資源援助上限</div>
+                            <div style="color: #ffd700; font-size: 16px; font-weight: bold;">${data.resources_used_this_hour.toLocaleString()} / ${data.resource_limit_per_hour.toLocaleString()}</div>
+                            <div style="color: #888; font-size: 11px;">残り ${data.resources_available.toLocaleString()}</div>
+                        </div>
+                    </div>
+                    <p style="color: #888; margin: 10px 0 0 0; font-size: 12px;">💡 大使館をアップグレードすると、1時間あたりの援助上限が増加します（レベル×1000資源、レベル×50兵士）</p>
+                `;
+            }
+        } else {
+            infoDiv.innerHTML = '<p style="color: #ff6b6b;">大使館情報の取得に失敗しました</p>';
         }
     } catch (e) {
         console.error(e);

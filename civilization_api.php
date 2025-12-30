@@ -311,6 +311,68 @@ function calculateHealingQueueLimit($pdo, $userId) {
 }
 
 /**
+ * 大使館の援助制限を計算するヘルパー関数
+ * 
+ * @param PDO $pdo データベース接続
+ * @param int $userId ユーザーID
+ * @return array ['embassy_level' => int, 'resource_limit' => int, 'troop_limit' => int, 'resources_used' => float, 'troops_used' => int]
+ */
+function calculateEmbassyTransferLimits($pdo, $userId) {
+    // 大使館のレベルを取得
+    $stmt = $pdo->prepare("
+        SELECT COALESCE(SUM(ucb.level), 0) as total_level, COUNT(*) as count
+        FROM user_civilization_buildings ucb
+        JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+        WHERE ucb.user_id = ? 
+          AND bt.building_key = 'embassy'
+          AND ucb.is_constructing = FALSE
+    ");
+    $stmt->execute([$userId]);
+    $data = $stmt->fetch(PDO::FETCH_ASSOC);
+    $embassyLevel = (int)($data['total_level'] ?? 0);
+    $embassyCount = (int)($data['count'] ?? 0);
+    
+    // 1時間あたりの援助上限
+    // 大使館なし: 0（援助不可）
+    // 大使館レベル1: 資源1000、兵士50
+    // 各レベルで +1000資源, +50兵士
+    $resourceLimit = $embassyLevel * 1000;
+    $troopLimit = $embassyLevel * 50;
+    
+    // 過去1時間の転送量を取得
+    $hourAgo = date('Y-m-d H:i:s', time() - 3600);
+    
+    // 資源転送量
+    $stmt = $pdo->prepare("
+        SELECT COALESCE(SUM(amount), 0) as total_resources
+        FROM civilization_resource_transfers
+        WHERE sender_user_id = ? AND transferred_at >= ?
+    ");
+    $stmt->execute([$userId, $hourAgo]);
+    $resourcesUsed = (float)$stmt->fetchColumn();
+    
+    // 兵士転送量
+    $stmt = $pdo->prepare("
+        SELECT COALESCE(SUM(count), 0) as total_troops
+        FROM civilization_troop_transfers
+        WHERE sender_user_id = ? AND transferred_at >= ?
+    ");
+    $stmt->execute([$userId, $hourAgo]);
+    $troopsUsed = (int)$stmt->fetchColumn();
+    
+    return [
+        'embassy_count' => $embassyCount,
+        'embassy_level' => $embassyLevel,
+        'resource_limit' => $resourceLimit,
+        'troop_limit' => $troopLimit,
+        'resources_used' => $resourcesUsed,
+        'troops_used' => $troopsUsed,
+        'resources_available' => max(0, $resourceLimit - $resourcesUsed),
+        'troops_available' => max(0, $troopLimit - $troopsUsed)
+    ];
+}
+
+/**
  * 総合軍事力を計算するヘルパー関数（装備バフを含む）
  * 
  * @param PDO $pdo データベース接続
@@ -745,7 +807,9 @@ if ($action === 'get_data') {
         $stmt = $pdo->prepare("
             SELECT bt.*, e.name as era_name,
                    prereq_b.name as prerequisite_building_name,
-                   prereq_r.name as prerequisite_research_name
+                   prereq_r.name as prerequisite_research_name,
+                   COALESCE(bt.troop_deployment_bonus, 0) as troop_deployment_bonus,
+                   COALESCE(bt.transfer_limit_bonus, 0) as transfer_limit_bonus
             FROM civilization_building_types bt
             LEFT JOIN civilization_eras e ON bt.unlock_era_id = e.id
             LEFT JOIN civilization_building_types prereq_b ON bt.prerequisite_building_id = prereq_b.id
@@ -2354,6 +2418,22 @@ if ($action === 'attack_with_troops') {
         $attackerUnit = prepareBattleUnit($attackerTroops, $myEquipmentBuffs, $pdo);
         $defenderUnit = prepareBattleUnit($defenderTroops, $targetEquipmentBuffs, $pdo);
         
+        // 攻撃側にヒーロースキルを適用（戦争）
+        $attackerHero = getUserBattleHero($pdo, $me['id'], 'war');
+        if ($attackerHero) {
+            $skillType1 = (int)($attackerHero['skill_1_type'] ?? 1);
+            $skillType2 = isset($attackerHero['skill_2_type']) ? (int)$attackerHero['skill_2_type'] : null;
+            $attackerUnit = applyHeroSkillsToUnit($attackerUnit, $attackerHero, $skillType1, $skillType2);
+        }
+        
+        // 防御側にもヒーロースキルを適用（防衛）
+        $defenderHero = getUserBattleHero($pdo, $targetUserId, 'defense');
+        if ($defenderHero) {
+            $defSkillType1 = (int)($defenderHero['skill_1_type'] ?? 1);
+            $defSkillType2 = isset($defenderHero['skill_2_type']) ? (int)$defenderHero['skill_2_type'] : null;
+            $defenderUnit = applyHeroSkillsToUnit($defenderUnit, $defenderHero, $defSkillType1, $defSkillType2);
+        }
+        
         // ターン制バトルを実行
         $battleResult = executeTurnBattle($attackerUnit, $defenderUnit);
         $attackerWins = $battleResult['attacker_wins'];
@@ -2659,11 +2739,19 @@ if ($action === 'get_wounded_troops') {
         // ヘルパー関数を使用してキュー上限と容量を計算
         $queueLimit = calculateHealingQueueLimit($pdo, $me['id']);
         
+        // 治療中の兵士総数を計算
+        $currentHealingCount = 0;
+        foreach ($healingQueue as $queue) {
+            $currentHealingCount += (int)$queue['count'];
+        }
+        
         echo json_encode([
             'ok' => true,
             'wounded_troops' => $woundedTroops,
             'healing_queue' => $healingQueue,
             'hospital_capacity' => $queueLimit['capacity'],
+            'beds_used' => $currentHealingCount,
+            'beds_available' => max(0, $queueLimit['capacity'] - $currentHealingCount),
             'queue_used' => count($healingQueue),
             'queue_max' => $queueLimit['max_queues']
         ]);
@@ -2695,13 +2783,23 @@ if ($action === 'heal_troops') {
             throw new Exception('病院または野戦病院を建設してください');
         }
         
-        // 現在の治療キュー数を確認
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM user_civilization_healing_queue WHERE user_id = ?");
+        // 現在の治療キュー数と治療中の兵士総数を確認
+        $stmt = $pdo->prepare("SELECT COUNT(*) as queue_count, COALESCE(SUM(count), 0) as total_healing FROM user_civilization_healing_queue WHERE user_id = ?");
         $stmt->execute([$me['id']]);
-        $currentQueueCount = (int)$stmt->fetchColumn();
+        $queueStats = $stmt->fetch(PDO::FETCH_ASSOC);
+        $currentQueueCount = (int)$queueStats['queue_count'];
+        $currentHealingCount = (int)$queueStats['total_healing'];
         
         if ($currentQueueCount >= $maxHealingQueues) {
             throw new Exception("治療キューが満杯です（最大{$maxHealingQueues}個）。病院を建設するとキュー数が増えます。");
+        }
+        
+        // 病床数の確認（空き病床数をチェック）
+        $bedCapacity = $queueLimit['capacity'];
+        $availableBeds = $bedCapacity - $currentHealingCount;
+        
+        if ($availableBeds <= 0) {
+            throw new Exception("病床が満杯です（現在{$currentHealingCount}/{$bedCapacity}床使用中）。病院を建設すると病床数が増えます。");
         }
         
         // 負傷兵を確認
@@ -2718,6 +2816,11 @@ if ($action === 'heal_troops') {
         
         if (!$wounded || $wounded['count'] < $count) {
             throw new Exception('負傷兵が不足しています');
+        }
+        
+        // 治療数が空き病床数を超えないように制限
+        if ($count > $availableBeds) {
+            throw new Exception("空き病床数（{$availableBeds}床）を超えて治療することはできません");
         }
         
         // コストを計算
@@ -2765,7 +2868,9 @@ if ($action === 'heal_troops') {
             'message' => "{$wounded['name']} ×{$count} の治療を開始しました",
             'completes_at' => $completesAt,
             'queue_used' => $currentQueueCount + 1,
-            'queue_max' => $maxHealingQueues
+            'queue_max' => $maxHealingQueues,
+            'beds_used' => $currentHealingCount + $count,
+            'beds_max' => $bedCapacity
         ]);
     } catch (Exception $e) {
         $pdo->rollBack();
@@ -3756,11 +3861,32 @@ if ($action === 'transfer_troops') {
             throw new Exception('同盟相手にのみ兵士を送ることができます');
         }
         
+        // 大使館の援助制限を確認
+        $transferLimits = calculateEmbassyTransferLimits($pdo, $me['id']);
+        
+        if ($transferLimits['embassy_level'] === 0) {
+            throw new Exception('大使館を建設すると同盟国に援助できるようになります');
+        }
+        
         // 対象ユーザーが存在するか確認
         $stmt = $pdo->prepare("SELECT 1 FROM users WHERE id = ?");
         $stmt->execute([$targetUserId]);
         if (!$stmt->fetch()) {
             throw new Exception('ユーザーが見つかりません');
+        }
+        
+        // 転送する兵士総数を計算
+        $totalToTransfer = 0;
+        foreach ($troops as $troop) {
+            $totalToTransfer += (int)($troop['count'] ?? 0);
+        }
+        
+        // 援助上限チェック
+        if ($totalToTransfer > $transferLimits['troops_available']) {
+            $limit = $transferLimits['troop_limit'];
+            $used = $transferLimits['troops_used'];
+            $available = $transferLimits['troops_available'];
+            throw new Exception("1時間あたりの兵士援助上限を超えています（上限: {$limit}人/時間、使用済み: {$used}人、残り: {$available}人）。大使館をアップグレードすると上限が増えます。");
         }
         
         $totalTransferred = 0;
@@ -3851,11 +3977,32 @@ if ($action === 'transfer_resources') {
             throw new Exception('同盟相手にのみ資源を送ることができます');
         }
         
+        // 大使館の援助制限を確認
+        $transferLimits = calculateEmbassyTransferLimits($pdo, $me['id']);
+        
+        if ($transferLimits['embassy_level'] === 0) {
+            throw new Exception('大使館を建設すると同盟国に援助できるようになります');
+        }
+        
         // 対象ユーザーが存在するか確認
         $stmt = $pdo->prepare("SELECT 1 FROM users WHERE id = ?");
         $stmt->execute([$targetUserId]);
         if (!$stmt->fetch()) {
             throw new Exception('ユーザーが見つかりません');
+        }
+        
+        // 転送する資源総量を計算
+        $totalToTransfer = 0.0;
+        foreach ($resources as $resource) {
+            $totalToTransfer += (float)($resource['amount'] ?? 0);
+        }
+        
+        // 援助上限チェック
+        if ($totalToTransfer > $transferLimits['resources_available']) {
+            $limit = $transferLimits['resource_limit'];
+            $used = (int)$transferLimits['resources_used'];
+            $available = (int)$transferLimits['resources_available'];
+            throw new Exception("1時間あたりの資源援助上限を超えています（上限: {$limit}/時間、使用済み: {$used}、残り: {$available}）。大使館をアップグレードすると上限が増えます。");
         }
         
         $totalTransferred = 0;
@@ -3984,6 +4131,30 @@ if ($action === 'get_transfer_logs') {
             'troop_sent' => $troopSent,
             'resource_received' => $resourceReceived,
             'resource_sent' => $resourceSent
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// 大使館の援助制限情報を取得
+// ===============================================
+if ($action === 'get_embassy_limits') {
+    try {
+        $limits = calculateEmbassyTransferLimits($pdo, $me['id']);
+        
+        echo json_encode([
+            'ok' => true,
+            'embassy_level' => $limits['embassy_level'],
+            'embassy_count' => $limits['embassy_count'],
+            'resource_limit_per_hour' => $limits['resource_limit'],
+            'troop_limit_per_hour' => $limits['troop_limit'],
+            'resources_used_this_hour' => (int)$limits['resources_used'],
+            'troops_used_this_hour' => $limits['troops_used'],
+            'resources_available' => (int)$limits['resources_available'],
+            'troops_available' => $limits['troops_available']
         ]);
     } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
@@ -5177,6 +5348,139 @@ if ($action === 'get_leaderboards') {
             'my_rank' => $myRank,
             'my_value' => $myValue !== null ? (is_float($myValue) ? round($myValue, 0) : (int)$myValue) : 0,
             'resource_types' => $resourceTypes
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// バトル用ヒーロー選択API
+// ===============================================
+if ($action === 'set_battle_hero') {
+    $battleType = $input['battle_type'] ?? '';
+    $heroId = isset($input['hero_id']) ? (int)$input['hero_id'] : null;
+    $skillType1 = (int)($input['skill_1_type'] ?? 1);
+    $skillType2 = isset($input['skill_2_type']) ? (int)$input['skill_2_type'] : null;
+    
+    $validBattleTypes = ['conquest', 'world_boss', 'wandering_monster', 'war', 'defense'];
+    if (!in_array($battleType, $validBattleTypes)) {
+        echo json_encode(['ok' => false, 'error' => '無効なバトルタイプです']);
+        exit;
+    }
+    
+    $pdo->beginTransaction();
+    try {
+        // ヒーローが指定されている場合は所有確認
+        if ($heroId) {
+            $stmt = $pdo->prepare("
+                SELECT uh.*, h.name, h.icon, h.battle_skill_name, h.battle_skill_2_name
+                FROM user_heroes uh
+                JOIN heroes h ON uh.hero_id = h.id
+                WHERE uh.user_id = ? AND uh.hero_id = ? AND uh.star_level > 0
+            ");
+            $stmt->execute([$me['id'], $heroId]);
+            $hero = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$hero) {
+                throw new Exception('このヒーローを所有していないか、アンロックされていません');
+            }
+            
+            // スキルタイプの検証
+            if (!in_array($skillType1, [1, 2])) {
+                $skillType1 = 1;
+            }
+            if ($skillType2 !== null && !in_array($skillType2, [1, 2])) {
+                $skillType2 = null;
+            }
+            // 同じスキルを2回選択することはできない
+            if ($skillType2 === $skillType1) {
+                $skillType2 = null;
+            }
+        }
+        
+        // 選択を保存
+        if ($heroId) {
+            $stmt = $pdo->prepare("
+                INSERT INTO user_battle_hero_selection (user_id, battle_type, hero_id, skill_1_type, skill_2_type)
+                VALUES (?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE 
+                    hero_id = VALUES(hero_id),
+                    skill_1_type = VALUES(skill_1_type),
+                    skill_2_type = VALUES(skill_2_type),
+                    updated_at = NOW()
+            ");
+            $stmt->execute([$me['id'], $battleType, $heroId, $skillType1, $skillType2]);
+            
+            $message = "{$hero['name']}をバトル用ヒーローに設定しました";
+        } else {
+            // ヒーロー選択を解除
+            $stmt = $pdo->prepare("DELETE FROM user_battle_hero_selection WHERE user_id = ? AND battle_type = ?");
+            $stmt->execute([$me['id'], $battleType]);
+            
+            $message = 'バトル用ヒーローの選択を解除しました';
+        }
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => $message
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// バトル用ヒーロー選択情報を取得
+// ===============================================
+if ($action === 'get_battle_hero_selection') {
+    $battleType = $input['battle_type'] ?? '';
+    
+    $validBattleTypes = ['conquest', 'world_boss', 'wandering_monster', 'war', 'defense'];
+    if (!in_array($battleType, $validBattleTypes)) {
+        echo json_encode(['ok' => false, 'error' => '無効なバトルタイプです']);
+        exit;
+    }
+    
+    try {
+        // 現在の選択を取得
+        $stmt = $pdo->prepare("
+            SELECT ubhs.*, h.name as hero_name, h.icon as hero_icon,
+                   h.battle_skill_name, h.battle_skill_desc,
+                   h.battle_skill_2_name, h.battle_skill_2_desc,
+                   uh.star_level
+            FROM user_battle_hero_selection ubhs
+            JOIN heroes h ON ubhs.hero_id = h.id
+            LEFT JOIN user_heroes uh ON ubhs.user_id = uh.user_id AND ubhs.hero_id = uh.hero_id
+            WHERE ubhs.user_id = ? AND ubhs.battle_type = ?
+        ");
+        $stmt->execute([$me['id'], $battleType]);
+        $selection = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // 利用可能なヒーロー一覧を取得
+        $stmt = $pdo->prepare("
+            SELECT uh.*, h.name, h.icon, h.title,
+                   h.battle_skill_name, h.battle_skill_desc,
+                   h.battle_skill_2_name, h.battle_skill_2_desc,
+                   h.passive_skill_name, h.passive_skill_desc
+            FROM user_heroes uh
+            JOIN heroes h ON uh.hero_id = h.id
+            WHERE uh.user_id = ? AND uh.star_level > 0
+            ORDER BY uh.star_level DESC, h.name ASC
+        ");
+        $stmt->execute([$me['id']]);
+        $availableHeroes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'ok' => true,
+            'battle_type' => $battleType,
+            'current_selection' => $selection,
+            'available_heroes' => $availableHeroes
         ]);
     } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);

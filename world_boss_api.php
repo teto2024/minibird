@@ -54,6 +54,23 @@ function sendWorldBossAnnouncement($pdo, $bossName, $bossIcon, $summonerHandle) 
 }
 
 /**
+ * ワールドボス討伐完了を告知
+ * @param PDO $pdo データベース接続
+ * @param string $bossName ボス名
+ * @param string $bossIcon ボスアイコン
+ * @param string $defeaterHandle 止めを刺したプレイヤーのハンドル名
+ */
+function sendWorldBossDefeatedAnnouncement($pdo, $bossName, $bossIcon, $defeaterHandle) {
+    $content = "🎉 【ワールドボス討伐完了】 {$bossIcon} {$bossName} が @{$defeaterHandle} によって討伐されました！参加者の皆さんに報酬が配布されます！";
+    $html = markdown_to_html($content);
+    $stmt = $pdo->prepare("
+        INSERT INTO posts (user_id, content_md, content_html, created_at)
+        VALUES (?, ?, ?, NOW())
+    ");
+    $stmt->execute([WORLD_BOSS_ANNOUNCEMENT_BOT_ID, $content, $html]);
+}
+
+/**
  * ユーザーのレベルを取得
  */
 function getWorldBossUserLevel($pdo, $userId) {
@@ -565,6 +582,14 @@ if ($action === 'attack_boss') {
         // バトルユニットを準備
         $attackerUnit = prepareBattleUnit($attackerTroops, $equipmentBuffs, $pdo);
         
+        // 攻撃側にヒーロースキルを適用
+        $attackerHero = getUserBattleHero($pdo, $me['id'], 'world_boss');
+        if ($attackerHero) {
+            $skillType1 = (int)($attackerHero['skill_1_type'] ?? 1);
+            $skillType2 = isset($attackerHero['skill_2_type']) ? (int)$attackerHero['skill_2_type'] : null;
+            $attackerUnit = applyHeroSkillsToUnit($attackerUnit, $attackerHero, $skillType1, $skillType2);
+        }
+        
         // ワールドボスユニットを準備（現在のHPを使用）
         $bossUnit = [
             'attack' => (int)$instance['base_attack'],
@@ -673,6 +698,9 @@ if ($action === 'attack_boss') {
                 WHERE id = ?
             ");
             $stmt->execute([$instanceId]);
+            
+            // 討伐完了を全体フィードに告知
+            sendWorldBossDefeatedAnnouncement($pdo, $instance['boss_name'], $instance['boss_icon'], $me['handle']);
             
             // 報酬配布
             distributeWorldBossRewards($pdo, $instanceId, true);

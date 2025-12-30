@@ -1048,6 +1048,14 @@ if ($action === 'attack_castle') {
         // バトルユニットを準備
         $attackerUnit = prepareBattleUnit($attackerTroops, $attackerEquipmentBuffs, $pdo);
         
+        // 攻撃側にヒーロースキルを適用
+        $attackerHero = getUserBattleHero($pdo, $me['id'], 'conquest');
+        if ($attackerHero) {
+            $skillType1 = (int)($attackerHero['skill_1_type'] ?? 1);
+            $skillType2 = isset($attackerHero['skill_2_type']) ? (int)$attackerHero['skill_2_type'] : null;
+            $attackerUnit = applyHeroSkillsToUnit($attackerUnit, $attackerHero, $skillType1, $skillType2);
+        }
+        
         // 地形バフを計算（防御側が有利）
         $terrainType = $castle['terrain_type'] ?? 'plains';
         $terrainDefenseBonus = (float)($castle['terrain_defense_bonus'] ?? 1.0);
@@ -1077,6 +1085,17 @@ if ($action === 'attack_castle') {
             }
             $defenderEquipmentBuffs = $defense['equipment_buffs'];
             $defenderUnit = prepareBattleUnit($defenderTroops, $defenderEquipmentBuffs, $pdo);
+            
+            // 防御側にもヒーロースキルを適用
+            if (!empty($castle['owner_user_id'])) {
+                $defenderHero = getUserBattleHero($pdo, $castle['owner_user_id'], 'defense');
+                if ($defenderHero) {
+                    $defSkillType1 = (int)($defenderHero['skill_1_type'] ?? 1);
+                    $defSkillType2 = isset($defenderHero['skill_2_type']) ? (int)$defenderHero['skill_2_type'] : null;
+                    $defenderUnit = applyHeroSkillsToUnit($defenderUnit, $defenderHero, $defSkillType1, $defSkillType2);
+                }
+            }
+            
             // 防御側に地形バフを適用
             $defenderUnit['armor'] = (int)floor($defenderUnit['armor'] * $defenderTerrainBuff * $terrainDefenseBonus);
         }
