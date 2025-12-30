@@ -5488,4 +5488,72 @@ if ($action === 'get_battle_hero_selection') {
     exit;
 }
 
+// ===============================================
+// 全バトルタイプのヒーロー編成情報を取得
+// ===============================================
+if ($action === 'get_all_hero_assignments') {
+    try {
+        $validBattleTypes = ['conquest', 'world_boss', 'wandering_monster', 'war', 'defense'];
+        $battleTypeLabels = [
+            'conquest' => ['name' => '占領戦', 'icon' => '🏰'],
+            'world_boss' => ['name' => 'ワールドボス', 'icon' => '🐲'],
+            'wandering_monster' => ['name' => '放浪モンスター', 'icon' => '👹'],
+            'war' => ['name' => '戦争', 'icon' => '⚔️'],
+            'defense' => ['name' => '防衛', 'icon' => '🛡️']
+        ];
+        
+        // 全バトルタイプの選択を取得
+        $stmt = $pdo->prepare("
+            SELECT ubhs.*, h.name as hero_name, h.icon as hero_icon, h.title as hero_title,
+                   h.rarity, h.battle_skill_name, h.battle_skill_desc,
+                   h.battle_skill_2_name, h.battle_skill_2_desc,
+                   h.battle_skill_effect, h.battle_skill_2_effect,
+                   h.passive_skill_name, h.passive_skill_desc,
+                   uh.star_level
+            FROM user_battle_hero_selection ubhs
+            JOIN heroes h ON ubhs.hero_id = h.id
+            LEFT JOIN user_heroes uh ON ubhs.user_id = uh.user_id AND ubhs.hero_id = uh.hero_id
+            WHERE ubhs.user_id = ?
+        ");
+        $stmt->execute([$me['id']]);
+        $selections = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // バトルタイプでインデックス化
+        $assignmentsByType = [];
+        foreach ($validBattleTypes as $type) {
+            $assignmentsByType[$type] = null;
+        }
+        foreach ($selections as $selection) {
+            $assignmentsByType[$selection['battle_type']] = $selection;
+        }
+        
+        // 利用可能なヒーロー一覧を取得（アンロック済み）
+        $stmt = $pdo->prepare("
+            SELECT uh.hero_id, uh.star_level, uh.shards,
+                   h.name, h.icon, h.title, h.rarity,
+                   h.battle_skill_name, h.battle_skill_desc,
+                   h.battle_skill_2_name, h.battle_skill_2_desc,
+                   h.battle_skill_effect, h.battle_skill_2_effect,
+                   h.passive_skill_name, h.passive_skill_desc
+            FROM user_heroes uh
+            JOIN heroes h ON uh.hero_id = h.id
+            WHERE uh.user_id = ? AND uh.star_level > 0
+            ORDER BY uh.star_level DESC, h.rarity DESC, h.name ASC
+        ");
+        $stmt->execute([$me['id']]);
+        $availableHeroes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'ok' => true,
+            'battle_types' => $battleTypeLabels,
+            'assignments' => $assignmentsByType,
+            'available_heroes' => $availableHeroes,
+            'hero_count' => count($availableHeroes)
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 echo json_encode(['ok' => false, 'error' => 'invalid_action']);
