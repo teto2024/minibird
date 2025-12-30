@@ -54,6 +54,261 @@ function getTroopTypeWithSkill($pdo, $troopTypeId) {
 }
 
 /**
+ * ユーザーの編成中ヒーローとスキルを取得
+ * @param PDO $pdo
+ * @param int $userId
+ * @param string $battleType バトルタイプ (conquest, world_boss, wandering_monster, war, defense)
+ * @return array|null ヒーロー情報と選択スキル
+ */
+function getUserBattleHero($pdo, $userId, $battleType = null) {
+    // バトルタイプ別のヒーロー選択を確認
+    if ($battleType) {
+        $stmt = $pdo->prepare("
+            SELECT ubhs.*, h.*, uh.star_level, uh.shards
+            FROM user_battle_hero_selection ubhs
+            JOIN heroes h ON ubhs.hero_id = h.id
+            LEFT JOIN user_heroes uh ON ubhs.user_id = uh.user_id AND ubhs.hero_id = uh.hero_id
+            WHERE ubhs.user_id = ? AND ubhs.battle_type = ?
+        ");
+        $stmt->execute([$userId, $battleType]);
+        $selection = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($selection && $selection['star_level'] > 0) {
+            return $selection;
+        }
+    }
+    
+    // バトルタイプ別選択がない場合は編成中のヒーローを使用
+    $stmt = $pdo->prepare("
+        SELECT uh.*, h.*
+        FROM user_heroes uh
+        JOIN heroes h ON uh.hero_id = h.id
+        WHERE uh.user_id = ? AND uh.is_equipped = 1 AND uh.star_level > 0
+        LIMIT 1
+    ");
+    $stmt->execute([$userId]);
+    $hero = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    return $hero ?: null;
+}
+
+/**
+ * ヒーロースキルをバトルユニットに適用
+ * @param array $unit バトルユニット
+ * @param array $heroData ヒーロー情報
+ * @param int $skillType1 スキル1の種類 (1=第1バトルスキル, 2=第2バトルスキル)
+ * @param int|null $skillType2 スキル2の種類
+ * @return array 更新されたバトルユニット
+ */
+function applyHeroSkillsToUnit($unit, $heroData, $skillType1 = 1, $skillType2 = null) {
+    if (!$heroData) {
+        return $unit;
+    }
+    
+    $heroSkills = [];
+    $starLevel = (int)($heroData['star_level'] ?? 1);
+    
+    // スキル効果はヒーローの星レベルで増加 (基本100% + 星レベル*10%)
+    $skillMultiplier = 1.0 + ($starLevel - 1) * 0.1;
+    
+    // 第1スキル追加
+    if ($skillType1 == 1 && !empty($heroData['battle_skill_name'])) {
+        $effectData = json_decode($heroData['battle_skill_effect'] ?? '{}', true);
+        $heroSkills[] = [
+            'skill_key' => 'hero_skill_1',
+            'skill_name' => $heroData['battle_skill_name'],
+            'skill_icon' => $heroData['icon'] ?? '⚔️',
+            'effect_type' => 'hero_battle',
+            'effect_target' => 'enemy',
+            'effect_value' => $skillMultiplier,
+            'effect_data' => $effectData,
+            'duration_turns' => $effectData['duration'] ?? 1,
+            'activation_chance' => 30 + $starLevel * 5, // 30% + 星レベル*5%
+            'troop_type_id' => 0,
+            'troop_name' => $heroData['name'],
+            'troop_icon' => $heroData['icon'],
+            'is_hero_skill' => true
+        ];
+    } else if ($skillType1 == 2 && !empty($heroData['battle_skill_2_name'])) {
+        $effectData = json_decode($heroData['battle_skill_2_effect'] ?? '{}', true);
+        $heroSkills[] = [
+            'skill_key' => 'hero_skill_2',
+            'skill_name' => $heroData['battle_skill_2_name'],
+            'skill_icon' => $heroData['icon'] ?? '⚔️',
+            'effect_type' => 'hero_battle',
+            'effect_target' => 'enemy',
+            'effect_value' => $skillMultiplier,
+            'effect_data' => $effectData,
+            'duration_turns' => $effectData['duration'] ?? 1,
+            'activation_chance' => 30 + $starLevel * 5,
+            'troop_type_id' => 0,
+            'troop_name' => $heroData['name'],
+            'troop_icon' => $heroData['icon'],
+            'is_hero_skill' => true
+        ];
+    }
+    
+    // 第2スキル追加（選択されている場合）
+    if ($skillType2) {
+        if ($skillType2 == 1 && !empty($heroData['battle_skill_name'])) {
+            $effectData = json_decode($heroData['battle_skill_effect'] ?? '{}', true);
+            $heroSkills[] = [
+                'skill_key' => 'hero_skill_1_second',
+                'skill_name' => $heroData['battle_skill_name'],
+                'skill_icon' => $heroData['icon'] ?? '⚔️',
+                'effect_type' => 'hero_battle',
+                'effect_target' => 'enemy',
+                'effect_value' => $skillMultiplier,
+                'effect_data' => $effectData,
+                'duration_turns' => $effectData['duration'] ?? 1,
+                'activation_chance' => 20 + $starLevel * 3, // 2番目のスキルは発動率低め
+                'troop_type_id' => 0,
+                'troop_name' => $heroData['name'],
+                'troop_icon' => $heroData['icon'],
+                'is_hero_skill' => true
+            ];
+        } else if ($skillType2 == 2 && !empty($heroData['battle_skill_2_name'])) {
+            $effectData = json_decode($heroData['battle_skill_2_effect'] ?? '{}', true);
+            $heroSkills[] = [
+                'skill_key' => 'hero_skill_2_second',
+                'skill_name' => $heroData['battle_skill_2_name'],
+                'skill_icon' => $heroData['icon'] ?? '⚔️',
+                'effect_type' => 'hero_battle',
+                'effect_target' => 'enemy',
+                'effect_value' => $skillMultiplier,
+                'effect_data' => $effectData,
+                'duration_turns' => $effectData['duration'] ?? 1,
+                'activation_chance' => 20 + $starLevel * 3,
+                'troop_type_id' => 0,
+                'troop_name' => $heroData['name'],
+                'troop_icon' => $heroData['icon'],
+                'is_hero_skill' => true
+            ];
+        }
+    }
+    
+    // ヒーロースキルをユニットに追加
+    $unit['skills'] = array_merge($unit['skills'], $heroSkills);
+    $unit['hero'] = [
+        'id' => $heroData['hero_id'] ?? $heroData['id'],
+        'name' => $heroData['name'],
+        'icon' => $heroData['icon'],
+        'star_level' => $starLevel
+    ];
+    
+    // ヒーローの星レベルに応じて基本ステータスボーナスを追加
+    $heroAttackBonus = $starLevel * 5;  // 星レベル * 5 攻撃力
+    $heroArmorBonus = $starLevel * 3;   // 星レベル * 3 防御力
+    $heroHealthBonus = $starLevel * 50; // 星レベル * 50 体力
+    
+    $unit['attack'] += $heroAttackBonus;
+    $unit['armor'] += $heroArmorBonus;
+    $unit['max_health'] += $heroHealthBonus;
+    $unit['current_health'] += $heroHealthBonus;
+    
+    return $unit;
+}
+
+/**
+ * ヒーロースキルの効果を処理
+ * @param array $skill スキル情報
+ * @param array $attacker 攻撃者ユニット
+ * @param array $defender 防御者ユニット
+ * @return array [damage, heal, messages, attacker_effects, defender_effects]
+ */
+function processHeroSkillEffect($skill, $attacker, $defender) {
+    $result = [
+        'damage' => 0,
+        'heal' => 0,
+        'messages' => [],
+        'attacker_effects' => [],
+        'defender_effects' => []
+    ];
+    
+    if (empty($skill['effect_data'])) {
+        return $result;
+    }
+    
+    $effectData = $skill['effect_data'];
+    $multiplier = $skill['effect_value'] ?? 1.0;
+    $skillName = $skill['skill_name'];
+    $icon = $skill['skill_icon'];
+    
+    // ダメージ系スキル
+    if (isset($effectData['damage_multiplier'])) {
+        $damage = (int)floor($attacker['attack'] * $effectData['damage_multiplier'] * $multiplier);
+        $result['damage'] = $damage;
+        $result['messages'][] = "{$icon} {$skillName}発動！{$damage}ダメージ！";
+    }
+    
+    // 回復系スキル
+    if (isset($effectData['heal_percent'])) {
+        $heal = (int)floor($attacker['max_health'] * ($effectData['heal_percent'] / 100) * $multiplier);
+        $result['heal'] = $heal;
+        $result['messages'][] = "{$icon} {$skillName}発動！{$heal}回復！";
+    }
+    
+    // バフ系スキル
+    if (isset($effectData['armor_buff'])) {
+        $result['attacker_effects'][] = [
+            'skill_key' => 'armor_harden',
+            'skill_name' => $skillName,
+            'skill_icon' => $icon,
+            'effect_type' => 'buff',
+            'effect_target' => 'self',
+            'effect_value' => $effectData['armor_buff'] * $multiplier,
+            'remaining_turns' => $effectData['duration'] ?? 2
+        ];
+        $result['messages'][] = "{$icon} {$skillName}発動！アーマー+{$effectData['armor_buff']}%！";
+    }
+    
+    // デバフ系スキル
+    if (isset($effectData['freeze_duration']) || isset($effectData['freeze_chance'])) {
+        $freezeChance = $effectData['freeze_chance'] ?? 100;
+        if (mt_rand(1, 100) <= $freezeChance) {
+            $result['defender_effects'][] = [
+                'skill_key' => 'frozen',
+                'skill_name' => '凍結',
+                'skill_icon' => '❄️',
+                'effect_type' => 'debuff',
+                'effect_target' => 'enemy',
+                'effect_value' => 100,
+                'remaining_turns' => $effectData['freeze_duration'] ?? 1
+            ];
+            $result['messages'][] = "{$icon} {$skillName}発動！敵を凍結させた！";
+        }
+    }
+    
+    // 燃焼（継続ダメージ）
+    if (isset($effectData['burn']) && $effectData['burn']) {
+        $result['defender_effects'][] = [
+            'skill_key' => 'burn',
+            'skill_name' => '燃焼',
+            'skill_icon' => '🔥',
+            'effect_type' => 'dot',
+            'effect_target' => 'enemy',
+            'effect_value' => $effectData['burn_damage'] ?? 10,
+            'remaining_turns' => $effectData['duration'] ?? 2
+        ];
+        $result['messages'][] = "{$icon} {$skillName}発動！敵を燃焼状態に！";
+    }
+    
+    // AOE（全体攻撃）
+    if (isset($effectData['aoe']) && $effectData['aoe']) {
+        $result['messages'][] = "{$icon} {$skillName}発動！全体攻撃！";
+    }
+    
+    // 即死
+    if (isset($effectData['instant_kill_chance'])) {
+        if (mt_rand(1, 100) <= $effectData['instant_kill_chance']) {
+            $result['damage'] = $defender['current_health'];
+            $result['messages'][] = "{$icon} {$skillName}発動！即死攻撃成功！";
+        }
+    }
+    
+    return $result;
+}
+
+/**
  * バトルユニットを準備
  * @param array $troops [{troop_type_id, count, ...}, ...]
  * @param array $equipmentBuffs {attack, armor, health}
@@ -271,10 +526,20 @@ function tryActivateSkill($unit, $target, $isAttacker) {
     $messages = [];
     $newEffects = [];
     $extraAttacks = 0;
+    $heroSkillResult = null;
     
     // 各兵種のスキル発動判定
     foreach ($unit['skills'] as $skill) {
         if (mt_rand(1, 100) <= $skill['activation_chance']) {
+            // ヒーロースキルの特別処理
+            if (!empty($skill['is_hero_skill'])) {
+                $heroSkillResult = processHeroSkillEffect($skill, $unit, $target);
+                $messages = array_merge($messages, $heroSkillResult['messages']);
+                $newEffects = array_merge($newEffects, $heroSkillResult['attacker_effects']);
+                // 敵へのデバフは呼び出し元で処理
+                continue;
+            }
+            
             $effect = [
                 'skill_key' => $skill['skill_key'],
                 'skill_name' => $skill['skill_name'],
@@ -297,7 +562,7 @@ function tryActivateSkill($unit, $target, $isAttacker) {
                 $newEffects[] = $effect;
             }
             
-            // 1つのスキルのみ発動（複数発動を防ぐ）
+            // 1つの通常スキルのみ発動（複数発動を防ぐ）
             break;
         }
     }
@@ -305,7 +570,8 @@ function tryActivateSkill($unit, $target, $isAttacker) {
     return [
         'effects' => $newEffects,
         'messages' => $messages,
-        'extra_attacks' => $extraAttacks
+        'extra_attacks' => $extraAttacks,
+        'hero_skill_result' => $heroSkillResult
     ];
 }
 

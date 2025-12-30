@@ -582,6 +582,14 @@ if ($action === 'attack_boss') {
         // バトルユニットを準備
         $attackerUnit = prepareBattleUnit($attackerTroops, $equipmentBuffs, $pdo);
         
+        // 攻撃側にヒーロースキルを適用
+        $attackerHero = getUserBattleHero($pdo, $me['id'], 'world_boss');
+        if ($attackerHero) {
+            $skillType1 = (int)($attackerHero['skill_1_type'] ?? 1);
+            $skillType2 = isset($attackerHero['skill_2_type']) ? (int)$attackerHero['skill_2_type'] : null;
+            $attackerUnit = applyHeroSkillsToUnit($attackerUnit, $attackerHero, $skillType1, $skillType2);
+        }
+        
         // ワールドボスユニットを準備（現在のHPを使用）
         $bossUnit = [
             'attack' => (int)$instance['base_attack'],

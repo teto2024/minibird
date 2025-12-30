@@ -2418,6 +2418,22 @@ if ($action === 'attack_with_troops') {
         $attackerUnit = prepareBattleUnit($attackerTroops, $myEquipmentBuffs, $pdo);
         $defenderUnit = prepareBattleUnit($defenderTroops, $targetEquipmentBuffs, $pdo);
         
+        // 攻撃側にヒーロースキルを適用（戦争）
+        $attackerHero = getUserBattleHero($pdo, $me['id'], 'war');
+        if ($attackerHero) {
+            $skillType1 = (int)($attackerHero['skill_1_type'] ?? 1);
+            $skillType2 = isset($attackerHero['skill_2_type']) ? (int)$attackerHero['skill_2_type'] : null;
+            $attackerUnit = applyHeroSkillsToUnit($attackerUnit, $attackerHero, $skillType1, $skillType2);
+        }
+        
+        // 防御側にもヒーロースキルを適用（防衛）
+        $defenderHero = getUserBattleHero($pdo, $targetUserId, 'defense');
+        if ($defenderHero) {
+            $defSkillType1 = (int)($defenderHero['skill_1_type'] ?? 1);
+            $defSkillType2 = isset($defenderHero['skill_2_type']) ? (int)$defenderHero['skill_2_type'] : null;
+            $defenderUnit = applyHeroSkillsToUnit($defenderUnit, $defenderHero, $defSkillType1, $defSkillType2);
+        }
+        
         // ターン制バトルを実行
         $battleResult = executeTurnBattle($attackerUnit, $defenderUnit);
         $attackerWins = $battleResult['attacker_wins'];
@@ -5332,6 +5348,139 @@ if ($action === 'get_leaderboards') {
             'my_rank' => $myRank,
             'my_value' => $myValue !== null ? (is_float($myValue) ? round($myValue, 0) : (int)$myValue) : 0,
             'resource_types' => $resourceTypes
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// バトル用ヒーロー選択API
+// ===============================================
+if ($action === 'set_battle_hero') {
+    $battleType = $input['battle_type'] ?? '';
+    $heroId = isset($input['hero_id']) ? (int)$input['hero_id'] : null;
+    $skillType1 = (int)($input['skill_1_type'] ?? 1);
+    $skillType2 = isset($input['skill_2_type']) ? (int)$input['skill_2_type'] : null;
+    
+    $validBattleTypes = ['conquest', 'world_boss', 'wandering_monster', 'war', 'defense'];
+    if (!in_array($battleType, $validBattleTypes)) {
+        echo json_encode(['ok' => false, 'error' => '無効なバトルタイプです']);
+        exit;
+    }
+    
+    $pdo->beginTransaction();
+    try {
+        // ヒーローが指定されている場合は所有確認
+        if ($heroId) {
+            $stmt = $pdo->prepare("
+                SELECT uh.*, h.name, h.icon, h.battle_skill_name, h.battle_skill_2_name
+                FROM user_heroes uh
+                JOIN heroes h ON uh.hero_id = h.id
+                WHERE uh.user_id = ? AND uh.hero_id = ? AND uh.star_level > 0
+            ");
+            $stmt->execute([$me['id'], $heroId]);
+            $hero = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$hero) {
+                throw new Exception('このヒーローを所有していないか、アンロックされていません');
+            }
+            
+            // スキルタイプの検証
+            if (!in_array($skillType1, [1, 2])) {
+                $skillType1 = 1;
+            }
+            if ($skillType2 !== null && !in_array($skillType2, [1, 2])) {
+                $skillType2 = null;
+            }
+            // 同じスキルを2回選択することはできない
+            if ($skillType2 === $skillType1) {
+                $skillType2 = null;
+            }
+        }
+        
+        // 選択を保存
+        if ($heroId) {
+            $stmt = $pdo->prepare("
+                INSERT INTO user_battle_hero_selection (user_id, battle_type, hero_id, skill_1_type, skill_2_type)
+                VALUES (?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE 
+                    hero_id = VALUES(hero_id),
+                    skill_1_type = VALUES(skill_1_type),
+                    skill_2_type = VALUES(skill_2_type),
+                    updated_at = NOW()
+            ");
+            $stmt->execute([$me['id'], $battleType, $heroId, $skillType1, $skillType2]);
+            
+            $message = "{$hero['name']}をバトル用ヒーローに設定しました";
+        } else {
+            // ヒーロー選択を解除
+            $stmt = $pdo->prepare("DELETE FROM user_battle_hero_selection WHERE user_id = ? AND battle_type = ?");
+            $stmt->execute([$me['id'], $battleType]);
+            
+            $message = 'バトル用ヒーローの選択を解除しました';
+        }
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'message' => $message
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// バトル用ヒーロー選択情報を取得
+// ===============================================
+if ($action === 'get_battle_hero_selection') {
+    $battleType = $input['battle_type'] ?? '';
+    
+    $validBattleTypes = ['conquest', 'world_boss', 'wandering_monster', 'war', 'defense'];
+    if (!in_array($battleType, $validBattleTypes)) {
+        echo json_encode(['ok' => false, 'error' => '無効なバトルタイプです']);
+        exit;
+    }
+    
+    try {
+        // 現在の選択を取得
+        $stmt = $pdo->prepare("
+            SELECT ubhs.*, h.name as hero_name, h.icon as hero_icon,
+                   h.battle_skill_name, h.battle_skill_desc,
+                   h.battle_skill_2_name, h.battle_skill_2_desc,
+                   uh.star_level
+            FROM user_battle_hero_selection ubhs
+            JOIN heroes h ON ubhs.hero_id = h.id
+            LEFT JOIN user_heroes uh ON ubhs.user_id = uh.user_id AND ubhs.hero_id = uh.hero_id
+            WHERE ubhs.user_id = ? AND ubhs.battle_type = ?
+        ");
+        $stmt->execute([$me['id'], $battleType]);
+        $selection = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // 利用可能なヒーロー一覧を取得
+        $stmt = $pdo->prepare("
+            SELECT uh.*, h.name, h.icon, h.title,
+                   h.battle_skill_name, h.battle_skill_desc,
+                   h.battle_skill_2_name, h.battle_skill_2_desc,
+                   h.passive_skill_name, h.passive_skill_desc
+            FROM user_heroes uh
+            JOIN heroes h ON uh.hero_id = h.id
+            WHERE uh.user_id = ? AND uh.star_level > 0
+            ORDER BY uh.star_level DESC, h.name ASC
+        ");
+        $stmt->execute([$me['id']]);
+        $availableHeroes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'ok' => true,
+            'battle_type' => $battleType,
+            'current_selection' => $selection,
+            'available_heroes' => $availableHeroes
         ]);
     } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
