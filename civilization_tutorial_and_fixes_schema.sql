@@ -147,7 +147,7 @@ INSERT IGNORE INTO civilization_tutorial_quests (quest_key, quest_order, title, 
 ('tutorial_train_cavalry', 8, '騎兵の編成', '騎兵を3体訓練しましょう。', '🐎', 'train', 'cavalry', 3, 1500, 10, 0, '{"iron": 30}', FALSE),
 ('tutorial_advance_era', 9, '時代の進化', '青銅器時代に進化しましょう。', '🔶', 'era', 'bronze_age', 1, 2000, 20, 0, NULL, FALSE),
 -- 最終クエスト（チュートリアル完了）
-('tutorial_complete', 10, 'チュートリアル完了！', 'おめでとうございます！チュートリアルを完了しました。豪華報酬を受け取りましょう！', '🎉', 'collect', NULL, 1, 100000, 100000, 100000, NULL, TRUE);
+('tutorial_complete', 10, 'チュートリアル完了！', 'おめでとうございます！チュートリアルを完了しました。豪華報酬を受け取りましょう！', '🎉', 'collect', NULL, 1, 100000, 100, 50, NULL, TRUE);
 
 -- ===============================================
 -- 完了メッセージ

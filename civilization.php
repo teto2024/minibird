@@ -1593,7 +1593,7 @@ function renderApp() {
                 <h3 style="color: #ffd700;">📜 チュートリアル</h3>
                 <p style="color: #c0a080; margin-bottom: 20px;">
                     クエストをクリアして報酬を獲得しましょう！<br>
-                    <span style="color: #90ee90;">🎁 チュートリアル完了報酬: 100,000コイン、100,000クリスタル、100,000ダイヤモンド</span>
+                    <span style="color: #90ee90;">🎁 チュートリアル完了報酬: 100,000コイン、100クリスタル、50ダイヤモンド</span>
                 </p>
                 <div id="tutorialSection">
                     <div class="loading">読み込み中...</div>
