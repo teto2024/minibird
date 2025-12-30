@@ -18,6 +18,16 @@ define('BATTLE_EQUIPMENT_HEALTH_MULTIPLIER', 2.0);  // 装備体力の適用倍�
 define('BATTLE_DOT_BASE_HEALTH', 1000);              // 継続ダメージ計算用の基準HP
 define('BATTLE_DOT_SCALING_FACTOR', 0.3);            // 継続ダメージのスケーリング係数（0.3 = 30%）
 
+// ヒーロースキルシステム定数
+define('HERO_SKILL_BASE_ACTIVATION_CHANCE', 30);     // ヒーロースキル基本発動率（%）
+define('HERO_SKILL_STAR_BONUS_CHANCE', 5);           // 星レベルごとの発動率ボーナス（%）
+define('HERO_SKILL_2ND_BASE_ACTIVATION_CHANCE', 20); // 2番目のスキルの基本発動率（%）
+define('HERO_SKILL_2ND_STAR_BONUS_CHANCE', 3);       // 2番目のスキルの星レベルごとのボーナス（%）
+define('HERO_SKILL_STAR_EFFECT_BONUS', 0.1);         // 星レベルごとの効果ボーナス（10%）
+define('HERO_STAR_ATTACK_BONUS', 5);                 // 星レベルごとの攻撃力ボーナス
+define('HERO_STAR_ARMOR_BONUS', 3);                  // 星レベルごとの防御力ボーナス
+define('HERO_STAR_HEALTH_BONUS', 50);                // 星レベルごとの体力ボーナス
+
 /**
  * 特殊スキル情報を取得
  * @param PDO $pdo
@@ -107,8 +117,8 @@ function applyHeroSkillsToUnit($unit, $heroData, $skillType1 = 1, $skillType2 = 
     $heroSkills = [];
     $starLevel = (int)($heroData['star_level'] ?? 1);
     
-    // スキル効果はヒーローの星レベルで増加 (基本100% + 星レベル*10%)
-    $skillMultiplier = 1.0 + ($starLevel - 1) * 0.1;
+    // スキル効果はヒーローの星レベルで増加 (基本100% + 星レベル*HERO_SKILL_STAR_EFFECT_BONUS)
+    $skillMultiplier = 1.0 + ($starLevel - 1) * HERO_SKILL_STAR_EFFECT_BONUS;
     
     // 第1スキル追加
     if ($skillType1 == 1 && !empty($heroData['battle_skill_name'])) {
@@ -122,7 +132,7 @@ function applyHeroSkillsToUnit($unit, $heroData, $skillType1 = 1, $skillType2 = 
             'effect_value' => $skillMultiplier,
             'effect_data' => $effectData,
             'duration_turns' => $effectData['duration'] ?? 1,
-            'activation_chance' => 30 + $starLevel * 5, // 30% + 星レベル*5%
+            'activation_chance' => HERO_SKILL_BASE_ACTIVATION_CHANCE + $starLevel * HERO_SKILL_STAR_BONUS_CHANCE,
             'troop_type_id' => 0,
             'troop_name' => $heroData['name'],
             'troop_icon' => $heroData['icon'],
@@ -139,7 +149,7 @@ function applyHeroSkillsToUnit($unit, $heroData, $skillType1 = 1, $skillType2 = 
             'effect_value' => $skillMultiplier,
             'effect_data' => $effectData,
             'duration_turns' => $effectData['duration'] ?? 1,
-            'activation_chance' => 30 + $starLevel * 5,
+            'activation_chance' => HERO_SKILL_BASE_ACTIVATION_CHANCE + $starLevel * HERO_SKILL_STAR_BONUS_CHANCE,
             'troop_type_id' => 0,
             'troop_name' => $heroData['name'],
             'troop_icon' => $heroData['icon'],
@@ -160,7 +170,7 @@ function applyHeroSkillsToUnit($unit, $heroData, $skillType1 = 1, $skillType2 = 
                 'effect_value' => $skillMultiplier,
                 'effect_data' => $effectData,
                 'duration_turns' => $effectData['duration'] ?? 1,
-                'activation_chance' => 20 + $starLevel * 3, // 2番目のスキルは発動率低め
+                'activation_chance' => HERO_SKILL_2ND_BASE_ACTIVATION_CHANCE + $starLevel * HERO_SKILL_2ND_STAR_BONUS_CHANCE,
                 'troop_type_id' => 0,
                 'troop_name' => $heroData['name'],
                 'troop_icon' => $heroData['icon'],
@@ -177,7 +187,7 @@ function applyHeroSkillsToUnit($unit, $heroData, $skillType1 = 1, $skillType2 = 
                 'effect_value' => $skillMultiplier,
                 'effect_data' => $effectData,
                 'duration_turns' => $effectData['duration'] ?? 1,
-                'activation_chance' => 20 + $starLevel * 3,
+                'activation_chance' => HERO_SKILL_2ND_BASE_ACTIVATION_CHANCE + $starLevel * HERO_SKILL_2ND_STAR_BONUS_CHANCE,
                 'troop_type_id' => 0,
                 'troop_name' => $heroData['name'],
                 'troop_icon' => $heroData['icon'],
@@ -196,9 +206,9 @@ function applyHeroSkillsToUnit($unit, $heroData, $skillType1 = 1, $skillType2 = 
     ];
     
     // ヒーローの星レベルに応じて基本ステータスボーナスを追加
-    $heroAttackBonus = $starLevel * 5;  // 星レベル * 5 攻撃力
-    $heroArmorBonus = $starLevel * 3;   // 星レベル * 3 防御力
-    $heroHealthBonus = $starLevel * 50; // 星レベル * 50 体力
+    $heroAttackBonus = $starLevel * HERO_STAR_ATTACK_BONUS;
+    $heroArmorBonus = $starLevel * HERO_STAR_ARMOR_BONUS;
+    $heroHealthBonus = $starLevel * HERO_STAR_HEALTH_BONUS;
     
     $unit['attack'] += $heroAttackBonus;
     $unit['armor'] += $heroArmorBonus;
