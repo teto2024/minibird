@@ -2558,13 +2558,25 @@ async function loadWarLogs() {
                 const battleTime = new Date(log.battle_at).toLocaleString('ja-JP');
                 
                 let lootText = '';
-                if (isWinner && (log.loot_coins > 0 || (log.loot_resources && Object.keys(JSON.parse(log.loot_resources || '{}')).length > 0))) {
+                if (log.loot_coins > 0 || (log.loot_resources && Object.keys(JSON.parse(log.loot_resources || '{}')).length > 0)) {
                     const lootResources = JSON.parse(log.loot_resources || '{}');
-                    lootText = `<div style="font-size: 11px; color: #32cd32; margin-top: 5px;">💰 ${log.loot_coins}コイン`;
-                    for (const [key, val] of Object.entries(lootResources)) {
-                        lootText += ` | ${key}: +${val}`;
+                    if (isWinner) {
+                        // 勝者: 略奪した資源を表示
+                        lootText = `<div style="font-size: 11px; color: #32cd32; margin-top: 5px;">💰 略奪: ${log.loot_coins}コイン`;
+                        for (const [key, val] of Object.entries(lootResources)) {
+                            const resourceName = getResourceName(key);
+                            lootText += ` | ${resourceName}: +${val}`;
+                        }
+                        lootText += '</div>';
+                    } else {
+                        // 敗者: 奪われた資源を表示
+                        lootText = `<div style="font-size: 11px; color: #ff6b6b; margin-top: 5px;">💸 損失: ${log.loot_coins}コイン`;
+                        for (const [key, val] of Object.entries(lootResources)) {
+                            const resourceName = getResourceName(key);
+                            lootText += ` | ${resourceName}: -${val}`;
+                        }
+                        lootText += '</div>';
                     }
-                    lootText += '</div>';
                 }
                 
                 // ターン制バトル情報
