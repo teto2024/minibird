@@ -661,6 +661,8 @@ let currentTab = 'wandering';
 let activeEncounter = null;
 let lastBattleTurnLogs = [];  // 最後のバトルログを保存
 let deploymentLimit = { base_limit: 100, building_bonus: 0, total_limit: 100 }; // 出撃上限
+let currentMonsterPower = 0; // 現在のモンスター戦力
+let currentBossPower = 0; // 現在のボス戦力
 
 // 初期データ読み込み
 async function loadData() {
@@ -980,20 +982,10 @@ function renderBattleModal(encounter) {
     const hpPercent = Math.round((encounter.current_health / encounter.max_health) * 100);
     const hpClass = hpPercent < 30 ? 'danger' : '';
     
-    // 有利/不利を計算
-    const myPower = calculateUserPower();
+    // モンスター戦力を保存
     const monsterPower = (parseInt(encounter.scaled_attack || encounter.attack_power) || 0) + 
                          Math.floor((parseInt(encounter.scaled_defense || encounter.defense_power) || 0) / 2);
-    const powerDiff = myPower - monsterPower;
-    
-    let advantageHtml = '';
-    if (powerDiff > monsterPower * 0.2) {
-        advantageHtml = '<div style="background: rgba(50, 205, 50, 0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;"><span style="color: #32cd32; font-weight: bold;">✅ 有利</span><span style="color: #888; margin-left: 10px;">あなたの戦力が上回っています</span></div>';
-    } else if (powerDiff < -monsterPower * 0.2) {
-        advantageHtml = '<div style="background: rgba(255, 100, 100, 0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;"><span style="color: #ff6b6b; font-weight: bold;">⚠️ 不利</span><span style="color: #888; margin-left: 10px;">モンスターの戦力が上回っています</span></div>';
-    } else {
-        advantageHtml = '<div style="background: rgba(255, 215, 0, 0.2); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;"><span style="color: #ffd700; font-weight: bold;">⚖️ 互角</span><span style="color: #888; margin-left: 10px;">戦力は拮抗しています</span></div>';
-    }
+    currentMonsterPower = monsterPower;
     
     document.getElementById('battleModalTitle').textContent = `${encounter.icon} ${encounter.name} Lv.${encounter.monster_level}`;
     document.getElementById('battleModalContent').innerHTML = `
@@ -1007,12 +999,12 @@ function renderBattleModal(encounter) {
             </div>
         </div>
         
-        ${advantageHtml}
+        <div id="monsterAdvantageDisplay"></div>
         
-        <div style="display: flex; justify-content: space-between; margin-bottom: 15px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
+        <div id="monsterPowerComparison" data-monster-power="${monsterPower}" style="display: flex; justify-content: space-between; margin-bottom: 15px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
             <div style="text-align: center;">
-                <div style="color: #888; font-size: 11px;">あなたの戦力</div>
-                <div style="color: #32cd32; font-weight: bold; font-size: 18px;">⚔️ ${myPower}</div>
+                <div style="color: #888; font-size: 11px;">選択した戦力</div>
+                <div style="color: #32cd32; font-weight: bold; font-size: 18px;">⚔️ <span id="monsterMyPower">0</span></div>
             </div>
             <div style="align-self: center; color: #888;">VS</div>
             <div style="text-align: center;">
@@ -1119,9 +1111,21 @@ function updateMonsterTroopCount(type) {
     const limit = type === 'boss' ? 1000 : deploymentLimit.total_limit;
     
     let totalCount = 0;
+    let totalPower = 0;
     document.querySelectorAll(`[id^="${prefix}-count-"]`).forEach(input => {
         const count = parseInt(input.value) || 0;
         totalCount += count;
+        
+        // パワー計算
+        if (count > 0) {
+            const troopId = input.dataset.troopId;
+            const slider = document.getElementById(`${prefix}-slider-${troopId}`);
+            if (slider) {
+                const attack = parseInt(slider.dataset.attack) || 0;
+                const defense = parseInt(slider.dataset.defense) || 0;
+                totalPower += (attack + Math.floor(defense / 2)) * count;
+            }
+        }
     });
     
     const countEl = document.getElementById(countId);
@@ -1133,6 +1137,71 @@ function updateMonsterTroopCount(type) {
             countEl.style.color = '#32cd32';
         }
     }
+    
+    // 有利/不利表示を更新
+    if (type === 'monster') {
+        updateMonsterAdvantageDisplay(totalPower);
+    } else {
+        updateBossAdvantageDisplay(totalPower);
+    }
+}
+
+// モンスター戦闘の有利/不利表示を更新
+function updateMonsterAdvantageDisplay(myPower) {
+    const powerEl = document.getElementById('monsterMyPower');
+    const advantageEl = document.getElementById('monsterAdvantageDisplay');
+    
+    if (powerEl) {
+        powerEl.textContent = myPower;
+    }
+    
+    if (!advantageEl) return;
+    
+    const enemyPower = currentMonsterPower;
+    const powerDiff = myPower - enemyPower;
+    const threshold = enemyPower * 0.2;
+    
+    let advantageHtml = '';
+    if (myPower <= 0) {
+        advantageHtml = '';
+    } else if (powerDiff > threshold) {
+        advantageHtml = '<div style="background: rgba(50, 205, 50, 0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;"><span style="color: #32cd32; font-weight: bold;">✅ 有利</span><span style="color: #888; margin-left: 10px;">あなたの戦力が上回っています</span></div>';
+    } else if (powerDiff < -threshold) {
+        advantageHtml = '<div style="background: rgba(255, 100, 100, 0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;"><span style="color: #ff6b6b; font-weight: bold;">⚠️ 不利</span><span style="color: #888; margin-left: 10px;">モンスターの戦力が上回っています</span></div>';
+    } else {
+        advantageHtml = '<div style="background: rgba(255, 215, 0, 0.2); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;"><span style="color: #ffd700; font-weight: bold;">⚖️ 互角</span><span style="color: #888; margin-left: 10px;">戦力は拮抗しています</span></div>';
+    }
+    
+    advantageEl.innerHTML = advantageHtml;
+}
+
+// ワールドボス戦闘の有利/不利表示を更新
+function updateBossAdvantageDisplay(myPower) {
+    const powerEl = document.getElementById('bossMyPower');
+    const advantageEl = document.getElementById('bossAdvantageDisplay');
+    
+    if (powerEl) {
+        powerEl.textContent = myPower;
+    }
+    
+    if (!advantageEl) return;
+    
+    const enemyPower = currentBossPower;
+    const powerDiff = myPower - enemyPower;
+    const threshold = enemyPower * 0.2;
+    
+    let advantageHtml = '';
+    if (myPower <= 0) {
+        advantageHtml = '';
+    } else if (powerDiff > threshold) {
+        advantageHtml = '<div style="background: rgba(50, 205, 50, 0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;"><span style="color: #32cd32; font-weight: bold;">✅ 有利</span><span style="color: #888; margin-left: 10px;">あなたの戦力が上回っています</span></div>';
+    } else if (powerDiff < -threshold) {
+        advantageHtml = '<div style="background: rgba(255, 100, 100, 0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;"><span style="color: #ff6b6b; font-weight: bold;">⚠️ 不利</span><span style="color: #888; margin-left: 10px;">ボスの戦力が上回っています</span></div>';
+    } else {
+        advantageHtml = '<div style="background: rgba(255, 215, 0, 0.2); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;"><span style="color: #ffd700; font-weight: bold;">⚖️ 互角</span><span style="color: #888; margin-left: 10px;">戦力は拮抗しています</span></div>';
+    }
+    
+    advantageEl.innerHTML = advantageHtml;
 }
 
 // スライダーのイベント設定
@@ -1310,19 +1379,9 @@ function renderBossDetailModal(data) {
     const hpClass = hpPercent < 30 ? 'danger' : '';
     const remaining = formatTime(inst.seconds_remaining);
     
-    // 有利/不利を計算（ワールドボスは通常強敵）
-    const myPower = calculateUserPower();
+    // ボス戦力を保存
     const bossPower = (parseInt(inst.base_attack) || 0) + Math.floor((parseInt(inst.base_defense) || 0) / 2);
-    const powerDiff = myPower - bossPower;
-    
-    let advantageHtml = '';
-    if (powerDiff > bossPower * 0.2) {
-        advantageHtml = '<div style="background: rgba(50, 205, 50, 0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;"><span style="color: #32cd32; font-weight: bold;">✅ 有利</span><span style="color: #888; margin-left: 10px;">あなたの戦力が上回っています</span></div>';
-    } else if (powerDiff < -bossPower * 0.2) {
-        advantageHtml = '<div style="background: rgba(255, 100, 100, 0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;"><span style="color: #ff6b6b; font-weight: bold;">⚠️ 不利</span><span style="color: #888; margin-left: 10px;">ボスの戦力が上回っています</span></div>';
-    } else {
-        advantageHtml = '<div style="background: rgba(255, 215, 0, 0.2); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;"><span style="color: #ffd700; font-weight: bold;">⚖️ 互角</span><span style="color: #888; margin-left: 10px;">戦力は拮抗しています</span></div>';
-    }
+    currentBossPower = bossPower;
     
     document.getElementById('bossDetailTitle').textContent = `${inst.boss_icon} ${inst.boss_name}`;
     document.getElementById('bossDetailContent').innerHTML = `
@@ -1340,12 +1399,12 @@ function renderBossDetailModal(data) {
             <span class="timer">⏰ 残り ${remaining}</span>
         </div>
         
-        ${advantageHtml}
+        <div id="bossAdvantageDisplay"></div>
         
-        <div style="display: flex; justify-content: space-between; margin-bottom: 15px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
+        <div id="bossPowerComparison" data-boss-power="${bossPower}" style="display: flex; justify-content: space-between; margin-bottom: 15px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
             <div style="text-align: center;">
-                <div style="color: #888; font-size: 11px;">あなたの戦力</div>
-                <div style="color: #32cd32; font-weight: bold; font-size: 18px;">⚔️ ${myPower}</div>
+                <div style="color: #888; font-size: 11px;">選択した戦力</div>
+                <div style="color: #32cd32; font-weight: bold; font-size: 18px;">⚔️ <span id="bossMyPower">0</span></div>
             </div>
             <div style="align-self: center; color: #888;">VS</div>
             <div style="text-align: center;">

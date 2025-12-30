@@ -1181,6 +1181,7 @@ body {
             <button class="attack-modal-close" onclick="closeAttackModal()">×</button>
         </div>
         <div id="attackModalTarget"></div>
+        <div id="attackAdvantageDisplay"></div>
         <div id="attackTroopSelector"></div>
         <div class="attack-power-display">
             <div>出撃パワー</div>
@@ -1239,12 +1240,14 @@ function getResourceName(key) {
 let civData = null;
 let currentTab = 'buildings'; // 現在のアクティブタブを保持
 let selectedAttackTarget = null; // 攻撃対象のユーザーID
+let selectedAttackTargetPower = 0; // 攻撃対象の防御力
 let userTroops = []; // ユーザーの兵士データ
 let deploymentLimit = { base_limit: 100, building_bonus: 0, total_limit: 100 }; // 出撃上限
 
 // 攻撃モーダルを開く
 function openAttackModal(targetUserId, targetCivName, targetPower) {
     selectedAttackTarget = targetUserId;
+    selectedAttackTargetPower = parseInt(targetPower) || 0;
     
     // モーダルを表示
     document.getElementById('attackModal').classList.add('active');
@@ -1257,6 +1260,9 @@ function openAttackModal(targetUserId, targetCivName, targetPower) {
         </div>
     `;
     
+    // 有利/不利表示をリセット
+    updateAdvantageDisplay(0);
+    
     // 兵士データを読み込んで表示
     loadAttackTroops();
 }
@@ -1265,6 +1271,87 @@ function openAttackModal(targetUserId, targetCivName, targetPower) {
 function closeAttackModal() {
     document.getElementById('attackModal').classList.remove('active');
     selectedAttackTarget = null;
+    selectedAttackTargetPower = 0;
+}
+
+// 有利/不利表示を更新
+function updateAdvantageDisplay(myPower) {
+    const targetPower = selectedAttackTargetPower;
+    const advantageEl = document.getElementById('attackAdvantageDisplay');
+    if (!advantageEl) return;
+    
+    if (myPower <= 0) {
+        advantageEl.innerHTML = '';
+        return;
+    }
+    
+    const powerDiff = myPower - targetPower;
+    const threshold = targetPower * 0.2;
+    
+    let advantageHtml = '';
+    if (powerDiff > threshold) {
+        advantageHtml = `
+            <div style="background: rgba(50, 205, 50, 0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #32cd32; font-weight: bold; font-size: 14px;">✅ 有利</span>
+                    <span style="color: #888; font-size: 12px;">あなたの戦力が上回っています</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+                    <div style="text-align: center;">
+                        <div style="color: #888; font-size: 11px;">出撃戦力</div>
+                        <div style="color: #32cd32; font-weight: bold;">⚔️ ${myPower}</div>
+                    </div>
+                    <div style="align-self: center; color: #888;">VS</div>
+                    <div style="text-align: center;">
+                        <div style="color: #888; font-size: 11px;">敵防御力</div>
+                        <div style="color: #ff6b6b; font-weight: bold;">🛡️ ${targetPower}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else if (powerDiff < -threshold) {
+        advantageHtml = `
+            <div style="background: rgba(255, 100, 100, 0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #ff6b6b; font-weight: bold; font-size: 14px;">⚠️ 不利</span>
+                    <span style="color: #888; font-size: 12px;">敵の戦力が上回っています</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+                    <div style="text-align: center;">
+                        <div style="color: #888; font-size: 11px;">出撃戦力</div>
+                        <div style="color: #32cd32; font-weight: bold;">⚔️ ${myPower}</div>
+                    </div>
+                    <div style="align-self: center; color: #888;">VS</div>
+                    <div style="text-align: center;">
+                        <div style="color: #888; font-size: 11px;">敵防御力</div>
+                        <div style="color: #ff6b6b; font-weight: bold;">🛡️ ${targetPower}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        advantageHtml = `
+            <div style="background: rgba(255, 215, 0, 0.2); padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #ffd700; font-weight: bold; font-size: 14px;">⚖️ 互角</span>
+                    <span style="color: #888; font-size: 12px;">戦力は拮抗しています</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+                    <div style="text-align: center;">
+                        <div style="color: #888; font-size: 11px;">出撃戦力</div>
+                        <div style="color: #32cd32; font-weight: bold;">⚔️ ${myPower}</div>
+                    </div>
+                    <div style="align-self: center; color: #888;">VS</div>
+                    <div style="text-align: center;">
+                        <div style="color: #888; font-size: 11px;">敵防御力</div>
+                        <div style="color: #ff6b6b; font-weight: bold;">🛡️ ${targetPower}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    advantageEl.innerHTML = advantageHtml;
 }
 
 // 攻撃用兵士を読み込む
@@ -1417,6 +1504,9 @@ function updateAttackPowerDisplay() {
             troopCountEl.style.color = '#32cd32';
         }
     }
+    
+    // 有利/不利表示を更新
+    updateAdvantageDisplay(totalPower);
     
     // 出撃ボタンの有効/無効
     const overLimit = totalTroops > deploymentLimit.total_limit;

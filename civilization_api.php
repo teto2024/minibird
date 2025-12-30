@@ -3614,6 +3614,10 @@ if ($action === 'respond_alliance') {
             ");
             $stmt->execute([$allianceId]);
             $message = '同盟を締結しました';
+            
+            // 同盟クエスト進捗を更新（受け入れた側と申請した側の両方）
+            updateCivilizationQuestProgress($pdo, $me['id'], 'alliance', null, 1);
+            updateCivilizationQuestProgress($pdo, $alliance['requester_user_id'], 'alliance', null, 1);
         } else {
             $stmt = $pdo->prepare("
                 UPDATE civilization_alliances 
@@ -4954,7 +4958,8 @@ if ($action === 'get_leaderboards') {
                 break;
             
             case 'battle_wins':
-                // 戦闘勝利数ランキング
+                // 戦闘勝利数ランキング（ユーザー間戦闘のみ）
+                // civilization_war_logsはユーザー間戦闘のみを記録
                 $stmt = $pdo->query("
                     SELECT wl.winner_user_id as user_id, uc.civilization_name, COUNT(*) as value, u.handle
                     FROM civilization_war_logs wl
@@ -4987,26 +4992,27 @@ if ($action === 'get_leaderboards') {
             
             case 'battle_losses':
                 // 戦闘敗北数ランキング（攻撃者として敗北 OR 防御者として敗北）
+                // ユーザー間戦闘のみカウント（civilization_war_logsはユーザー間戦闘のみ）
                 $stmt = $pdo->query("
-                    SELECT user_id, civilization_name, value, handle
+                    SELECT losses.loser_user_id as user_id, uc.civilization_name, losses.value, u.handle
                     FROM (
                         SELECT 
                             CASE 
                                 WHEN wl.winner_user_id = wl.attacker_user_id THEN wl.defender_user_id
                                 ELSE wl.attacker_user_id
-                            END as user_id,
+                            END as loser_user_id,
                             COUNT(*) as value
                         FROM civilization_war_logs wl
-                        GROUP BY user_id
+                        GROUP BY loser_user_id
                     ) as losses
-                    JOIN user_civilizations uc ON losses.user_id = uc.user_id
-                    JOIN users u ON losses.user_id = u.id
-                    ORDER BY value DESC
+                    JOIN user_civilizations uc ON losses.loser_user_id = uc.user_id
+                    JOIN users u ON losses.loser_user_id = u.id
+                    ORDER BY losses.value DESC
                     LIMIT {$limit}
                 ");
                 $rankings = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
-                // 自分の敗北数を取得
+                // 自分の敗北数を取得（ユーザー間戦闘のみ）
                 $stmt = $pdo->prepare("
                     SELECT COUNT(*) as my_total 
                     FROM civilization_war_logs 
@@ -5023,12 +5029,12 @@ if ($action === 'get_leaderboards') {
                             CASE 
                                 WHEN wl.winner_user_id = wl.attacker_user_id THEN wl.defender_user_id
                                 ELSE wl.attacker_user_id
-                            END as user_id,
+                            END as loser_user_id,
                             COUNT(*) as value
                         FROM civilization_war_logs wl
-                        GROUP BY user_id
+                        GROUP BY loser_user_id
                     ) as losses
-                    WHERE value > ?
+                    WHERE losses.value > ?
                 ");
                 $stmt->execute([$myValue]);
                 $myRank = (int)$stmt->fetchColumn();
