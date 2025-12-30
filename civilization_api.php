@@ -488,11 +488,13 @@ function consumeTrainingSupplementaryResources($pdo, $userId, $count, $troopCate
             continue;
         }
         // 布は歩兵・遠距離系（中世以降）
-        if ($resourceKey === 'cloth' && !in_array($troopCategory, ['infantry', 'ranged']) && $unlockEraId < 4) {
+        // スキップ条件: 対象カテゴリでない、または中世未満
+        if ($resourceKey === 'cloth' && (!in_array($troopCategory, ['infantry', 'ranged']) || $unlockEraId < 4)) {
             continue;
         }
         // ガラスは遠距離系・攻城系（ルネサンス以降、光学機器用）
-        if ($resourceKey === 'glass' && !in_array($troopCategory, ['ranged', 'siege']) && $unlockEraId < 5) {
+        // スキップ条件: 対象カテゴリでない、またはルネサンス未満
+        if ($resourceKey === 'glass' && (!in_array($troopCategory, ['ranged', 'siege']) || $unlockEraId < 5)) {
             continue;
         }
         // 石油は産業革命以降の全兵種（車両・航空機・近代兵器）
@@ -500,7 +502,8 @@ function consumeTrainingSupplementaryResources($pdo, $userId, $count, $troopCate
             continue;
         }
         // 硫黄は攻城系（中世以降、火薬用）
-        if ($resourceKey === 'sulfur' && $troopCategory !== 'siege' && $unlockEraId < 4) {
+        // スキップ条件: 攻城系でない、または中世未満
+        if ($resourceKey === 'sulfur' && ($troopCategory !== 'siege' || $unlockEraId < 4)) {
             continue;
         }
         // 石炭は産業系（産業革命以降）
@@ -2602,7 +2605,8 @@ if ($action === 'get_wounded_troops') {
         $stmt = $pdo->prepare("
             SELECT uwt.*, tt.name, tt.icon, tt.attack_power, tt.defense_power,
                    COALESCE(tt.heal_time_seconds, 30) as heal_time_seconds,
-                   COALESCE(tt.heal_cost_coins, 10) as heal_cost_coins
+                   COALESCE(tt.heal_cost_coins, 10) as heal_cost_coins,
+                   tt.heal_cost_resources
             FROM user_civilization_wounded_troops uwt
             JOIN civilization_troop_types tt ON uwt.troop_type_id = tt.id
             WHERE uwt.user_id = ? AND uwt.count > 0
@@ -4333,7 +4337,7 @@ function updateCivilizationQuestProgress($pdo, $userId, $questType, $targetKey, 
         }
     } catch (Exception $e) {
         // クエスト進捗の更新エラーは黙って無視（メインの処理に影響を与えない）
-        error_log("Quest progress update error: " . $e->getMessage());
+        error_log("Quest progress update error for user {$userId}, type {$questType}, target {$targetKey}: " . $e->getMessage());
     }
 }
 

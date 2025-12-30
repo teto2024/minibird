@@ -325,6 +325,8 @@ INSERT IGNORE INTO civilization_quests (quest_key, quest_category, era_id, title
 
 -- ===============================================
 -- 7. チュートリアルモーダル設定テーブル
+-- 注意: civilization_tutorial_quests テーブルは
+-- civilization_tutorial_and_fixes_schema.sql で定義済み
 -- ===============================================
 CREATE TABLE IF NOT EXISTS civilization_tutorial_modal_config (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -335,10 +337,14 @@ CREATE TABLE IF NOT EXISTS civilization_tutorial_modal_config (
     arrow_position ENUM('top', 'bottom', 'left', 'right') NULL COMMENT '矢印の方向',
     action_hint TEXT NULL COMMENT 'アクションのヒント',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (quest_id) REFERENCES civilization_tutorial_quests(id) ON DELETE CASCADE,
+    INDEX idx_quest_id (quest_id),
     UNIQUE KEY unique_quest (quest_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
 COMMENT='チュートリアルモーダル設定';
+
+-- 外部キー制約を後から追加（civilization_tutorial_quests テーブルが存在する場合のみ）
+-- ALTER TABLE civilization_tutorial_modal_config 
+--     ADD CONSTRAINT fk_modal_quest FOREIGN KEY (quest_id) REFERENCES civilization_tutorial_quests(id) ON DELETE CASCADE;
 
 -- ===============================================
 -- 8. チュートリアルモーダル設定データ投入
@@ -445,10 +451,14 @@ CREATE TABLE IF NOT EXISTS user_tutorial_modal_state (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (current_modal_quest_id) REFERENCES civilization_tutorial_quests(id) ON DELETE SET NULL,
+    INDEX idx_current_quest (current_modal_quest_id),
     UNIQUE KEY unique_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
 COMMENT='ユーザーチュートリアルモーダル表示状態';
+
+-- 外部キー制約を後から追加（civilization_tutorial_quests テーブルが存在する場合のみ）
+-- ALTER TABLE user_tutorial_modal_state 
+--     ADD CONSTRAINT fk_modal_quest_state FOREIGN KEY (current_modal_quest_id) REFERENCES civilization_tutorial_quests(id) ON DELETE SET NULL;
 
 -- ===============================================
 -- 10. 追加資源生産建物

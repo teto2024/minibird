@@ -3118,14 +3118,30 @@ async function loadWoundedTroops() {
                         </div>
                         <div style="color: #888; font-size: 11px; margin-top: 5px;">💡 病院を建設するとキュー数が増えます（容量: ${data.hospital_capacity}床）</div>
                     </div>
-                    ${data.wounded_troops.map(w => `
+                    ${data.wounded_troops.map(w => {
+                        let healCostText = `🪙${w.heal_cost_coins}/体`;
+                        if (w.heal_cost_resources) {
+                            try {
+                                const healCosts = typeof w.heal_cost_resources === 'string' ? JSON.parse(w.heal_cost_resources) : w.heal_cost_resources;
+                                if (healCosts) {
+                                    Object.entries(healCosts).forEach(([key, val]) => {
+                                        const resName = getResourceName(key);
+                                        healCostText += ` | ${resName}: ${val}`;
+                                    });
+                                }
+                            } catch(e) {
+                                console.warn('Failed to parse heal_cost_resources:', e);
+                            }
+                        }
+                        return `
                         <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 8px;">
                             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                                 <div>
                                     <span>${w.icon} ${w.name} ×${w.count}</span>
-                                    <span style="color: #888; font-size: 11px; margin-left: 10px;">治療: ${w.heal_time_seconds}秒/体 🪙${w.heal_cost_coins}/体</span>
+                                    <span style="color: #888; font-size: 11px; margin-left: 10px;">治療: ${w.heal_time_seconds}秒/体</span>
                                 </div>
                             </div>
+                            <div style="color: #48bb78; font-size: 11px; margin-bottom: 8px;">💊 コスト: ${healCostText}</div>
                             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                                 <input type="range" class="troop-select-slider" id="heal-slider-${w.troop_type_id}" min="1" max="${w.count}" value="1" 
                                        style="background: #dc143c;" oninput="document.getElementById('heal-count-${w.troop_type_id}').value = this.value">
@@ -3134,7 +3150,7 @@ async function loadWoundedTroops() {
                                 <button class="quick-invest-btn" onclick="healTroops(${w.troop_type_id})" style="background: linear-gradient(135deg, #32cd32 0%, #228b22 100%); color: #fff; flex: 1;">🏥 治療</button>
                             </div>
                         </div>
-                    `).join('')}
+                    `}).join('')}
                 `;
             } else {
                 woundedContainer.innerHTML = '<p style="color: #888;">負傷兵はいません</p>';
