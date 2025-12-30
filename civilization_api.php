@@ -4356,10 +4356,9 @@ function updateCivilizationQuestProgress($pdo, $userId, $questType, $targetKey, 
                 $isCompleted = $initialProgress >= $quest['target_count'];
                 $stmt = $pdo->prepare("
                     INSERT INTO user_civilization_quest_progress (user_id, quest_id, current_progress, is_completed, completed_at)
-                    VALUES (?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, IF(?, NOW(), NULL))
                 ");
-                $completedAt = $isCompleted ? date('Y-m-d H:i:s') : null;
-                $stmt->execute([$userId, $quest['id'], $initialProgress, $isCompleted, $completedAt]);
+                $stmt->execute([$userId, $quest['id'], $initialProgress, $isCompleted, $isCompleted]);
             } else if (!$progress['is_claimed']) {
                 // 進捗を更新
                 $newProgress = min($progress['current_progress'] + $incrementCount, $quest['target_count']);
