@@ -1623,6 +1623,7 @@ function renderApp() {
             <button class="tab-btn ${currentTab === 'war' ? 'active' : ''}" data-tab="war">⚔️ 戦争</button>
             <button class="tab-btn ${currentTab === 'conquest' ? 'active' : ''}" data-tab="conquest">🏰 占領戦</button>
             <button class="tab-btn ${currentTab === 'monster' ? 'active' : ''}" data-tab="monster">🐉 モンスター</button>
+            <button class="tab-btn ${currentTab === 'leaderboard' ? 'active' : ''}" data-tab="leaderboard" style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 165, 0, 0.3) 100%);">🏆 リーダーボード</button>
             <button class="tab-btn ${currentTab === 'quests' ? 'active' : ''}" data-tab="quests" style="background: linear-gradient(135deg, rgba(72, 187, 120, 0.3) 0%, rgba(56, 161, 105, 0.3) 100%);">📋 クエスト<span id="quests-badge" class="tab-badge" style="display:none;"></span></button>
             <button class="tab-btn ${currentTab === 'shop' ? 'active' : ''}" data-tab="shop">💠 VIPショップ</button>
             <button class="tab-btn ${currentTab === 'tutorial' ? 'active' : ''}" data-tab="tutorial" style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 140, 0, 0.3) 100%);">📜 チュートリアル</button>
@@ -1787,6 +1788,45 @@ function renderApp() {
                 <h3>📜 戦争ログ</h3>
                 <div id="warLogsList" style="max-height: 400px; overflow-y: auto;">
                     <div class="loading">戦争ログを読み込み中...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- リーダーボードタブ -->
+        <div class="tab-content ${currentTab === 'leaderboard' ? 'active' : ''}" id="tab-leaderboard">
+            <div class="war-section" style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 165, 0, 0.3) 100%); border-color: #ffd700;">
+                <h3 style="color: #ffd700;">🏆 リーダーボード</h3>
+                <p style="color: #c0a080; margin-bottom: 15px;">各カテゴリのトップランキングを確認しましょう</p>
+                
+                <!-- ランキング種類選択 -->
+                <div style="margin-bottom: 20px;">
+                    <select id="leaderboard-type" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.5); border: 2px solid #ffd700; border-radius: 8px; color: #f5deb3; font-size: 14px;">
+                        <option value="population">👥 人口</option>
+                        <option value="military_power">⚔️ 軍事力</option>
+                        <option value="total_soldiers">🎖️ 総兵士数</option>
+                        <option value="total_buildings">🏠 総建築物数</option>
+                        <option value="conquest_wins">🏆 占領戦優勝回数</option>
+                        <option value="castle_captures">🏰 拠点占領回数</option>
+                    </select>
+                </div>
+                
+                <!-- 資源別ランキング選択 -->
+                <div id="resource-ranking-section" style="margin-bottom: 20px;">
+                    <label style="color: #c0a080; display: block; margin-bottom: 8px;">📦 資源別ランキング:</label>
+                    <select id="resource-type-select" style="width: 100%; padding: 12px; background: rgba(0,0,0,0.5); border: 2px solid #48bb78; border-radius: 8px; color: #f5deb3; font-size: 14px;">
+                        <!-- 資源タイプは動的に読み込み -->
+                    </select>
+                </div>
+                
+                <!-- 自分の順位 -->
+                <div id="my-rank-info" style="background: rgba(255, 215, 0, 0.2); padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center;">
+                    <div style="color: #ffd700; font-size: 18px; font-weight: bold;">あなたの順位</div>
+                    <div id="my-rank-display" style="color: #fff; font-size: 24px; margin-top: 5px;">読み込み中...</div>
+                </div>
+                
+                <!-- ランキングリスト -->
+                <div id="leaderboard-list" style="max-height: 500px; overflow-y: auto;">
+                    <div class="loading">ランキングを読み込み中...</div>
                 </div>
             </div>
         </div>
@@ -2003,6 +2043,10 @@ function renderApp() {
             if (btn.dataset.tab === 'quests') {
                 loadCivilizationQuests();
             }
+            // リーダーボードタブの場合、ランキングを読み込む
+            if (btn.dataset.tab === 'leaderboard') {
+                loadLeaderboard();
+            }
         });
     });
     
@@ -2032,6 +2076,10 @@ function renderApp() {
     // クエストタブがアクティブな場合、文明クエストを読み込む
     if (currentTab === 'quests') {
         loadCivilizationQuests();
+    }
+    // リーダーボードタブがアクティブな場合、ランキングを読み込む
+    if (currentTab === 'leaderboard') {
+        loadLeaderboard();
     }
     
     // 初回アクセス時にチュートリアルモーダルを表示
@@ -4428,6 +4476,113 @@ async function closeTutorialModal() {
         }
     } catch (e) {}
 }
+
+// ===============================================
+// リーダーボード機能
+// ===============================================
+let currentLeaderboardType = 'population';
+let leaderboardResourceTypes = [];
+
+async function loadLeaderboard(rankingType = null) {
+    const listContainer = document.getElementById('leaderboard-list');
+    const myRankDisplay = document.getElementById('my-rank-display');
+    const resourceSelect = document.getElementById('resource-type-select');
+    const typeSelect = document.getElementById('leaderboard-type');
+    
+    if (!listContainer) return;
+    
+    // ランキングタイプを決定
+    if (rankingType) {
+        currentLeaderboardType = rankingType;
+    } else if (typeSelect) {
+        currentLeaderboardType = typeSelect.value;
+    }
+    
+    listContainer.innerHTML = '<div class="loading">ランキングを読み込み中...</div>';
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_leaderboards', ranking_type: currentLeaderboardType})
+        });
+        const data = await res.json();
+        
+        if (!data.ok) {
+            listContainer.innerHTML = `<p style="color: #ff6b6b;">エラー: ${data.error}</p>`;
+            return;
+        }
+        
+        // 資源タイプのドロップダウンを更新（初回のみ）
+        if (data.resource_types && resourceSelect && leaderboardResourceTypes.length === 0) {
+            leaderboardResourceTypes = data.resource_types;
+            resourceSelect.innerHTML = data.resource_types.map(rt => 
+                `<option value="resource_${rt.resource_key}">${rt.icon} ${rt.name}</option>`
+            ).join('');
+        }
+        
+        // 自分の順位を表示
+        if (myRankDisplay) {
+            const rankText = data.my_rank ? `#${data.my_rank}位` : '順位なし';
+            const valueText = data.my_value !== undefined ? Number(data.my_value).toLocaleString() : '0';
+            myRankDisplay.innerHTML = `${rankText} <span style="color: #c0a080; font-size: 16px;">(${valueText})</span>`;
+        }
+        
+        // ランキングリストを表示
+        if (!data.rankings || data.rankings.length === 0) {
+            listContainer.innerHTML = '<p style="color: #888; text-align: center;">ランキングデータがありません</p>';
+            return;
+        }
+        
+        let html = '';
+        for (const entry of data.rankings) {
+            const rankClass = entry.rank <= 3 ? `rank-${entry.rank}` : '';
+            const rankIcon = entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : `#${entry.rank}`;
+            const isMeStyle = entry.is_me ? 'background: rgba(255, 215, 0, 0.3); border: 2px solid #ffd700;' : '';
+            
+            html += `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; margin-bottom: 8px; background: rgba(0,0,0,0.3); border-radius: 8px; ${isMeStyle}">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <span style="font-size: 20px; min-width: 45px; text-align: center;">${rankIcon}</span>
+                        <div>
+                            <div style="color: #f5deb3; font-weight: bold;">${escapeHtml(entry.civilization_name)}</div>
+                            <div style="color: #888; font-size: 12px;">@${escapeHtml(entry.handle)}</div>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="color: #ffd700; font-size: 18px; font-weight: bold;">${Number(entry.value).toLocaleString()}</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        listContainer.innerHTML = html;
+    } catch (e) {
+        console.error(e);
+        listContainer.innerHTML = '<p style="color: #ff6b6b;">ランキングの読み込みに失敗しました</p>';
+    }
+}
+
+// リーダーボードのイベントリスナーを設定
+function setupLeaderboardListeners() {
+    const typeSelect = document.getElementById('leaderboard-type');
+    const resourceSelect = document.getElementById('resource-type-select');
+    
+    if (typeSelect) {
+        typeSelect.addEventListener('change', () => {
+            loadLeaderboard(typeSelect.value);
+        });
+    }
+    
+    if (resourceSelect) {
+        resourceSelect.addEventListener('change', () => {
+            loadLeaderboard(resourceSelect.value);
+        });
+    }
+}
+
+// ページ読み込み時にリスナーを設定
+document.addEventListener('DOMContentLoaded', setupLeaderboardListeners);
 
 // ===============================================
 // 文明クエスト機能（チュートリアル以外）

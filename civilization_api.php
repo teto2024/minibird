@@ -4791,4 +4791,274 @@ if ($action === 'reset_tutorial_modal') {
     exit;
 }
 
+// ===============================================
+// リーダーボード（ランキング）を取得
+// ===============================================
+if ($action === 'get_leaderboards') {
+    try {
+        $rankingType = $input['ranking_type'] ?? 'population';
+        $limit = min(50, max(10, (int)($input['limit'] ?? 20)));
+        
+        $rankings = [];
+        $myRank = null;
+        $myValue = null;
+        
+        switch ($rankingType) {
+            case 'population':
+                // 人口ランキング
+                $stmt = $pdo->query("
+                    SELECT uc.user_id, uc.civilization_name, uc.population as value, u.handle
+                    FROM user_civilizations uc
+                    JOIN users u ON uc.user_id = u.id
+                    ORDER BY uc.population DESC
+                    LIMIT {$limit}
+                ");
+                $rankings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // 自分の順位を取得
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) + 1 as rank_position, 
+                           (SELECT population FROM user_civilizations WHERE user_id = ?) as value
+                    FROM user_civilizations 
+                    WHERE population > (SELECT population FROM user_civilizations WHERE user_id = ?)
+                ");
+                $stmt->execute([$me['id'], $me['id']]);
+                $myRankData = $stmt->fetch(PDO::FETCH_ASSOC);
+                $myRank = $myRankData['rank_position'] ?? null;
+                $myValue = $myRankData['value'] ?? 0;
+                break;
+                
+            case 'military_power':
+                // 軍事力ランキング
+                $stmt = $pdo->query("
+                    SELECT uc.user_id, uc.civilization_name, uc.military_power as value, u.handle
+                    FROM user_civilizations uc
+                    JOIN users u ON uc.user_id = u.id
+                    ORDER BY uc.military_power DESC
+                    LIMIT {$limit}
+                ");
+                $rankings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) + 1 as rank_position,
+                           (SELECT military_power FROM user_civilizations WHERE user_id = ?) as value
+                    FROM user_civilizations 
+                    WHERE military_power > (SELECT military_power FROM user_civilizations WHERE user_id = ?)
+                ");
+                $stmt->execute([$me['id'], $me['id']]);
+                $myRankData = $stmt->fetch(PDO::FETCH_ASSOC);
+                $myRank = $myRankData['rank_position'] ?? null;
+                $myValue = $myRankData['value'] ?? 0;
+                break;
+                
+            case 'total_soldiers':
+                // 総兵士数ランキング
+                $stmt = $pdo->query("
+                    SELECT uct.user_id, uc.civilization_name, SUM(uct.count) as value, u.handle
+                    FROM user_civilization_troops uct
+                    JOIN user_civilizations uc ON uct.user_id = uc.user_id
+                    JOIN users u ON uct.user_id = u.id
+                    GROUP BY uct.user_id, uc.civilization_name, u.handle
+                    ORDER BY value DESC
+                    LIMIT {$limit}
+                ");
+                $rankings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                $stmt = $pdo->prepare("
+                    SELECT COALESCE(SUM(count), 0) as my_total FROM user_civilization_troops WHERE user_id = ?
+                ");
+                $stmt->execute([$me['id']]);
+                $myValue = (int)$stmt->fetchColumn();
+                
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) + 1 as rank_position
+                    FROM (
+                        SELECT user_id, SUM(count) as total
+                        FROM user_civilization_troops
+                        GROUP BY user_id
+                    ) as totals
+                    WHERE total > ?
+                ");
+                $stmt->execute([$myValue]);
+                $myRank = (int)$stmt->fetchColumn();
+                break;
+                
+            case 'total_buildings':
+                // 総建築物数ランキング
+                $stmt = $pdo->query("
+                    SELECT ucb.user_id, uc.civilization_name, COUNT(*) as value, u.handle
+                    FROM user_civilization_buildings ucb
+                    JOIN user_civilizations uc ON ucb.user_id = uc.user_id
+                    JOIN users u ON ucb.user_id = u.id
+                    WHERE ucb.is_constructing = FALSE
+                    GROUP BY ucb.user_id, uc.civilization_name, u.handle
+                    ORDER BY value DESC
+                    LIMIT {$limit}
+                ");
+                $rankings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) as my_total FROM user_civilization_buildings WHERE user_id = ? AND is_constructing = FALSE
+                ");
+                $stmt->execute([$me['id']]);
+                $myValue = (int)$stmt->fetchColumn();
+                
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) + 1 as rank_position
+                    FROM (
+                        SELECT user_id, COUNT(*) as total
+                        FROM user_civilization_buildings
+                        WHERE is_constructing = FALSE
+                        GROUP BY user_id
+                    ) as totals
+                    WHERE total > ?
+                ");
+                $stmt->execute([$myValue]);
+                $myRank = (int)$stmt->fetchColumn();
+                break;
+                
+            case 'conquest_wins':
+                // 占領戦優勝回数ランキング
+                $stmt = $pdo->query("
+                    SELECT cs.winner_user_id as user_id, uc.civilization_name, COUNT(*) as value, u.handle
+                    FROM conquest_seasons cs
+                    JOIN user_civilizations uc ON cs.winner_user_id = uc.user_id
+                    JOIN users u ON cs.winner_user_id = u.id
+                    WHERE cs.winner_user_id IS NOT NULL
+                    GROUP BY cs.winner_user_id, uc.civilization_name, u.handle
+                    ORDER BY value DESC
+                    LIMIT {$limit}
+                ");
+                $rankings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) as my_total FROM conquest_seasons WHERE winner_user_id = ?
+                ");
+                $stmt->execute([$me['id']]);
+                $myValue = (int)$stmt->fetchColumn();
+                
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) + 1 as rank_position
+                    FROM (
+                        SELECT winner_user_id, COUNT(*) as total
+                        FROM conquest_seasons
+                        WHERE winner_user_id IS NOT NULL
+                        GROUP BY winner_user_id
+                    ) as totals
+                    WHERE total > ?
+                ");
+                $stmt->execute([$myValue]);
+                $myRank = (int)$stmt->fetchColumn();
+                break;
+                
+            case 'castle_captures':
+                // 拠点占領回数ランキング
+                $stmt = $pdo->query("
+                    SELECT cbl.attacker_user_id as user_id, uc.civilization_name, COUNT(*) as value, u.handle
+                    FROM conquest_battle_logs cbl
+                    JOIN user_civilizations uc ON cbl.attacker_user_id = uc.user_id
+                    JOIN users u ON cbl.attacker_user_id = u.id
+                    WHERE cbl.castle_captured = TRUE
+                    GROUP BY cbl.attacker_user_id, uc.civilization_name, u.handle
+                    ORDER BY value DESC
+                    LIMIT {$limit}
+                ");
+                $rankings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) as my_total FROM conquest_battle_logs WHERE attacker_user_id = ? AND castle_captured = TRUE
+                ");
+                $stmt->execute([$me['id']]);
+                $myValue = (int)$stmt->fetchColumn();
+                
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) + 1 as rank_position
+                    FROM (
+                        SELECT attacker_user_id, COUNT(*) as total
+                        FROM conquest_battle_logs
+                        WHERE castle_captured = TRUE
+                        GROUP BY attacker_user_id
+                    ) as totals
+                    WHERE total > ?
+                ");
+                $stmt->execute([$myValue]);
+                $myRank = (int)$stmt->fetchColumn();
+                break;
+                
+            default:
+                // 資源別ランキング（resource_food, resource_wood, etc.）
+                if (strpos($rankingType, 'resource_') === 0) {
+                    $resourceKey = substr($rankingType, 9); // "resource_" を除去
+                    
+                    // resource_keyからresource_type_idを取得
+                    $stmt = $pdo->prepare("SELECT id, name, icon FROM civilization_resource_types WHERE resource_key = ?");
+                    $stmt->execute([$resourceKey]);
+                    $resourceType = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($resourceType) {
+                        $stmt = $pdo->prepare("
+                            SELECT ucr.user_id, uc.civilization_name, ucr.amount as value, u.handle
+                            FROM user_civilization_resources ucr
+                            JOIN user_civilizations uc ON ucr.user_id = uc.user_id
+                            JOIN users u ON ucr.user_id = u.id
+                            WHERE ucr.resource_type_id = ?
+                            ORDER BY ucr.amount DESC
+                            LIMIT {$limit}
+                        ");
+                        $stmt->execute([$resourceType['id']]);
+                        $rankings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                        
+                        $stmt = $pdo->prepare("
+                            SELECT COALESCE(amount, 0) as my_total 
+                            FROM user_civilization_resources 
+                            WHERE user_id = ? AND resource_type_id = ?
+                        ");
+                        $stmt->execute([$me['id'], $resourceType['id']]);
+                        $myValue = (float)$stmt->fetchColumn();
+                        
+                        $stmt = $pdo->prepare("
+                            SELECT COUNT(*) + 1 as rank_position
+                            FROM user_civilization_resources
+                            WHERE resource_type_id = ? AND amount > ?
+                        ");
+                        $stmt->execute([$resourceType['id'], $myValue]);
+                        $myRank = (int)$stmt->fetchColumn();
+                    }
+                }
+                break;
+        }
+        
+        // ランキング情報を整形
+        $formattedRankings = [];
+        $rank = 1;
+        foreach ($rankings as $row) {
+            $formattedRankings[] = [
+                'rank' => $rank,
+                'user_id' => (int)$row['user_id'],
+                'civilization_name' => $row['civilization_name'],
+                'handle' => $row['handle'],
+                'value' => is_numeric($row['value']) ? (strpos($row['value'], '.') !== false ? round((float)$row['value'], 0) : (int)$row['value']) : 0,
+                'is_me' => (int)$row['user_id'] === $me['id']
+            ];
+            $rank++;
+        }
+        
+        // 利用可能な資源タイプを取得
+        $stmt = $pdo->query("SELECT resource_key, name, icon FROM civilization_resource_types ORDER BY unlock_order ASC");
+        $resourceTypes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode([
+            'ok' => true,
+            'ranking_type' => $rankingType,
+            'rankings' => $formattedRankings,
+            'my_rank' => $myRank,
+            'my_value' => $myValue !== null ? (is_float($myValue) ? round($myValue, 0) : (int)$myValue) : 0,
+            'resource_types' => $resourceTypes
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 echo json_encode(['ok' => false, 'error' => 'invalid_action']);
