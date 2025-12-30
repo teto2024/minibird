@@ -134,41 +134,51 @@ document.querySelectorAll('.buff-icon').forEach(function(el){
   <aside class="left">
   <button class="close-menu" aria-label="メニューを閉じる">✕</button>
     <nav>
-    <a href="password_reset_request.php" class="tabBtn block">パスワードリセット申請</a>
-  <button class="tabBtn" data-tab="recommended">おすすめ</button>
-  <button class="tabBtn" data-tab="global" aria-selected="true">全体</button>
-  <?php if ($me): ?>
+    <!-- 📰 フィード -->
+    <div class="menu-category">📰 フィード</div>
+    <button class="tabBtn" data-tab="recommended">おすすめ</button>
+    <button class="tabBtn" data-tab="global" aria-selected="true">全体</button>
+    <?php if ($me): ?>
     <button class="tabBtn" data-tab="following">フォロー中</button>
     <button class="tabBtn" data-tab="boost">ブースト</button>
     <button class="tabBtn" data-tab="bookmarks">ブックマーク</button>
-    <!--
-    <button class="tabBtn" data-tab="communities">コミュニティ</button>
-    -->
-    <!-- 通知タブを a タグに変更 -->
+    <a href="trends.php" class="tabBtn block">トレンド</a>
     <a href="notifications.php" class="tabBtn block">通知</a>
+    
+    <!-- ✏️ タスク・学習 -->
+    <div class="menu-category">✏️ タスク・学習</div>
     <a href="focus.php" class="tabBtn block">集中タスク</a>
     <a href="focus_history.php" class="tabBtn block">集中タスク履歴</a>
-    <!--
-    <a href="quiz.php" class="tabBtn block">英単語マスター</a>
-     -->
     <a href="ranking.php" class="tabBtn block">集中ランキング</a>
     <a href="word_master.php" class="tabBtn block">英単語マスター(改)</a>
-    <a href="communities.php" class="tabBtn block">コミュニティ（β）</a>
+    <a href="quests.php" class="tabBtn block">クエスト</a>
+    
+    <!-- 🎮 ゲーム・育成 -->
+    <div class="menu-category">🎮 ゲーム・育成</div>
+    <a href="civilization.php" class="tabBtn block">🏛️ 文明育成</a>
+    <a href="civilization_guide.php" class="tabBtn block">📖 文明育成攻略書</a>
+    <a href="hero_system.php" class="tabBtn block">🦸 ヒーローシステム</a>
+    <a href="equipment.php" class="tabBtn block">⚔️ 装備システム</a>
+    <a href="token_forge.php" class="tabBtn block">🔨 トークン鍛冶</a>
+    
+    <!-- 🛒 ショップ -->
+    <div class="menu-category">🛒 ショップ</div>
     <a href="shop.php" class="tabBtn block">フレーム・ショップ</a>
     <a href="activate_buff.php" class="tabBtn block">バフショップ</a>
     <a href="extended_shop.php" class="tabBtn block">パッケージショップ</a>
-    <a href="token_forge.php" class="tabBtn block">🔨 トークン鍛冶</a>
-    <a href="equipment.php" class="tabBtn block">⚔️ 装備システム</a>
-    <a href="hero_system.php" class="tabBtn block">🦸 ヒーローシステム</a>
-    <a href="civilization.php" class="tabBtn block">🏛️ 文明育成</a>
-    <a href="quests.php" class="tabBtn block">クエスト</a>
     <a href="vip_shop.php" class="tabBtn block">VIPショップ</a>
+    
+    <!-- 👥 コミュニティ -->
+    <div class="menu-category">👥 コミュニティ</div>
+    <a href="communities.php" class="tabBtn block">コミュニティ（β）</a>
+    
+    <!-- ⚙️ 設定・その他 -->
+    <div class="menu-category">⚙️ 設定・その他</div>
+    <a href="password_reset_request.php" class="tabBtn block">パスワードリセット申請</a>
     <a href="how_to.php" class="tabBtn block">使い方</a>
     <a href="updates.php" class="tabBtn block">アップデート情報</a>
     <a href="admin_unified.php" class="tabBtn block">管理画面統合版</a>
-    <!--<a href="darkroom.php" class="tabBtn block">暗い部屋</a>-->
-    <a href="trends.php" class="tabBtn block">トレンド</a>
-  <?php endif; ?>
+    <?php endif; ?>
 </nav>
 
 

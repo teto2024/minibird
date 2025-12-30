@@ -6,6 +6,7 @@
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/battle_engine.php';
+require_once __DIR__ . '/quest_helpers.php';
 
 // 占領戦システム定数
 define('CONQUEST_SEASON_DURATION_DAYS', 7);           // シーズン期間（日）
@@ -1284,6 +1285,11 @@ if ($action === 'attack_castle') {
         
         // ターン制バトルログを保存
         saveConquestBattleTurnLogs($pdo, $battleId, $battleResult['turn_logs']);
+        
+        // 城を占領した場合にクエスト進捗を更新
+        if ($castleCaptured) {
+            updateCivilizationQuestProgressHelper($pdo, $me['id'], 'conquest', null, 1);
+        }
         
         $pdo->commit();
         

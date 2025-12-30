@@ -173,6 +173,31 @@ body {
     border-color: #ffd700;
 }
 
+.tab-btn {
+    position: relative;
+}
+
+.tab-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+    color: #fff;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 16px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    animation: pulse-badge 2s infinite;
+}
+
+@keyframes pulse-badge {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
 .tab-content {
     display: none;
 }
@@ -1156,6 +1181,7 @@ body {
             <button class="attack-modal-close" onclick="closeAttackModal()">×</button>
         </div>
         <div id="attackModalTarget"></div>
+        <div id="attackAdvantageDisplay"></div>
         <div id="attackTroopSelector"></div>
         <div class="attack-power-display">
             <div>出撃パワー</div>
@@ -1214,12 +1240,14 @@ function getResourceName(key) {
 let civData = null;
 let currentTab = 'buildings'; // 現在のアクティブタブを保持
 let selectedAttackTarget = null; // 攻撃対象のユーザーID
+let selectedAttackTargetPower = 0; // 攻撃対象の防御力
 let userTroops = []; // ユーザーの兵士データ
 let deploymentLimit = { base_limit: 100, building_bonus: 0, total_limit: 100 }; // 出撃上限
 
 // 攻撃モーダルを開く
 function openAttackModal(targetUserId, targetCivName, targetPower) {
     selectedAttackTarget = targetUserId;
+    selectedAttackTargetPower = parseInt(targetPower) || 0;
     
     // モーダルを表示
     document.getElementById('attackModal').classList.add('active');
@@ -1232,6 +1260,9 @@ function openAttackModal(targetUserId, targetCivName, targetPower) {
         </div>
     `;
     
+    // 有利/不利表示をリセット
+    updateAdvantageDisplay(0);
+    
     // 兵士データを読み込んで表示
     loadAttackTroops();
 }
@@ -1240,6 +1271,87 @@ function openAttackModal(targetUserId, targetCivName, targetPower) {
 function closeAttackModal() {
     document.getElementById('attackModal').classList.remove('active');
     selectedAttackTarget = null;
+    selectedAttackTargetPower = 0;
+}
+
+// 有利/不利表示を更新
+function updateAdvantageDisplay(myPower) {
+    const targetPower = selectedAttackTargetPower;
+    const advantageEl = document.getElementById('attackAdvantageDisplay');
+    if (!advantageEl) return;
+    
+    if (myPower <= 0) {
+        advantageEl.innerHTML = '';
+        return;
+    }
+    
+    const powerDiff = myPower - targetPower;
+    const threshold = targetPower * 0.2;
+    
+    let advantageHtml = '';
+    if (powerDiff > threshold) {
+        advantageHtml = `
+            <div style="background: rgba(50, 205, 50, 0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #32cd32; font-weight: bold; font-size: 14px;">✅ 有利</span>
+                    <span style="color: #888; font-size: 12px;">あなたの戦力が上回っています</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+                    <div style="text-align: center;">
+                        <div style="color: #888; font-size: 11px;">出撃戦力</div>
+                        <div style="color: #32cd32; font-weight: bold;">⚔️ ${myPower}</div>
+                    </div>
+                    <div style="align-self: center; color: #888;">VS</div>
+                    <div style="text-align: center;">
+                        <div style="color: #888; font-size: 11px;">敵防御力</div>
+                        <div style="color: #ff6b6b; font-weight: bold;">🛡️ ${targetPower}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else if (powerDiff < -threshold) {
+        advantageHtml = `
+            <div style="background: rgba(255, 100, 100, 0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #ff6b6b; font-weight: bold; font-size: 14px;">⚠️ 不利</span>
+                    <span style="color: #888; font-size: 12px;">敵の戦力が上回っています</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+                    <div style="text-align: center;">
+                        <div style="color: #888; font-size: 11px;">出撃戦力</div>
+                        <div style="color: #32cd32; font-weight: bold;">⚔️ ${myPower}</div>
+                    </div>
+                    <div style="align-self: center; color: #888;">VS</div>
+                    <div style="text-align: center;">
+                        <div style="color: #888; font-size: 11px;">敵防御力</div>
+                        <div style="color: #ff6b6b; font-weight: bold;">🛡️ ${targetPower}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        advantageHtml = `
+            <div style="background: rgba(255, 215, 0, 0.2); padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #ffd700; font-weight: bold; font-size: 14px;">⚖️ 互角</span>
+                    <span style="color: #888; font-size: 12px;">戦力は拮抗しています</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 8px;">
+                    <div style="text-align: center;">
+                        <div style="color: #888; font-size: 11px;">出撃戦力</div>
+                        <div style="color: #32cd32; font-weight: bold;">⚔️ ${myPower}</div>
+                    </div>
+                    <div style="align-self: center; color: #888;">VS</div>
+                    <div style="text-align: center;">
+                        <div style="color: #888; font-size: 11px;">敵防御力</div>
+                        <div style="color: #ff6b6b; font-weight: bold;">🛡️ ${targetPower}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    advantageEl.innerHTML = advantageHtml;
 }
 
 // 攻撃用兵士を読み込む
@@ -1392,6 +1504,9 @@ function updateAttackPowerDisplay() {
             troopCountEl.style.color = '#32cd32';
         }
     }
+    
+    // 有利/不利表示を更新
+    updateAdvantageDisplay(totalPower);
     
     // 出撃ボタンの有効/無効
     const overLimit = totalTroops > deploymentLimit.total_limit;
@@ -1593,12 +1708,13 @@ function renderApp() {
             <button class="tab-btn ${currentTab === 'buildings' ? 'active' : ''}" data-tab="buildings">🏠 建物</button>
             <button class="tab-btn ${currentTab === 'research' ? 'active' : ''}" data-tab="research">📚 研究</button>
             <button class="tab-btn ${currentTab === 'market' ? 'active' : ''}" data-tab="market">🏪 市場</button>
-            <button class="tab-btn ${currentTab === 'troops' ? 'active' : ''}" data-tab="troops">🎖️ 兵士</button>
+            <button class="tab-btn ${currentTab === 'troops' ? 'active' : ''}" data-tab="troops">🎖️ 兵士<span id="wounded-badge" class="tab-badge" style="display:none;"></span></button>
             <button class="tab-btn ${currentTab === 'alliance' ? 'active' : ''}" data-tab="alliance">🤝 同盟</button>
             <button class="tab-btn ${currentTab === 'war' ? 'active' : ''}" data-tab="war">⚔️ 戦争</button>
             <button class="tab-btn ${currentTab === 'conquest' ? 'active' : ''}" data-tab="conquest">🏰 占領戦</button>
             <button class="tab-btn ${currentTab === 'monster' ? 'active' : ''}" data-tab="monster">🐉 モンスター</button>
-            <button class="tab-btn ${currentTab === 'quests' ? 'active' : ''}" data-tab="quests" style="background: linear-gradient(135deg, rgba(72, 187, 120, 0.3) 0%, rgba(56, 161, 105, 0.3) 100%);">📋 クエスト</button>
+            <button class="tab-btn ${currentTab === 'leaderboard' ? 'active' : ''}" data-tab="leaderboard" style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 165, 0, 0.3) 100%);">🏆 リーダーボード</button>
+            <button class="tab-btn ${currentTab === 'quests' ? 'active' : ''}" data-tab="quests" style="background: linear-gradient(135deg, rgba(72, 187, 120, 0.3) 0%, rgba(56, 161, 105, 0.3) 100%);">📋 クエスト<span id="quests-badge" class="tab-badge" style="display:none;"></span></button>
             <button class="tab-btn ${currentTab === 'shop' ? 'active' : ''}" data-tab="shop">💠 VIPショップ</button>
             <button class="tab-btn ${currentTab === 'tutorial' ? 'active' : ''}" data-tab="tutorial" style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 140, 0, 0.3) 100%);">📜 チュートリアル</button>
         </div>
@@ -1762,6 +1878,49 @@ function renderApp() {
                 <h3>📜 戦争ログ</h3>
                 <div id="warLogsList" style="max-height: 400px; overflow-y: auto;">
                     <div class="loading">戦争ログを読み込み中...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- リーダーボードタブ -->
+        <div class="tab-content ${currentTab === 'leaderboard' ? 'active' : ''}" id="tab-leaderboard">
+            <div class="war-section" style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 165, 0, 0.3) 100%); border-color: #ffd700;">
+                <h3 style="color: #ffd700;">🏆 リーダーボード</h3>
+                <p style="color: #c0a080; margin-bottom: 15px;">各カテゴリのトップランキングを確認しましょう</p>
+                
+                <!-- メインランキングカテゴリボタン -->
+                <div style="margin-bottom: 15px;">
+                    <div style="color: #c0a080; margin-bottom: 8px; font-size: 14px;">📊 メインランキング</div>
+                    <div id="main-ranking-buttons" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        <button class="ranking-btn active" data-ranking="population" style="padding: 8px 12px; background: rgba(255, 215, 0, 0.3); border: 2px solid #ffd700; border-radius: 6px; color: #f5deb3; cursor: pointer; font-size: 12px; transition: all 0.2s;">👥 人口</button>
+                        <button class="ranking-btn" data-ranking="military_power" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 2px solid #666; border-radius: 6px; color: #888; cursor: pointer; font-size: 12px; transition: all 0.2s;">⚔️ 軍事力</button>
+                        <button class="ranking-btn" data-ranking="total_soldiers" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 2px solid #666; border-radius: 6px; color: #888; cursor: pointer; font-size: 12px; transition: all 0.2s;">🎖️ 総兵士数</button>
+                        <button class="ranking-btn" data-ranking="total_buildings" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 2px solid #666; border-radius: 6px; color: #888; cursor: pointer; font-size: 12px; transition: all 0.2s;">🏠 総建築物数</button>
+                        <button class="ranking-btn" data-ranking="battle_wins" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 2px solid #666; border-radius: 6px; color: #888; cursor: pointer; font-size: 12px; transition: all 0.2s;">🏅 戦闘勝利数</button>
+                        <button class="ranking-btn" data-ranking="battle_losses" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 2px solid #666; border-radius: 6px; color: #888; cursor: pointer; font-size: 12px; transition: all 0.2s;">💀 戦闘敗北数</button>
+                        <button class="ranking-btn" data-ranking="conquest_wins" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 2px solid #666; border-radius: 6px; color: #888; cursor: pointer; font-size: 12px; transition: all 0.2s;">🏆 占領戦優勝</button>
+                        <button class="ranking-btn" data-ranking="castle_captures" style="padding: 8px 12px; background: rgba(0,0,0,0.3); border: 2px solid #666; border-radius: 6px; color: #888; cursor: pointer; font-size: 12px; transition: all 0.2s;">🏰 拠点占領</button>
+                    </div>
+                </div>
+                
+                <!-- 資源別ランキングボタン -->
+                <div id="resource-ranking-section" style="margin-bottom: 20px;">
+                    <div style="color: #c0a080; margin-bottom: 8px; font-size: 14px;">📦 資源別ランキング</div>
+                    <div id="resource-ranking-buttons" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        <!-- 資源タイプは動的に読み込み -->
+                        <span style="color: #666; font-size: 12px;">読み込み中...</span>
+                    </div>
+                </div>
+                
+                <!-- 自分の順位 -->
+                <div id="my-rank-info" style="background: rgba(255, 215, 0, 0.2); padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center;">
+                    <div style="color: #ffd700; font-size: 18px; font-weight: bold;">あなたの順位</div>
+                    <div id="my-rank-display" style="color: #fff; font-size: 24px; margin-top: 5px;">読み込み中...</div>
+                </div>
+                
+                <!-- ランキングリスト -->
+                <div id="leaderboard-list" style="max-height: 500px; overflow-y: auto;">
+                    <div class="loading">ランキングを読み込み中...</div>
                 </div>
             </div>
         </div>
@@ -1978,6 +2137,10 @@ function renderApp() {
             if (btn.dataset.tab === 'quests') {
                 loadCivilizationQuests();
             }
+            // リーダーボードタブの場合、ランキングを読み込む
+            if (btn.dataset.tab === 'leaderboard') {
+                loadLeaderboard();
+            }
         });
     });
     
@@ -2008,9 +2171,74 @@ function renderApp() {
     if (currentTab === 'quests') {
         loadCivilizationQuests();
     }
+    // リーダーボードタブがアクティブな場合、ランキングを読み込む
+    if (currentTab === 'leaderboard') {
+        loadLeaderboard();
+    }
     
     // 初回アクセス時にチュートリアルモーダルを表示
     checkTutorialModal();
+    
+    // タブバッジを更新（報酬受け取り待ちクエスト、負傷兵など）
+    updateTabBadges();
+    
+    // リーダーボードのイベントリスナーを設定
+    setupLeaderboardListeners();
+}
+
+// タブバッジを更新する関数
+async function updateTabBadges() {
+    try {
+        // クエストの報酬受け取り待ち数を取得
+        const questsRes = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_civilization_quests'})
+        });
+        const questsData = await questsRes.json();
+        
+        if (questsData.ok && questsData.quests) {
+            // 完了済みで報酬未受け取りのクエスト数をカウント
+            const claimableCount = questsData.quests.filter(q => 
+                q.is_completed && !q.is_claimed
+            ).length;
+            
+            const questsBadge = document.getElementById('quests-badge');
+            if (questsBadge) {
+                if (claimableCount > 0) {
+                    questsBadge.textContent = claimableCount;
+                    questsBadge.style.display = 'inline-block';
+                } else {
+                    questsBadge.style.display = 'none';
+                }
+            }
+        }
+        
+        // 負傷兵数を取得
+        const woundedRes = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_wounded_troops'})
+        });
+        const woundedData = await woundedRes.json();
+        
+        if (woundedData.ok && woundedData.wounded_troops) {
+            // 負傷兵の総数をカウント
+            const woundedCount = woundedData.wounded_troops.reduce((sum, w) => sum + (w.count || 0), 0);
+            
+            const woundedBadge = document.getElementById('wounded-badge');
+            if (woundedBadge) {
+                if (woundedCount > 0) {
+                    woundedBadge.textContent = woundedCount;
+                    woundedBadge.style.display = 'inline-block';
+                } else {
+                    woundedBadge.style.display = 'none';
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Failed to update tab badges:', e);
+    }
 }
 
 // 建物グリッドを描画
@@ -2558,13 +2786,25 @@ async function loadWarLogs() {
                 const battleTime = new Date(log.battle_at).toLocaleString('ja-JP');
                 
                 let lootText = '';
-                if (isWinner && (log.loot_coins > 0 || (log.loot_resources && Object.keys(JSON.parse(log.loot_resources || '{}')).length > 0))) {
+                if (log.loot_coins > 0 || (log.loot_resources && Object.keys(JSON.parse(log.loot_resources || '{}')).length > 0)) {
                     const lootResources = JSON.parse(log.loot_resources || '{}');
-                    lootText = `<div style="font-size: 11px; color: #32cd32; margin-top: 5px;">💰 ${log.loot_coins}コイン`;
-                    for (const [key, val] of Object.entries(lootResources)) {
-                        lootText += ` | ${key}: +${val}`;
+                    if (isWinner) {
+                        // 勝者: 略奪した資源を表示
+                        lootText = `<div style="font-size: 11px; color: #32cd32; margin-top: 5px;">💰 略奪: ${log.loot_coins}コイン`;
+                        for (const [key, val] of Object.entries(lootResources)) {
+                            const resourceName = getResourceName(key);
+                            lootText += ` | ${resourceName}: +${val}`;
+                        }
+                        lootText += '</div>';
+                    } else {
+                        // 敗者: 奪われた資源を表示
+                        lootText = `<div style="font-size: 11px; color: #ff6b6b; margin-top: 5px;">💸 損失: ${log.loot_coins}コイン`;
+                        for (const [key, val] of Object.entries(lootResources)) {
+                            const resourceName = getResourceName(key);
+                            lootText += ` | ${resourceName}: -${val}`;
+                        }
+                        lootText += '</div>';
                     }
-                    lootText += '</div>';
                 }
                 
                 // ターン制バトル情報
@@ -3182,6 +3422,18 @@ async function loadWoundedTroops() {
             } else if (healingContainer) {
                 healingContainer.innerHTML = '';
             }
+            
+            // 負傷兵バッジを更新
+            const woundedCount = data.wounded_troops ? data.wounded_troops.reduce((sum, w) => sum + (w.count || 0), 0) : 0;
+            const woundedBadge = document.getElementById('wounded-badge');
+            if (woundedBadge) {
+                if (woundedCount > 0) {
+                    woundedBadge.textContent = woundedCount;
+                    woundedBadge.style.display = 'inline-block';
+                } else {
+                    woundedBadge.style.display = 'none';
+                }
+            }
         }
     } catch (e) {
         console.error(e);
@@ -3205,6 +3457,7 @@ async function healTroops(troopTypeId) {
             showNotification(data.message);
             loadWoundedTroops();
             loadData();
+            updateTabBadges(); // バッジを更新
         } else {
             showNotification(data.error, true);
         }
@@ -3615,7 +3868,7 @@ function handleScrollThrottled() {
 function setupInteractionListeners() {
     // 入力フィールドのフォーカスと入力
     document.addEventListener('focusin', (e) => {
-        if (e.target.matches('input, select, textarea')) {
+        if (e.target.matches('input, select, textarea, button, [contenteditable]')) {
             setUserInteracting();
         }
     });
@@ -3626,21 +3879,45 @@ function setupInteractionListeners() {
         }
     });
     
-    // スクロール操作（スロットリング済み）
-    document.addEventListener('scroll', handleScrollThrottled, true);
-    
-    // スライダー操作
-    document.addEventListener('mousedown', (e) => {
-        if (e.target.matches('input[type="range"]')) {
+    // セレクトボックスの操作（特にドロップダウンを開いている時）
+    document.addEventListener('change', (e) => {
+        if (e.target.matches('select, input')) {
             setUserInteracting();
         }
     });
     
+    // スクロール操作（スロットリング済み）
+    document.addEventListener('scroll', handleScrollThrottled, true);
+    
+    // マウスダウン（スライダー、ボタン操作など）
+    document.addEventListener('mousedown', (e) => {
+        if (e.target.matches('input[type="range"], button, .ranking-btn, .resource-ranking-btn, select')) {
+            setUserInteracting();
+        }
+    });
+    
+    // タッチ操作（モバイル対応）
     document.addEventListener('touchstart', (e) => {
-        if (e.target.matches('input[type="range"], input[type="number"]')) {
+        if (e.target.matches('input[type="range"], input[type="number"], button, .ranking-btn, .resource-ranking-btn, select')) {
             setUserInteracting();
         }
     }, { passive: true });
+    
+    // モーダル表示中はインタラクションとみなす
+    document.addEventListener('click', (e) => {
+        // モーダルやダイアログ内のクリック
+        if (e.target.closest('.modal, .dialog, [role="dialog"]')) {
+            setUserInteracting();
+        }
+    });
+    
+    // キーボード操作
+    document.addEventListener('keydown', (e) => {
+        // 入力フィールド内のキー操作
+        if (e.target.matches('input, select, textarea, [contenteditable]')) {
+            setUserInteracting();
+        }
+    });
 }
 
 function startUpdateTimer() {
@@ -4322,6 +4599,164 @@ async function closeTutorialModal() {
 }
 
 // ===============================================
+// リーダーボード機能
+// ===============================================
+let currentLeaderboardType = 'population';
+let leaderboardResourceTypes = [];
+
+async function loadLeaderboard(rankingType = null) {
+    const listContainer = document.getElementById('leaderboard-list');
+    const myRankDisplay = document.getElementById('my-rank-display');
+    const resourceButtonsContainer = document.getElementById('resource-ranking-buttons');
+    
+    if (!listContainer) return;
+    
+    // ランキングタイプを決定
+    if (rankingType) {
+        currentLeaderboardType = rankingType;
+    }
+    
+    // アクティブなボタンを更新
+    updateRankingButtonStyles(currentLeaderboardType);
+    
+    listContainer.innerHTML = '<div class="loading">ランキングを読み込み中...</div>';
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_leaderboards', ranking_type: currentLeaderboardType})
+        });
+        const data = await res.json();
+        
+        if (!data.ok) {
+            listContainer.innerHTML = `<p style="color: #ff6b6b;">エラー: ${data.error}</p>`;
+            return;
+        }
+        
+        // 資源タイプのボタンを生成（DOMが空の場合は再生成）
+        if (data.resource_types && resourceButtonsContainer) {
+            // 資源ボタンが存在しない場合はボタンを生成
+            const needsRender = resourceButtonsContainer.querySelector('.resource-ranking-btn') === null;
+            if (needsRender) {
+                leaderboardResourceTypes = data.resource_types;
+                resourceButtonsContainer.innerHTML = data.resource_types.map(rt => 
+                    `<button class="resource-ranking-btn" data-ranking="resource_${rt.resource_key}" style="padding: 6px 10px; background: rgba(0,0,0,0.3); border: 2px solid #48bb78; border-radius: 6px; color: #888; cursor: pointer; font-size: 11px; transition: all 0.2s;">${rt.icon} ${rt.name}</button>`
+                ).join('');
+                
+                // 資源ボタンにイベントリスナーを追加
+                setupResourceButtonListeners();
+                
+                // 現在選択中のランキングのボタンスタイルを更新
+                updateRankingButtonStyles(currentLeaderboardType);
+            }
+        }
+        
+        // 自分の順位を表示
+        if (myRankDisplay) {
+            const rankText = data.my_rank ? `#${data.my_rank}位` : '順位なし';
+            const valueText = data.my_value !== undefined ? Number(data.my_value).toLocaleString() : '0';
+            myRankDisplay.innerHTML = `${rankText} <span style="color: #c0a080; font-size: 16px;">(${valueText})</span>`;
+        }
+        
+        // ランキングリストを表示
+        if (!data.rankings || data.rankings.length === 0) {
+            listContainer.innerHTML = '<p style="color: #888; text-align: center;">ランキングデータがありません</p>';
+            return;
+        }
+        
+        let html = '';
+        for (const entry of data.rankings) {
+            const rankClass = entry.rank <= 3 ? `rank-${entry.rank}` : '';
+            const rankIcon = entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : `#${entry.rank}`;
+            const isMeStyle = entry.is_me ? 'background: rgba(255, 215, 0, 0.3); border: 2px solid #ffd700;' : '';
+            
+            html += `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; margin-bottom: 8px; background: rgba(0,0,0,0.3); border-radius: 8px; ${isMeStyle}">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <span style="font-size: 20px; min-width: 45px; text-align: center;">${rankIcon}</span>
+                        <div>
+                            <div style="color: #f5deb3; font-weight: bold;">${escapeHtml(entry.civilization_name)}</div>
+                            <div style="color: #888; font-size: 12px;">@${escapeHtml(entry.handle)}</div>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="color: #ffd700; font-size: 18px; font-weight: bold;">${Number(entry.value).toLocaleString()}</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        listContainer.innerHTML = html;
+    } catch (e) {
+        console.error(e);
+        listContainer.innerHTML = '<p style="color: #ff6b6b;">ランキングの読み込みに失敗しました</p>';
+    }
+}
+
+// ランキングボタンのスタイルを更新
+function updateRankingButtonStyles(activeRanking) {
+    // メインランキングボタン
+    document.querySelectorAll('.ranking-btn').forEach(btn => {
+        if (btn.dataset.ranking === activeRanking) {
+            btn.style.background = 'rgba(255, 215, 0, 0.3)';
+            btn.style.borderColor = '#ffd700';
+            btn.style.color = '#f5deb3';
+            btn.classList.add('active');
+        } else {
+            btn.style.background = 'rgba(0,0,0,0.3)';
+            btn.style.borderColor = '#666';
+            btn.style.color = '#888';
+            btn.classList.remove('active');
+        }
+    });
+    
+    // 資源ランキングボタン
+    document.querySelectorAll('.resource-ranking-btn').forEach(btn => {
+        if (btn.dataset.ranking === activeRanking) {
+            btn.style.background = 'rgba(72, 187, 120, 0.3)';
+            btn.style.borderColor = '#48bb78';
+            btn.style.color = '#f5deb3';
+            btn.classList.add('active');
+        } else {
+            btn.style.background = 'rgba(0,0,0,0.3)';
+            btn.style.borderColor = '#48bb78';
+            btn.style.color = '#888';
+            btn.classList.remove('active');
+        }
+    });
+}
+
+// 資源ボタンのイベントリスナーを設定
+function setupResourceButtonListeners() {
+    document.querySelectorAll('.resource-ranking-btn').forEach(btn => {
+        // 既にリスナーが追加されている場合はスキップ
+        if (btn.dataset.listenerAdded) return;
+        
+        btn.addEventListener('click', () => {
+            loadLeaderboard(btn.dataset.ranking);
+        });
+        btn.dataset.listenerAdded = 'true';
+    });
+}
+
+// リーダーボードのイベントリスナーを設定
+function setupLeaderboardListeners() {
+    // メインランキングボタンにイベントリスナーを追加
+    const mainButtons = document.querySelectorAll('.ranking-btn');
+    
+    mainButtons.forEach(btn => {
+        // 既にリスナーが追加されている場合はスキップ
+        if (btn.dataset.listenerAdded) return;
+        
+        btn.addEventListener('click', () => {
+            loadLeaderboard(btn.dataset.ranking);
+        });
+        btn.dataset.listenerAdded = 'true';
+    });
+}
+
+// ===============================================
 // 文明クエスト機能（チュートリアル以外）
 // ===============================================
 async function loadCivilizationQuests() {
@@ -4434,6 +4869,18 @@ async function loadCivilizationQuests() {
         }
         
         section.innerHTML = html;
+        
+        // クエストバッジを更新
+        const claimableCount = data.quests.filter(q => q.is_completed && !q.is_claimed).length;
+        const questsBadge = document.getElementById('quests-badge');
+        if (questsBadge) {
+            if (claimableCount > 0) {
+                questsBadge.textContent = claimableCount;
+                questsBadge.style.display = 'inline-block';
+            } else {
+                questsBadge.style.display = 'none';
+            }
+        }
     } catch (e) {
         console.error(e);
         section.innerHTML = '<p style="color: #ff6b6b;">クエストの読み込みに失敗しました</p>';
@@ -4453,6 +4900,7 @@ async function claimCivilizationQuestReward(questId) {
             showNotification(data.message, 'success');
             loadCivilizationQuests();
             loadData(); // コイン等の更新のため
+            updateTabBadges(); // バッジを更新
         } else {
             showNotification(data.error || '報酬の受け取りに失敗しました', 'error');
         }

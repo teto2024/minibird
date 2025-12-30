@@ -820,11 +820,11 @@ function renderCastleDetail(data) {
         html += `
             <div class="castle-detail-section">
                 <h4>⚔️ 攻撃部隊を選択</h4>
-                ${advantageHtml}
-                <div style="display: flex; justify-content: space-between; margin-bottom: 15px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
+                <div id="conquestAdvantageDisplay">${advantageHtml}</div>
+                <div id="conquestPowerComparison" data-def-power="${defPower}" style="display: flex; justify-content: space-between; margin-bottom: 15px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
                     <div style="text-align: center;">
-                        <div style="color: #888; font-size: 11px;">あなたの戦力</div>
-                        <div style="color: #32cd32; font-weight: bold; font-size: 18px;">⚔️ ${myPower}</div>
+                        <div style="color: #888; font-size: 11px;">選択した戦力</div>
+                        <div style="color: #32cd32; font-weight: bold; font-size: 18px;">⚔️ <span id="conquestMyPower">0</span></div>
                     </div>
                     <div style="align-self: center; color: #888;">VS</div>
                     <div style="text-align: center;">
@@ -1039,9 +1039,21 @@ function selectMaxByStrongest(type) {
 // 合計兵数を更新
 function updateTroopCountDisplay(type) {
     let totalCount = 0;
+    let totalPower = 0;
     document.querySelectorAll(`[id^="${type}-count-"]`).forEach(input => {
         const count = parseInt(input.value) || 0;
         totalCount += count;
+        
+        // パワー計算
+        if (count > 0) {
+            const troopId = input.dataset.troopId;
+            const slider = document.getElementById(`${type}-slider-${troopId}`);
+            if (slider) {
+                const attack = parseInt(slider.dataset.attack) || 0;
+                const defense = parseInt(slider.dataset.defense) || 0;
+                totalPower += (attack + Math.floor(defense / 2)) * count;
+            }
+        }
     });
     
     const countEl = document.getElementById(`${type}-troop-count`);
@@ -1053,6 +1065,41 @@ function updateTroopCountDisplay(type) {
             countEl.style.color = '#32cd32';
         }
     }
+    
+    // 攻撃部隊の場合、パワーと有利/不利を更新
+    if (type === 'attack') {
+        updateConquestAdvantageDisplay(totalPower);
+    }
+}
+
+// 占領戦の有利/不利表示を更新
+function updateConquestAdvantageDisplay(myPower) {
+    const powerEl = document.getElementById('conquestMyPower');
+    const advantageEl = document.getElementById('conquestAdvantageDisplay');
+    const comparisonEl = document.getElementById('conquestPowerComparison');
+    
+    if (powerEl) {
+        powerEl.textContent = myPower;
+    }
+    
+    if (!advantageEl || !comparisonEl) return;
+    
+    const defPower = parseInt(comparisonEl.dataset.defPower) || 0;
+    const powerDiff = myPower - defPower;
+    const threshold = defPower * 0.2;
+    
+    let advantageHtml = '';
+    if (myPower <= 0) {
+        advantageHtml = '';
+    } else if (powerDiff > threshold) {
+        advantageHtml = '<div style="background: rgba(50, 205, 50, 0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;"><span style="color: #32cd32; font-weight: bold;">✅ 有利</span><span style="color: #888; margin-left: 10px;">あなたの戦力が上回っています</span></div>';
+    } else if (powerDiff < -threshold) {
+        advantageHtml = '<div style="background: rgba(255, 100, 100, 0.3); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;"><span style="color: #ff6b6b; font-weight: bold;">⚠️ 不利</span><span style="color: #888; margin-left: 10px;">相手の戦力が上回っています</span></div>';
+    } else {
+        advantageHtml = '<div style="background: rgba(255, 215, 0, 0.2); padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center;"><span style="color: #ffd700; font-weight: bold;">⚖️ 互角</span><span style="color: #888; margin-left: 10px;">戦力は拮抗しています</span></div>';
+    }
+    
+    advantageEl.innerHTML = advantageHtml;
 }
 
 // スライダーのイベントを設定
