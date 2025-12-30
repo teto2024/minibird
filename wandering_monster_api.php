@@ -6,6 +6,7 @@
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/battle_engine.php';
+require_once __DIR__ . '/quest_helpers.php';
 
 // 放浪モンスター定数
 define('MONSTER_ENCOUNTER_COOLDOWN_MINUTES', 30);   // 次の遭遇までのクールダウン（分）
@@ -322,7 +323,7 @@ if ($action === 'attack_monster') {
     try {
         // 遭遇を取得
         $stmt = $pdo->prepare("
-            SELECT uwme.*, wm.name, wm.icon, wm.soldier_drop_chance,
+            SELECT uwme.*, wm.name, wm.icon, wm.monster_key, wm.soldier_drop_chance,
                    wm.reward_coins_min, wm.reward_coins_max,
                    wm.reward_crystals_min, wm.reward_crystals_max,
                    wm.reward_diamonds_min, wm.reward_diamonds_max
@@ -559,6 +560,12 @@ if ($action === 'attack_monster') {
         // 詳細なバトルターンログを保存
         if (!empty($battleResult['turn_logs'])) {
             saveWanderingMonsterBattleTurnLogs($pdo, $battleLogId, $battleResult['turn_logs']);
+        }
+        
+        // モンスター討伐時にクエスト進捗を更新
+        if ($isDefeated) {
+            $monsterKey = $encounter['monster_key'] ?? null;
+            updateCivilizationQuestProgressHelper($pdo, $me['id'], 'defeat_monster', $monsterKey, 1);
         }
         
         $pdo->commit();

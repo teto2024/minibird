@@ -7,6 +7,7 @@
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/battle_engine.php';
+require_once __DIR__ . '/quest_helpers.php';
 
 // ワールドボス定数
 define('WORLD_BOSS_ATTACK_COOLDOWN_SECONDS', 60);   // 攻撃クールダウン（秒）
@@ -675,6 +676,11 @@ if ($action === 'attack_boss') {
             
             // 報酬配布
             distributeWorldBossRewards($pdo, $instanceId, true);
+        }
+        
+        // ワールドボスダメージでクエスト進捗を更新
+        if ($damage > 0) {
+            updateCivilizationQuestProgressHelper($pdo, $me['id'], 'damage_boss', null, $damage);
         }
         
         $pdo->commit();

@@ -173,6 +173,31 @@ body {
     border-color: #ffd700;
 }
 
+.tab-btn {
+    position: relative;
+}
+
+.tab-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+    color: #fff;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 16px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    animation: pulse-badge 2s infinite;
+}
+
+@keyframes pulse-badge {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
 .tab-content {
     display: none;
 }
@@ -1593,12 +1618,12 @@ function renderApp() {
             <button class="tab-btn ${currentTab === 'buildings' ? 'active' : ''}" data-tab="buildings">🏠 建物</button>
             <button class="tab-btn ${currentTab === 'research' ? 'active' : ''}" data-tab="research">📚 研究</button>
             <button class="tab-btn ${currentTab === 'market' ? 'active' : ''}" data-tab="market">🏪 市場</button>
-            <button class="tab-btn ${currentTab === 'troops' ? 'active' : ''}" data-tab="troops">🎖️ 兵士</button>
+            <button class="tab-btn ${currentTab === 'troops' ? 'active' : ''}" data-tab="troops">🎖️ 兵士<span id="wounded-badge" class="tab-badge" style="display:none;"></span></button>
             <button class="tab-btn ${currentTab === 'alliance' ? 'active' : ''}" data-tab="alliance">🤝 同盟</button>
             <button class="tab-btn ${currentTab === 'war' ? 'active' : ''}" data-tab="war">⚔️ 戦争</button>
             <button class="tab-btn ${currentTab === 'conquest' ? 'active' : ''}" data-tab="conquest">🏰 占領戦</button>
             <button class="tab-btn ${currentTab === 'monster' ? 'active' : ''}" data-tab="monster">🐉 モンスター</button>
-            <button class="tab-btn ${currentTab === 'quests' ? 'active' : ''}" data-tab="quests" style="background: linear-gradient(135deg, rgba(72, 187, 120, 0.3) 0%, rgba(56, 161, 105, 0.3) 100%);">📋 クエスト</button>
+            <button class="tab-btn ${currentTab === 'quests' ? 'active' : ''}" data-tab="quests" style="background: linear-gradient(135deg, rgba(72, 187, 120, 0.3) 0%, rgba(56, 161, 105, 0.3) 100%);">📋 クエスト<span id="quests-badge" class="tab-badge" style="display:none;"></span></button>
             <button class="tab-btn ${currentTab === 'shop' ? 'active' : ''}" data-tab="shop">💠 VIPショップ</button>
             <button class="tab-btn ${currentTab === 'tutorial' ? 'active' : ''}" data-tab="tutorial" style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 140, 0, 0.3) 100%);">📜 チュートリアル</button>
         </div>
@@ -2011,6 +2036,64 @@ function renderApp() {
     
     // 初回アクセス時にチュートリアルモーダルを表示
     checkTutorialModal();
+    
+    // タブバッジを更新（報酬受け取り待ちクエスト、負傷兵など）
+    updateTabBadges();
+}
+
+// タブバッジを更新する関数
+async function updateTabBadges() {
+    try {
+        // クエストの報酬受け取り待ち数を取得
+        const questsRes = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_civilization_quests'})
+        });
+        const questsData = await questsRes.json();
+        
+        if (questsData.ok && questsData.quests) {
+            // 完了済みで報酬未受け取りのクエスト数をカウント
+            const claimableCount = questsData.quests.filter(q => 
+                q.is_completed && !q.is_claimed
+            ).length;
+            
+            const questsBadge = document.getElementById('quests-badge');
+            if (questsBadge) {
+                if (claimableCount > 0) {
+                    questsBadge.textContent = claimableCount;
+                    questsBadge.style.display = 'inline-block';
+                } else {
+                    questsBadge.style.display = 'none';
+                }
+            }
+        }
+        
+        // 負傷兵数を取得
+        const woundedRes = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_wounded_troops'})
+        });
+        const woundedData = await woundedRes.json();
+        
+        if (woundedData.ok && woundedData.wounded_troops) {
+            // 負傷兵の総数をカウント
+            const woundedCount = woundedData.wounded_troops.reduce((sum, w) => sum + (w.count || 0), 0);
+            
+            const woundedBadge = document.getElementById('wounded-badge');
+            if (woundedBadge) {
+                if (woundedCount > 0) {
+                    woundedBadge.textContent = woundedCount;
+                    woundedBadge.style.display = 'inline-block';
+                } else {
+                    woundedBadge.style.display = 'none';
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Failed to update tab badges:', e);
+    }
 }
 
 // 建物グリッドを描画
@@ -3194,6 +3277,18 @@ async function loadWoundedTroops() {
             } else if (healingContainer) {
                 healingContainer.innerHTML = '';
             }
+            
+            // 負傷兵バッジを更新
+            const woundedCount = data.wounded_troops ? data.wounded_troops.reduce((sum, w) => sum + (w.count || 0), 0) : 0;
+            const woundedBadge = document.getElementById('wounded-badge');
+            if (woundedBadge) {
+                if (woundedCount > 0) {
+                    woundedBadge.textContent = woundedCount;
+                    woundedBadge.style.display = 'inline-block';
+                } else {
+                    woundedBadge.style.display = 'none';
+                }
+            }
         }
     } catch (e) {
         console.error(e);
@@ -3217,6 +3312,7 @@ async function healTroops(troopTypeId) {
             showNotification(data.message);
             loadWoundedTroops();
             loadData();
+            updateTabBadges(); // バッジを更新
         } else {
             showNotification(data.error, true);
         }
@@ -4446,6 +4542,18 @@ async function loadCivilizationQuests() {
         }
         
         section.innerHTML = html;
+        
+        // クエストバッジを更新
+        const claimableCount = data.quests.filter(q => q.is_completed && !q.is_claimed).length;
+        const questsBadge = document.getElementById('quests-badge');
+        if (questsBadge) {
+            if (claimableCount > 0) {
+                questsBadge.textContent = claimableCount;
+                questsBadge.style.display = 'inline-block';
+            } else {
+                questsBadge.style.display = 'none';
+            }
+        }
     } catch (e) {
         console.error(e);
         section.innerHTML = '<p style="color: #ff6b6b;">クエストの読み込みに失敗しました</p>';
@@ -4465,6 +4573,7 @@ async function claimCivilizationQuestReward(questId) {
             showNotification(data.message, 'success');
             loadCivilizationQuests();
             loadData(); // コイン等の更新のため
+            updateTabBadges(); // バッジを更新
         } else {
             showNotification(data.error || '報酬の受け取りに失敗しました', 'error');
         }
