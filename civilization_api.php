@@ -45,6 +45,20 @@ define('CIV_INSTANT_DIAMOND_MIN_COST', 1);        // ダイヤモンド即完了
 // 出撃兵士数上限システム定数
 define('CIV_BASE_TROOP_DEPLOYMENT_LIMIT', 100);   // 基本出撃兵士数上限
 
+// 訓練・治療時の追加資源消費（微量）
+// 布、薬草、馬、ガラス、石油、医薬品を消費する機会を設ける
+$TRAINING_SUPPLEMENTARY_COSTS = [
+    'cloth' => 1,      // 布：1 per 10 troops
+    'horses' => 1,     // 馬：1 per 10 troops (騎兵系用)
+    'glass' => 1,      // ガラス：1 per 10 troops
+    'oil' => 1         // 石油：1 per 10 troops (現代兵種用)
+];
+
+$HEALING_SUPPLEMENTARY_COSTS = [
+    'herbs' => 1,      // 薬草：1 per 5 troops
+    'medicine' => 1    // 医薬品：1 per 10 troops
+];
+
 // 資源価値の定義（市場交換レート計算用）
 // 値が高いほど価値が高い資源
 $RESOURCE_VALUES = [
@@ -446,6 +460,111 @@ function calculateTroopAdvantageMultiplier($attackerComposition, $defenderCompos
     // 全体の相性ボーナス倍率を計算（1.0を基準に加算）
     // 加重平均により、部隊構成全体の相性効果を算出
     return 1.0 + ($totalAdvantageBonus / $totalAttackerPower);
+}
+
+/**
+ * 訓練時の追加資源を消費するヘルパー関数
+ * 布、馬、ガラス、石油を微量消費する（持っている場合のみ）
+ * 
+ * @param PDO $pdo データベース接続
+ * @param int $userId ユーザーID
+ * @param int $count 訓練数
+ * @param string $troopCategory 兵種カテゴリ（cavalry等で馬を多く消費）
+ * @return array 消費した資源のリスト
+ */
+function consumeTrainingSupplementaryResources($pdo, $userId, $count, $troopCategory = 'infantry') {
+    global $TRAINING_SUPPLEMENTARY_COSTS;
+    $consumed = [];
+    
+    // 10体ごとに1の追加資源を消費
+    $baseCost = max(1, floor($count / 10));
+    
+    foreach ($TRAINING_SUPPLEMENTARY_COSTS as $resourceKey => $costPer10) {
+        // 馬は騎兵系のみ消費
+        if ($resourceKey === 'horses' && $troopCategory !== 'cavalry') {
+            continue;
+        }
+        // 石油は現代兵種のみ消費（時代チェックは呼び出し側で行う）
+        if ($resourceKey === 'oil' && !in_array($troopCategory, ['siege', 'cavalry'])) {
+            // siege と cavalry のみ石油を使用（車両・航空機系）
+            continue;
+        }
+        
+        $requiredAmount = $baseCost * $costPer10;
+        if ($requiredAmount <= 0) continue;
+        
+        // 資源を持っているか確認
+        $stmt = $pdo->prepare("
+            SELECT ucr.amount 
+            FROM user_civilization_resources ucr
+            JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
+            WHERE ucr.user_id = ? AND rt.resource_key = ? AND ucr.unlocked = TRUE
+        ");
+        $stmt->execute([$userId, $resourceKey]);
+        $currentAmount = (float)$stmt->fetchColumn();
+        
+        // 持っている分だけ消費（なければスキップ）
+        if ($currentAmount > 0) {
+            $toConsume = min($requiredAmount, $currentAmount);
+            $stmt = $pdo->prepare("
+                UPDATE user_civilization_resources ucr
+                JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
+                SET ucr.amount = ucr.amount - ?
+                WHERE ucr.user_id = ? AND rt.resource_key = ?
+            ");
+            $stmt->execute([$toConsume, $userId, $resourceKey]);
+            $consumed[$resourceKey] = $toConsume;
+        }
+    }
+    
+    return $consumed;
+}
+
+/**
+ * 治療時の追加資源を消費するヘルパー関数
+ * 薬草、医薬品を微量消費する（持っている場合のみ）
+ * 
+ * @param PDO $pdo データベース接続
+ * @param int $userId ユーザーID
+ * @param int $count 治療数
+ * @return array 消費した資源のリスト
+ */
+function consumeHealingSupplementaryResources($pdo, $userId, $count) {
+    global $HEALING_SUPPLEMENTARY_COSTS;
+    $consumed = [];
+    
+    // 薬草は5体ごとに1、医薬品は10体ごとに1
+    foreach ($HEALING_SUPPLEMENTARY_COSTS as $resourceKey => $costPerN) {
+        $divisor = ($resourceKey === 'herbs') ? 5 : 10;
+        $requiredAmount = max(1, floor($count / $divisor)) * $costPerN;
+        
+        if ($requiredAmount <= 0) continue;
+        
+        // 資源を持っているか確認
+        $stmt = $pdo->prepare("
+            SELECT ucr.amount 
+            FROM user_civilization_resources ucr
+            JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
+            WHERE ucr.user_id = ? AND rt.resource_key = ? AND ucr.unlocked = TRUE
+        ");
+        $stmt->execute([$userId, $resourceKey]);
+        $currentAmount = (float)$stmt->fetchColumn();
+        
+        // 持っている分だけ消費（なければスキップ）
+        if ($currentAmount > 0) {
+            $toConsume = min($requiredAmount, $currentAmount);
+            $stmt = $pdo->prepare("
+                UPDATE user_civilization_resources ucr
+                JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
+                SET ucr.amount = ucr.amount - ?
+                WHERE ucr.user_id = ? AND rt.resource_key = ?
+            ");
+            $stmt->execute([$toConsume, $userId, $resourceKey]);
+            $consumed[$resourceKey] = $toConsume;
+        }
+    }
+    
+    return $consumed;
 }
 
 // 資源を収集（時間経過分）
@@ -2564,6 +2683,9 @@ if ($action === 'heal_troops') {
         $stmt = $pdo->prepare("UPDATE users SET coins = coins - ? WHERE id = ?");
         $stmt->execute([$totalCost, $me['id']]);
         
+        // 追加資源を消費（薬草、医薬品など - 持っている場合のみ）
+        $healingSupplementaryConsumed = consumeHealingSupplementaryResources($pdo, $me['id'], $count);
+        
         // 治療時間を計算
         $healTime = $wounded['heal_time_seconds'] * $count;
         $completesAt = date('Y-m-d H:i:s', time() + $healTime);
@@ -2733,6 +2855,10 @@ if ($action === 'queue_training') {
         // コインを消費
         $stmt = $pdo->prepare("UPDATE users SET coins = coins - ? WHERE id = ?");
         $stmt->execute([$totalCoinCost, $me['id']]);
+        
+        // 追加資源を消費（布、馬、ガラス、石油など - 持っている場合のみ）
+        $troopCategory = $troopType['troop_category'] ?? 'infantry';
+        $supplementaryConsumed = consumeTrainingSupplementaryResources($pdo, $me['id'], $count, $troopCategory);
         
         // 訓練時間を計算
         $trainTime = $troopType['train_time_seconds'] * $count;
@@ -3789,6 +3915,312 @@ if ($action === 'get_transfer_logs') {
             'resource_sent' => $resourceSent
         ]);
     } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// チュートリアルシステム API
+// ===============================================
+
+/**
+ * ユーザーのチュートリアル進捗を取得・初期化するヘルパー関数
+ */
+function getUserTutorialProgress($pdo, $userId) {
+    $stmt = $pdo->prepare("SELECT * FROM user_civilization_tutorial_progress WHERE user_id = ?");
+    $stmt->execute([$userId]);
+    $progress = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$progress) {
+        // 初期化：最初のクエストを設定
+        $stmt = $pdo->prepare("SELECT id FROM civilization_tutorial_quests ORDER BY quest_order ASC LIMIT 1");
+        $stmt->execute();
+        $firstQuestId = $stmt->fetchColumn();
+        
+        if ($firstQuestId) {
+            $stmt = $pdo->prepare("
+                INSERT INTO user_civilization_tutorial_progress (user_id, current_quest_id)
+                VALUES (?, ?)
+            ");
+            $stmt->execute([$userId, $firstQuestId]);
+            
+            $stmt = $pdo->prepare("SELECT * FROM user_civilization_tutorial_progress WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            $progress = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+    }
+    
+    return $progress;
+}
+
+/**
+ * クエストの達成条件をチェックするヘルパー関数
+ */
+function checkQuestCompletion($pdo, $userId, $quest) {
+    switch ($quest['quest_type']) {
+        case 'invest':
+            // 累計投資額をチェック
+            $stmt = $pdo->prepare("SELECT total_invested_coins FROM user_civilizations WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            $invested = (int)$stmt->fetchColumn();
+            return $invested >= $quest['target_count'];
+            
+        case 'build':
+            // 建物を持っているかチェック
+            $stmt = $pdo->prepare("
+                SELECT COUNT(*) FROM user_civilization_buildings ucb
+                JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+                WHERE ucb.user_id = ? AND bt.building_key = ? AND ucb.is_constructing = FALSE
+            ");
+            $stmt->execute([$userId, $quest['target_key']]);
+            return (int)$stmt->fetchColumn() >= $quest['target_count'];
+            
+        case 'train':
+            // 兵士を持っているかチェック
+            $stmt = $pdo->prepare("
+                SELECT COALESCE(SUM(uct.count), 0) FROM user_civilization_troops uct
+                JOIN civilization_troop_types tt ON uct.troop_type_id = tt.id
+                WHERE uct.user_id = ? AND tt.troop_key = ?
+            ");
+            $stmt->execute([$userId, $quest['target_key']]);
+            return (int)$stmt->fetchColumn() >= $quest['target_count'];
+            
+        case 'research':
+            // 完了した研究があるかチェック
+            $stmt = $pdo->prepare("
+                SELECT COUNT(*) FROM user_civilization_researches
+                WHERE user_id = ? AND is_completed = TRUE
+            ");
+            $stmt->execute([$userId]);
+            return (int)$stmt->fetchColumn() >= $quest['target_count'];
+            
+        case 'era':
+            // 指定した時代に達しているかチェック
+            $stmt = $pdo->prepare("
+                SELECT ce.era_order FROM user_civilizations uc
+                JOIN civilization_eras ce ON uc.current_era_id = ce.id
+                WHERE uc.user_id = ?
+            ");
+            $stmt->execute([$userId]);
+            $currentEraOrder = (int)$stmt->fetchColumn();
+            
+            $stmt = $pdo->prepare("SELECT era_order FROM civilization_eras WHERE era_key = ?");
+            $stmt->execute([$quest['target_key']]);
+            $targetEraOrder = (int)$stmt->fetchColumn();
+            
+            return $currentEraOrder >= $targetEraOrder;
+            
+        case 'collect':
+            // 最終クエスト用（常にtrue）
+            return true;
+            
+        default:
+            return false;
+    }
+}
+
+// チュートリアルデータを取得
+if ($action === 'get_tutorial') {
+    try {
+        // チュートリアルテーブルが存在するかチェック
+        $stmt = $pdo->query("SHOW TABLES LIKE 'civilization_tutorial_quests'");
+        if (!$stmt->fetch()) {
+            echo json_encode([
+                'ok' => true,
+                'tutorial_available' => false,
+                'message' => 'チュートリアルシステムはまだ初期化されていません'
+            ]);
+            exit;
+        }
+        
+        $progress = getUserTutorialProgress($pdo, $me['id']);
+        
+        if (!$progress) {
+            echo json_encode([
+                'ok' => true,
+                'tutorial_available' => false,
+                'message' => 'チュートリアルクエストが設定されていません'
+            ]);
+            exit;
+        }
+        
+        // チュートリアル完了済みの場合
+        if ($progress['is_tutorial_completed']) {
+            echo json_encode([
+                'ok' => true,
+                'tutorial_available' => true,
+                'is_completed' => true,
+                'completed_at' => $progress['tutorial_completed_at']
+            ]);
+            exit;
+        }
+        
+        // 現在のクエストを取得
+        $stmt = $pdo->prepare("SELECT * FROM civilization_tutorial_quests WHERE id = ?");
+        $stmt->execute([$progress['current_quest_id']]);
+        $currentQuest = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // 達成済みクエストを取得
+        $stmt = $pdo->prepare("
+            SELECT q.* FROM user_civilization_tutorial_completed uctc
+            JOIN civilization_tutorial_quests q ON uctc.quest_id = q.id
+            WHERE uctc.user_id = ?
+            ORDER BY q.quest_order ASC
+        ");
+        $stmt->execute([$me['id']]);
+        $completedQuests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 全クエスト一覧を取得
+        $stmt = $pdo->query("SELECT * FROM civilization_tutorial_quests ORDER BY quest_order ASC");
+        $allQuests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 現在のクエストの達成状況をチェック
+        $isCurrentQuestCompleted = false;
+        if ($currentQuest) {
+            $isCurrentQuestCompleted = checkQuestCompletion($pdo, $me['id'], $currentQuest);
+        }
+        
+        echo json_encode([
+            'ok' => true,
+            'tutorial_available' => true,
+            'is_completed' => false,
+            'current_quest' => $currentQuest,
+            'is_current_quest_completed' => $isCurrentQuestCompleted,
+            'completed_quests' => $completedQuests,
+            'all_quests' => $allQuests
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// チュートリアルクエストを完了して報酬を受け取る
+if ($action === 'complete_tutorial_quest') {
+    $pdo->beginTransaction();
+    try {
+        // チュートリアルテーブルが存在するかチェック
+        $stmt = $pdo->query("SHOW TABLES LIKE 'civilization_tutorial_quests'");
+        if (!$stmt->fetch()) {
+            throw new Exception('チュートリアルシステムが初期化されていません');
+        }
+        
+        $progress = getUserTutorialProgress($pdo, $me['id']);
+        
+        if (!$progress) {
+            throw new Exception('チュートリアル進捗が見つかりません');
+        }
+        
+        if ($progress['is_tutorial_completed']) {
+            throw new Exception('チュートリアルは既に完了しています');
+        }
+        
+        // 現在のクエストを取得
+        $stmt = $pdo->prepare("SELECT * FROM civilization_tutorial_quests WHERE id = ?");
+        $stmt->execute([$progress['current_quest_id']]);
+        $currentQuest = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$currentQuest) {
+            throw new Exception('クエストが見つかりません');
+        }
+        
+        // 達成条件をチェック
+        if (!checkQuestCompletion($pdo, $me['id'], $currentQuest)) {
+            throw new Exception('クエストの条件を満たしていません');
+        }
+        
+        // 報酬を付与
+        $rewardCoins = (int)$currentQuest['reward_coins'];
+        $rewardCrystals = (int)$currentQuest['reward_crystals'];
+        $rewardDiamonds = (int)$currentQuest['reward_diamonds'];
+        
+        if ($rewardCoins > 0 || $rewardCrystals > 0 || $rewardDiamonds > 0) {
+            $stmt = $pdo->prepare("
+                UPDATE users 
+                SET coins = coins + ?,
+                    crystals = crystals + ?,
+                    diamonds = diamonds + ?
+                WHERE id = ?
+            ");
+            $stmt->execute([$rewardCoins, $rewardCrystals, $rewardDiamonds, $me['id']]);
+        }
+        
+        // 資源報酬を付与
+        $rewardResources = json_decode($currentQuest['reward_resources'], true) ?: [];
+        foreach ($rewardResources as $resourceKey => $amount) {
+            $stmt = $pdo->prepare("
+                UPDATE user_civilization_resources ucr
+                JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
+                SET ucr.amount = ucr.amount + ?
+                WHERE ucr.user_id = ? AND rt.resource_key = ?
+            ");
+            $stmt->execute([$amount, $me['id'], $resourceKey]);
+        }
+        
+        // クエストを完了済みとして記録
+        $stmt = $pdo->prepare("
+            INSERT IGNORE INTO user_civilization_tutorial_completed (user_id, quest_id)
+            VALUES (?, ?)
+        ");
+        $stmt->execute([$me['id'], $currentQuest['id']]);
+        
+        // 次のクエストに進む
+        if ($currentQuest['is_final']) {
+            // 最終クエスト完了 - チュートリアル完了
+            $stmt = $pdo->prepare("
+                UPDATE user_civilization_tutorial_progress
+                SET is_tutorial_completed = TRUE, tutorial_completed_at = NOW(), current_quest_id = NULL
+                WHERE user_id = ?
+            ");
+            $stmt->execute([$me['id']]);
+            
+            $pdo->commit();
+            
+            echo json_encode([
+                'ok' => true,
+                'message' => '🎉 チュートリアル完了！豪華報酬を獲得しました！',
+                'is_tutorial_completed' => true,
+                'reward_coins' => $rewardCoins,
+                'reward_crystals' => $rewardCrystals,
+                'reward_diamonds' => $rewardDiamonds,
+                'reward_resources' => $rewardResources
+            ]);
+        } else {
+            // 次のクエストを設定
+            $stmt = $pdo->prepare("
+                SELECT id FROM civilization_tutorial_quests 
+                WHERE quest_order > ? 
+                ORDER BY quest_order ASC 
+                LIMIT 1
+            ");
+            $stmt->execute([$currentQuest['quest_order']]);
+            $nextQuestId = $stmt->fetchColumn();
+            
+            if ($nextQuestId) {
+                $stmt = $pdo->prepare("
+                    UPDATE user_civilization_tutorial_progress
+                    SET current_quest_id = ?
+                    WHERE user_id = ?
+                ");
+                $stmt->execute([$nextQuestId, $me['id']]);
+            }
+            
+            $pdo->commit();
+            
+            echo json_encode([
+                'ok' => true,
+                'message' => "クエスト「{$currentQuest['title']}」を完了しました！",
+                'is_tutorial_completed' => false,
+                'reward_coins' => $rewardCoins,
+                'reward_crystals' => $rewardCrystals,
+                'reward_diamonds' => $rewardDiamonds,
+                'reward_resources' => $rewardResources,
+                'next_quest_id' => $nextQuestId
+            ]);
+        }
+    } catch (Exception $e) {
+        $pdo->rollBack();
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
     }
     exit;

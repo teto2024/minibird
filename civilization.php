@@ -1274,6 +1274,7 @@ function renderApp() {
             <button class="tab-btn ${currentTab === 'conquest' ? 'active' : ''}" data-tab="conquest">🏰 占領戦</button>
             <button class="tab-btn ${currentTab === 'monster' ? 'active' : ''}" data-tab="monster">🐉 モンスター</button>
             <button class="tab-btn ${currentTab === 'shop' ? 'active' : ''}" data-tab="shop">💠 VIPショップ</button>
+            <button class="tab-btn ${currentTab === 'tutorial' ? 'active' : ''}" data-tab="tutorial" style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 140, 0, 0.3) 100%);">📜 チュートリアル</button>
         </div>
         
         <!-- 建物タブ -->
@@ -1585,6 +1586,20 @@ function renderApp() {
                 ${renderMarketExchange(resources)}
             </div>
         </div>
+        
+        <!-- チュートリアルタブ -->
+        <div class="tab-content ${currentTab === 'tutorial' ? 'active' : ''}" id="tab-tutorial">
+            <div class="invest-section" style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 140, 0, 0.3) 100%); border-color: #ffd700;">
+                <h3 style="color: #ffd700;">📜 チュートリアル</h3>
+                <p style="color: #c0a080; margin-bottom: 20px;">
+                    クエストをクリアして報酬を獲得しましょう！<br>
+                    <span style="color: #90ee90;">🎁 チュートリアル完了報酬: 100,000コイン、100,000クリスタル、100,000ダイヤモンド</span>
+                </p>
+                <div id="tutorialSection">
+                    <div class="loading">読み込み中...</div>
+                </div>
+            </div>
+        </div>
     `;
     
     // タブ切り替え
@@ -1615,6 +1630,10 @@ function renderApp() {
             if (btn.dataset.tab === 'alliance') {
                 loadAllianceData();
             }
+            // チュートリアルタブの場合、チュートリアルを読み込む
+            if (btn.dataset.tab === 'tutorial') {
+                loadTutorial();
+            }
         });
     });
     
@@ -1636,6 +1655,10 @@ function renderApp() {
     // 同盟タブがアクティブな場合、同盟情報を読み込む
     if (currentTab === 'alliance') {
         loadAllianceData();
+    }
+    // チュートリアルタブがアクティブな場合、チュートリアルを読み込む
+    if (currentTab === 'tutorial') {
+        loadTutorial();
     }
 }
 
@@ -3637,13 +3660,25 @@ async function loadTransferLogs() {
         if (data.ok) {
             let html = '';
             
+            // ヘルパー関数：ユーザー表示（文明名とハンドルの両方を表示）
+            const formatUserDisplay = (civName, handle) => {
+                if (civName && handle) {
+                    return `${escapeHtml(civName)} <span style="color: #87ceeb;">(@${escapeHtml(handle)})</span>`;
+                } else if (handle) {
+                    return `@${escapeHtml(handle)}`;
+                } else if (civName) {
+                    return escapeHtml(civName);
+                }
+                return '不明';
+            };
+            
             // 受信ログ（兵士）
             if (data.troop_received && data.troop_received.length > 0) {
                 html += '<h4 style="color: #90ee90; margin-bottom: 10px;">🎁 受け取った兵士</h4>';
                 html += data.troop_received.slice(0, 5).map(log => `
                     <div style="background: rgba(50, 205, 50, 0.1); padding: 8px; border-radius: 6px; margin-bottom: 5px; font-size: 12px;">
                         <span style="color: #32cd32;">${log.troop_icon} ${log.troop_name} ×${log.count}</span>
-                        <span style="color: #888;"> from ${escapeHtml(log.sender_civ_name || log.sender_handle)}</span>
+                        <span style="color: #888;"> from ${formatUserDisplay(log.sender_civ_name, log.sender_handle)}</span>
                         <span style="color: #666; font-size: 10px; margin-left: 10px;">${new Date(log.transferred_at).toLocaleString('ja-JP')}</span>
                     </div>
                 `).join('');
@@ -3655,7 +3690,7 @@ async function loadTransferLogs() {
                 html += data.troop_sent.slice(0, 5).map(log => `
                     <div style="background: rgba(70, 130, 180, 0.1); padding: 8px; border-radius: 6px; margin-bottom: 5px; font-size: 12px;">
                         <span style="color: #4682b4;">${log.troop_icon} ${log.troop_name} ×${log.count}</span>
-                        <span style="color: #888;"> to ${escapeHtml(log.receiver_civ_name || log.receiver_handle)}</span>
+                        <span style="color: #888;"> to ${formatUserDisplay(log.receiver_civ_name, log.receiver_handle)}</span>
                         <span style="color: #666; font-size: 10px; margin-left: 10px;">${new Date(log.transferred_at).toLocaleString('ja-JP')}</span>
                     </div>
                 `).join('');
@@ -3667,7 +3702,7 @@ async function loadTransferLogs() {
                 html += data.resource_received.slice(0, 5).map(log => `
                     <div style="background: rgba(50, 205, 50, 0.1); padding: 8px; border-radius: 6px; margin-bottom: 5px; font-size: 12px;">
                         <span style="color: #32cd32;">${log.resource_icon} ${log.resource_name} ×${Math.floor(log.amount)}</span>
-                        <span style="color: #888;"> from ${escapeHtml(log.sender_civ_name || log.sender_handle)}</span>
+                        <span style="color: #888;"> from ${formatUserDisplay(log.sender_civ_name, log.sender_handle)}</span>
                         <span style="color: #666; font-size: 10px; margin-left: 10px;">${new Date(log.transferred_at).toLocaleString('ja-JP')}</span>
                     </div>
                 `).join('');
@@ -3679,7 +3714,7 @@ async function loadTransferLogs() {
                 html += data.resource_sent.slice(0, 5).map(log => `
                     <div style="background: rgba(70, 130, 180, 0.1); padding: 8px; border-radius: 6px; margin-bottom: 5px; font-size: 12px;">
                         <span style="color: #4682b4;">${log.resource_icon} ${log.resource_name} ×${Math.floor(log.amount)}</span>
-                        <span style="color: #888;"> to ${escapeHtml(log.receiver_civ_name || log.receiver_handle)}</span>
+                        <span style="color: #888;"> to ${formatUserDisplay(log.receiver_civ_name, log.receiver_handle)}</span>
                         <span style="color: #666; font-size: 10px; margin-left: 10px;">${new Date(log.transferred_at).toLocaleString('ja-JP')}</span>
                     </div>
                 `).join('');
@@ -3690,6 +3725,142 @@ async function loadTransferLogs() {
     } catch (e) {
         console.error(e);
         document.getElementById('transferLogsSection').innerHTML = '<p style="color: #888;">ログの読み込みに失敗しました</p>';
+    }
+}
+
+// チュートリアルを読み込む
+async function loadTutorial() {
+    const section = document.getElementById('tutorialSection');
+    if (!section) return;
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_tutorial'})
+        });
+        const data = await res.json();
+        
+        if (!data.ok) {
+            section.innerHTML = '<p style="color: #ff6b6b;">エラー: ' + escapeHtml(data.error || '読み込みに失敗しました') + '</p>';
+            return;
+        }
+        
+        if (!data.tutorial_available) {
+            section.innerHTML = '<p style="color: #888;">チュートリアルシステムは準備中です。</p>';
+            return;
+        }
+        
+        // チュートリアル完了済み
+        if (data.is_completed) {
+            section.innerHTML = `
+                <div style="text-align: center; padding: 30px;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">🎉</div>
+                    <h3 style="color: #90ee90; margin-bottom: 10px;">チュートリアル完了！</h3>
+                    <p style="color: #888;">おめでとうございます！全てのクエストをクリアしました。</p>
+                    <p style="color: #666; font-size: 12px;">完了日時: ${new Date(data.completed_at).toLocaleString('ja-JP')}</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // 進行中のチュートリアル
+        let html = '';
+        
+        // プログレスバー
+        const completedCount = data.completed_quests ? data.completed_quests.length : 0;
+        const totalCount = data.all_quests ? data.all_quests.length : 1;
+        const progressPercent = Math.round((completedCount / totalCount) * 100);
+        
+        html += `
+            <div style="margin-bottom: 25px;">
+                <div style="display: flex; justify-content: space-between; color: #888; font-size: 12px; margin-bottom: 5px;">
+                    <span>進捗状況</span>
+                    <span>${completedCount}/${totalCount} クエスト完了</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.3); border-radius: 10px; height: 20px; overflow: hidden;">
+                    <div style="background: linear-gradient(90deg, #32cd32, #90ee90); height: 100%; width: ${progressPercent}%; transition: width 0.5s;"></div>
+                </div>
+            </div>
+        `;
+        
+        // 現在のクエスト
+        if (data.current_quest) {
+            const quest = data.current_quest;
+            const isCompleted = data.is_current_quest_completed;
+            
+            html += `
+                <div style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 140, 0, 0.2) 100%); border: 2px solid ${isCompleted ? '#32cd32' : '#ffd700'}; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                        <span style="font-size: 36px;">${quest.icon}</span>
+                        <div>
+                            <h4 style="color: #ffd700; margin: 0 0 5px 0;">クエスト ${quest.quest_order}: ${escapeHtml(quest.title)}</h4>
+                            <p style="color: #c0a080; margin: 0; font-size: 13px;">${escapeHtml(quest.description)}</p>
+                        </div>
+                    </div>
+                    
+                    <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                        <div style="color: #888; font-size: 12px; margin-bottom: 8px;">報酬:</div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px; font-size: 13px;">
+                            ${quest.reward_coins > 0 ? `<span style="color: #ffd700;">💰 ${quest.reward_coins.toLocaleString()}コイン</span>` : ''}
+                            ${quest.reward_crystals > 0 ? `<span style="color: #9932cc;">💎 ${quest.reward_crystals.toLocaleString()}クリスタル</span>` : ''}
+                            ${quest.reward_diamonds > 0 ? `<span style="color: #00ced1;">💠 ${quest.reward_diamonds.toLocaleString()}ダイヤモンド</span>` : ''}
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center;">
+                        ${isCompleted 
+                            ? `<button onclick="completeTutorialQuest()" style="background: linear-gradient(135deg, #32cd32, #90ee90); color: #1a0f0a; border: none; padding: 12px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px;">🎁 報酬を受け取る</button>`
+                            : `<div style="color: #888; padding: 10px;">⏳ クエスト条件を達成してください</div>`
+                        }
+                    </div>
+                </div>
+            `;
+        }
+        
+        // 完了済みクエスト一覧
+        if (data.completed_quests && data.completed_quests.length > 0) {
+            html += '<h4 style="color: #90ee90; margin: 20px 0 10px 0;">✅ 完了済みクエスト</h4>';
+            html += '<div style="display: flex; flex-direction: column; gap: 8px;">';
+            data.completed_quests.forEach(q => {
+                html += `
+                    <div style="background: rgba(50, 205, 50, 0.1); padding: 10px 15px; border-radius: 8px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(50, 205, 50, 0.3);">
+                        <span style="font-size: 20px;">${q.icon}</span>
+                        <span style="color: #90ee90; flex: 1;">${escapeHtml(q.title)}</span>
+                        <span style="color: #32cd32;">✓</span>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+        
+        section.innerHTML = html;
+    } catch (e) {
+        console.error(e);
+        section.innerHTML = '<p style="color: #ff6b6b;">チュートリアルの読み込みに失敗しました</p>';
+    }
+}
+
+// チュートリアルクエストを完了
+async function completeTutorialQuest() {
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'complete_tutorial_quest'})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message, 'success');
+            loadTutorial();
+            loadData(); // コイン等の更新のため
+        } else {
+            showNotification(data.error || '報酬の受け取りに失敗しました', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        showNotification('エラーが発生しました', 'error');
     }
 }
 
