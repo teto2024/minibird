@@ -166,16 +166,16 @@ WHERE ce.event_key = 'hero_event_jan_2026';
 -- item_idを実際のspecial_event_itemsのIDに合わせる
 -- ===============================================
 
--- loot_tableを更新（item_idをsubqueryで正しく設定）
+-- loot_tableを更新（item_idをsubqueryで正しく設定、NULL対策にCOALESCE使用）
 UPDATE special_event_portal_bosses sepb
 JOIN civilization_events ce ON sepb.event_id = ce.id
 SET sepb.loot_table = (
     SELECT CONCAT(
         '[',
-        '{"item_id":', (SELECT id FROM special_event_items WHERE item_key = 'new_year_coin' AND event_id = ce.id LIMIT 1), ',"chance":50,"min_count":1,"max_count":5},',
-        '{"item_id":', (SELECT id FROM special_event_items WHERE item_key = 'lucky_charm' AND event_id = ce.id LIMIT 1), ',"chance":35,"min_count":1,"max_count":3},',
-        '{"item_id":', (SELECT id FROM special_event_items WHERE item_key = 'golden_dragon' AND event_id = ce.id LIMIT 1), ',"chance":20,"min_count":1,"max_count":2},',
-        '{"item_id":', (SELECT id FROM special_event_items WHERE item_key = 'phoenix_feather' AND event_id = ce.id LIMIT 1), ',"chance":10,"min_count":1,"max_count":1}',
+        '{"item_id":', COALESCE((SELECT id FROM special_event_items WHERE item_key = 'new_year_coin' AND event_id = ce.id LIMIT 1), 0), ',"chance":50,"min_count":1,"max_count":5},',
+        '{"item_id":', COALESCE((SELECT id FROM special_event_items WHERE item_key = 'lucky_charm' AND event_id = ce.id LIMIT 1), 0), ',"chance":35,"min_count":1,"max_count":3},',
+        '{"item_id":', COALESCE((SELECT id FROM special_event_items WHERE item_key = 'golden_dragon' AND event_id = ce.id LIMIT 1), 0), ',"chance":20,"min_count":1,"max_count":2},',
+        '{"item_id":', COALESCE((SELECT id FROM special_event_items WHERE item_key = 'phoenix_feather' AND event_id = ce.id LIMIT 1), 0), ',"chance":10,"min_count":1,"max_count":1}',
         ']'
     )
 )

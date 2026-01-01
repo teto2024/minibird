@@ -93,15 +93,18 @@ function updateDailyTaskProgress($pdo, $userId, $taskType, $amount = 1) {
     
     foreach ($tasks as $task) {
         // ⑤ 進捗を更新（is_completedの判定を修正）
+        $initialProgress = min($amount, $task['target_count']);
+        $isInitiallyCompleted = $initialProgress >= $task['target_count'] ? 1 : 0;
+        
         $stmt = $pdo->prepare("
             INSERT INTO user_daily_task_progress (user_id, task_id, task_date, current_progress, is_completed)
-            VALUES (?, ?, ?, ?, ? >= ?)
+            VALUES (?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE 
                 current_progress = LEAST(current_progress + ?, ?),
                 is_completed = (LEAST(current_progress + ?, ?) >= ?)
         ");
         $stmt->execute([
-            $userId, $task['id'], $today, min($amount, $task['target_count']), min($amount, $task['target_count']), $task['target_count'],
+            $userId, $task['id'], $today, $initialProgress, $isInitiallyCompleted,
             $amount, $task['target_count'],
             $amount, $task['target_count'], $task['target_count']
         ]);
@@ -995,15 +998,18 @@ function updateHeroEventTaskProgress($pdo, $userId, $eventId, $taskType, $amount
     
     foreach ($tasks as $task) {
         // ⑤ 進捗を更新（is_completedの判定を修正）
+        $initialProgress = min($amount, $task['target_count']);
+        $isInitiallyCompleted = $initialProgress >= $task['target_count'] ? 1 : 0;
+        
         $stmt = $pdo->prepare("
             INSERT INTO user_hero_event_task_progress (user_id, task_id, current_progress, is_completed)
-            VALUES (?, ?, ?, ? >= ?)
+            VALUES (?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE 
                 current_progress = LEAST(current_progress + ?, ?),
                 is_completed = (LEAST(current_progress + ?, ?) >= ?)
         ");
         $stmt->execute([
-            $userId, $task['id'], min($amount, $task['target_count']), min($amount, $task['target_count']), $task['target_count'],
+            $userId, $task['id'], $initialProgress, $isInitiallyCompleted,
             $amount, $task['target_count'],
             $amount, $task['target_count'], $task['target_count']
         ]);

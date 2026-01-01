@@ -642,13 +642,14 @@ function tryActivateSkill($unit, $target, $isAttacker) {
     // 複数の兵種スキルが同時に発動可能（ただし新規発動は最大3つまで）
     foreach ($unit['skills'] as $skill) {
         // ① 新規スキル発動数が上限に達した場合はスキップ（ヒーロースキルは別枠）
-        if (!empty($skill['is_hero_skill']) === false && $newSkillActivations >= $maxNewActivations) {
+        $isHeroSkill = !empty($skill['is_hero_skill']);
+        if (!$isHeroSkill && $newSkillActivations >= $maxNewActivations) {
             continue;
         }
         
         if (mt_rand(1, 100) <= $skill['activation_chance']) {
             // ヒーロースキルの特別処理（兵種スキルとは独立して発動、カウント対象外）
-            if (!empty($skill['is_hero_skill'])) {
+            if ($isHeroSkill) {
                 $heroSkillResult = processHeroSkillEffect($skill, $unit, $target);
                 $messages = array_merge($messages, $heroSkillResult['messages']);
                 $newEffects = array_merge($newEffects, $heroSkillResult['attacker_effects']);
