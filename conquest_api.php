@@ -866,9 +866,11 @@ if ($action === 'get_castle') {
         // 防御パワーを計算
         $defense = calculateCastleDefensePower($pdo, $castle);
         
-        // 自分の城でない場合、ステルス兵を隠す
+        // ① 自分の城でない場合、ステルス兵を隠す（troops自体を置き換える）
         if ($castle['owner_user_id'] != $me['id'] && !empty($defense['troops'])) {
             $defense['visible_troops'] = getVisibleDefenseTroops($pdo, $defense['troops']);
+            // 他者から見える部隊情報はステルス兵を除外したものに置き換え
+            $defense['troops'] = $defense['visible_troops'];
         } else {
             $defense['visible_troops'] = $defense['troops'];
         }
