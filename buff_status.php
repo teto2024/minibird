@@ -42,7 +42,7 @@ foreach ($buffs as $b) {
 
 // --- 個人用バフ取得（ログイン中ユーザーのみ） ---
 if ($me) {
-    $st = $pdo->prepare("SELECT id, type, start_time, end_time 
+    $st = $pdo->prepare("SELECT id, type, level, start_time, end_time 
                          FROM user_buffs 
                          WHERE user_id = ? AND end_time > ?");
     $st->execute([$me['id'], $nowStr]);
@@ -55,6 +55,7 @@ if ($me) {
         $result['user_buffs'][] = [
             'id'         => $ub['id'],
             'type'       => $ub['type'],
+            'level'      => (int)$ub['level'],
             'start_time' => $ub['start_time'],
             'end_time'   => $ub['end_time'],
             'remaining'  => $remaining

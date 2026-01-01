@@ -20,6 +20,18 @@ if(isset($_GET['fetch_buffs'])){
     $st->execute([$nowStr]);
     $allBuffs = $st->fetchAll(PDO::FETCH_ASSOC);
 
+    // 個人バフも取得（ログインユーザーがいる場合）
+    if ($me) {
+        $st = $pdo->prepare("
+            SELECT type, level, TIMESTAMPDIFF(SECOND,NOW(),end_time) AS remaining_sec, user_id AS activated_by
+            FROM user_buffs
+            WHERE user_id = ? AND end_time > ?
+        ");
+        $st->execute([$me['id'], $nowStr]);
+        $userBuffs = $st->fetchAll(PDO::FETCH_ASSOC);
+        $allBuffs = array_merge($allBuffs, $userBuffs);
+    }
+
     $LABELS = [
         'task'=>'タスク報酬UP',
         'chat_festival'=>'チャット祭',
