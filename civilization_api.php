@@ -20,22 +20,28 @@ function updateDailyTaskProgressFromCiv($pdo, $userId, $taskType, $amount = 1) {
     $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     foreach ($tasks as $task) {
-        // ⑤ 進捗を更新（is_completedの判定を修正）
-        $initialProgress = min($amount, $task['target_count']);
-        $isInitiallyCompleted = $initialProgress >= $task['target_count'] ? 1 : 0;
-        
+        // ⑥修正: 進捗を更新（2段階のクエリで確実に更新）
+        // まずINSERT OR UPDATE
         $stmt = $pdo->prepare("
             INSERT INTO user_daily_task_progress (user_id, task_id, task_date, current_progress, is_completed)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, LEAST(?, ?), LEAST(?, ?) >= ?)
             ON DUPLICATE KEY UPDATE 
-                current_progress = LEAST(current_progress + ?, ?),
-                is_completed = (LEAST(current_progress + ?, ?) >= ?)
+                current_progress = LEAST(current_progress + VALUES(current_progress), ?)
         ");
         $stmt->execute([
-            $userId, $task['id'], $today, $initialProgress, $isInitiallyCompleted,
-            $amount, $task['target_count'],
-            $amount, $task['target_count'], $task['target_count']
+            $userId, $task['id'], $today, 
+            $amount, $task['target_count'],  // 初期値: min($amount, target_count)
+            $amount, $task['target_count'], $task['target_count'],  // 初期is_completed
+            $task['target_count']  // ON DUPLICATE KEY: 上限
         ]);
+        
+        // 次にis_completedを更新（current_progress >= target_count）
+        $stmt = $pdo->prepare("
+            UPDATE user_daily_task_progress 
+            SET is_completed = (current_progress >= ?)
+            WHERE user_id = ? AND task_id = ? AND task_date = ?
+        ");
+        $stmt->execute([$task['target_count'], $userId, $task['id'], $today]);
     }
 }
 
@@ -59,22 +65,27 @@ function updateHeroEventTaskProgressFromCiv($pdo, $userId, $taskType, $amount = 
     $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     foreach ($tasks as $task) {
-        // ⑤ 進捗を更新（is_completedの判定を修正）
-        $initialProgress = min($amount, $task['target_count']);
-        $isInitiallyCompleted = $initialProgress >= $task['target_count'] ? 1 : 0;
-        
+        // ⑥修正: 進捗を更新（2段階のクエリで確実に更新）
         $stmt = $pdo->prepare("
             INSERT INTO user_hero_event_task_progress (user_id, task_id, current_progress, is_completed)
-            VALUES (?, ?, ?, ?)
+            VALUES (?, ?, LEAST(?, ?), LEAST(?, ?) >= ?)
             ON DUPLICATE KEY UPDATE 
-                current_progress = LEAST(current_progress + ?, ?),
-                is_completed = (LEAST(current_progress + ?, ?) >= ?)
+                current_progress = LEAST(current_progress + VALUES(current_progress), ?)
         ");
         $stmt->execute([
-            $userId, $task['id'], $initialProgress, $isInitiallyCompleted,
-            $amount, $task['target_count'],
-            $amount, $task['target_count'], $task['target_count']
+            $userId, $task['id'], 
+            $amount, $task['target_count'],  // 初期値: min($amount, target_count)
+            $amount, $task['target_count'], $task['target_count'],  // 初期is_completed
+            $task['target_count']  // ON DUPLICATE KEY: 上限
         ]);
+        
+        // 次にis_completedを更新（current_progress >= target_count）
+        $stmt = $pdo->prepare("
+            UPDATE user_hero_event_task_progress 
+            SET is_completed = (current_progress >= ?)
+            WHERE user_id = ? AND task_id = ?
+        ");
+        $stmt->execute([$task['target_count'], $userId, $task['id']]);
     }
 }
 
@@ -1082,13 +1093,14 @@ if ($action === 'invest_coins') {
             // テーブルがない場合は無視
         }
         
-        // ③ 経験値を付与（投資）
-        $investExp = min(50, (int)floor($amount / 100));
-        if ($investExp > 0) {
-            grant_exp($me['id'], 'civilization_invest', $investExp);
-        }
-        
         $pdo->commit();
+        
+        // ①⑤修正: grant_expはトランザクション外で呼び出す（内部で別トランザクションを開始するため）
+        try {
+            grant_exp($me['id'], 'civilization_invest', 0);
+        } catch (Exception $e) {
+            // 経験値付与エラーは無視（メイン処理に影響させない）
+        }
         
         echo json_encode([
             'ok' => true,
@@ -1361,19 +1373,25 @@ if ($action === 'complete_researches') {
         }
         
         // ③ デイリータスク「研究」進捗を更新
-        if (count($completedNames) > 0) {
+        $researchCompletedCount = count($completedNames);
+        if ($researchCompletedCount > 0) {
             try {
-                updateDailyTaskProgressFromCiv($pdo, $me['id'], 'research', count($completedNames));
+                updateDailyTaskProgressFromCiv($pdo, $me['id'], 'research', $researchCompletedCount);
             } catch (Exception $e) {
                 // テーブルがない場合は無視
             }
-            
-            // ③ 経験値を付与（研究完了）
-            $researchExp = count($completedNames) * 30;
-            grant_exp($me['id'], 'civilization_research', $researchExp);
         }
         
         $pdo->commit();
+        
+        // ⑤修正: grant_expはトランザクション外で呼び出す
+        if ($researchCompletedCount > 0) {
+            try {
+                grant_exp($me['id'], 'civilization_research', 0);
+            } catch (Exception $e) {
+                // 経験値付与エラーは無視
+            }
+        }
         
         echo json_encode([
             'ok' => true,
@@ -1575,11 +1593,14 @@ if ($action === 'attack') {
             // テーブルがない場合は無視
         }
         
-        // ③ 経験値を付与（戦闘参加）
-        $battleExp = ($winnerId === $me['id']) ? 50 : 20;
-        grant_exp($me['id'], 'civilization_battle', $battleExp);
-        
         $pdo->commit();
+        
+        // ⑤修正: grant_expはトランザクション外で呼び出す
+        try {
+            grant_exp($me['id'], 'civilization_battle', 0);
+        } catch (Exception $e) {
+            // 経験値付与エラーは無視
+        }
         
         $result = ($winnerId === $me['id']) ? 'victory' : 'defeat';
         $advantageText = '';
@@ -1707,7 +1728,7 @@ if ($action === 'complete_buildings') {
         
         $completedNames = [];
         $populationIncrease = 0;
-        $totalExpGained = 0;
+        $buildingCount = 0;
         
         foreach ($completedBuildings as $building) {
             // 建設を完了
@@ -1724,13 +1745,10 @@ if ($action === 'complete_buildings') {
             }
             
             $completedNames[] = $building['name'];
+            $buildingCount++;
             
             // クエスト進捗を更新（建物タイプごとに1回カウント）
             updateCivilizationQuestProgress($pdo, $me['id'], 'build', $building['building_key'], 1);
-            
-            // ⑥ 建設完了時に経験値を付与（レベルに応じてボーナス）
-            $expResult = grant_exp($me['id'], 'civilization_build', $building['level'] * 5);
-            $totalExpGained += $expResult['exp_gained'];
         }
         
         // 人口を増加
@@ -1745,15 +1763,26 @@ if ($action === 'complete_buildings') {
         }
         
         // ③ デイリータスク「建設」進捗を更新
-        if (count($completedNames) > 0) {
+        if ($buildingCount > 0) {
             try {
-                updateDailyTaskProgressFromCiv($pdo, $me['id'], 'build', count($completedNames));
+                updateDailyTaskProgressFromCiv($pdo, $me['id'], 'build', $buildingCount);
             } catch (Exception $e) {
                 // テーブルがない場合は無視
             }
         }
         
         $pdo->commit();
+        
+        // ⑤修正: grant_expはトランザクション外で呼び出す
+        $totalExpGained = 0;
+        if ($buildingCount > 0) {
+            try {
+                $expResult = grant_exp($me['id'], 'civilization_build', 0);
+                $totalExpGained = $expResult['exp_gained'];
+            } catch (Exception $e) {
+                // 経験値付与エラーは無視
+            }
+        }
         
         echo json_encode([
             'ok' => true,
@@ -3384,13 +3413,18 @@ if ($action === 'complete_training') {
             } catch (Exception $e) {
                 // テーブルがない場合は無視
             }
-            
-            // ③ 経験値を付与（訓練完了）
-            $trainExp = min(100, $totalTrained * 2);
-            grant_exp($me['id'], 'civilization_train', $trainExp);
         }
         
         $pdo->commit();
+        
+        // ⑤修正: grant_expはトランザクション外で呼び出す
+        if ($totalTrained > 0) {
+            try {
+                grant_exp($me['id'], 'civilization_train', 0);
+            } catch (Exception $e) {
+                // 経験値付与エラーは無視
+            }
+        }
         
         echo json_encode([
             'ok' => true,

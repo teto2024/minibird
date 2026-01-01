@@ -5740,14 +5740,16 @@ async function confirmPortalBossAttack() {
         const data = await res.json();
         
         if (data.ok) {
-            // 攻撃結果を表示
+            // 攻撃結果を表示（②ポータルボス攻撃後の獲得アイテム表示修正）
             let lootHtml = '';
             if (data.loot_received && data.loot_received.length > 0) {
-                lootHtml = '<div style="margin-top: 10px; color: #ffd700;">獲得アイテム:</div>';
-                lootHtml += data.loot_received.map(l => `<div style="color: #48bb78;">• アイテムID ${l.item_id} × ${l.count}</div>`).join('');
+                lootHtml = '\n獲得アイテム:';
+                lootHtml += data.loot_received.map(l => `\n${l.icon || '📦'} ${l.name || 'アイテム'} ×${l.count}`).join('');
             }
             
-            showNotification(`${data.message} ${lootHtml}`, 'success');
+            // alertで確実に表示
+            alert(`${data.message}${lootHtml}`);
+            showNotification(data.message, 'success');
             closeAttackModal();
             
             // イベントコンテンツを再読み込み

@@ -92,22 +92,27 @@ function updateDailyTaskProgress($pdo, $userId, $taskType, $amount = 1) {
     $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     foreach ($tasks as $task) {
-        // ⑤ 進捗を更新（is_completedの判定を修正）
-        $initialProgress = min($amount, $task['target_count']);
-        $isInitiallyCompleted = $initialProgress >= $task['target_count'] ? 1 : 0;
-        
+        // ⑥修正: 進捗を更新（2段階のクエリで確実に更新）
         $stmt = $pdo->prepare("
             INSERT INTO user_daily_task_progress (user_id, task_id, task_date, current_progress, is_completed)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, LEAST(?, ?), LEAST(?, ?) >= ?)
             ON DUPLICATE KEY UPDATE 
-                current_progress = LEAST(current_progress + ?, ?),
-                is_completed = (LEAST(current_progress + ?, ?) >= ?)
+                current_progress = LEAST(current_progress + VALUES(current_progress), ?)
         ");
         $stmt->execute([
-            $userId, $task['id'], $today, $initialProgress, $isInitiallyCompleted,
-            $amount, $task['target_count'],
-            $amount, $task['target_count'], $task['target_count']
+            $userId, $task['id'], $today, 
+            $amount, $task['target_count'],  // 初期値: min($amount, target_count)
+            $amount, $task['target_count'], $task['target_count'],  // 初期is_completed
+            $task['target_count']  // ON DUPLICATE KEY: 上限
         ]);
+        
+        // 次にis_completedを更新（current_progress >= target_count）
+        $stmt = $pdo->prepare("
+            UPDATE user_daily_task_progress 
+            SET is_completed = (current_progress >= ?)
+            WHERE user_id = ? AND task_id = ? AND task_date = ?
+        ");
+        $stmt->execute([$task['target_count'], $userId, $task['id'], $today]);
     }
 }
 
@@ -192,11 +197,6 @@ if ($action === 'claim_daily_task') {
             $me['id']
         ]);
         
-        // 経験値を付与
-        if ($task['reward_exp'] > 0) {
-            grant_exp($me['id'], 'daily_task', $task['reward_exp']);
-        }
-        
         // 報酬受取済みに更新
         $stmt = $pdo->prepare("
             UPDATE user_daily_task_progress 
@@ -206,6 +206,15 @@ if ($action === 'claim_daily_task') {
         $stmt->execute([$me['id'], $taskId, $today]);
         
         $pdo->commit();
+        
+        // ⑤⑥修正: grant_expはトランザクション外で呼び出す
+        if ($task['reward_exp'] > 0) {
+            try {
+                grant_exp($me['id'], 'daily_task', 0);
+            } catch (Exception $e) {
+                // 経験値付与エラーは無視
+            }
+        }
         
         echo json_encode([
             'ok' => true,
@@ -997,22 +1006,27 @@ function updateHeroEventTaskProgress($pdo, $userId, $eventId, $taskType, $amount
     $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     foreach ($tasks as $task) {
-        // ⑤ 進捗を更新（is_completedの判定を修正）
-        $initialProgress = min($amount, $task['target_count']);
-        $isInitiallyCompleted = $initialProgress >= $task['target_count'] ? 1 : 0;
-        
+        // ⑥修正: 進捗を更新（2段階のクエリで確実に更新）
         $stmt = $pdo->prepare("
             INSERT INTO user_hero_event_task_progress (user_id, task_id, current_progress, is_completed)
-            VALUES (?, ?, ?, ?)
+            VALUES (?, ?, LEAST(?, ?), LEAST(?, ?) >= ?)
             ON DUPLICATE KEY UPDATE 
-                current_progress = LEAST(current_progress + ?, ?),
-                is_completed = (LEAST(current_progress + ?, ?) >= ?)
+                current_progress = LEAST(current_progress + VALUES(current_progress), ?)
         ");
         $stmt->execute([
-            $userId, $task['id'], $initialProgress, $isInitiallyCompleted,
-            $amount, $task['target_count'],
-            $amount, $task['target_count'], $task['target_count']
+            $userId, $task['id'], 
+            $amount, $task['target_count'],  // 初期値: min($amount, target_count)
+            $amount, $task['target_count'], $task['target_count'],  // 初期is_completed
+            $task['target_count']  // ON DUPLICATE KEY: 上限
         ]);
+        
+        // 次にis_completedを更新（current_progress >= target_count）
+        $stmt = $pdo->prepare("
+            UPDATE user_hero_event_task_progress 
+            SET is_completed = (current_progress >= ?)
+            WHERE user_id = ? AND task_id = ?
+        ");
+        $stmt->execute([$task['target_count'], $userId, $task['id']]);
     }
 }
 
