@@ -34,18 +34,18 @@ $section = (int)($_GET['section'] ?? 1);
 $level = $_GET['level'] ?? 'selection';
 $stage = (int)($_GET['stage'] ?? 1);
 
-// バフ確認
+// バフ確認（全体バフ - buffsテーブル）
 $buffLevel = 0;
 try {
     $stmt = $pdo->prepare("
-        SELECT level FROM user_buffs 
-        WHERE user_id = ? AND type = 'word_master_reward' AND end_time > NOW()
+        SELECT level FROM buffs 
+        WHERE type = 'word_master_reward' AND end_time > NOW()
         ORDER BY level DESC LIMIT 1
     ");
-    $stmt->execute([$me['id']]);
+    $stmt->execute();
     $buffLevel = $stmt->fetchColumn() ?: 0;
 } catch (PDOException $e) {
-    // user_buffs テーブルがない場合は無視
+    // buffs テーブルがない場合は無視
 }
 $buffMultiplier = 1 + ($buffLevel * 0.2);
 
