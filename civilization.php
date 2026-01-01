@@ -3328,6 +3328,27 @@ async function loadTroops() {
                         </span>
                     ` : '';
                     
+                    // 領域カテゴリインジケーター（陸・海・空）
+                    const domainCategory = t.domain_category || 'land';
+                    const domainIcons = {
+                        'land': { icon: '🏔️', name: '陸', color: 'rgba(139, 90, 43, 0.5)' },
+                        'sea': { icon: '🌊', name: '海', color: 'rgba(30, 144, 255, 0.5)' },
+                        'air': { icon: '✈️', name: '空', color: 'rgba(135, 206, 235, 0.5)' }
+                    };
+                    const domainInfo = domainIcons[domainCategory] || domainIcons['land'];
+                    const domainBadge = `
+                        <span style="background: ${domainInfo.color}; padding: 3px 8px; border-radius: 4px; font-size: 11px;" title="領域カテゴリ: ${domainInfo.name}">
+                            ${domainInfo.icon} ${domainInfo.name}
+                        </span>
+                    `;
+                    
+                    // 使い捨てユニットインジケーター
+                    const disposableBadge = t.is_disposable ? `
+                        <span style="background: rgba(255, 69, 0, 0.5); padding: 3px 8px; border-radius: 4px; font-size: 11px;" title="出撃後は消滅する使い捨てユニット">
+                            💀 使い捨て
+                        </span>
+                    ` : '';
+                    
                     return `
                         <div class="target-card" style="border-color: #8b4513; ${!canTrain ? 'opacity: 0.7;' : ''}">
                             <div class="target-header">
@@ -3341,6 +3362,7 @@ async function loadTroops() {
                                 <span style="background: rgba(139, 69, 19, 0.5); padding: 3px 8px; border-radius: 4px; font-size: 11px;">
                                     ${categoryInfo.icon} ${categoryInfo.name}
                                 </span>
+                                ${domainBadge}
                                 <span style="background: rgba(220, 20, 60, 0.3); padding: 3px 8px; border-radius: 4px; font-size: 11px;">
                                     ⚔️ ${t.attack_power}
                                 </span>
@@ -3352,6 +3374,7 @@ async function loadTroops() {
                                 </span>
                                 ${stealthBadge}
                                 ${nuclearBadge}
+                                ${disposableBadge}
                             </div>
                             ${skillHtml}
                             <div style="color: #c0a080; font-size: 12px; margin-bottom: 10px;">

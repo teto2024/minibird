@@ -48,19 +48,19 @@ if (!$dbError) {
     }
 }
 
-// 英単語マスター報酬バフの確認
+// 英単語マスター報酬バフの確認（全体バフ - buffsテーブル）
 $rewardBuff = null;
 $buffMultiplier = 1;
 if (!$dbError) {
     try {
         $stmt = $pdo->prepare("
             SELECT level, end_time 
-            FROM user_buffs 
-            WHERE user_id = ? AND type = 'word_master_reward' AND end_time > NOW()
+            FROM buffs 
+            WHERE type = 'word_master_reward' AND end_time > NOW()
             ORDER BY level DESC 
             LIMIT 1
         ");
-        $stmt->execute([$me['id']]);
+        $stmt->execute();
         $rewardBuff = $stmt->fetch(PDO::FETCH_ASSOC);
         $buffMultiplier = $rewardBuff ? (1 + ($rewardBuff['level'] * 0.2)) : 1;
     } catch (PDOException $e) {
