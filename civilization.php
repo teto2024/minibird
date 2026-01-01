@@ -5434,7 +5434,6 @@ function renderHeroEvents(container, events) {
                             </button>
                         `;
                     })()}
-                    })()}
                     <div style="text-align: center; color: #888; font-size: 12px; margin-top: 5px;">
                         ${escapeHtml(event.featured_hero.name)}の欠片排出率が大幅UP！
                     </div>
