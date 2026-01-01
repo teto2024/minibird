@@ -145,8 +145,8 @@ INSERT IGNORE INTO civilization_troop_types (troop_key, name, icon, description,
 -- 新しい研究の追加
 -- ===============================================
 INSERT IGNORE INTO civilization_researches (research_key, name, icon, description, era_id, unlock_building_id, unlock_resource_id, research_cost_points, research_time_seconds, prerequisite_research_id) VALUES
--- 原子力時代
-('nuclear_fission', '核分裂', '☢️', '原子核を分裂させてエネルギーを得る', 8, NULL, NULL, 2000, 10800, 16),
+-- 原子力時代（前提研究は「電気」を想定、存在しない場合はNULLになる）
+('nuclear_fission', '核分裂', '☢️', '原子核を分裂させてエネルギーを得る', 8, NULL, NULL, 2000, 10800, NULL),
 ('nuclear_weapons', '核兵器', '💣', '究極の破壊兵器', 8, NULL, NULL, 3000, 14400, NULL),
 ('radiation_protection', '放射線防護', '🛡️', '放射能から身を守る技術', 8, NULL, NULL, 2500, 12600, NULL),
 
@@ -262,31 +262,20 @@ UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_sp
 UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'warp_strike' LIMIT 1) WHERE troop_key = 'starship_fighter';
 
 -- ===============================================
--- 兵種カテゴリーの設定（存在しない場合にカラムを追加）
+-- 兵種カテゴリーの設定
+-- 注意: troop_categoryカラムはcivilization_extended_schema.sqlで既に定義されている想定
+-- 存在しない場合はこのスクリプトの前にcivilization_extended_schema.sqlを適用してください
 -- ===============================================
--- troop_categoryカラムが存在しない場合は追加
-SET @column_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS 
-                      WHERE TABLE_SCHEMA = DATABASE() 
-                      AND TABLE_NAME = 'civilization_troop_types' 
-                      AND COLUMN_NAME = 'troop_category');
 
-SET @add_column = IF(@column_exists = 0, 
-    'ALTER TABLE civilization_troop_types ADD COLUMN troop_category ENUM(''infantry'', ''cavalry'', ''ranged'', ''siege'', ''naval'', ''air'', ''cyber'', ''quantum'', ''bio'', ''space'') NOT NULL DEFAULT ''infantry'' AFTER defense_power',
-    'SELECT 1');
-PREPARE stmt FROM @add_column;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
-
--- 新しい兵種のカテゴリー設定
-UPDATE civilization_troop_types SET troop_category = 'infantry' WHERE troop_key IN ('nuclear_soldier', 'super_soldier', 'space_marine');
-UPDATE civilization_troop_types SET troop_category = 'air' WHERE troop_key IN ('stealth_bomber', 'drone_swarm', 'hunter_killer_drone', 'antimatter_bomber', 'starship_fighter');
-UPDATE civilization_troop_types SET troop_category = 'naval' WHERE troop_key = 'nuclear_submarine';
-UPDATE civilization_troop_types SET troop_category = 'cyber' WHERE troop_key IN ('cyber_operative', 'network_defender', 'influencer_unit', 'electronic_warfare_unit');
-UPDATE civilization_troop_types SET troop_category = 'infantry' WHERE troop_key = 'smart_soldier';
-UPDATE civilization_troop_types SET troop_category = 'quantum' WHERE troop_key IN ('quantum_hacker', 'teleport_commando', 'quantum_tank');
-UPDATE civilization_troop_types SET troop_category = 'siege' WHERE troop_key IN ('ai_soldier', 'autonomous_tank', 'orbital_mech');
-UPDATE civilization_troop_types SET troop_category = 'bio' WHERE troop_key IN ('bio_beast', 'healing_squad');
-UPDATE civilization_troop_types SET troop_category = 'space' WHERE troop_key IN ('space_marine', 'orbital_mech', 'antimatter_bomber', 'starship_fighter');
+-- 新しい兵種のカテゴリー設定（カラムが存在する場合のみ更新）
+UPDATE civilization_troop_types SET troop_category = 'infantry' WHERE troop_key IN ('nuclear_soldier', 'super_soldier', 'space_marine') AND EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'civilization_troop_types' AND COLUMN_NAME = 'troop_category');
+UPDATE civilization_troop_types SET troop_category = 'air' WHERE troop_key IN ('stealth_bomber', 'drone_swarm', 'hunter_killer_drone', 'antimatter_bomber', 'starship_fighter') AND EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'civilization_troop_types' AND COLUMN_NAME = 'troop_category');
+UPDATE civilization_troop_types SET troop_category = 'naval' WHERE troop_key = 'nuclear_submarine' AND EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'civilization_troop_types' AND COLUMN_NAME = 'troop_category');
+UPDATE civilization_troop_types SET troop_category = 'cyber' WHERE troop_key IN ('cyber_operative', 'network_defender', 'influencer_unit', 'electronic_warfare_unit') AND EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'civilization_troop_types' AND COLUMN_NAME = 'troop_category');
+UPDATE civilization_troop_types SET troop_category = 'infantry' WHERE troop_key = 'smart_soldier' AND EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'civilization_troop_types' AND COLUMN_NAME = 'troop_category');
+UPDATE civilization_troop_types SET troop_category = 'ranged' WHERE troop_key IN ('quantum_hacker', 'teleport_commando') AND EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'civilization_troop_types' AND COLUMN_NAME = 'troop_category');
+UPDATE civilization_troop_types SET troop_category = 'siege' WHERE troop_key IN ('quantum_tank', 'ai_soldier', 'autonomous_tank', 'orbital_mech') AND EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'civilization_troop_types' AND COLUMN_NAME = 'troop_category');
+UPDATE civilization_troop_types SET troop_category = 'cavalry' WHERE troop_key IN ('bio_beast', 'healing_squad') AND EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'civilization_troop_types' AND COLUMN_NAME = 'troop_category');
 
 -- ===============================================
 -- 完了メッセージ
