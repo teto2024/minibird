@@ -606,13 +606,17 @@ if ($action === 'exchange_event_item') {
                 break;
         }
         
-        // 交換履歴を記録（quantity回分）
-        $stmt = $pdo->prepare("
-            INSERT INTO user_event_exchange_history (user_id, exchange_id)
-            VALUES (?, ?)
-        ");
-        for ($i = 0; $i < $quantity; $i++) {
-            $stmt->execute([$me['id'], $exchangeId]);
+        // 交換履歴を記録（quantity回分をバッチで挿入）
+        if ($quantity > 0) {
+            $values = array_fill(0, $quantity, "(?, ?)");
+            $sql = "INSERT INTO user_event_exchange_history (user_id, exchange_id) VALUES " . implode(", ", $values);
+            $stmt = $pdo->prepare($sql);
+            $params = [];
+            for ($i = 0; $i < $quantity; $i++) {
+                $params[] = $me['id'];
+                $params[] = $exchangeId;
+            }
+            $stmt->execute($params);
         }
         
         $pdo->commit();

@@ -2464,17 +2464,17 @@ if ($action === 'exchange_resources') {
         ");
         $stmt->execute([$received, $me['id'], $toResourceId]);
         
-        // ⑤ 交換制限カウンターを更新
+        // ⑤ 交換制限カウンターを更新（全資源合計で管理するため、resource_type_id=0を使用）
         $nextResetAt = (clone $now)->modify('+1 hour')->format('Y-m-d H:i:s');
         $stmt = $pdo->prepare("
             INSERT INTO user_market_exchange_limits (user_id, resource_type_id, exchanged_amount, reset_at)
-            VALUES (?, ?, ?, ?)
+            VALUES (?, 0, ?, ?)
             ON DUPLICATE KEY UPDATE 
                 exchanged_amount = IF(reset_at <= NOW(), ?, exchanged_amount + ?),
                 reset_at = IF(reset_at <= NOW(), ?, reset_at)
         ");
         $stmt->execute([
-            $me['id'], $fromResourceId, $amount, $nextResetAt,
+            $me['id'], $amount, $nextResetAt,
             $amount, $amount, $nextResetAt
         ]);
         

@@ -1383,6 +1383,7 @@ function updateTroopSkillStats($pdo, $userId, $troopTypeId, $effectType, $effect
         }
         
         // UPSERT で統計を更新
+        // abs()を使用して効果量の絶対値を記録（バフ/デバフともに正の値として累積）
         $sql = "
             INSERT INTO user_troop_skill_stats (user_id, troop_type_id, total_skill_activations, {$columnName})
             VALUES (?, ?, 1, ?)
