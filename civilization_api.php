@@ -58,17 +58,18 @@ function updateHeroEventTaskProgressFromCiv($pdo, $userId, $taskType, $amount = 
     $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     foreach ($tasks as $task) {
+        // ⑤ 進捗を更新（is_completedの判定を修正）
         $stmt = $pdo->prepare("
             INSERT INTO user_hero_event_task_progress (user_id, task_id, current_progress, is_completed)
-            VALUES (?, ?, ?, ?)
+            VALUES (?, ?, ?, ? >= ?)
             ON DUPLICATE KEY UPDATE 
                 current_progress = LEAST(current_progress + ?, ?),
-                is_completed = (current_progress + ? >= ?)
+                is_completed = (LEAST(current_progress + ?, ?) >= ?)
         ");
         $stmt->execute([
-            $userId, $task['id'], min($amount, $task['target_count']), $amount >= $task['target_count'],
+            $userId, $task['id'], min($amount, $task['target_count']), min($amount, $task['target_count']), $task['target_count'],
             $amount, $task['target_count'],
-            $amount, $task['target_count']
+            $amount, $task['target_count'], $task['target_count']
         ]);
     }
 }
@@ -1071,6 +1072,8 @@ if ($action === 'invest_coins') {
         // ③ デイリータスク「コイン投資」進捗を更新
         try {
             updateDailyTaskProgressFromCiv($pdo, $me['id'], 'invest', 1);
+            // ヒーローイベントタスク進捗も更新
+            updateHeroEventTaskProgressFromCiv($pdo, $me['id'], 'invest', 1);
         } catch (Exception $e) {
             // テーブルがない場合は無視
         }
