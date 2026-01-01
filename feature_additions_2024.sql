@@ -121,6 +121,10 @@ INSERT IGNORE INTO battle_special_skills (skill_key, name, icon, description, ef
 ('frigate_maneuver', 'フリゲート艦の機動', '⚓', '素早い機動で回避', 'buff', 'self', 35, 2, 25),
 ('ironclad_ram', '装甲艦の体当たり', '🚢', '装甲艦の体当たり攻撃', 'special', 'enemy', 45, 1, 20);
 
+-- 流血スキルが存在しない場合は追加
+INSERT IGNORE INTO battle_special_skills (skill_key, name, icon, description, effect_type, effect_target, effect_value, duration_turns, activation_chance) VALUES
+('bleed', '出血', '🩸', '敵に継続ダメージを与え、毎ターン5%のダメージ', 'damage_over_time', 'enemy', 5, 4, 30);
+
 -- ===============================================
 -- ② 持続デバフスキル（燃焼、毒、凍結、流血）の復元
 -- 一部の兵種には元の持続デバフスキルを割り当てる

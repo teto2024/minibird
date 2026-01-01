@@ -275,7 +275,8 @@ function processHeroSkillEffect($skill, $attacker, $defender) {
                 'effect_value' => $effectData['hot_percent'],
                 'remaining_turns' => $effectData['hot_duration'] ?? 2
             ];
-            $result['messages'][] = "💚 継続回復を{$effectData['hot_duration']}ターン付与！";
+            $hotDuration = $effectData['hot_duration'] ?? 2;
+            $result['messages'][] = "💚 継続回復を{$hotDuration}ターン付与！";
         }
     }
     
