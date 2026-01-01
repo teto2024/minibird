@@ -528,6 +528,7 @@ if ($action === 'attack_portal_boss') {
 // イベントアイテムを交換
 if ($action === 'exchange_event_item') {
     $exchangeId = (int)($input['exchange_id'] ?? 0);
+    $quantity = max(1, (int)($input['quantity'] ?? 1));
     
     $pdo->beginTransaction();
     try {
@@ -545,6 +546,9 @@ if ($action === 'exchange_event_item') {
             throw new Exception('交換情報が見つかりません');
         }
         
+        // 必要なアイテム数を計算
+        $totalRequired = $exchange['required_count'] * $quantity;
+        
         // ユーザーの所持アイテムを確認
         $stmt = $pdo->prepare("
             SELECT count FROM user_special_event_items 
@@ -555,8 +559,8 @@ if ($action === 'exchange_event_item') {
         
         $userItemCount = $userItem ? (int)$userItem['count'] : 0;
         
-        if ($userItemCount < $exchange['required_count']) {
-            throw new Exception("アイテムが不足しています（必要: {$exchange['required_count']}、所持: {$userItemCount}）");
+        if ($userItemCount < $totalRequired) {
+            throw new Exception("アイテムが不足しています（必要: {$totalRequired}、所持: {$userItemCount}）");
         }
         
         // 交換上限をチェック
@@ -568,8 +572,12 @@ if ($action === 'exchange_event_item') {
             $stmt->execute([$me['id'], $exchangeId]);
             $exchangeCount = (int)$stmt->fetchColumn();
             
-            if ($exchangeCount >= $exchange['exchange_limit']) {
+            $remainingLimit = $exchange['exchange_limit'] - $exchangeCount;
+            if ($remainingLimit <= 0) {
                 throw new Exception('交換上限に達しています');
+            }
+            if ($quantity > $remainingLimit) {
+                throw new Exception("交換可能数を超えています（残り: {$remainingLimit}回）");
             }
         }
         
@@ -579,38 +587,42 @@ if ($action === 'exchange_event_item') {
             SET count = count - ? 
             WHERE user_id = ? AND item_id = ?
         ");
-        $stmt->execute([$exchange['required_count'], $me['id'], $exchange['item_id']]);
+        $stmt->execute([$totalRequired, $me['id'], $exchange['item_id']]);
         
         // 報酬を付与
+        $totalReward = $exchange['reward_amount'] * $quantity;
         switch ($exchange['reward_type']) {
             case 'coins':
                 $stmt = $pdo->prepare("UPDATE users SET coins = coins + ? WHERE id = ?");
-                $stmt->execute([$exchange['reward_amount'], $me['id']]);
+                $stmt->execute([$totalReward, $me['id']]);
                 break;
             case 'crystals':
                 $stmt = $pdo->prepare("UPDATE users SET crystals = crystals + ? WHERE id = ?");
-                $stmt->execute([$exchange['reward_amount'], $me['id']]);
+                $stmt->execute([$totalReward, $me['id']]);
                 break;
             case 'diamonds':
                 $stmt = $pdo->prepare("UPDATE users SET diamonds = diamonds + ? WHERE id = ?");
-                $stmt->execute([$exchange['reward_amount'], $me['id']]);
+                $stmt->execute([$totalReward, $me['id']]);
                 break;
         }
         
-        // 交換履歴を記録
+        // 交換履歴を記録（quantity回分）
         $stmt = $pdo->prepare("
             INSERT INTO user_event_exchange_history (user_id, exchange_id)
             VALUES (?, ?)
         ");
-        $stmt->execute([$me['id'], $exchangeId]);
+        for ($i = 0; $i < $quantity; $i++) {
+            $stmt->execute([$me['id'], $exchangeId]);
+        }
         
         $pdo->commit();
         
         echo json_encode([
             'ok' => true,
-            'message' => '交換が完了しました！',
+            'message' => "交換が完了しました！（{$quantity}回）",
             'reward_type' => $exchange['reward_type'],
-            'reward_amount' => $exchange['reward_amount']
+            'reward_amount' => $totalReward,
+            'quantity' => $quantity
         ]);
     } catch (Exception $e) {
         $pdo->rollBack();

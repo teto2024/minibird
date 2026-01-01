@@ -166,7 +166,20 @@ $RESOURCE_VALUES = [
     'horses' => 2.0,
     'coal' => 2.0,
     'glass' => 2.5,
-    'spices' => 3.0
+    'spices' => 3.0,
+    // 新規追加資源
+    'bandages' => 1.5,
+    'rubber' => 2.5,
+    'titanium' => 4.0,
+    // 新時代の資源
+    'plutonium' => 5.5,
+    'silicon' => 3.0,
+    'rare_earth' => 4.5,
+    'quantum_crystal' => 6.0,
+    'ai_core' => 5.5,
+    'gene_sample' => 5.0,
+    'dark_matter' => 7.0,
+    'antimatter' => 8.0
 ];
 
 // 資源キーから日本語名への変換マップ
@@ -196,7 +209,20 @@ $RESOURCE_KEY_TO_NAME = [
     'steel' => '鋼鉄',
     'gunpowder' => '火薬',
     'gunpowder_res' => '火薬資源',
-    'electronics' => '電子部品'
+    'electronics' => '電子部品',
+    // 新規追加
+    'bandages' => '包帯',
+    'rubber' => 'ゴム',
+    'titanium' => 'チタン',
+    // 新時代の資源
+    'plutonium' => 'プルトニウム',
+    'silicon' => 'シリコン',
+    'rare_earth' => 'レアアース',
+    'quantum_crystal' => '量子結晶',
+    'ai_core' => 'AIコア',
+    'gene_sample' => '遺伝子サンプル',
+    'dark_matter' => 'ダークマター',
+    'antimatter' => '反物質'
 ];
 
 /**
@@ -2340,31 +2366,20 @@ if ($action === 'exchange_resources') {
             throw new Exception('市場を建設してから交換してください');
         }
         
-        // ⑤ 市場交換制限チェック（1時間ごとに10k × 市場建築数）
+        // ⑤ 市場交換制限チェック（1時間ごとに10k × 市場建築数）- 全資源合計で管理
         $hourlyLimit = 10000 * $marketCount;
         
-        // 現在の交換制限状態を確認
+        // 現在の交換制限状態を確認（全資源の合計）
         $stmt = $pdo->prepare("
-            SELECT exchanged_amount, reset_at 
+            SELECT COALESCE(SUM(exchanged_amount), 0) as total_exchanged, MAX(reset_at) as reset_at
             FROM user_market_exchange_limits 
-            WHERE user_id = ? AND resource_type_id = ?
+            WHERE user_id = ? AND reset_at > NOW()
         ");
-        $stmt->execute([$me['id'], $fromResourceId]);
+        $stmt->execute([$me['id']]);
         $limitData = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        $currentExchanged = 0;
+        $currentExchanged = (int)($limitData['total_exchanged'] ?? 0);
         $now = new DateTime();
-        
-        if ($limitData) {
-            $resetAt = new DateTime($limitData['reset_at']);
-            if ($now < $resetAt) {
-                // まだリセット時間に達していない
-                $currentExchanged = (int)$limitData['exchanged_amount'];
-            } else {
-                // リセット時間を過ぎたので、カウントをリセット
-                $currentExchanged = 0;
-            }
-        }
         
         // 交換可能量をチェック
         $remainingLimit = $hourlyLimit - $currentExchanged;
@@ -2503,31 +2518,27 @@ if ($action === 'get_market_info') {
         $totalMarketLevel = (int)($marketData['total_level'] ?? 0);
         $marketBonus = min(0.5, ($marketCount * 0.05) + ($totalMarketLevel * 0.02));
         
-        // 交換制限情報を取得
+        // 交換制限情報を取得（全資源合計で管理）
         $hourlyLimit = 10000 * max(1, $marketCount);
-        $exchangeLimits = [];
         
         $stmt = $pdo->prepare("
-            SELECT umel.resource_type_id, umel.exchanged_amount, umel.reset_at, rt.name, rt.icon
-            FROM user_market_exchange_limits umel
-            JOIN civilization_resource_types rt ON umel.resource_type_id = rt.id
-            WHERE umel.user_id = ?
+            SELECT COALESCE(SUM(exchanged_amount), 0) as total_exchanged, MAX(reset_at) as reset_at
+            FROM user_market_exchange_limits 
+            WHERE user_id = ? AND reset_at > NOW()
         ");
         $stmt->execute([$me['id']]);
-        $limitRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $limitData = $stmt->fetch(PDO::FETCH_ASSOC);
         
         $now = new DateTime();
-        foreach ($limitRows as $row) {
-            $resetAt = new DateTime($row['reset_at']);
-            if ($now < $resetAt) {
-                $exchangeLimits[$row['resource_type_id']] = [
-                    'exchanged' => (int)$row['exchanged_amount'],
-                    'remaining' => max(0, $hourlyLimit - (int)$row['exchanged_amount']),
-                    'reset_at' => $row['reset_at'],
-                    'reset_in_seconds' => $resetAt->getTimestamp() - $now->getTimestamp()
-                ];
-            }
-        }
+        $totalExchanged = (int)($limitData['total_exchanged'] ?? 0);
+        $resetAt = $limitData['reset_at'] ? new DateTime($limitData['reset_at']) : null;
+        
+        $exchangeLimitInfo = [
+            'total_exchanged' => $totalExchanged,
+            'remaining' => max(0, $hourlyLimit - $totalExchanged),
+            'reset_at' => $limitData['reset_at'],
+            'reset_in_seconds' => $resetAt ? max(0, $resetAt->getTimestamp() - $now->getTimestamp()) : 0
+        ];
         
         // グローバルの資源価値定義を使用
         global $RESOURCE_VALUES;
@@ -2539,7 +2550,7 @@ if ($action === 'get_market_info') {
             'market_bonus' => $marketBonus,
             'resource_values' => $RESOURCE_VALUES,
             'hourly_limit' => $hourlyLimit,
-            'exchange_limits' => $exchangeLimits
+            'exchange_limits' => $exchangeLimitInfo
         ]);
     } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);

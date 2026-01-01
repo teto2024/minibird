@@ -1311,3 +1311,139 @@ function saveWorldBossBattleTurnLogs($pdo, $instanceId, $userId, $attackNumber, 
         $prevDefenderHp = $log['defender_hp'];
     }
 }
+
+/**
+ * スキル効果をログに保存（戦闘ログと統計用）
+ * @param PDO $pdo
+ * @param string $battleType 戦闘タイプ（conquest, wandering_monster, world_boss, portal_boss, war）
+ * @param int $battleId 戦闘ID
+ * @param int $turnNumber ターン番号
+ * @param int $userId ユーザーID
+ * @param int|null $troopTypeId 兵種ID（ヒーロースキルの場合はNULL）
+ * @param int|null $skillId スキルID
+ * @param string $skillName スキル名
+ * @param string $skillIcon スキルアイコン
+ * @param string $effectType 効果タイプ（damage, buff, debuff, heal, special）
+ * @param string $effectTarget 効果対象（self, enemy, ally, all）
+ * @param float $effectValue 効果量
+ * @param int $effectDuration 効果持続ターン数
+ * @param string $description 効果の説明
+ */
+function logSkillEffect($pdo, $battleType, $battleId, $turnNumber, $userId, $troopTypeId, $skillId, $skillName, $skillIcon, $effectType, $effectTarget, $effectValue, $effectDuration = 0, $description = '') {
+    try {
+        // スキル効果ログを保存
+        $stmt = $pdo->prepare("
+            INSERT INTO battle_skill_effect_logs 
+            (battle_type, battle_id, turn_number, user_id, troop_type_id, skill_id, skill_name, skill_icon, 
+             effect_type, effect_target, effect_value, effect_duration, description)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $battleType, $battleId, $turnNumber, $userId, $troopTypeId, $skillId,
+            $skillName, $skillIcon, $effectType, $effectTarget, $effectValue, $effectDuration, $description
+        ]);
+        
+        // 兵士スキル統計を更新（兵種スキルの場合のみ）
+        if ($troopTypeId !== null) {
+            updateTroopSkillStats($pdo, $userId, $troopTypeId, $effectType, $effectValue);
+        }
+    } catch (PDOException $e) {
+        // ログ保存に失敗しても戦闘は続行
+        error_log("logSkillEffect error: " . $e->getMessage());
+    }
+}
+
+/**
+ * 兵士スキル統計を更新
+ * @param PDO $pdo
+ * @param int $userId ユーザーID
+ * @param int $troopTypeId 兵種ID
+ * @param string $effectType 効果タイプ
+ * @param float $effectValue 効果量
+ */
+function updateTroopSkillStats($pdo, $userId, $troopTypeId, $effectType, $effectValue) {
+    try {
+        // 効果タイプに応じたカラム名を決定
+        $columnName = 'total_damage_dealt';
+        switch ($effectType) {
+            case 'damage':
+                $columnName = 'total_damage_dealt';
+                break;
+            case 'buff':
+                $columnName = 'total_buff_value';
+                break;
+            case 'debuff':
+                $columnName = 'total_debuff_value';
+                break;
+            case 'heal':
+                $columnName = 'total_heal_value';
+                break;
+            default:
+                $columnName = 'total_damage_dealt';
+        }
+        
+        // UPSERT で統計を更新
+        $sql = "
+            INSERT INTO user_troop_skill_stats (user_id, troop_type_id, total_skill_activations, {$columnName})
+            VALUES (?, ?, 1, ?)
+            ON DUPLICATE KEY UPDATE 
+                total_skill_activations = total_skill_activations + 1,
+                {$columnName} = {$columnName} + VALUES({$columnName})
+        ";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$userId, $troopTypeId, abs($effectValue)]);
+    } catch (PDOException $e) {
+        // 統計更新に失敗しても戦闘は続行
+        error_log("updateTroopSkillStats error: " . $e->getMessage());
+    }
+}
+
+/**
+ * スキル効果からログ用のデータを抽出
+ * @param array $effect スキル効果データ
+ * @return array [effectType, effectValue, description]
+ */
+function extractSkillEffectData($effect) {
+    $effectType = 'special';
+    $effectValue = 0;
+    $description = '';
+    
+    switch ($effect['effect_type'] ?? '') {
+        case 'damage_over_time':
+            $effectType = 'damage';
+            $effectValue = $effect['effect_value'] ?? 0;
+            $description = "継続ダメージ {$effectValue}%";
+            break;
+        case 'attack_buff':
+        case 'defense_buff':
+        case 'speed_buff':
+            $effectType = 'buff';
+            $effectValue = $effect['effect_value'] ?? 0;
+            $description = ($effect['skill_name'] ?? 'スキル') . "によるバフ +{$effectValue}%";
+            break;
+        case 'attack_debuff':
+        case 'defense_debuff':
+        case 'speed_debuff':
+            $effectType = 'debuff';
+            $effectValue = $effect['effect_value'] ?? 0;
+            $description = ($effect['skill_name'] ?? 'スキル') . "によるデバフ -{$effectValue}%";
+            break;
+        case 'heal':
+            $effectType = 'heal';
+            $effectValue = $effect['effect_value'] ?? 0;
+            $description = "{$effectValue}% 回復";
+            break;
+        case 'stun':
+        case 'freeze':
+            $effectType = 'debuff';
+            $effectValue = 100;
+            $description = "行動不能";
+            break;
+        default:
+            $effectType = 'special';
+            $effectValue = $effect['effect_value'] ?? 0;
+            $description = $effect['skill_name'] ?? 'スキル効果';
+    }
+    
+    return [$effectType, $effectValue, $description];
+}

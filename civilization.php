@@ -2614,36 +2614,33 @@ function loadMarketData() {
         const totalMarketLevel = markets.reduce((sum, m) => sum + (parseInt(m.level) || 1), 0);
         const marketBonus = Math.min(0.5, (marketCount * 0.05) + (totalMarketLevel * 0.02));
         
-        // ④ 交換制限表示を追加
+        // ④ 交換制限表示を追加（全資源合計で管理）
         const hourlyLimit = marketInfo.hourly_limit || (10000 * Math.max(1, marketCount));
-        const exchangeLimits = marketInfo.exchange_limits || {};
+        const exchangeLimitInfo = marketInfo.exchange_limits || {};
         
         // 交換制限表示を更新する関数
         const updateLimitDisplay = () => {
             const limitDisplay = document.getElementById('marketLimitDisplay');
             if (!limitDisplay) return;
             
-            const fromOption = fromSelect.options[fromSelect.selectedIndex];
-            const fromId = fromSelect.value;
-            const fromName = fromOption.textContent.split('(')[0].trim();
+            const totalExchanged = exchangeLimitInfo.total_exchanged || 0;
+            const remaining = exchangeLimitInfo.remaining !== undefined ? exchangeLimitInfo.remaining : hourlyLimit;
+            const resetSeconds = exchangeLimitInfo.reset_in_seconds || 0;
+            const resetMinutes = Math.ceil(resetSeconds / 60);
+            const usedPercent = Math.round((totalExchanged / hourlyLimit) * 100);
+            const barColor = remaining > hourlyLimit * 0.3 ? '#32cd32' : (remaining > 0 ? '#ffa500' : '#ff6b6b');
             
-            const limitData = exchangeLimits[fromId];
-            if (limitData) {
-                const remaining = limitData.remaining;
-                const resetMinutes = Math.ceil(limitData.reset_in_seconds / 60);
-                const usedPercent = Math.round(((hourlyLimit - remaining) / hourlyLimit) * 100);
-                const barColor = remaining > hourlyLimit * 0.3 ? '#32cd32' : (remaining > 0 ? '#ffa500' : '#ff6b6b');
-                
+            if (totalExchanged > 0) {
                 limitDisplay.innerHTML = `
                     <div style="margin-top: 15px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                            <span style="color: #888;">🏪 ${fromName}の交換可能量:</span>
+                            <span style="color: #888;">🏪 全資源の交換可能量:</span>
                             <span style="color: ${barColor};">${remaining.toLocaleString()} / ${hourlyLimit.toLocaleString()}</span>
                         </div>
                         <div style="background: rgba(0,0,0,0.5); border-radius: 4px; height: 8px; overflow: hidden;">
                             <div style="background: ${barColor}; height: 100%; width: ${usedPercent}%; transition: width 0.3s;"></div>
                         </div>
-                        <div style="color: #888; font-size: 11px; margin-top: 5px;">⏱️ あと${resetMinutes}分でリセット | 市場数: ${marketCount}</div>
+                        <div style="color: #888; font-size: 11px; margin-top: 5px;">⏱️ あと${resetMinutes}分でリセット | 市場数: ${marketCount} | 使用済: ${totalExchanged.toLocaleString()}</div>
                     </div>
                 `;
             } else {
@@ -5311,18 +5308,34 @@ function renderSpecialEvents(container, events) {
                     <div style="margin-bottom: 15px;">
                         <h5 style="color: #48bb78; margin-bottom: 10px;">🔄 アイテム交換所</h5>
                         <div style="display: grid; gap: 10px;">
-                            ${event.exchanges.map(ex => `
-                                <div style="background: rgba(0,100,0,0.2); padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #48bb78;">
-                                    <div>
-                                        <span style="color: #f5deb3;">${ex.item_icon || '📦'} ${escapeHtml(ex.item_name || 'アイテム')} ×${ex.required_count}</span>
-                                        <span style="color: #888;"> → </span>
-                                        <span style="color: #48bb78;">${ex.reward_type === 'coins' ? '💰' : ex.reward_type === 'crystals' ? '💎' : ex.reward_type === 'diamonds' ? '💠' : '🎁'} ${ex.reward_amount}</span>
+                            ${event.exchanges.map(ex => {
+                                // 所持アイテム数を取得
+                                const ownedItem = event.items ? event.items.find(item => item.id === ex.item_id) : null;
+                                const ownedCount = ownedItem ? (ownedItem.user_count || 0) : 0;
+                                const maxExchangeable = Math.floor(ownedCount / ex.required_count);
+                                return `
+                                <div style="background: rgba(0,100,0,0.2); padding: 12px; border-radius: 8px; border: 1px solid #48bb78;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <div>
+                                            <span style="color: #f5deb3;">${ex.item_icon || '📦'} ${escapeHtml(ex.item_name || 'アイテム')} ×${ex.required_count}</span>
+                                            <span style="color: #888;"> → </span>
+                                            <span style="color: #48bb78;">${ex.reward_type === 'coins' ? '💰' : ex.reward_type === 'crystals' ? '💎' : ex.reward_type === 'diamonds' ? '💠' : '🎁'} ${ex.reward_amount}</span>
+                                        </div>
+                                        <span style="color: #888; font-size: 12px;">所持: ${ownedCount}</span>
                                     </div>
-                                    <button class="quick-invest-btn" onclick="exchangeEventItem(${ex.id})" style="padding: 6px 12px;">
-                                        交換
-                                    </button>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <input type="range" id="exchange-qty-${ex.id}" min="1" max="${Math.max(1, maxExchangeable)}" value="1" 
+                                               style="flex: 1; accent-color: #48bb78;" 
+                                               oninput="document.getElementById('exchange-qty-display-${ex.id}').textContent = this.value"
+                                               ${maxExchangeable < 1 ? 'disabled' : ''}>
+                                        <span id="exchange-qty-display-${ex.id}" style="color: #ffd700; font-weight: bold; min-width: 30px; text-align: center;">1</span>
+                                        <button class="quick-invest-btn" onclick="exchangeEventItem(${ex.id}, parseInt(document.getElementById('exchange-qty-${ex.id}').value))" 
+                                                style="padding: 6px 12px;" ${maxExchangeable < 1 ? 'disabled' : ''}>
+                                            交換
+                                        </button>
+                                    </div>
                                 </div>
-                            `).join('')}
+                            `}).join('')}
                         </div>
                     </div>
                 ` : ''}
@@ -5361,12 +5374,12 @@ function renderSpecialEvents(container, events) {
 }
 
 // イベントアイテム交換
-async function exchangeEventItem(exchangeId) {
+async function exchangeEventItem(exchangeId, quantity = 1) {
     try {
         const res = await fetch('civilization_events_api.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({action: 'exchange_event_item', exchange_id: exchangeId})
+            body: JSON.stringify({action: 'exchange_event_item', exchange_id: exchangeId, quantity: quantity})
         });
         const data = await res.json();
         
