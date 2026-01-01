@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS buffs (
     user_id INT UNSIGNED NULL COMMENT 'ユーザーID（NULLの場合は全体バフ）',
     type VARCHAR(50) NOT NULL COMMENT 'バフタイプ（task, chat_festival等）',
     level INT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'バフレベル（10回まで重ねがけ可能）',
+    activated_by INT UNSIGNED NULL COMMENT 'バフを発動したユーザーID',
     start_time DATETIME NOT NULL COMMENT 'バフ開始時刻',
     end_time DATETIME NOT NULL COMMENT 'バフ終了時刻',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

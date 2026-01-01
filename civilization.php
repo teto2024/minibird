@@ -1714,6 +1714,7 @@ function renderApp() {
             <button class="tab-btn ${currentTab === 'war' ? 'active' : ''}" data-tab="war">⚔️ 戦争</button>
             <button class="tab-btn ${currentTab === 'conquest' ? 'active' : ''}" data-tab="conquest">🏰 占領戦</button>
             <button class="tab-btn ${currentTab === 'monster' ? 'active' : ''}" data-tab="monster">🐉 モンスター</button>
+            <button class="tab-btn ${currentTab === 'events' ? 'active' : ''}" data-tab="events" style="background: linear-gradient(135deg, rgba(255, 105, 180, 0.3) 0%, rgba(255, 20, 147, 0.3) 100%);">🎉 イベント<span id="events-badge" class="tab-badge" style="display:none;"></span></button>
             <button class="tab-btn ${currentTab === 'leaderboard' ? 'active' : ''}" data-tab="leaderboard" style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 165, 0, 0.3) 100%);">🏆 リーダーボード</button>
             <button class="tab-btn ${currentTab === 'quests' ? 'active' : ''}" data-tab="quests" style="background: linear-gradient(135deg, rgba(72, 187, 120, 0.3) 0%, rgba(56, 161, 105, 0.3) 100%);">📋 クエスト<span id="quests-badge" class="tab-badge" style="display:none;"></span></button>
             <button class="tab-btn ${currentTab === 'shop' ? 'active' : ''}" data-tab="shop">💠 VIPショップ</button>
@@ -1879,6 +1880,37 @@ function renderApp() {
                 <h3>📜 戦争ログ</h3>
                 <div id="warLogsList" style="max-height: 400px; overflow-y: auto;">
                     <div class="loading">戦争ログを読み込み中...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- イベントタブ -->
+        <div class="tab-content ${currentTab === 'events' ? 'active' : ''}" id="tab-events">
+            <div class="war-section" style="background: linear-gradient(135deg, rgba(255, 105, 180, 0.3) 0%, rgba(255, 20, 147, 0.3) 100%); border-color: #ff69b4;">
+                <h3 style="color: #ff69b4;">🎉 イベント</h3>
+                <p style="color: #c0a080; margin-bottom: 20px;">
+                    様々なイベントに参加して限定報酬をゲットしよう！
+                </p>
+                
+                <!-- イベントサブタブ -->
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <button class="stat-box event-subtab-btn active" data-event-type="daily" style="cursor: pointer; flex: 1; min-width: 100px;">
+                        <div style="font-size: 24px;">📅</div>
+                        <div style="color: #ffa500; font-size: 14px;">デイリー</div>
+                    </button>
+                    <button class="stat-box event-subtab-btn" data-event-type="special" style="cursor: pointer; flex: 1; min-width: 100px;">
+                        <div style="font-size: 24px;">🎊</div>
+                        <div style="color: #ff69b4; font-size: 14px;">スペシャル</div>
+                    </button>
+                    <button class="stat-box event-subtab-btn" data-event-type="hero" style="cursor: pointer; flex: 1; min-width: 100px;">
+                        <div style="font-size: 24px;">🦸</div>
+                        <div style="color: #9932cc; font-size: 14px;">ヒーロー</div>
+                    </button>
+                </div>
+                
+                <!-- イベントコンテンツ -->
+                <div id="eventContentArea">
+                    <div class="loading">イベントを読み込み中...</div>
                 </div>
             </div>
         </div>
@@ -2166,6 +2198,10 @@ function renderApp() {
             if (btn.dataset.tab === 'leaderboard') {
                 loadLeaderboard();
             }
+            // イベントタブの場合、イベントを読み込む
+            if (btn.dataset.tab === 'events') {
+                loadEventContent(currentEventType);
+            }
         });
     });
     
@@ -2203,6 +2239,10 @@ function renderApp() {
     // リーダーボードタブがアクティブな場合、ランキングを読み込む
     if (currentTab === 'leaderboard') {
         loadLeaderboard();
+    }
+    // イベントタブがアクティブな場合、イベントを読み込む
+    if (currentTab === 'events') {
+        loadEventContent(currentEventType);
     }
     
     // 初回アクセス時にチュートリアルモーダルを表示
@@ -2503,6 +2543,9 @@ function renderMarketExchange(resources) {
                     <span id="exchangeResult" style="color: #ffd700;">--</span>
                 </div>
                 
+                <!-- ④ 市場交換制限表示 -->
+                <div id="marketLimitDisplay"></div>
+                
                 <button class="build-btn" onclick="exchangeResources()" style="margin-top: 15px; background: linear-gradient(135deg, #d4a574 0%, #8b4513 100%);">
                     交換する
                 </button>
@@ -2543,6 +2586,51 @@ function loadMarketData() {
         const totalMarketLevel = markets.reduce((sum, m) => sum + (parseInt(m.level) || 1), 0);
         const marketBonus = Math.min(0.5, (marketCount * 0.05) + (totalMarketLevel * 0.02));
         
+        // ④ 交換制限表示を追加
+        const hourlyLimit = marketInfo.hourly_limit || (10000 * Math.max(1, marketCount));
+        const exchangeLimits = marketInfo.exchange_limits || {};
+        
+        // 交換制限表示を更新する関数
+        const updateLimitDisplay = () => {
+            const limitDisplay = document.getElementById('marketLimitDisplay');
+            if (!limitDisplay) return;
+            
+            const fromOption = fromSelect.options[fromSelect.selectedIndex];
+            const fromId = fromSelect.value;
+            const fromName = fromOption.textContent.split('(')[0].trim();
+            
+            const limitData = exchangeLimits[fromId];
+            if (limitData) {
+                const remaining = limitData.remaining;
+                const resetMinutes = Math.ceil(limitData.reset_in_seconds / 60);
+                const usedPercent = Math.round(((hourlyLimit - remaining) / hourlyLimit) * 100);
+                const barColor = remaining > hourlyLimit * 0.3 ? '#32cd32' : (remaining > 0 ? '#ffa500' : '#ff6b6b');
+                
+                limitDisplay.innerHTML = `
+                    <div style="margin-top: 15px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span style="color: #888;">🏪 ${fromName}の交換可能量:</span>
+                            <span style="color: ${barColor};">${remaining.toLocaleString()} / ${hourlyLimit.toLocaleString()}</span>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.5); border-radius: 4px; height: 8px; overflow: hidden;">
+                            <div style="background: ${barColor}; height: 100%; width: ${usedPercent}%; transition: width 0.3s;"></div>
+                        </div>
+                        <div style="color: #888; font-size: 11px; margin-top: 5px;">⏱️ あと${resetMinutes}分でリセット | 市場数: ${marketCount}</div>
+                    </div>
+                `;
+            } else {
+                limitDisplay.innerHTML = `
+                    <div style="margin-top: 15px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span style="color: #888;">🏪 1時間の交換上限:</span>
+                            <span style="color: #32cd32;">${hourlyLimit.toLocaleString()}</span>
+                        </div>
+                        <div style="color: #888; font-size: 11px;">市場数: ${marketCount} | 制限なし（未交換）</div>
+                    </div>
+                `;
+            }
+        };
+        
         const updateResult = () => {
             const resultElement = document.getElementById('exchangeResult');
             if (!resultElement) return;
@@ -2572,6 +2660,9 @@ function loadMarketData() {
             const received = Math.floor(amount * finalRate);
             const ratePercent = Math.round(finalRate * 100);
             resultElement.innerHTML = `${amount} ${fromName} → <strong style="color: #32cd32;">${received}</strong> ${toName} <span style="color: #888; font-size: 12px;">(レート: ${ratePercent}%)</span>`;
+            
+            // 制限表示も更新
+            updateLimitDisplay();
         };
         
         fromSelect.addEventListener('change', updateResult);
@@ -3204,6 +3295,14 @@ async function loadTroops() {
                         </span>
                     ` : '';
                     
+                    // 核ユニットインジケーター（ユニット名に'nuclear'または'原子力'が含まれる場合）
+                    const isNuclear = t.troop_key && (t.troop_key.includes('nuclear') || t.name.includes('原子力') || t.name.includes('核'));
+                    const nuclearBadge = isNuclear ? `
+                        <span style="background: rgba(50, 205, 50, 0.5); padding: 3px 8px; border-radius: 4px; font-size: 11px;" title="核兵器搭載ユニット">
+                            ☢️ 核
+                        </span>
+                    ` : '';
+                    
                     return `
                         <div class="target-card" style="border-color: #8b4513; ${!canTrain ? 'opacity: 0.7;' : ''}">
                             <div class="target-header">
@@ -3227,6 +3326,7 @@ async function loadTroops() {
                                     ❤️ ${healthPoints}
                                 </span>
                                 ${stealthBadge}
+                                ${nuclearBadge}
                             </div>
                             ${skillHtml}
                             <div style="color: #c0a080; font-size: 12px; margin-bottom: 10px;">
@@ -3376,6 +3476,13 @@ async function loadWoundedTroops() {
             const queuePercent = Math.min(100, Math.round((queueUsed / queueMax) * 100));
             const queueColor = queueUsed >= queueMax ? '#ff6b6b' : (queueUsed >= queueMax * 0.7 ? '#ffa500' : '#32cd32');
             
+            // 16: 病床使用状況
+            const bedsUsed = data.beds_used || 0;
+            const bedsMax = data.hospital_capacity || 0;
+            const bedsAvailable = data.beds_available || 0;
+            const bedsPercent = bedsMax > 0 ? Math.min(100, Math.round((bedsUsed / bedsMax) * 100)) : 0;
+            const bedsColor = bedsUsed >= bedsMax ? '#ff6b6b' : (bedsUsed >= bedsMax * 0.7 ? '#ffa500' : '#32cd32');
+            
             // 負傷兵リスト
             if (data.wounded_troops && data.wounded_troops.length > 0) {
                 woundedContainer.innerHTML = `
@@ -3387,7 +3494,14 @@ async function loadWoundedTroops() {
                         <div style="background: rgba(0,0,0,0.5); border-radius: 4px; height: 8px; overflow: hidden;">
                             <div style="background: ${queueColor}; height: 100%; width: ${queuePercent}%; transition: width 0.3s;"></div>
                         </div>
-                        <div style="color: #888; font-size: 11px; margin-top: 5px;">💡 病院を建設するとキュー数が増えます（容量: ${data.hospital_capacity}床）</div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 10px; margin-bottom: 5px;">
+                            <span style="color: #888;">🛏️ 残存病床:</span>
+                            <span style="color: ${bedsColor};">${bedsAvailable} / ${bedsMax}床 (使用中: ${bedsUsed})</span>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.5); border-radius: 4px; height: 8px; overflow: hidden;">
+                            <div style="background: ${bedsColor}; height: 100%; width: ${bedsPercent}%; transition: width 0.3s;"></div>
+                        </div>
+                        <div style="color: #888; font-size: 11px; margin-top: 5px;">💡 病院を建設するとキュー数・病床数が増えます</div>
                     </div>
                     ${data.wounded_troops.map(w => {
                         let healCostText = `🪙${w.heal_cost_coins}/体`;
@@ -4893,9 +5007,14 @@ async function loadCivilizationQuests() {
                     btnClass = 'claimed';
                     btnText = '✅ 受取済み';
                 } else if (isClaimed && quest.is_repeatable && quest.cooldown_remaining > 0) {
+                    // 14: クールダウン中の表示修正
                     btnClass = 'claimed';
                     const hours = Math.ceil(quest.cooldown_remaining / 3600);
                     btnText = `🕐 ${hours}時間後に再挑戦可能`;
+                } else if (isClaimed && quest.is_repeatable && quest.cooldown_remaining <= 0) {
+                    // 14: クールダウン終了後は進行状態に戻す
+                    btnClass = 'in-progress';
+                    btnText = `進行中 (${quest.current_progress}/${quest.target_count})`;
                 } else if (isCompleted) {
                     btnClass = 'available';
                     btnText = '🎁 報酬を受け取る';
@@ -4987,6 +5106,631 @@ async function claimCivilizationQuestReward(questId) {
     } catch (e) {
         console.error(e);
         showNotification('エラーが発生しました', 'error');
+    }
+}
+
+// ===============================================
+// イベントシステム
+// ===============================================
+
+let currentEventType = 'daily';
+
+// イベントサブタブのクリックイベント（イベント委譲を使用）
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.event-subtab-btn');
+    if (btn) {
+        document.querySelectorAll('.event-subtab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentEventType = btn.dataset.eventType;
+        loadEventContent(currentEventType);
+    }
+});
+
+// イベントコンテンツを読み込む
+async function loadEventContent(eventType) {
+    const container = document.getElementById('eventContentArea');
+    if (!container) return;
+    
+    container.innerHTML = '<div class="loading">読み込み中...</div>';
+    
+    try {
+        let data;
+        if (eventType === 'daily') {
+            const res = await fetch('civilization_events_api.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'get_daily_tasks'})
+            });
+            data = await res.json();
+            
+            if (data.ok) {
+                renderDailyTasks(container, data.tasks);
+            } else {
+                container.innerHTML = '<p style="color: #ff6b6b;">デイリータスクの読み込みに失敗しました</p>';
+            }
+        } else if (eventType === 'special') {
+            const res = await fetch('civilization_events_api.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'get_special_events'})
+            });
+            data = await res.json();
+            
+            if (data.ok) {
+                renderSpecialEvents(container, data.events);
+            } else {
+                container.innerHTML = '<p style="color: #ff6b6b;">スペシャルイベントの読み込みに失敗しました</p>';
+            }
+        } else if (eventType === 'hero') {
+            const res = await fetch('civilization_events_api.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'get_hero_events'})
+            });
+            data = await res.json();
+            
+            if (data.ok) {
+                renderHeroEvents(container, data.events);
+            } else {
+                container.innerHTML = '<p style="color: #ff6b6b;">ヒーローイベントの読み込みに失敗しました</p>';
+            }
+        }
+    } catch (e) {
+        console.error(e);
+        container.innerHTML = '<p style="color: #ff6b6b;">イベントの読み込みに失敗しました</p>';
+    }
+}
+
+// デイリータスクを描画
+function renderDailyTasks(container, tasks) {
+    if (!tasks || tasks.length === 0) {
+        container.innerHTML = '<p style="color: #888; text-align: center;">デイリータスクがありません</p>';
+        return;
+    }
+    
+    let html = `
+        <div style="margin-bottom: 15px; color: #ffa500;">
+            📅 本日のデイリータスク（毎日0時にリセット）
+        </div>
+    `;
+    
+    tasks.forEach(task => {
+        const progressPercent = Math.min(100, (task.current_progress / task.target_count) * 100);
+        const isCompleted = task.current_progress >= task.target_count;
+        const isClaimed = task.is_claimed;
+        
+        let btnClass = 'in-progress';
+        let btnText = '進行中 (' + task.current_progress + '/' + task.target_count + ')';
+        let btnOnclick = '';
+        
+        if (isClaimed) {
+            btnClass = 'claimed';
+            btnText = '✅ 受取済み';
+        } else if (isCompleted) {
+            btnClass = 'available';
+            btnText = '🎁 報酬を受け取る';
+            btnOnclick = 'onclick="claimDailyTask(' + task.id + ')"';
+        }
+        
+        let rewardsHtml = '';
+        if (task.reward_coins > 0) rewardsHtml += '<span class="quest-reward-item">🪙 ' + task.reward_coins.toLocaleString() + '</span>';
+        if (task.reward_crystals > 0) rewardsHtml += '<span class="quest-reward-item">💎 ' + task.reward_crystals + '</span>';
+        if (task.reward_diamonds > 0) rewardsHtml += '<span class="quest-reward-item">💠 ' + task.reward_diamonds + '</span>';
+        if (task.reward_exp > 0) rewardsHtml += '<span class="quest-reward-item">⭐ ' + task.reward_exp + 'EXP</span>';
+        
+        html += `
+            <div class="quest-card ${isCompleted ? 'completed' : ''} ${isClaimed ? 'claimed' : ''}" style="margin-bottom: 10px;">
+                <div class="quest-header">
+                    <div class="quest-title">
+                        <span>${task.icon}</span>
+                        <span>${escapeHtml(task.name)}</span>
+                    </div>
+                </div>
+                <div class="quest-description">${escapeHtml(task.description)}</div>
+                <div class="quest-progress-bar">
+                    <div class="quest-progress-fill ${isCompleted ? 'completed' : ''}" style="width: ${progressPercent}%;"></div>
+                </div>
+                <div class="quest-progress-text">${task.current_progress} / ${task.target_count}</div>
+                <div class="quest-rewards">${rewardsHtml}</div>
+                <button class="quest-claim-btn ${btnClass}" ${btnOnclick}>${btnText}</button>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// スペシャルイベントを描画
+function renderSpecialEvents(container, events) {
+    if (!events || events.length === 0) {
+        container.innerHTML = '<p style="color: #888; text-align: center;">現在開催中のスペシャルイベントはありません</p>';
+        return;
+    }
+    
+    let html = '';
+    
+    events.forEach(event => {
+        const remainingHours = Math.floor(event.remaining_seconds / 3600);
+        const remainingDays = Math.floor(remainingHours / 24);
+        
+        html += `
+            <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #ff69b4;">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                    <span style="font-size: 40px;">${event.icon}</span>
+                    <div>
+                        <h4 style="color: #ff69b4; margin: 0;">${escapeHtml(event.name)}</h4>
+                        <p style="color: #c0a080; margin: 5px 0;">${escapeHtml(event.description)}</p>
+                        <span style="color: #ffa500; font-size: 12px;">⏱️ 残り ${remainingDays}日 ${remainingHours % 24}時間</span>
+                    </div>
+                </div>
+                
+                ${event.items && event.items.length > 0 ? `
+                    <div style="margin-bottom: 15px;">
+                        <h5 style="color: #ffd700; margin-bottom: 10px;">📦 限定アイテム</h5>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                            ${event.items.map(item => `
+                                <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; text-align: center;">
+                                    <span style="font-size: 24px;">${item.icon}</span>
+                                    <div style="color: #f5deb3; font-size: 12px;">${escapeHtml(item.name)}</div>
+                                    <div style="color: #48bb78; font-size: 14px;">×${item.user_count || 0}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                ${event.exchanges && event.exchanges.length > 0 ? `
+                    <div style="margin-bottom: 15px;">
+                        <h5 style="color: #48bb78; margin-bottom: 10px;">🔄 アイテム交換所</h5>
+                        <div style="display: grid; gap: 10px;">
+                            ${event.exchanges.map(ex => `
+                                <div style="background: rgba(0,100,0,0.2); padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #48bb78;">
+                                    <div>
+                                        <span style="color: #f5deb3;">${ex.item_icon || '📦'} ${escapeHtml(ex.item_name || 'アイテム')} ×${ex.required_count}</span>
+                                        <span style="color: #888;"> → </span>
+                                        <span style="color: #48bb78;">${ex.reward_type === 'coins' ? '💰' : ex.reward_type === 'crystals' ? '💎' : ex.reward_type === 'diamonds' ? '💠' : '🎁'} ${ex.reward_amount}</span>
+                                    </div>
+                                    <button class="quick-invest-btn" onclick="exchangeEventItem(${ex.id})" style="padding: 6px 12px;">
+                                        交換
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                
+                ${event.portal_bosses && event.portal_bosses.length > 0 ? `
+                    <div style="margin-bottom: 15px;">
+                        <h5 style="color: #dc143c; margin-bottom: 10px;">🌀 ポータルボス</h5>
+                        ${event.portal_bosses.map(boss => `
+                            <div style="background: rgba(220,20,60,0.2); padding: 15px; border-radius: 8px; border: 1px solid #dc143c;">
+                                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                    <span style="font-size: 32px;">${boss.boss_icon}</span>
+                                    <div>
+                                        <div style="color: #ff6b6b; font-weight: bold;">${escapeHtml(boss.boss_name)}</div>
+                                        <div style="color: #888; font-size: 12px;">戦力: ${boss.boss_power.toLocaleString()}</div>
+                                    </div>
+                                </div>
+                                ${boss.can_attack ? `
+                                    <button class="quick-invest-btn" onclick="openPortalBossAttack(${boss.id})" 
+                                            style="background: linear-gradient(135deg, #dc143c 0%, #8b0000 100%); width: 100%;">
+                                        ⚔️ ボスを攻撃
+                                    </button>
+                                ` : `
+                                    <div style="color: #888; text-align: center; padding: 10px;">
+                                        ⏱️ ${Math.ceil(boss.seconds_until_attack / 3600)}時間後に攻撃可能
+                                    </div>
+                                `}
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// イベントアイテム交換
+async function exchangeEventItem(exchangeId) {
+    try {
+        const res = await fetch('civilization_events_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'exchange_event_item', exchange_id: exchangeId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message, 'success');
+            loadEventContent('special');
+            loadData();
+        } else {
+            showNotification(data.error || '交換に失敗しました', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        showNotification('エラーが発生しました', 'error');
+    }
+}
+
+// ヒーローイベントを描画（シーズンパス風UI）
+function renderHeroEvents(container, events) {
+    if (!events || events.length === 0) {
+        container.innerHTML = '<p style="color: #888; text-align: center;">現在開催中のヒーローイベントはありません</p>';
+        return;
+    }
+    
+    let html = '';
+    
+    events.forEach(event => {
+        const remainingHours = Math.floor(event.remaining_seconds / 3600);
+        const remainingDays = Math.floor(remainingHours / 24);
+        const currentPoints = event.current_points || 0;
+        const claimedRewards = event.claimed_rewards || [];
+        
+        // ポイント報酬の最大値を計算
+        const maxPoints = event.point_rewards && event.point_rewards.length > 0 
+            ? Math.max(...event.point_rewards.map(r => r.required_points))
+            : 100;
+        const progressPercent = Math.min(100, (currentPoints / maxPoints) * 100);
+        
+        html += `
+            <div style="background: linear-gradient(135deg, #1a1a2e 0%, #2d2d44 100%); padding: 20px; border-radius: 16px; margin-bottom: 20px; border: 2px solid #9932cc; box-shadow: 0 0 20px rgba(153, 50, 204, 0.3);">
+                <!-- ヘッダー -->
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+                    <div style="font-size: 60px; text-shadow: 0 0 20px rgba(153, 50, 204, 0.8);">${event.featured_hero.icon}</div>
+                    <div style="flex: 1;">
+                        <h3 style="color: #ffd700; margin: 0; font-size: 22px;">${escapeHtml(event.name)}</h3>
+                        <p style="color: #c0a080; margin: 5px 0; font-size: 14px;">テーマヒーロー: <span style="color: #ff69b4;">${escapeHtml(event.featured_hero.name)}</span> - ${escapeHtml(event.featured_hero.title || '')}</p>
+                        <div style="display: flex; gap: 15px; margin-top: 10px;">
+                            <span style="color: #ffa500; font-size: 13px;">⏱️ 残り ${remainingDays}日 ${remainingHours % 24}時間</span>
+                            <span style="color: #48bb78; font-size: 13px;">✨ 欠片+${event.bonus_shard_rate}%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 限定ガチャボタン -->
+                <div style="margin-bottom: 20px;">
+                    <button class="quick-invest-btn" onclick="openHeroEventGacha(${event.id}, ${event.featured_hero.id})" 
+                            style="background: linear-gradient(135deg, #ff69b4 0%, #9932cc 100%); width: 100%; padding: 15px; font-size: 16px; border-radius: 12px;">
+                        🎰 限定ガチャ ${event.gacha_discount_percent > 0 ? `(${event.gacha_discount_percent}%OFF!)` : ''}
+                    </button>
+                    <div style="text-align: center; color: #888; font-size: 12px; margin-top: 5px;">
+                        ${escapeHtml(event.featured_hero.name)}の欠片排出率が大幅UP！
+                    </div>
+                </div>
+                
+                <!-- シーズンパス風ポイントトラック -->
+                <div style="background: rgba(0,0,0,0.4); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <span style="color: #ffd700; font-size: 16px; font-weight: bold;">🏆 イベントポイント</span>
+                        <span style="color: #48bb78; font-size: 24px; font-weight: bold;">${currentPoints}<span style="color: #888; font-size: 14px;">pt</span></span>
+                    </div>
+                    
+                    <!-- プログレストラック -->
+                    <div style="position: relative; height: 40px; background: rgba(0,0,0,0.4); border-radius: 20px; overflow: hidden; margin-bottom: 15px;">
+                        <div style="position: absolute; left: 0; top: 0; height: 100%; width: ${progressPercent}%; background: linear-gradient(90deg, #9932cc 0%, #ff69b4 100%); border-radius: 20px; transition: width 0.5s;"></div>
+                        <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; text-shadow: 1px 1px 2px black;">
+                            ${currentPoints} / ${maxPoints} pt
+                        </div>
+                    </div>
+                    
+                    <!-- 報酬マイルストーン -->
+                    ${event.point_rewards && event.point_rewards.length > 0 ? `
+                        <div style="display: flex; gap: 10px; overflow-x: auto; padding: 10px 0;">
+                            ${event.point_rewards.map((reward, idx) => {
+                                const isUnlocked = currentPoints >= reward.required_points;
+                                const isClaimed = claimedRewards.includes(reward.id);
+                                const rewardIcon = reward.reward_type === 'hero_shards' ? '🧩' : 
+                                                   reward.reward_type === 'coins' ? '💰' : 
+                                                   reward.reward_type === 'crystals' ? '💎' : 
+                                                   reward.reward_type === 'diamonds' ? '💠' : '🎁';
+                                return `
+                                    <div style="flex: 0 0 100px; background: ${isUnlocked ? 'rgba(153, 50, 204, 0.3)' : 'rgba(50,50,50,0.5)'}; border: 2px solid ${isUnlocked ? '#9932cc' : '#555'}; border-radius: 12px; padding: 10px; text-align: center; position: relative;">
+                                        <div style="color: ${isUnlocked ? '#ffd700' : '#888'}; font-size: 11px; margin-bottom: 5px;">${reward.required_points}pt</div>
+                                        <div style="font-size: 24px;">${rewardIcon}</div>
+                                        <div style="color: ${isUnlocked ? '#48bb78' : '#888'}; font-size: 12px; margin-top: 5px;">${reward.reward_amount}</div>
+                                        ${isClaimed ? `<div style="position: absolute; inset: 0; background: rgba(0,0,0,0.6); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #48bb78; font-size: 20px;">✓</div>` : ''}
+                                        ${isUnlocked && !isClaimed ? `<button onclick="claimHeroEventPointReward(${reward.id})" style="position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%); background: #48bb78; color: white; border: none; border-radius: 10px; padding: 3px 10px; font-size: 10px; cursor: pointer;">受取</button>` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <!-- イベントタスク -->
+                ${event.tasks && event.tasks.length > 0 ? `
+                    <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 12px;">
+                        <h5 style="color: #ffd700; margin: 0 0 15px 0;">📋 イベントタスク</h5>
+                        <div style="display: grid; gap: 8px;">
+                            ${event.tasks.map(task => {
+                                const isCompleted = task.current_progress >= task.target_count;
+                                const isClaimed = task.is_claimed;
+                                const taskProgress = Math.min(100, (task.current_progress / task.target_count) * 100);
+                                return `
+                                    <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 3px solid ${isClaimed ? '#48bb78' : isCompleted ? '#ffd700' : '#555'};">
+                                        <div style="flex: 1;">
+                                            <div style="color: ${isClaimed ? '#888' : '#f5deb3'}; ${isClaimed ? 'text-decoration: line-through;' : ''}">${task.icon} ${escapeHtml(task.name)}</div>
+                                            <div style="margin-top: 5px; height: 4px; background: rgba(0,0,0,0.3); border-radius: 2px; overflow: hidden;">
+                                                <div style="height: 100%; width: ${taskProgress}%; background: ${isCompleted ? '#48bb78' : '#9932cc'};"></div>
+                                            </div>
+                                            <div style="color: #888; font-size: 11px; margin-top: 3px;">${task.current_progress}/${task.target_count}</div>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 10px; margin-left: 15px;">
+                                            <span style="color: #ffa500; font-weight: bold;">+${task.points_reward}pt</span>
+                                            ${isClaimed 
+                                                ? '<span style="color: #48bb78; font-size: 18px;">✓</span>' 
+                                                : (isCompleted 
+                                                    ? `<button class="quick-invest-btn" onclick="claimHeroEventTask(${task.id})" style="padding: 5px 12px; font-size: 12px;">受取</button>` 
+                                                    : '<span style="color: #888;">-</span>')}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// ヒーローイベントポイント報酬を受け取る
+async function claimHeroEventPointReward(rewardId) {
+    try {
+        const res = await fetch('civilization_events_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'claim_hero_event_point_reward', reward_id: rewardId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message, 'success');
+            loadEventContent('hero');
+            loadData();
+        } else {
+            showNotification(data.error || '報酬の受け取りに失敗しました', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        showNotification('エラーが発生しました', 'error');
+    }
+}
+
+// ヒーローイベント限定ガチャを開く
+async function openHeroEventGacha(eventId, heroId) {
+    try {
+        const res = await fetch('civilization_events_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'hero_event_gacha', event_id: eventId, hero_id: heroId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            // ガチャ結果を表示
+            let resultHtml = `<div style="font-size: 48px; margin-bottom: 10px;">${data.result.icon || '🎁'}</div>`;
+            resultHtml += `<div style="color: #ffd700; font-size: 18px;">${escapeHtml(data.result.name || 'アイテム')}</div>`;
+            if (data.result.shards) {
+                resultHtml += `<div style="color: #ff69b4; margin-top: 5px;">欠片 ×${data.result.shards}</div>`;
+            }
+            
+            showNotification(`ガチャ結果: ${data.result.name || 'アイテム'} 獲得！`, 'success');
+            loadEventContent('hero');
+            loadData();
+        } else {
+            showNotification(data.error || 'ガチャに失敗しました', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        showNotification('エラーが発生しました', 'error');
+    }
+}
+
+// デイリータスク報酬受け取り
+async function claimDailyTask(taskId) {
+    try {
+        const res = await fetch('civilization_events_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'claim_daily_task', task_id: taskId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message, 'success');
+            loadEventContent('daily');
+            loadData();
+        } else {
+            showNotification(data.error || '報酬の受け取りに失敗しました', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        showNotification('エラーが発生しました', 'error');
+    }
+}
+
+// ヒーローイベントタスク報酬受け取り
+async function claimHeroEventTask(taskId) {
+    try {
+        const res = await fetch('civilization_events_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'claim_hero_event_task', task_id: taskId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message, 'success');
+            loadEventContent('hero');
+        } else {
+            showNotification(data.error || '報酬の受け取りに失敗しました', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        showNotification('エラーが発生しました', 'error');
+    }
+}
+
+// ポータルボス攻撃画面を開く
+let portalBossData = null;
+
+async function openPortalBossAttack(bossId) {
+    // ボス情報を一時保存
+    portalBossData = { bossId: bossId };
+    
+    // モーダルを表示（既存の攻撃モーダルを再利用）
+    document.getElementById('attackModal').classList.add('active');
+    
+    // ターゲット情報を取得して表示
+    document.getElementById('attackModalTarget').innerHTML = `
+        <div style="background: rgba(220, 20, 60, 0.3); padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+            <div style="color: #dc143c; font-weight: bold; font-size: 16px;">🌀 ポータルボス攻撃</div>
+            <div style="color: #f5deb3; font-size: 12px; margin-top: 5px;">部隊を選択してボスに攻撃しよう！</div>
+        </div>
+    `;
+    
+    // 有利/不利表示をクリア
+    document.getElementById('attackAdvantageDisplay').innerHTML = '';
+    
+    // 兵士データを読み込んで表示
+    await loadPortalBossTroops();
+    
+    // 攻撃ボタンをポータルボス用に変更
+    const confirmBtn = document.getElementById('confirmAttackBtn');
+    confirmBtn.innerHTML = '⚔️ ボスを攻撃';
+    confirmBtn.onclick = confirmPortalBossAttack;
+}
+
+// ポータルボス用兵士を読み込む
+async function loadPortalBossTroops() {
+    const container = document.getElementById('attackTroopSelector');
+    container.innerHTML = '<div class="loading">兵士を読み込み中...</div>';
+    
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_troops'})
+        });
+        const data = await res.json();
+        
+        if (data.ok && data.user_troops && data.user_troops.filter(t => t.count > 0).length > 0) {
+            userTroops = data.user_troops.filter(t => t.count > 0);
+            
+            if (data.deployment_limit) {
+                deploymentLimit = data.deployment_limit;
+            }
+            
+            container.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div style="color: #ffd700; font-size: 12px;">出撃上限: <span id="attackTroopCount">0</span>/${deploymentLimit.total_limit}人</div>
+                    <button type="button" class="quick-invest-btn" style="font-size: 11px;" onclick="selectMaxByStrongest()">💪 強い順に一括選択</button>
+                </div>
+            ` + userTroops.map(troop => `
+                <div class="troop-select-row">
+                    <div class="troop-select-info">
+                        <span class="troop-select-icon">${troop.icon}</span>
+                        <span class="troop-select-name">${troop.name}</span>
+                        <div class="troop-select-stats">⚔️${troop.attack_power} 🛡️${troop.defense_power}</div>
+                    </div>
+                    <input type="range" class="troop-select-slider" 
+                           id="attack-slider-${parseInt(troop.troop_type_id)}"
+                           min="0" max="${parseInt(troop.count)}" value="0"
+                           data-troop-id="${parseInt(troop.troop_type_id)}"
+                           data-attack="${parseInt(troop.attack_power)}"
+                           data-defense="${parseInt(troop.defense_power)}"
+                           oninput="syncAttackTroopInput(${parseInt(troop.troop_type_id)}, this.value)">
+                    <input type="number" class="troop-select-count" 
+                           id="attack-count-${parseInt(troop.troop_type_id)}"
+                           min="0" max="${parseInt(troop.count)}" value="0"
+                           data-troop-id="${parseInt(troop.troop_type_id)}"
+                           oninput="syncAttackTroopSlider(${parseInt(troop.troop_type_id)}, this.value)">
+                    <span class="troop-select-max">/ ${parseInt(troop.count)}</span>
+                </div>
+            `).join('');
+            
+            updateAttackPowerDisplay();
+        } else {
+            container.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">兵士がいません。兵士タブで兵士を訓練してください。</p>';
+        }
+    } catch (e) {
+        container.innerHTML = '<p style="color: #ff6b6b; text-align: center;">兵士の読み込みに失敗しました</p>';
+    }
+}
+
+// ポータルボス攻撃を実行
+async function confirmPortalBossAttack() {
+    if (!portalBossData) return;
+    
+    // 選択された兵士を収集
+    const troops = [];
+    document.querySelectorAll('[id^="attack-count-"]').forEach(input => {
+        const count = parseInt(input.value) || 0;
+        if (count > 0) {
+            troops.push({
+                troop_type_id: parseInt(input.dataset.troopId),
+                count: count
+            });
+        }
+    });
+    
+    if (troops.length === 0) {
+        showNotification('出撃部隊を選択してください', 'error');
+        return;
+    }
+    
+    const btn = document.getElementById('confirmAttackBtn');
+    btn.disabled = true;
+    btn.innerHTML = '攻撃中...';
+    
+    try {
+        const res = await fetch('civilization_events_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                action: 'attack_portal_boss',
+                boss_id: portalBossData.bossId,
+                troops: troops
+            })
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            // 攻撃結果を表示
+            let lootHtml = '';
+            if (data.loot_received && data.loot_received.length > 0) {
+                lootHtml = '<div style="margin-top: 10px; color: #ffd700;">獲得アイテム:</div>';
+                lootHtml += data.loot_received.map(l => `<div style="color: #48bb78;">• アイテムID ${l.item_id} × ${l.count}</div>`).join('');
+            }
+            
+            showNotification(`${data.message} ${lootHtml}`, 'success');
+            closeAttackModal();
+            
+            // イベントコンテンツを再読み込み
+            loadEventContent('special');
+        } else {
+            showNotification(data.error || 'ボス攻撃に失敗しました', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        showNotification('エラーが発生しました', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '⚔️ ボスを攻撃';
+        // 通常攻撃用に戻す
+        setTimeout(() => {
+            const confirmBtn = document.getElementById('confirmAttackBtn');
+            confirmBtn.onclick = confirmAttack;
+            confirmBtn.innerHTML = '⚔️ 攻撃開始';
+        }, 100);
+        portalBossData = null;
     }
 }
 
