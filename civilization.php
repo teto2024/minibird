@@ -5422,10 +5422,15 @@ function renderHeroEvents(container, events) {
                         const baseCost = 100;
                         const discount = event.gacha_discount_percent || 0;
                         const finalCost = Math.floor(baseCost * (100 - discount) / 100);
+                        const cost10 = Math.floor(finalCost * 10 * 0.9); // 10連は追加10%割引
                         return `
                             <button class="quick-invest-btn" onclick="openHeroEventGacha(${event.id}, ${event.featured_hero.id}, ${finalCost})" 
                                     style="background: linear-gradient(135deg, #ff69b4 0%, #9932cc 100%); width: 100%; padding: 15px; font-size: 16px; border-radius: 12px;">
                                 🎰 限定ガチャ 💎${finalCost}クリスタル ${discount > 0 ? `(${discount}%OFF!)` : ''}
+                            </button>
+                            <button class="quick-invest-btn" onclick="openHeroEventGacha10(${event.id}, ${cost10})" 
+                                    style="background: linear-gradient(135deg, #ffd700 0%, #ff6b6b 100%); width: 100%; padding: 15px; font-size: 16px; border-radius: 12px; margin-top: 10px;">
+                                🔥 10連ガチャ 💎${cost10}クリスタル <span style="font-size: 12px;">(10%OFF!)</span>
                             </button>
                         `;
                     })()}
@@ -5567,6 +5572,156 @@ async function openHeroEventGacha(eventId, heroId, cost = 100) {
     } catch (e) {
         console.error(e);
         showNotification('エラーが発生しました', 'error');
+    }
+}
+
+// ⑤ ヒーローイベント限定ガチャ10連
+async function openHeroEventGacha10(eventId, cost10 = 900) {
+    // 確認アラートを表示
+    if (!confirm(`10連ガチャを回しますか？\n\n💎 ${cost10} クリスタルを消費します\n（10%割引適用済み）`)) {
+        return;
+    }
+    
+    try {
+        const res = await fetch('civilization_events_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'hero_event_gacha_10', event_id: eventId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            // 10連ガチャ結果モーダルを表示
+            showHeroEventGacha10Results(data.results, data.cost);
+            loadEventContent('hero');
+            loadData();
+        } else {
+            showNotification(data.error || '10連ガチャに失敗しました', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        showNotification('エラーが発生しました', 'error');
+    }
+}
+
+// ⑤ 10連ガチャ結果モーダルを表示
+function showHeroEventGacha10Results(results, cost) {
+    // モーダルが既に存在する場合は削除
+    const existingModal = document.getElementById('heroGacha10Modal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // 結果をHTMLに変換
+    let resultsHtml = '';
+    results.forEach((result, index) => {
+        const isFeatured = result.is_featured ? 'style="border: 2px solid #ffd700; box-shadow: 0 0 10px rgba(255,215,0,0.5);"' : '';
+        const shardDisplay = result.shards ? `×${result.shards}` : (result.amount ? `×${result.amount}` : '');
+        resultsHtml += `
+            <div class="gacha10-item" ${isFeatured}>
+                <div class="gacha10-icon">${result.icon || '🎁'}</div>
+                <div class="gacha10-name">${escapeHtml(result.name)}</div>
+                <div class="gacha10-amount">${shardDisplay}</div>
+            </div>
+        `;
+    });
+    
+    // モーダルHTMLを作成
+    const modalHtml = `
+        <div id="heroGacha10Modal" class="modal-overlay" onclick="closeHeroGacha10Modal(event)">
+            <div class="gacha10-modal-content" onclick="event.stopPropagation()">
+                <h2 style="text-align: center; color: #ffd700; margin-bottom: 20px;">🔥 10連ガチャ結果 🔥</h2>
+                <div class="gacha10-results-grid">
+                    ${resultsHtml}
+                </div>
+                <div style="text-align: center; margin-top: 20px;">
+                    <span style="color: #888;">消費クリスタル: 💎 ${cost}</span>
+                </div>
+                <button onclick="closeHeroGacha10Modal()" class="gacha10-close-btn">OK</button>
+            </div>
+        </div>
+    `;
+    
+    // スタイルが未追加の場合は追加
+    if (!document.getElementById('heroGacha10Style')) {
+        const style = document.createElement('style');
+        style.id = 'heroGacha10Style';
+        style.textContent = `
+            .gacha10-modal-content {
+                background: linear-gradient(135deg, #1e1e2f 0%, #2d2d44 100%);
+                border-radius: 20px;
+                padding: 30px;
+                max-width: 800px;
+                width: 95%;
+                max-height: 80vh;
+                overflow-y: auto;
+                animation: gachaAppear 0.5s ease-out;
+            }
+            @keyframes gachaAppear {
+                from { transform: scale(0.5); opacity: 0; }
+                to { transform: scale(1); opacity: 1; }
+            }
+            .gacha10-results-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                gap: 15px;
+            }
+            .gacha10-item {
+                background: rgba(0,0,0,0.3);
+                border-radius: 12px;
+                padding: 15px;
+                text-align: center;
+                border: 1px solid rgba(255,255,255,0.1);
+                transition: transform 0.3s, box-shadow 0.3s;
+            }
+            .gacha10-item:hover {
+                transform: scale(1.05);
+            }
+            .gacha10-icon {
+                font-size: 36px;
+                margin-bottom: 8px;
+            }
+            .gacha10-name {
+                font-weight: bold;
+                color: #ffd700;
+                font-size: 13px;
+                margin-bottom: 4px;
+            }
+            .gacha10-amount {
+                font-size: 14px;
+                color: #ff69b4;
+            }
+            .gacha10-close-btn {
+                display: block;
+                margin: 20px auto 0;
+                padding: 12px 40px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 16px;
+                cursor: pointer;
+                transition: transform 0.2s;
+            }
+            .gacha10-close-btn:hover {
+                transform: scale(1.05);
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    // モーダルをDOMに追加
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+// ⑤ 10連ガチャモーダルを閉じる
+function closeHeroGacha10Modal(event) {
+    if (event && event.target.id !== 'heroGacha10Modal') {
+        return;
+    }
+    const modal = document.getElementById('heroGacha10Modal');
+    if (modal) {
+        modal.remove();
     }
 }
 
