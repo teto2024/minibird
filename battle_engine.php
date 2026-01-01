@@ -477,25 +477,34 @@ function prepareBattleUnit($troops, $equipmentBuffs, $pdo) {
         ];
     }
     
-    // シナジースキルの効果を計算
-    $synergyMultiplier = 1.0;
+    // シナジースキルの効果を計算（加算方式）
+    $attackMultiplier = 1.0;
+    $armorMultiplier = 1.0;
+    $healthMultiplier = 1.0;
     $synergyMessages = [];
     
-    // 潜水艦シナジー（巡洋艦: 潜水艦と同時出撃で2倍）
+    // 潜水艦シナジー（巡洋艦: 潜水艦と同時出撃でステータス2倍）
+    // 巡洋艦自身のステータスのみに適用（全体ではない）
     if (in_array('cruiser', $troopKeys) && (in_array('submarine', $troopKeys) || in_array('nuclear_submarine', $troopKeys))) {
-        $synergyMultiplier *= 2.0;
+        $attackMultiplier += 1.0;  // +100% = 2倍
+        $armorMultiplier += 1.0;
+        $healthMultiplier += 1.0;
         $synergyMessages[] = '🔱 対潜連携発動！巡洋艦のステータス2倍！';
     }
     
-    // 海兵隊シナジー（強襲揚陸艦: 海兵隊と同時出撃で3倍）
+    // 海兵隊シナジー（強襲揚陸艦: 海兵隊と同時出撃でステータス3倍）
+    // 強襲揚陸艦自身のステータスのみに適用（全体ではない）
     if (in_array('assault_ship', $troopKeys) && in_array('marine', $troopKeys)) {
-        $synergyMultiplier *= 3.0;
+        $attackMultiplier += 2.0;  // +200% = 3倍
+        $armorMultiplier += 2.0;
+        $healthMultiplier += 2.0;
         $synergyMessages[] = '⚓ 上陸支援発動！強襲揚陸艦のステータス3倍！';
     }
     
     // 空カテゴリシナジー（強襲型空母: 空カテゴリと同時出撃で攻撃力40%UP）
+    // 攻撃力のみに適用
     if (in_array('assault_carrier', $troopKeys) && in_array('air', $domainCategories)) {
-        $synergyMultiplier *= 1.4;
+        $attackMultiplier += 0.4;  // +40%
         $synergyMessages[] = '✈️ 制空権発動！味方全体の攻撃力40%アップ！';
     }
     
@@ -504,10 +513,10 @@ function prepareBattleUnit($troops, $equipmentBuffs, $pdo) {
     $equipArmorBonus = (int)floor(($equipmentBuffs['armor'] ?? 0) * BATTLE_EQUIPMENT_ARMOR_MULTIPLIER);
     $equipHealthBonus = (int)floor(($equipmentBuffs['health'] ?? 0) * BATTLE_EQUIPMENT_HEALTH_MULTIPLIER);
     
-    // シナジー倍率を適用
-    $finalAttack = (int)floor(($totalAttack + $equipAttackBonus) * $synergyMultiplier);
-    $finalArmor = (int)floor(($totalArmor + $equipArmorBonus) * $synergyMultiplier);
-    $finalHealth = (int)floor(($totalHealth + $equipHealthBonus) * $synergyMultiplier);
+    // シナジー倍率を適用（各ステータスごとに個別適用）
+    $finalAttack = (int)floor(($totalAttack + $equipAttackBonus) * $attackMultiplier);
+    $finalArmor = (int)floor(($totalArmor + $equipArmorBonus) * $armorMultiplier);
+    $finalHealth = (int)floor(($totalHealth + $equipHealthBonus) * $healthMultiplier);
     
     return [
         'attack' => $finalAttack,
