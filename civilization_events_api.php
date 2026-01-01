@@ -397,6 +397,13 @@ if ($action === 'attack_portal_boss') {
         $baseDamage = (int)floor($totalPower * (mt_rand(80, 120) / 100));
         $damage = max(1, $baseDamage);
         
+        // ④ ダメージベースのドロップ率を計算
+        // ダメージが高いほどドロップ率とドロップ数が上昇
+        // 基準ダメージ: 1000 で +10%のドロップ率ボーナス
+        $damageBonus = min(50, (int)floor($damage / 1000) * 10); // 最大+50%
+        $countMultiplier = 1.0 + ($damage / 5000); // ダメージ5000で2倍
+        $countMultiplier = min(3.0, $countMultiplier); // 最大3倍
+        
         // ⑨ ドロップアイテムを決定（修正: アイテムがドロップしない問題を修正）
         $lootReceived = [];
         $lootTable = json_decode($boss['loot_table'], true) ?: [];
@@ -412,8 +419,11 @@ if ($action === 'attack_portal_boss') {
             $eventItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             foreach ($eventItems as $item) {
-                if (mt_rand(1, 100) <= ($item['drop_rate'] ?? 10)) {
-                    $count = mt_rand(1, 3);
+                // ダメージベースのドロップ率計算（元のdrop_rate + damageBonus）
+                $effectiveDropRate = min(100, ($item['drop_rate'] ?? 10) + $damageBonus);
+                if (mt_rand(1, 100) <= $effectiveDropRate) {
+                    $baseCount = mt_rand(1, 3);
+                    $count = max(1, (int)floor($baseCount * $countMultiplier));
                     $stmt = $pdo->prepare("
                         INSERT INTO user_special_event_items (user_id, item_id, count)
                         VALUES (?, ?, ?)
@@ -431,9 +441,12 @@ if ($action === 'attack_portal_boss') {
             }
         } else {
             foreach ($lootTable as $loot) {
-                if (mt_rand(1, 100) <= ($loot['chance'] ?? 10)) {
+                // ダメージベースのドロップ率計算
+                $effectiveChance = min(100, ($loot['chance'] ?? 10) + $damageBonus);
+                if (mt_rand(1, 100) <= $effectiveChance) {
                     $itemId = $loot['item_id'];
-                    $count = mt_rand($loot['min_count'] ?? 1, $loot['max_count'] ?? 1);
+                    $baseCount = mt_rand($loot['min_count'] ?? 1, $loot['max_count'] ?? 1);
+                    $count = max(1, (int)floor($baseCount * $countMultiplier));
                     
                     // アイテムが存在するか確認
                     $stmt = $pdo->prepare("SELECT id, name, icon FROM special_event_items WHERE id = ?");
@@ -460,7 +473,7 @@ if ($action === 'attack_portal_boss') {
             }
         }
         
-        // ドロップがなかった場合、最低1つは確定ドロップ
+        // ドロップがなかった場合、最低1つは確定ドロップ（ダメージに応じて数量増加）
         if (empty($lootReceived)) {
             $stmt = $pdo->prepare("
                 SELECT id, name, icon FROM special_event_items 
@@ -472,7 +485,8 @@ if ($action === 'attack_portal_boss') {
             $guaranteedItem = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if ($guaranteedItem) {
-                $count = mt_rand(1, 2);
+                $baseCount = mt_rand(1, 2);
+                $count = max(1, (int)floor($baseCount * $countMultiplier));
                 $stmt = $pdo->prepare("
                     INSERT INTO user_special_event_items (user_id, item_id, count)
                     VALUES (?, ?, ?)
@@ -982,6 +996,153 @@ if ($action === 'hero_event_gacha') {
             'ok' => true,
             'result' => $result,
             'cost' => $finalCost
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// ⑤ ヒーローイベント限定ガチャ 10連
+// ===============================================
+
+if ($action === 'hero_event_gacha_10') {
+    $eventId = (int)($input['event_id'] ?? 0);
+    
+    $pdo->beginTransaction();
+    try {
+        // イベントを確認
+        $stmt = $pdo->prepare("
+            SELECT ce.*, he.featured_hero_id, he.bonus_shard_rate, he.gacha_discount_percent,
+                   h.name as hero_name, h.icon as hero_icon
+            FROM civilization_events ce
+            JOIN hero_events he ON ce.id = he.event_id
+            JOIN heroes h ON he.featured_hero_id = h.id
+            WHERE ce.id = ? AND ce.is_active = TRUE AND ce.end_date >= NOW()
+        ");
+        $stmt->execute([$eventId]);
+        $event = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$event) {
+            throw new Exception('イベントが見つかりません');
+        }
+        
+        // ガチャコスト（割引適用、10連で10%追加割引）
+        $baseCost = 100; // クリスタル（1回分）
+        $discount = (int)$event['gacha_discount_percent'];
+        $singleCost = (int)floor($baseCost * (100 - $discount) / 100);
+        $finalCost = (int)floor($singleCost * 10 * 0.9); // 10連で10%割引
+        
+        // クリスタルを確認
+        $stmt = $pdo->prepare("SELECT crystals FROM users WHERE id = ?");
+        $stmt->execute([$me['id']]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($user['crystals'] < $finalCost) {
+            throw new Exception("クリスタルが不足しています（必要: {$finalCost}）");
+        }
+        
+        // クリスタルを消費
+        $stmt = $pdo->prepare("UPDATE users SET crystals = crystals - ? WHERE id = ?");
+        $stmt->execute([$finalCost, $me['id']]);
+        
+        // 10回分のガチャ結果を生成
+        $results = [];
+        $bonusRate = (float)$event['bonus_shard_rate'];
+        $featuredHeroChance = 30 + $bonusRate; // ベース30% + ボーナス
+        
+        // ランダムヒーロー一覧を事前に取得（効率化）
+        $stmt = $pdo->prepare("SELECT id, name, icon FROM heroes WHERE generation = 0");
+        $stmt->execute();
+        $allHeroes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        for ($i = 0; $i < 10; $i++) {
+            $roll = mt_rand(1, 100);
+            $result = [];
+            
+            if ($roll <= $featuredHeroChance) {
+                // イベントヒーローの欠片
+                $shardCount = mt_rand(3, 10);
+                $stmt = $pdo->prepare("
+                    INSERT INTO user_heroes (user_id, hero_id, shards)
+                    VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE shards = shards + ?
+                ");
+                $stmt->execute([$me['id'], $event['featured_hero_id'], $shardCount, $shardCount]);
+                
+                $result = [
+                    'type' => 'hero_shards',
+                    'name' => $event['hero_name'] . 'の欠片',
+                    'icon' => $event['hero_icon'],
+                    'shards' => $shardCount,
+                    'is_featured' => true
+                ];
+            } else if ($roll <= 60) {
+                // コイン
+                $coins = mt_rand(500, 2000);
+                $stmt = $pdo->prepare("UPDATE users SET coins = coins + ? WHERE id = ?");
+                $stmt->execute([$coins, $me['id']]);
+                
+                $result = [
+                    'type' => 'coins',
+                    'name' => 'コイン',
+                    'icon' => '💰',
+                    'amount' => $coins
+                ];
+            } else if ($roll <= 80) {
+                // ランダムヒーローの欠片
+                if (!empty($allHeroes)) {
+                    $randomHero = $allHeroes[array_rand($allHeroes)];
+                    $shardCount = mt_rand(1, 5);
+                    $stmt = $pdo->prepare("
+                        INSERT INTO user_heroes (user_id, hero_id, shards)
+                        VALUES (?, ?, ?)
+                        ON DUPLICATE KEY UPDATE shards = shards + ?
+                    ");
+                    $stmt->execute([$me['id'], $randomHero['id'], $shardCount, $shardCount]);
+                    
+                    $result = [
+                        'type' => 'hero_shards',
+                        'name' => $randomHero['name'] . 'の欠片',
+                        'icon' => $randomHero['icon'],
+                        'shards' => $shardCount,
+                        'is_featured' => false
+                    ];
+                }
+            } else {
+                // クリスタル（少量返還）
+                $crystals = mt_rand(10, 30);
+                $stmt = $pdo->prepare("UPDATE users SET crystals = crystals + ? WHERE id = ?");
+                $stmt->execute([$crystals, $me['id']]);
+                
+                $result = [
+                    'type' => 'crystals',
+                    'name' => 'クリスタル',
+                    'icon' => '💎',
+                    'amount' => $crystals
+                ];
+            }
+            
+            $results[] = $result;
+        }
+        
+        // ヒーローイベントタスク「ガチャを回す」進捗を更新（10回分）
+        updateHeroEventTaskProgress($pdo, $me['id'], $eventId, 'gacha', 10);
+        
+        // 更新後の残高を取得
+        $stmt = $pdo->prepare("SELECT coins, crystals, diamonds FROM users WHERE id = ?");
+        $stmt->execute([$me['id']]);
+        $balance = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'results' => $results,
+            'cost' => $finalCost,
+            'balance' => $balance
         ]);
     } catch (Exception $e) {
         $pdo->rollBack();
