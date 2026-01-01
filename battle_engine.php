@@ -246,8 +246,16 @@ function processHeroSkillEffect($skill, $attacker, $defender) {
     // ダメージ系スキル
     if (isset($effectData['damage_multiplier'])) {
         $damage = (int)floor($attacker['attack'] * $effectData['damage_multiplier'] * $multiplier);
-        $result['damage'] = $damage;
-        $result['messages'][] = "{$icon} {$skillName}発動！{$damage}ダメージ！";
+        
+        // 連続攻撃（hit_count）
+        if (isset($effectData['hit_count']) && $effectData['hit_count'] > 1) {
+            $damagePerHit = (int)floor($damage / $effectData['hit_count']);
+            $result['damage'] = $damage;
+            $result['messages'][] = "{$icon} {$skillName}発動！{$effectData['hit_count']}連撃で合計{$damage}ダメージ！";
+        } else {
+            $result['damage'] = $damage;
+            $result['messages'][] = "{$icon} {$skillName}発動！{$damage}ダメージ！";
+        }
     }
     
     // 回復系スキル
@@ -255,6 +263,20 @@ function processHeroSkillEffect($skill, $attacker, $defender) {
         $heal = (int)floor($attacker['max_health'] * ($effectData['heal_percent'] / 100) * $multiplier);
         $result['heal'] = $heal;
         $result['messages'][] = "{$icon} {$skillName}発動！{$heal}回復！";
+        
+        // 継続回復（HOT: Heal Over Time）
+        if (isset($effectData['hot_percent'])) {
+            $result['attacker_effects'][] = [
+                'skill_key' => 'heal_over_time',
+                'skill_name' => '継続回復',
+                'skill_icon' => '💚',
+                'effect_type' => 'hot',
+                'effect_target' => 'self',
+                'effect_value' => $effectData['hot_percent'],
+                'remaining_turns' => $effectData['hot_duration'] ?? 2
+            ];
+            $result['messages'][] = "💚 継続回復を{$effectData['hot_duration']}ターン付与！";
+        }
     }
     
     // バフ系スキル
@@ -269,9 +291,51 @@ function processHeroSkillEffect($skill, $attacker, $defender) {
             'remaining_turns' => $effectData['duration'] ?? 2
         ];
         $result['messages'][] = "{$icon} {$skillName}発動！アーマー+{$effectData['armor_buff']}%！";
+        
+        // タウント効果
+        if (isset($effectData['taunt_duration'])) {
+            $result['attacker_effects'][] = [
+                'skill_key' => 'taunt',
+                'skill_name' => '挑発',
+                'skill_icon' => '🛡️',
+                'effect_type' => 'buff',
+                'effect_target' => 'self',
+                'effect_value' => 100,
+                'remaining_turns' => $effectData['taunt_duration']
+            ];
+            $result['messages'][] = "🛡️ 敵の攻撃を引き付ける！";
+        }
     }
     
-    // デバフ系スキル
+    // 毒スキル（新しいヒーロー: プレイグドクター）
+    if (isset($effectData['poison_percent'])) {
+        $result['defender_effects'][] = [
+            'skill_key' => 'poison',
+            'skill_name' => '毒',
+            'skill_icon' => '☠️',
+            'effect_type' => 'dot',
+            'effect_target' => 'enemy',
+            'effect_value' => $effectData['poison_percent'],
+            'remaining_turns' => $effectData['poison_duration'] ?? 3
+        ];
+        $result['messages'][] = "{$icon} {$skillName}発動！敵に毒を付与！";
+        
+        // 攻撃力デバフ
+        if (isset($effectData['attack_debuff'])) {
+            $result['defender_effects'][] = [
+                'skill_key' => 'attack_down',
+                'skill_name' => '攻撃力低下',
+                'skill_icon' => '⬇️',
+                'effect_type' => 'debuff',
+                'effect_target' => 'enemy',
+                'effect_value' => $effectData['attack_debuff'],
+                'remaining_turns' => $effectData['poison_duration'] ?? 3
+            ];
+            $result['messages'][] = "⬇️ 敵の攻撃力を{$effectData['attack_debuff']}%減少！";
+        }
+    }
+    
+    // デバフ系スキル（凍結）
     if (isset($effectData['freeze_duration']) || isset($effectData['freeze_chance'])) {
         $freezeChance = $effectData['freeze_chance'] ?? 100;
         if (mt_rand(1, 100) <= $freezeChance) {
@@ -300,6 +364,20 @@ function processHeroSkillEffect($skill, $attacker, $defender) {
             'remaining_turns' => $effectData['duration'] ?? 2
         ];
         $result['messages'][] = "{$icon} {$skillName}発動！敵を燃焼状態に！";
+    }
+    
+    // 戦利品ボーナス（トレジャーハンター）
+    if (isset($effectData['loot_bonus'])) {
+        $result['attacker_effects'][] = [
+            'skill_key' => 'loot_bonus',
+            'skill_name' => '戦利品ボーナス',
+            'skill_icon' => '💰',
+            'effect_type' => 'buff',
+            'effect_target' => 'self',
+            'effect_value' => $effectData['loot_bonus'],
+            'remaining_turns' => 999 // 戦闘中ずっと有効
+        ];
+        $result['messages'][] = "{$icon} {$skillName}発動！戦利品が{$effectData['loot_bonus']}%増加！";
     }
     
     // AOE（全体攻撃）
@@ -546,10 +624,11 @@ function tryActivateSkill($unit, $target, $isAttacker) {
     $extraAttacks = 0;
     $heroSkillResult = null;
     
-    // 各兵種のスキル発動判定
+    // ① 兵種スキルとヒーロースキルを独立して発動
+    // 複数の兵種スキルが同時に発動可能
     foreach ($unit['skills'] as $skill) {
         if (mt_rand(1, 100) <= $skill['activation_chance']) {
-            // ヒーロースキルの特別処理
+            // ヒーロースキルの特別処理（兵種スキルとは独立して発動）
             if (!empty($skill['is_hero_skill'])) {
                 $heroSkillResult = processHeroSkillEffect($skill, $unit, $target);
                 $messages = array_merge($messages, $heroSkillResult['messages']);
@@ -574,14 +653,13 @@ function tryActivateSkill($unit, $target, $isAttacker) {
             
             // 加速スキルの特別処理
             if ($skill['skill_key'] === 'acceleration') {
-                $extraAttacks = (int)$skill['effect_value'] - 1;
+                $extraAttacks += (int)$skill['effect_value'] - 1;
                 $messages[] = "⚡ 加速！{$skill['effect_value']}回連続攻撃！";
             } else {
                 $newEffects[] = $effect;
             }
             
-            // 1つの通常スキルのみ発動（複数発動を防ぐ）
-            break;
+            // 複数の兵種スキルが発動可能（breakを削除）
         }
     }
     

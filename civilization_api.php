@@ -1037,6 +1037,12 @@ if ($action === 'invest_coins') {
             // テーブルがない場合は無視
         }
         
+        // ③ 経験値を付与（投資）
+        $investExp = min(50, (int)floor($amount / 100));
+        if ($investExp > 0) {
+            grant_exp($me['id'], 'civilization_invest', $investExp);
+        }
+        
         $pdo->commit();
         
         echo json_encode([
@@ -1316,6 +1322,10 @@ if ($action === 'complete_researches') {
             } catch (Exception $e) {
                 // テーブルがない場合は無視
             }
+            
+            // ③ 経験値を付与（研究完了）
+            $researchExp = count($completedNames) * 30;
+            grant_exp($me['id'], 'civilization_research', $researchExp);
         }
         
         $pdo->commit();
@@ -1518,6 +1528,10 @@ if ($action === 'attack') {
         } catch (Exception $e) {
             // テーブルがない場合は無視
         }
+        
+        // ③ 経験値を付与（戦闘参加）
+        $battleExp = ($winnerId === $me['id']) ? 50 : 20;
+        grant_exp($me['id'], 'civilization_battle', $battleExp);
         
         $pdo->commit();
         
@@ -3324,6 +3338,10 @@ if ($action === 'complete_training') {
             } catch (Exception $e) {
                 // テーブルがない場合は無視
             }
+            
+            // ③ 経験値を付与（訓練完了）
+            $trainExp = min(100, $totalTrained * 2);
+            grant_exp($me['id'], 'civilization_train', $trainExp);
         }
         
         $pdo->commit();
