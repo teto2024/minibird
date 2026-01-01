@@ -111,16 +111,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $start = $now->format('Y-m-d H:i:s');
         $end = $now->add(new DateInterval('PT20M'))->format('Y-m-d H:i:s');
 
-        // 既存のバフレベルを確認
-        $st = $pdo->prepare("SELECT id,level,end_time FROM buffs WHERE type=? AND end_time>NOW() ORDER BY end_time DESC LIMIT 1");
-        $st->execute([$type]);
-        $buff = $st->fetch();
-
         if ($type==='chat_festival') {
             // チャット祭は重ねがけなし
             $st = $pdo->prepare("INSERT INTO buffs (type,level,activated_by,start_time,end_time) VALUES (?,?,?,?,?)");
             $st->execute([$type,1,$me['id'],$start,$end]);
-        } elseif ($type==='word_master_reward') {
+        } else if ($type==='word_master_reward') {
             // 英単語マスター報酬UPは個人バフ（user_buffs）、最大Lv10まで重ねがけ可能
             $st = $pdo->prepare("SELECT id,level,end_time FROM user_buffs WHERE user_id=? AND type=? AND end_time>NOW() ORDER BY end_time DESC LIMIT 1");
             $st->execute([$me['id'], $type]);
@@ -129,8 +124,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $level = $userBuff ? min(10, $userBuff['level'] + 1) : 1;
             $st = $pdo->prepare("INSERT INTO user_buffs (user_id,type,level,start_time,end_time) VALUES (?,?,?,?,?)");
             $st->execute([$me['id'],$type,$level,$start,$end]);
-        } else {
-            // タスク報酬UPは重ねがけ可能（最大Lv10）
+        } else if ($type==='task') {
+            // タスク報酬UPは重ねがけ可能（最大Lv10）- buffsテーブルを使用
+            $st = $pdo->prepare("SELECT id,level,end_time FROM buffs WHERE type=? AND end_time>NOW() ORDER BY end_time DESC LIMIT 1");
+            $st->execute([$type]);
+            $buff = $st->fetch();
             $level = $buff ? min(10,$buff['level']+1) : 1;
             $st = $pdo->prepare("INSERT INTO buffs (type,level,activated_by,start_time,end_time) VALUES (?,?,?,?,?)");
             $st->execute([$type,$level,$me['id'],$start,$end]);

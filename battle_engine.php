@@ -419,6 +419,8 @@ function prepareBattleUnit($troops, $equipmentBuffs, $pdo) {
     $totalHealth = 0;
     $troopDetails = [];
     $skills = [];
+    $troopKeys = [];  // 出撃中の兵種キーを収集（シナジー判定用）
+    $domainCategories = [];  // 出撃中の領域カテゴリを収集（陸・海・空）
     
     foreach ($troops as $troop) {
         $troopType = getTroopTypeWithSkill($pdo, $troop['troop_type_id']);
@@ -434,6 +436,14 @@ function prepareBattleUnit($troops, $equipmentBuffs, $pdo) {
         $totalAttack += $attack;
         $totalArmor += $defense;
         $totalHealth += $health;
+        
+        // 兵種キーと領域カテゴリを収集
+        if (!empty($troopType['troop_key'])) {
+            $troopKeys[] = $troopType['troop_key'];
+        }
+        if (!empty($troopType['domain_category'])) {
+            $domainCategories[] = $troopType['domain_category'];
+        }
         
         // スキル情報を収集
         if (!empty($troopType['skill_key'])) {
@@ -461,8 +471,32 @@ function prepareBattleUnit($troops, $equipmentBuffs, $pdo) {
             'attack' => $attack,
             'defense' => $defense,
             'health' => $health,
-            'category' => $troopType['troop_category'] ?? 'infantry'
+            'category' => $troopType['troop_category'] ?? 'infantry',
+            'domain_category' => $troopType['domain_category'] ?? 'land',
+            'troop_key' => $troopType['troop_key'] ?? ''
         ];
+    }
+    
+    // シナジースキルの効果を計算
+    $synergyMultiplier = 1.0;
+    $synergyMessages = [];
+    
+    // 潜水艦シナジー（巡洋艦: 潜水艦と同時出撃で2倍）
+    if (in_array('cruiser', $troopKeys) && (in_array('submarine', $troopKeys) || in_array('nuclear_submarine', $troopKeys))) {
+        $synergyMultiplier *= 2.0;
+        $synergyMessages[] = '🔱 対潜連携発動！巡洋艦のステータス2倍！';
+    }
+    
+    // 海兵隊シナジー（強襲揚陸艦: 海兵隊と同時出撃で3倍）
+    if (in_array('assault_ship', $troopKeys) && in_array('marine', $troopKeys)) {
+        $synergyMultiplier *= 3.0;
+        $synergyMessages[] = '⚓ 上陸支援発動！強襲揚陸艦のステータス3倍！';
+    }
+    
+    // 空カテゴリシナジー（強襲型空母: 空カテゴリと同時出撃で攻撃力40%UP）
+    if (in_array('assault_carrier', $troopKeys) && in_array('air', $domainCategories)) {
+        $synergyMultiplier *= 1.4;
+        $synergyMessages[] = '✈️ 制空権発動！味方全体の攻撃力40%アップ！';
     }
     
     // 装備バフを追加
@@ -470,11 +504,16 @@ function prepareBattleUnit($troops, $equipmentBuffs, $pdo) {
     $equipArmorBonus = (int)floor(($equipmentBuffs['armor'] ?? 0) * BATTLE_EQUIPMENT_ARMOR_MULTIPLIER);
     $equipHealthBonus = (int)floor(($equipmentBuffs['health'] ?? 0) * BATTLE_EQUIPMENT_HEALTH_MULTIPLIER);
     
+    // シナジー倍率を適用
+    $finalAttack = (int)floor(($totalAttack + $equipAttackBonus) * $synergyMultiplier);
+    $finalArmor = (int)floor(($totalArmor + $equipArmorBonus) * $synergyMultiplier);
+    $finalHealth = (int)floor(($totalHealth + $equipHealthBonus) * $synergyMultiplier);
+    
     return [
-        'attack' => $totalAttack + $equipAttackBonus,
-        'armor' => $totalArmor + $equipArmorBonus,
-        'max_health' => $totalHealth + $equipHealthBonus,
-        'current_health' => $totalHealth + $equipHealthBonus,
+        'attack' => $finalAttack,
+        'armor' => $finalArmor,
+        'max_health' => $finalHealth,
+        'current_health' => $finalHealth,
         'troops' => $troopDetails,
         'skills' => $skills,
         'equipment_buffs' => $equipmentBuffs,
@@ -482,6 +521,9 @@ function prepareBattleUnit($troops, $equipmentBuffs, $pdo) {
         'is_frozen' => false,
         'is_stunned' => false,
         'extra_attacks' => 0,   // 加速による追加攻撃回数
+        'troop_keys' => $troopKeys,  // シナジー判定用
+        'domain_categories' => array_unique($domainCategories),  // 領域カテゴリ
+        'synergy_messages' => $synergyMessages  // シナジー発動メッセージ
     ];
 }
 
@@ -678,7 +720,31 @@ function tryActivateSkill($unit, $target, $isAttacker) {
             if ($skill['skill_key'] === 'acceleration') {
                 $extraAttacks += (int)$skill['effect_value'] - 1;
                 $messages[] = "⚡ 加速！{$skill['effect_value']}回連続攻撃！";
-            } else {
+            }
+            // 量子戦スキル（5%で敵HP半減）
+            else if ($skill['skill_key'] === 'quantum_warfare') {
+                $halfDamage = (int)floor($target['current_health'] / 2);
+                $effect['instant_damage'] = $halfDamage;
+                $effect['effect_type'] = 'instant_damage';
+                $newEffects[] = $effect;
+                $messages[] = "⚛️ 量子戦発動！敵のHPを半減（{$halfDamage}ダメージ）！";
+            }
+            // 寝返りスキル（敵にダメージを与えその分回復）
+            else if ($skill['skill_key'] === 'defection') {
+                $defectionDamage = (int)floor($unit['attack'] * ($skill['effect_value'] / 100));
+                $effect['instant_damage'] = $defectionDamage;
+                $effect['instant_heal'] = $defectionDamage;
+                $effect['effect_type'] = 'drain';
+                $newEffects[] = $effect;
+                $messages[] = "🕵️ 寝返り発動！{$defectionDamage}ダメージを与え、その分回復！";
+            }
+            // 反射スキル（受けた攻撃をそのまま跳ね返す）
+            else if ($skill['skill_key'] === 'agitation') {
+                $effect['effect_type'] = 'reflect';
+                $newEffects[] = $effect;
+                $messages[] = "⛵ 扇動発動！受けた攻撃を跳ね返す！";
+            }
+            else {
                 $newEffects[] = $effect;
             }
             
@@ -836,7 +902,25 @@ function executeTurnBattle($attacker, $defender, $maxTurns = null) {
             
             // 新しい効果を適用
             foreach ($skillResult['effects'] as $effect) {
-                if ($effect['effect_target'] === 'self') {
+                // 即時ダメージ効果（量子戦など）
+                if (isset($effect['effect_type']) && $effect['effect_type'] === 'instant_damage') {
+                    $instantDamage = $effect['instant_damage'] ?? 0;
+                    $defender['current_health'] -= $instantDamage;
+                    $defender['current_health'] = max(0, $defender['current_health']);
+                    $turnMessages[] = "防御側HP: {$defender['current_health']}/{$defender['max_health']}";
+                }
+                // 吸収効果（寝返りなど）
+                else if (isset($effect['effect_type']) && $effect['effect_type'] === 'drain') {
+                    $drainDamage = $effect['instant_damage'] ?? 0;
+                    $drainHeal = $effect['instant_heal'] ?? 0;
+                    $defender['current_health'] -= $drainDamage;
+                    $defender['current_health'] = max(0, $defender['current_health']);
+                    $attacker['current_health'] = min($attacker['max_health'], $attacker['current_health'] + $drainHeal);
+                    $turnMessages[] = "防御側HP: {$defender['current_health']}/{$defender['max_health']}";
+                    $turnMessages[] = "攻撃側HP: {$attacker['current_health']}/{$attacker['max_health']}";
+                }
+                // 反射効果（扇動など）は継続効果として追加
+                else if ($effect['effect_target'] === 'self') {
                     $attacker['active_effects'][] = $effect;
                 } else if ($effect['effect_target'] === 'enemy') {
                     $defender['active_effects'][] = $effect;
@@ -886,6 +970,17 @@ function executeTurnBattle($attacker, $defender, $maxTurns = null) {
                 
                 $defender['current_health'] -= $damageResult['damage'];
                 $defender['current_health'] = max(0, $defender['current_health']);
+                
+                // 反射効果チェック（防御側）
+                foreach ($defender['active_effects'] as $reflectEffect) {
+                    if (isset($reflectEffect['effect_type']) && $reflectEffect['effect_type'] === 'reflect') {
+                        $reflectDamage = $damageResult['damage'];
+                        $attacker['current_health'] -= $reflectDamage;
+                        $attacker['current_health'] = max(0, $attacker['current_health']);
+                        $turnMessages[] = "⛵ 反射！{$reflectDamage}ダメージを跳ね返した！";
+                        $turnMessages[] = "攻撃側HP: {$attacker['current_health']}/{$attacker['max_health']}";
+                    }
+                }
                 
                 $attackNum = $i + 1;
                 $attackLabel = $attackCount > 1 ? "[攻撃{$attackNum}] " : "";
@@ -973,7 +1068,25 @@ function executeTurnBattle($attacker, $defender, $maxTurns = null) {
             
             // 新しい効果を適用
             foreach ($skillResult['effects'] as $effect) {
-                if ($effect['effect_target'] === 'self') {
+                // 即時ダメージ効果（量子戦など）
+                if (isset($effect['effect_type']) && $effect['effect_type'] === 'instant_damage') {
+                    $instantDamage = $effect['instant_damage'] ?? 0;
+                    $attacker['current_health'] -= $instantDamage;
+                    $attacker['current_health'] = max(0, $attacker['current_health']);
+                    $turnMessages[] = "攻撃側HP: {$attacker['current_health']}/{$attacker['max_health']}";
+                }
+                // 吸収効果（寝返りなど）
+                else if (isset($effect['effect_type']) && $effect['effect_type'] === 'drain') {
+                    $drainDamage = $effect['instant_damage'] ?? 0;
+                    $drainHeal = $effect['instant_heal'] ?? 0;
+                    $attacker['current_health'] -= $drainDamage;
+                    $attacker['current_health'] = max(0, $attacker['current_health']);
+                    $defender['current_health'] = min($defender['max_health'], $defender['current_health'] + $drainHeal);
+                    $turnMessages[] = "攻撃側HP: {$attacker['current_health']}/{$attacker['max_health']}";
+                    $turnMessages[] = "防御側HP: {$defender['current_health']}/{$defender['max_health']}";
+                }
+                // 反射効果（扇動など）は継続効果として追加
+                else if ($effect['effect_target'] === 'self') {
                     $defender['active_effects'][] = $effect;
                 } else if ($effect['effect_target'] === 'enemy') {
                     $attacker['active_effects'][] = $effect;
@@ -1023,6 +1136,17 @@ function executeTurnBattle($attacker, $defender, $maxTurns = null) {
                 
                 $attacker['current_health'] -= $damageResult['damage'];
                 $attacker['current_health'] = max(0, $attacker['current_health']);
+                
+                // 反射効果チェック（攻撃側）
+                foreach ($attacker['active_effects'] as $reflectEffect) {
+                    if (isset($reflectEffect['effect_type']) && $reflectEffect['effect_type'] === 'reflect') {
+                        $reflectDamage = $damageResult['damage'];
+                        $defender['current_health'] -= $reflectDamage;
+                        $defender['current_health'] = max(0, $defender['current_health']);
+                        $turnMessages[] = "⛵ 反射！{$reflectDamage}ダメージを跳ね返した！";
+                        $turnMessages[] = "防御側HP: {$defender['current_health']}/{$defender['max_health']}";
+                    }
+                }
                 
                 $attackNum = $i + 1;
                 $attackLabel = $attackCount > 1 ? "[攻撃{$attackNum}] " : "";
