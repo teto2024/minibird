@@ -693,8 +693,65 @@ function consumeTrainingSupplementaryResources($pdo, $userId, $count, $troopCate
 }
 
 /**
+ * ② 治療時に必要な資源を確認するヘルパー関数
+ * 薬草、医薬品が不足していないか事前チェック
+ * 
+ * @param PDO $pdo データベース接続
+ * @param int $userId ユーザーID
+ * @param int $count 治療数
+ * @return array ['ok' => bool, 'required' => [...], 'missing' => [...]]
+ */
+function checkHealingResourcesAvailable($pdo, $userId, $count) {
+    global $HEALING_SUPPLEMENTARY_COSTS;
+    $required = [];
+    $missing = [];
+    
+    // 薬草は5体ごとに1、医薬品は10体ごとに1
+    foreach ($HEALING_SUPPLEMENTARY_COSTS as $resourceKey => $costPerN) {
+        $divisor = ($resourceKey === 'herbs') ? 5 : 10;
+        $requiredAmount = max(1, floor($count / $divisor)) * $costPerN;
+        
+        if ($requiredAmount <= 0) continue;
+        
+        // 資源を持っているか確認
+        $stmt = $pdo->prepare("
+            SELECT ucr.amount, rt.name as resource_name
+            FROM user_civilization_resources ucr
+            JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
+            WHERE ucr.user_id = ? AND rt.resource_key = ? AND ucr.unlocked = TRUE
+        ");
+        $stmt->execute([$userId, $resourceKey]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        $currentAmount = $result ? (float)$result['amount'] : 0;
+        $resourceName = $result ? $result['resource_name'] : $resourceKey;
+        
+        $required[$resourceKey] = [
+            'name' => $resourceName,
+            'required' => $requiredAmount,
+            'available' => $currentAmount
+        ];
+        
+        // ② 資源が不足している場合
+        if ($currentAmount < $requiredAmount) {
+            $missing[$resourceKey] = [
+                'name' => $resourceName,
+                'required' => $requiredAmount,
+                'available' => $currentAmount,
+                'shortage' => $requiredAmount - $currentAmount
+            ];
+        }
+    }
+    
+    return [
+        'ok' => empty($missing),
+        'required' => $required,
+        'missing' => $missing
+    ];
+}
+
+/**
  * 治療時の追加資源を消費するヘルパー関数
- * 薬草、医薬品を微量消費する（持っている場合のみ）
+ * ② 薬草、医薬品を消費する（不足している場合は事前にcheckHealingResourcesAvailableで確認済みの前提）
  * 
  * @param PDO $pdo データベース接続
  * @param int $userId ユーザーID
@@ -712,28 +769,15 @@ function consumeHealingSupplementaryResources($pdo, $userId, $count) {
         
         if ($requiredAmount <= 0) continue;
         
-        // 資源を持っているか確認
+        // 資源を消費
         $stmt = $pdo->prepare("
-            SELECT ucr.amount 
-            FROM user_civilization_resources ucr
+            UPDATE user_civilization_resources ucr
             JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
-            WHERE ucr.user_id = ? AND rt.resource_key = ? AND ucr.unlocked = TRUE
+            SET ucr.amount = ucr.amount - ?
+            WHERE ucr.user_id = ? AND rt.resource_key = ?
         ");
-        $stmt->execute([$userId, $resourceKey]);
-        $currentAmount = (float)$stmt->fetchColumn();
-        
-        // 持っている分だけ消費（なければスキップ）
-        if ($currentAmount > 0) {
-            $toConsume = min($requiredAmount, $currentAmount);
-            $stmt = $pdo->prepare("
-                UPDATE user_civilization_resources ucr
-                JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
-                SET ucr.amount = ucr.amount - ?
-                WHERE ucr.user_id = ? AND rt.resource_key = ?
-            ");
-            $stmt->execute([$toConsume, $userId, $resourceKey]);
-            $consumed[$resourceKey] = $toConsume;
-        }
+        $stmt->execute([$requiredAmount, $userId, $resourceKey]);
+        $consumed[$resourceKey] = $requiredAmount;
     }
     
     return $consumed;
@@ -3128,11 +3172,21 @@ if ($action === 'heal_troops') {
             throw new Exception('コインが不足しています');
         }
         
+        // ② 追加資源（薬草、医薬品）が十分にあるかチェック
+        $resourceCheck = checkHealingResourcesAvailable($pdo, $me['id'], $count);
+        if (!$resourceCheck['ok']) {
+            $missingList = [];
+            foreach ($resourceCheck['missing'] as $res) {
+                $missingList[] = "{$res['name']}（必要: {$res['required']}、所持: {$res['available']}）";
+            }
+            throw new Exception('治療に必要な資源が不足しています: ' . implode('、', $missingList));
+        }
+        
         // コインを消費
         $stmt = $pdo->prepare("UPDATE users SET coins = coins - ? WHERE id = ?");
         $stmt->execute([$totalCost, $me['id']]);
         
-        // 追加資源を消費（薬草、医薬品など - 持っている場合のみ）
+        // ② 追加資源を消費（薬草、医薬品など）
         $healingSupplementaryConsumed = consumeHealingSupplementaryResources($pdo, $me['id'], $count);
         
         // 治療時間を計算
@@ -3525,6 +3579,15 @@ if ($action === 'instant_complete_queue') {
         
         $pdo->commit();
         
+        // ③ 経験値を付与（トランザクション外で呼び出す）
+        try {
+            if ($queueType === 'training') {
+                grant_exp($me['id'], 'civilization_train', 0);
+            }
+        } catch (Exception $e) {
+            // 経験値付与エラーは無視
+        }
+        
         $actionName = $queueType === 'training' ? '訓練' : '治療';
         echo json_encode([
             'ok' => true,
@@ -3604,6 +3667,13 @@ if ($action === 'instant_complete_building_diamond') {
         
         $pdo->commit();
         
+        // ③ 経験値を付与（トランザクション外で呼び出す）
+        try {
+            grant_exp($me['id'], 'civilization_build', 0);
+        } catch (Exception $e) {
+            // 経験値付与エラーは無視
+        }
+        
         echo json_encode([
             'ok' => true,
             'message' => "{$building['name']}の建設が完了しました！",
@@ -3678,6 +3748,13 @@ if ($action === 'instant_complete_research_diamond') {
         updateCivilizationQuestProgress($pdo, $me['id'], 'research', $research['research_key'] ?? null, 1);
         
         $pdo->commit();
+        
+        // ③ 経験値を付与（トランザクション外で呼び出す）
+        try {
+            grant_exp($me['id'], 'civilization_research', 0);
+        } catch (Exception $e) {
+            // 経験値付与エラーは無視
+        }
         
         echo json_encode([
             'ok' => true,

@@ -5343,7 +5343,7 @@ function renderSpecialEvents(container, events) {
                                     </button>
                                 ` : `
                                     <div style="color: #888; text-align: center; padding: 10px;">
-                                        ⏱️ ${Math.ceil(boss.seconds_until_attack / 3600)}時間後に攻撃可能
+                                        ⏱️ ${Math.ceil(boss.seconds_until_attack / 60)}分後に攻撃可能
                                     </div>
                                 `}
                             </div>
