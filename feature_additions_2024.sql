@@ -444,6 +444,14 @@ INSERT IGNORE INTO special_event_items (event_id, item_key, name, icon, descript
 ((SELECT id FROM civilization_events WHERE event_key = 'new_year_2026'), 'golden_dragon', '金龍の鱗', '🐉', '伝説の龍の鱗', 'rare', 5.00),
 ((SELECT id FROM civilization_events WHERE event_key = 'new_year_2026'), 'phoenix_feather', '鳳凰の羽', '🔥', '不死鳥の神秘的な羽', 'epic', 2.00);
 
+-- スペシャルイベント交換所（新春イベント用）
+INSERT IGNORE INTO special_event_exchange (event_id, item_id, required_count, reward_type, reward_amount, exchange_limit) VALUES
+((SELECT id FROM civilization_events WHERE event_key = 'new_year_2026'), (SELECT id FROM special_event_items WHERE item_key = 'new_year_coin' LIMIT 1), 10, 'coins', 1000, NULL),
+((SELECT id FROM civilization_events WHERE event_key = 'new_year_2026'), (SELECT id FROM special_event_items WHERE item_key = 'new_year_coin' LIMIT 1), 30, 'crystals', 5, NULL),
+((SELECT id FROM civilization_events WHERE event_key = 'new_year_2026'), (SELECT id FROM special_event_items WHERE item_key = 'lucky_charm' LIMIT 1), 5, 'diamonds', 3, 10),
+((SELECT id FROM civilization_events WHERE event_key = 'new_year_2026'), (SELECT id FROM special_event_items WHERE item_key = 'golden_dragon' LIMIT 1), 3, 'diamonds', 10, 5),
+((SELECT id FROM civilization_events WHERE event_key = 'new_year_2026'), (SELECT id FROM special_event_items WHERE item_key = 'phoenix_feather' LIMIT 1), 1, 'diamonds', 50, 1);
+
 -- ポータルボスを追加（新春イベント用）
 INSERT IGNORE INTO special_event_portal_bosses (event_id, boss_name, boss_icon, boss_power, attack_interval_hours, loot_table) VALUES
 ((SELECT id FROM civilization_events WHERE event_key = 'new_year_2026'), '黄金龍王', '🐲', 500000, 3, '[{"item_id":1,"chance":50,"min_count":1,"max_count":3},{"item_id":2,"chance":30,"min_count":1,"max_count":2},{"item_id":3,"chance":15,"min_count":1,"max_count":1},{"item_id":4,"chance":5,"min_count":1,"max_count":1}]');

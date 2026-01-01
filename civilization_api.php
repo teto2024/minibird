@@ -36,6 +36,41 @@ function updateDailyTaskProgressFromCiv($pdo, $userId, $taskType, $amount = 1) {
     }
 }
 
+// ヒーローイベントタスク進捗を更新するヘルパー関数
+function updateHeroEventTaskProgressFromCiv($pdo, $userId, $taskType, $amount = 1) {
+    $now = date('Y-m-d H:i:s');
+    
+    // アクティブなヒーローイベントに関連するタスクを取得
+    $stmt = $pdo->prepare("
+        SELECT het.id, het.target_count, he.event_id
+        FROM hero_event_tasks het
+        JOIN hero_events he ON het.hero_event_id = he.id
+        JOIN civilization_events ce ON he.event_id = ce.id
+        WHERE het.task_type = ?
+          AND ce.event_type = 'hero'
+          AND ce.is_active = TRUE
+          AND ce.start_date <= ?
+          AND ce.end_date >= ?
+    ");
+    $stmt->execute([$taskType, $now, $now]);
+    $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    foreach ($tasks as $task) {
+        $stmt = $pdo->prepare("
+            INSERT INTO user_hero_event_task_progress (user_id, task_id, current_progress, is_completed)
+            VALUES (?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+                current_progress = LEAST(current_progress + ?, ?),
+                is_completed = (current_progress + ? >= ?)
+        ");
+        $stmt->execute([
+            $userId, $task['id'], min($amount, $task['target_count']), $amount >= $task['target_count'],
+            $amount, $task['target_count'],
+            $amount, $task['target_count']
+        ]);
+    }
+}
+
 // 文明システム設定定数
 define('CIV_COINS_TO_RESEARCH_RATIO', 10);     // 研究ポイント1あたりのコイン
 define('CIV_RESOURCE_BONUS_RATIO', 10);        // 資源ボーナス1あたりのコイン
@@ -830,6 +865,7 @@ if ($action === 'get_data') {
         // ③ デイリータスク「ログイン」進捗を更新
         try {
             updateDailyTaskProgressFromCiv($pdo, $me['id'], 'login', 1);
+            updateHeroEventTaskProgressFromCiv($pdo, $me['id'], 'login', 1);
         } catch (Exception $e) {
             // デイリータスクテーブルがない場合は無視
         }
@@ -1525,6 +1561,7 @@ if ($action === 'attack') {
         // ③ デイリータスク「戦闘参加」進捗を更新
         try {
             updateDailyTaskProgressFromCiv($pdo, $me['id'], 'battle', 1);
+            updateHeroEventTaskProgressFromCiv($pdo, $me['id'], 'battle', 1);
         } catch (Exception $e) {
             // テーブルがない場合は無視
         }

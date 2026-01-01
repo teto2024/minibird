@@ -9,7 +9,7 @@ require_once __DIR__ . '/config.php';
 // 経験値システム定数
 define('EXP_MIN', 50);       // 最小獲得経験値
 define('EXP_MAX', 100);      // 最大獲得経験値
-define('EXP_MAX_LEVEL', 100); // 最大レベル
+define('EXP_MAX_LEVEL', 200); // 最大レベル（200に緩和）
 
 /**
  * 経験値を付与してレベルアップをチェック

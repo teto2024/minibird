@@ -162,11 +162,15 @@ if ($action === 'claim_daily_task') {
             throw new Exception('タスク進捗が見つかりません');
         }
         
-        if (!$progress['is_completed'] && $progress['current_progress'] < $task['target_count']) {
+        // is_completedが文字列の場合も考慮
+        $isCompleted = (bool)$progress['is_completed'] || ((int)$progress['current_progress'] >= (int)$task['target_count']);
+        $isClaimed = (bool)$progress['is_claimed'];
+        
+        if (!$isCompleted) {
             throw new Exception('タスクが未完了です');
         }
         
-        if ($progress['is_claimed']) {
+        if ($isClaimed) {
             throw new Exception('既に報酬を受け取っています');
         }
         
@@ -768,6 +772,210 @@ if ($action === 'claim_hero_event_point_reward') {
         ]);
     } catch (Exception $e) {
         $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// ヒーローイベント限定ガチャ
+// ===============================================
+
+if ($action === 'hero_event_gacha') {
+    $eventId = (int)($input['event_id'] ?? 0);
+    $heroId = (int)($input['hero_id'] ?? 0);
+    
+    $pdo->beginTransaction();
+    try {
+        // イベントを確認
+        $stmt = $pdo->prepare("
+            SELECT ce.*, he.featured_hero_id, he.bonus_shard_rate, he.gacha_discount_percent,
+                   h.name as hero_name, h.icon as hero_icon
+            FROM civilization_events ce
+            JOIN hero_events he ON ce.id = he.event_id
+            JOIN heroes h ON he.featured_hero_id = h.id
+            WHERE ce.id = ? AND ce.is_active = TRUE AND ce.end_date >= NOW()
+        ");
+        $stmt->execute([$eventId]);
+        $event = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$event) {
+            throw new Exception('イベントが見つかりません');
+        }
+        
+        // ガチャコスト（割引適用）
+        $baseCost = 100; // クリスタル
+        $discount = (int)$event['gacha_discount_percent'];
+        $finalCost = (int)floor($baseCost * (100 - $discount) / 100);
+        
+        // クリスタルを確認
+        $stmt = $pdo->prepare("SELECT crystals FROM users WHERE id = ?");
+        $stmt->execute([$me['id']]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($user['crystals'] < $finalCost) {
+            throw new Exception("クリスタルが不足しています（必要: {$finalCost}）");
+        }
+        
+        // クリスタルを消費
+        $stmt = $pdo->prepare("UPDATE users SET crystals = crystals - ? WHERE id = ?");
+        $stmt->execute([$finalCost, $me['id']]);
+        
+        // ガチャ結果を決定（イベントヒーローの欠片排出率UP）
+        $bonusRate = (float)$event['bonus_shard_rate'];
+        $roll = mt_rand(1, 100);
+        
+        // イベントヒーローの欠片を取得する確率
+        $featuredHeroChance = 30 + $bonusRate; // ベース30% + ボーナス
+        
+        $result = [];
+        if ($roll <= $featuredHeroChance) {
+            // イベントヒーローの欠片
+            $shardCount = mt_rand(3, 10);
+            $stmt = $pdo->prepare("
+                INSERT INTO user_heroes (user_id, hero_id, shards)
+                VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE shards = shards + ?
+            ");
+            $stmt->execute([$me['id'], $event['featured_hero_id'], $shardCount, $shardCount]);
+            
+            $result = [
+                'type' => 'hero_shards',
+                'name' => $event['hero_name'] . 'の欠片',
+                'icon' => $event['hero_icon'],
+                'shards' => $shardCount
+            ];
+        } else if ($roll <= 60) {
+            // コイン
+            $coins = mt_rand(500, 2000);
+            $stmt = $pdo->prepare("UPDATE users SET coins = coins + ? WHERE id = ?");
+            $stmt->execute([$coins, $me['id']]);
+            
+            $result = [
+                'type' => 'coins',
+                'name' => 'コイン',
+                'icon' => '💰',
+                'amount' => $coins
+            ];
+        } else if ($roll <= 80) {
+            // ランダムヒーローの欠片
+            $stmt = $pdo->prepare("SELECT id, name, icon FROM heroes WHERE generation = 0 ORDER BY RAND() LIMIT 1");
+            $stmt->execute();
+            $randomHero = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($randomHero) {
+                $shardCount = mt_rand(1, 5);
+                $stmt = $pdo->prepare("
+                    INSERT INTO user_heroes (user_id, hero_id, shards)
+                    VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE shards = shards + ?
+                ");
+                $stmt->execute([$me['id'], $randomHero['id'], $shardCount, $shardCount]);
+                
+                $result = [
+                    'type' => 'hero_shards',
+                    'name' => $randomHero['name'] . 'の欠片',
+                    'icon' => $randomHero['icon'],
+                    'shards' => $shardCount
+                ];
+            }
+        } else {
+            // クリスタル（少量返還）
+            $crystals = mt_rand(10, 30);
+            $stmt = $pdo->prepare("UPDATE users SET crystals = crystals + ? WHERE id = ?");
+            $stmt->execute([$crystals, $me['id']]);
+            
+            $result = [
+                'type' => 'crystals',
+                'name' => 'クリスタル',
+                'icon' => '💎',
+                'amount' => $crystals
+            ];
+        }
+        
+        // ヒーローイベントタスク「ガチャを回す」進捗を更新
+        updateHeroEventTaskProgress($pdo, $me['id'], $eventId, 'gacha', 1);
+        
+        $pdo->commit();
+        
+        echo json_encode([
+            'ok' => true,
+            'result' => $result,
+            'cost' => $finalCost
+        ]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+// ===============================================
+// ヒーローイベントタスク進捗更新ヘルパー
+// ===============================================
+
+function updateHeroEventTaskProgress($pdo, $userId, $eventId, $taskType, $amount = 1) {
+    // イベントに関連するタスクを取得
+    $stmt = $pdo->prepare("
+        SELECT het.id, het.target_count
+        FROM hero_event_tasks het
+        JOIN hero_events he ON het.hero_event_id = he.id
+        WHERE he.event_id = ? AND het.task_type = ?
+    ");
+    $stmt->execute([$eventId, $taskType]);
+    $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    foreach ($tasks as $task) {
+        $stmt = $pdo->prepare("
+            INSERT INTO user_hero_event_task_progress (user_id, task_id, current_progress, is_completed)
+            VALUES (?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+                current_progress = LEAST(current_progress + ?, ?),
+                is_completed = (current_progress + ? >= ?)
+        ");
+        $stmt->execute([
+            $userId, $task['id'], min($amount, $task['target_count']), $amount >= $task['target_count'],
+            $amount, $task['target_count'],
+            $amount, $task['target_count']
+        ]);
+    }
+}
+
+// ===============================================
+// civilization_api.phpから呼ばれる進捗更新
+// ===============================================
+
+// ヒーローイベントタスク進捗を更新（外部から呼ぶ用）
+if ($action === 'update_hero_event_task_progress') {
+    $taskType = $input['task_type'] ?? '';
+    $amount = (int)($input['amount'] ?? 1);
+    
+    if (empty($taskType)) {
+        echo json_encode(['ok' => false, 'error' => 'task_type is required']);
+        exit;
+    }
+    
+    try {
+        $now = date('Y-m-d H:i:s');
+        
+        // アクティブなヒーローイベントを取得
+        $stmt = $pdo->prepare("
+            SELECT ce.id
+            FROM civilization_events ce
+            WHERE ce.event_type = 'hero' 
+              AND ce.is_active = TRUE 
+              AND ce.start_date <= ? 
+              AND ce.end_date >= ?
+        ");
+        $stmt->execute([$now, $now]);
+        $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($events as $event) {
+            updateHeroEventTaskProgress($pdo, $me['id'], $event['id'], $taskType, $amount);
+        }
+        
+        echo json_encode(['ok' => true]);
+    } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
     }
     exit;
