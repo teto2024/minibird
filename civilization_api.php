@@ -20,18 +20,20 @@ function updateDailyTaskProgressFromCiv($pdo, $userId, $taskType, $amount = 1) {
     $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     foreach ($tasks as $task) {
-        // 進捗を更新
+        // ⑤ 進捗を更新（is_completedの判定を修正）
+        // 注: MySQLのON DUPLICATE KEY UPDATEでは、VALUES()で挿入時の値を参照できる
+        // current_progressはUPDATE後の値を使って判定する必要がある
         $stmt = $pdo->prepare("
-            INSERT INTO user_daily_task_progress (user_id, task_id, task_date, current_progress)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO user_daily_task_progress (user_id, task_id, task_date, current_progress, is_completed)
+            VALUES (?, ?, ?, ?, ? >= ?)
             ON DUPLICATE KEY UPDATE 
                 current_progress = LEAST(current_progress + ?, ?),
-                is_completed = (current_progress + ? >= ?)
+                is_completed = (LEAST(current_progress + ?, ?) >= ?)
         ");
         $stmt->execute([
-            $userId, $task['id'], $today, min($amount, $task['target_count']),
+            $userId, $task['id'], $today, min($amount, $task['target_count']), min($amount, $task['target_count']), $task['target_count'],
             $amount, $task['target_count'],
-            $amount, $task['target_count']
+            $amount, $task['target_count'], $task['target_count']
         ]);
     }
 }

@@ -17,6 +17,7 @@ define('BATTLE_EQUIPMENT_ARMOR_MULTIPLIER', 1.0);   // 装備アーマーの適�
 define('BATTLE_EQUIPMENT_HEALTH_MULTIPLIER', 2.0);  // 装備体力の適用倍率
 define('BATTLE_DOT_BASE_HEALTH', 1000);              // 継続ダメージ計算用の基準HP
 define('BATTLE_DOT_SCALING_FACTOR', 0.3);            // 継続ダメージのスケーリング係数（0.3 = 30%）
+define('BATTLE_MAX_NEW_SKILL_ACTIVATIONS', 3);      // ① 1ターンに新たに発動可能なスキルの最大数
 
 // ヒーロースキルシステム定数
 define('HERO_SKILL_BASE_ACTIVATION_CHANCE', 30);     // ヒーロースキル基本発動率（%）
@@ -625,11 +626,28 @@ function tryActivateSkill($unit, $target, $isAttacker) {
     $extraAttacks = 0;
     $heroSkillResult = null;
     
+    // ① 新たに発動したスキルの数をカウント（継続バフ/デバフはカウントから除外）
+    $newSkillActivations = 0;
+    $maxNewActivations = defined('BATTLE_MAX_NEW_SKILL_ACTIVATIONS') ? BATTLE_MAX_NEW_SKILL_ACTIVATIONS : 3;
+    
+    // 現在アクティブな継続効果のスキルキーを取得（これらはカウントから除外）
+    $activeEffectKeys = [];
+    foreach ($unit['active_effects'] as $effect) {
+        if (isset($effect['skill_key'])) {
+            $activeEffectKeys[$effect['skill_key']] = true;
+        }
+    }
+    
     // ① 兵種スキルとヒーロースキルを独立して発動
-    // 複数の兵種スキルが同時に発動可能
+    // 複数の兵種スキルが同時に発動可能（ただし新規発動は最大3つまで）
     foreach ($unit['skills'] as $skill) {
+        // ① 新規スキル発動数が上限に達した場合はスキップ（ヒーロースキルは別枠）
+        if (!empty($skill['is_hero_skill']) === false && $newSkillActivations >= $maxNewActivations) {
+            continue;
+        }
+        
         if (mt_rand(1, 100) <= $skill['activation_chance']) {
-            // ヒーロースキルの特別処理（兵種スキルとは独立して発動）
+            // ヒーロースキルの特別処理（兵種スキルとは独立して発動、カウント対象外）
             if (!empty($skill['is_hero_skill'])) {
                 $heroSkillResult = processHeroSkillEffect($skill, $unit, $target);
                 $messages = array_merge($messages, $heroSkillResult['messages']);
@@ -637,6 +655,9 @@ function tryActivateSkill($unit, $target, $isAttacker) {
                 // 敵へのデバフは呼び出し元で処理
                 continue;
             }
+            
+            // ① 既にアクティブな継続バフ/デバフと同じスキルはカウント対象外
+            $isAlreadyActive = isset($activeEffectKeys[$skill['skill_key']]);
             
             $effect = [
                 'skill_key' => $skill['skill_key'],
@@ -658,6 +679,11 @@ function tryActivateSkill($unit, $target, $isAttacker) {
                 $messages[] = "⚡ 加速！{$skill['effect_value']}回連続攻撃！";
             } else {
                 $newEffects[] = $effect;
+            }
+            
+            // ① 既にアクティブな継続効果でなければカウント
+            if (!$isAlreadyActive) {
+                $newSkillActivations++;
             }
             
             // 複数の兵種スキルが発動可能（breakを削除）
