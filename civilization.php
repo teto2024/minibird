@@ -2305,6 +2305,31 @@ async function updateTabBadges() {
                 }
             }
         }
+        
+        // ③ イベントタブの赤バッジを追加（デイリータスク報酬受け取り待ち）
+        const eventsRes = await fetch('civilization_events_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_daily_tasks'})
+        });
+        const eventsData = await eventsRes.json();
+        
+        if (eventsData.ok && eventsData.tasks) {
+            // 完了済みで報酬未受け取りのタスク数をカウント
+            const eventClaimableCount = eventsData.tasks.filter(t => 
+                t.is_completed && !t.is_claimed
+            ).length;
+            
+            const eventsBadge = document.getElementById('events-badge');
+            if (eventsBadge) {
+                if (eventClaimableCount > 0) {
+                    eventsBadge.textContent = eventClaimableCount;
+                    eventsBadge.style.display = 'inline-block';
+                } else {
+                    eventsBadge.style.display = 'none';
+                }
+            }
+        }
     } catch (e) {
         console.error('Failed to update tab badges:', e);
     }
@@ -5391,12 +5416,19 @@ function renderHeroEvents(container, events) {
                     </div>
                 </div>
                 
-                <!-- 限定ガチャボタン -->
+                <!-- ⑥ 限定ガチャボタン（価格表示と確認アラート追加） -->
                 <div style="margin-bottom: 20px;">
-                    <button class="quick-invest-btn" onclick="openHeroEventGacha(${event.id}, ${event.featured_hero.id})" 
-                            style="background: linear-gradient(135deg, #ff69b4 0%, #9932cc 100%); width: 100%; padding: 15px; font-size: 16px; border-radius: 12px;">
-                        🎰 限定ガチャ ${event.gacha_discount_percent > 0 ? `(${event.gacha_discount_percent}%OFF!)` : ''}
-                    </button>
+                    ${(() => {
+                        const baseCost = 100;
+                        const discount = event.gacha_discount_percent || 0;
+                        const finalCost = Math.floor(baseCost * (100 - discount) / 100);
+                        return `
+                            <button class="quick-invest-btn" onclick="openHeroEventGacha(${event.id}, ${event.featured_hero.id}, ${finalCost})" 
+                                    style="background: linear-gradient(135deg, #ff69b4 0%, #9932cc 100%); width: 100%; padding: 15px; font-size: 16px; border-radius: 12px;">
+                                🎰 限定ガチャ 💎${finalCost}クリスタル ${discount > 0 ? `(${discount}%OFF!)` : ''}
+                            </button>
+                        `;
+                    })()}
                     <div style="text-align: center; color: #888; font-size: 12px; margin-top: 5px;">
                         ${escapeHtml(event.featured_hero.name)}の欠片排出率が大幅UP！
                     </div>
@@ -5503,8 +5535,13 @@ async function claimHeroEventPointReward(rewardId) {
     }
 }
 
-// ヒーローイベント限定ガチャを開く
-async function openHeroEventGacha(eventId, heroId) {
+// ⑥ ヒーローイベント限定ガチャを開く（価格確認アラート追加）
+async function openHeroEventGacha(eventId, heroId, cost = 100) {
+    // 確認アラートを表示
+    if (!confirm(`ヒーロー限定ガチャを回しますか？\n\n💎 ${cost} クリスタルを消費します`)) {
+        return;
+    }
+    
     try {
         const res = await fetch('civilization_events_api.php', {
             method: 'POST',

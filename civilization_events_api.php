@@ -92,18 +92,21 @@ function updateDailyTaskProgress($pdo, $userId, $taskType, $amount = 1) {
     $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     foreach ($tasks as $task) {
-        // 進捗を更新
+        // ⑤ 進捗を更新（is_completedの判定を修正）
+        $initialProgress = min($amount, $task['target_count']);
+        $isInitiallyCompleted = $initialProgress >= $task['target_count'] ? 1 : 0;
+        
         $stmt = $pdo->prepare("
-            INSERT INTO user_daily_task_progress (user_id, task_id, task_date, current_progress)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO user_daily_task_progress (user_id, task_id, task_date, current_progress, is_completed)
+            VALUES (?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE 
                 current_progress = LEAST(current_progress + ?, ?),
-                is_completed = (current_progress + ? >= ?)
+                is_completed = (LEAST(current_progress + ?, ?) >= ?)
         ");
         $stmt->execute([
-            $userId, $task['id'], $today, min($amount, $task['target_count']),
+            $userId, $task['id'], $today, $initialProgress, $isInitiallyCompleted,
             $amount, $task['target_count'],
-            $amount, $task['target_count']
+            $amount, $task['target_count'], $task['target_count']
         ]);
     }
 }
@@ -385,25 +388,93 @@ if ($action === 'attack_portal_boss') {
         $baseDamage = (int)floor($totalPower * (mt_rand(80, 120) / 100));
         $damage = max(1, $baseDamage);
         
-        // ドロップアイテムを決定
+        // ⑨ ドロップアイテムを決定（修正: アイテムがドロップしない問題を修正）
         $lootReceived = [];
         $lootTable = json_decode($boss['loot_table'], true) ?: [];
         
-        foreach ($lootTable as $loot) {
-            if (mt_rand(1, 100) <= ($loot['chance'] ?? 10)) {
-                $itemId = $loot['item_id'];
-                $count = mt_rand($loot['min_count'] ?? 1, $loot['max_count'] ?? 1);
-                
-                // アイテムを付与
+        // loot_tableが空の場合はイベントのアイテムを取得して直接ドロップ
+        if (empty($lootTable)) {
+            // イベントに関連するアイテムを取得
+            $stmt = $pdo->prepare("
+                SELECT id, name, icon, drop_rate FROM special_event_items 
+                WHERE event_id = (SELECT event_id FROM special_event_portal_bosses WHERE id = ?)
+            ");
+            $stmt->execute([$bossId]);
+            $eventItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            foreach ($eventItems as $item) {
+                if (mt_rand(1, 100) <= ($item['drop_rate'] ?? 10)) {
+                    $count = mt_rand(1, 3);
+                    $stmt = $pdo->prepare("
+                        INSERT INTO user_special_event_items (user_id, item_id, count)
+                        VALUES (?, ?, ?)
+                        ON DUPLICATE KEY UPDATE count = count + ?
+                    ");
+                    $stmt->execute([$me['id'], $item['id'], $count, $count]);
+                    
+                    $lootReceived[] = [
+                        'item_id' => $item['id'],
+                        'name' => $item['name'],
+                        'icon' => $item['icon'],
+                        'count' => $count
+                    ];
+                }
+            }
+        } else {
+            foreach ($lootTable as $loot) {
+                if (mt_rand(1, 100) <= ($loot['chance'] ?? 10)) {
+                    $itemId = $loot['item_id'];
+                    $count = mt_rand($loot['min_count'] ?? 1, $loot['max_count'] ?? 1);
+                    
+                    // アイテムが存在するか確認
+                    $stmt = $pdo->prepare("SELECT id, name, icon FROM special_event_items WHERE id = ?");
+                    $stmt->execute([$itemId]);
+                    $itemInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($itemInfo) {
+                        // アイテムを付与
+                        $stmt = $pdo->prepare("
+                            INSERT INTO user_special_event_items (user_id, item_id, count)
+                            VALUES (?, ?, ?)
+                            ON DUPLICATE KEY UPDATE count = count + ?
+                        ");
+                        $stmt->execute([$me['id'], $itemId, $count, $count]);
+                        
+                        $lootReceived[] = [
+                            'item_id' => $itemId,
+                            'name' => $itemInfo['name'],
+                            'icon' => $itemInfo['icon'],
+                            'count' => $count
+                        ];
+                    }
+                }
+            }
+        }
+        
+        // ドロップがなかった場合、最低1つは確定ドロップ
+        if (empty($lootReceived)) {
+            $stmt = $pdo->prepare("
+                SELECT id, name, icon FROM special_event_items 
+                WHERE event_id = (SELECT event_id FROM special_event_portal_bosses WHERE id = ?)
+                ORDER BY drop_rate DESC
+                LIMIT 1
+            ");
+            $stmt->execute([$bossId]);
+            $guaranteedItem = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($guaranteedItem) {
+                $count = mt_rand(1, 2);
                 $stmt = $pdo->prepare("
                     INSERT INTO user_special_event_items (user_id, item_id, count)
                     VALUES (?, ?, ?)
                     ON DUPLICATE KEY UPDATE count = count + ?
                 ");
-                $stmt->execute([$me['id'], $itemId, $count, $count]);
+                $stmt->execute([$me['id'], $guaranteedItem['id'], $count, $count]);
                 
                 $lootReceived[] = [
-                    'item_id' => $itemId,
+                    'item_id' => $guaranteedItem['id'],
+                    'name' => $guaranteedItem['name'],
+                    'icon' => $guaranteedItem['icon'],
                     'count' => $count
                 ];
             }
@@ -926,17 +997,21 @@ function updateHeroEventTaskProgress($pdo, $userId, $eventId, $taskType, $amount
     $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     foreach ($tasks as $task) {
+        // ⑤ 進捗を更新（is_completedの判定を修正）
+        $initialProgress = min($amount, $task['target_count']);
+        $isInitiallyCompleted = $initialProgress >= $task['target_count'] ? 1 : 0;
+        
         $stmt = $pdo->prepare("
             INSERT INTO user_hero_event_task_progress (user_id, task_id, current_progress, is_completed)
             VALUES (?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE 
                 current_progress = LEAST(current_progress + ?, ?),
-                is_completed = (current_progress + ? >= ?)
+                is_completed = (LEAST(current_progress + ?, ?) >= ?)
         ");
         $stmt->execute([
-            $userId, $task['id'], min($amount, $task['target_count']), $amount >= $task['target_count'],
+            $userId, $task['id'], $initialProgress, $isInitiallyCompleted,
             $amount, $task['target_count'],
-            $amount, $task['target_count']
+            $amount, $task['target_count'], $task['target_count']
         ]);
     }
 }
