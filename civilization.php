@@ -3376,6 +3376,13 @@ async function loadWoundedTroops() {
             const queuePercent = Math.min(100, Math.round((queueUsed / queueMax) * 100));
             const queueColor = queueUsed >= queueMax ? '#ff6b6b' : (queueUsed >= queueMax * 0.7 ? '#ffa500' : '#32cd32');
             
+            // 16: 病床使用状況
+            const bedsUsed = data.beds_used || 0;
+            const bedsMax = data.hospital_capacity || 0;
+            const bedsAvailable = data.beds_available || 0;
+            const bedsPercent = bedsMax > 0 ? Math.min(100, Math.round((bedsUsed / bedsMax) * 100)) : 0;
+            const bedsColor = bedsUsed >= bedsMax ? '#ff6b6b' : (bedsUsed >= bedsMax * 0.7 ? '#ffa500' : '#32cd32');
+            
             // 負傷兵リスト
             if (data.wounded_troops && data.wounded_troops.length > 0) {
                 woundedContainer.innerHTML = `
@@ -3387,7 +3394,14 @@ async function loadWoundedTroops() {
                         <div style="background: rgba(0,0,0,0.5); border-radius: 4px; height: 8px; overflow: hidden;">
                             <div style="background: ${queueColor}; height: 100%; width: ${queuePercent}%; transition: width 0.3s;"></div>
                         </div>
-                        <div style="color: #888; font-size: 11px; margin-top: 5px;">💡 病院を建設するとキュー数が増えます（容量: ${data.hospital_capacity}床）</div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 10px; margin-bottom: 5px;">
+                            <span style="color: #888;">🛏️ 残存病床:</span>
+                            <span style="color: ${bedsColor};">${bedsAvailable} / ${bedsMax}床 (使用中: ${bedsUsed})</span>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.5); border-radius: 4px; height: 8px; overflow: hidden;">
+                            <div style="background: ${bedsColor}; height: 100%; width: ${bedsPercent}%; transition: width 0.3s;"></div>
+                        </div>
+                        <div style="color: #888; font-size: 11px; margin-top: 5px;">💡 病院を建設するとキュー数・病床数が増えます</div>
                     </div>
                     ${data.wounded_troops.map(w => {
                         let healCostText = `🪙${w.heal_cost_coins}/体`;

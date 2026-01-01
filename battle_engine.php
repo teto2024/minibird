@@ -315,6 +315,14 @@ function processHeroSkillEffect($skill, $attacker, $defender) {
         }
     }
     
+    // 半壊（シャドウアサシン弱体化: 20%で敵HPを半分にする）
+    if (isset($effectData['half_kill_chance'])) {
+        if (mt_rand(1, 100) <= $effectData['half_kill_chance']) {
+            $result['damage'] = (int)floor($defender['current_health'] / 2);
+            $result['messages'][] = "{$icon} {$skillName}発動！半壊攻撃成功！敵のHPを半分に！";
+        }
+    }
+    
     return $result;
 }
 
@@ -614,7 +622,7 @@ function calculateDoTDamage($maxHealth, $effectValue) {
 }
 
 /**
- * 継続ダメージを処理（毒、燃焼など）
+ * 継続ダメージを処理（毒、燃焼、核汚染など）
  * 兵数やHPが増えても継続ダメージが比例して大きくならないよう、
  * 平方根スケーリングを使用して調整
  * @param array $unit ユニット
@@ -631,6 +639,16 @@ function processDamageOverTime($unit) {
             $dotDamage = calculateDoTDamage($unit['max_health'], $effect['effect_value']);
             $totalDamage += $dotDamage;
             $messages[] = "{$effect['skill_icon']} {$effect['skill_name']}により{$dotDamage}ダメージ！";
+        }
+        
+        // 核汚染スキル（固定ダメージ、兵数に応じて上限あり）
+        if ($effect['effect_type'] === 'nuclear_dot') {
+            // 固定ダメージ（50）だが、兵数が多くても上限を設ける
+            $baseDamage = $effect['effect_value'];
+            // 最大HPに応じてスケール（ただし上限500ダメージ）
+            $nuclearDamage = min(500, max($baseDamage, (int)floor(sqrt($unit['max_health']) * 2)));
+            $totalDamage += $nuclearDamage;
+            $messages[] = "{$effect['skill_icon']} {$effect['skill_name']}により{$nuclearDamage}の放射能ダメージ！";
         }
         
         // 効果ターン減少

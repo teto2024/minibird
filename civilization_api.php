@@ -6,6 +6,7 @@
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/battle_engine.php';
+require_once __DIR__ . '/exp_system.php';
 
 // 文明システム設定定数
 define('CIV_COINS_TO_RESEARCH_RATIO', 10);     // 研究ポイント1あたりのコイン
@@ -752,6 +753,36 @@ function collectResources($pdo, $userId) {
                     updateCivilizationQuestProgress($pdo, $userId, 'collect', $resInfo['resource_key'], $intProduced);
                 }
             }
+        }
+    }
+    
+    // 12: 銀行からのコイン生産を処理
+    $stmt = $pdo->prepare("
+        SELECT SUM(ucb.level) as total_level, COUNT(*) as building_count
+        FROM user_civilization_buildings ucb
+        JOIN civilization_building_types bt ON ucb.building_type_id = bt.id
+        WHERE ucb.user_id = ? AND ucb.is_constructing = FALSE AND bt.building_key = 'bank'
+    ");
+    $stmt->execute([$userId]);
+    $bankData = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($bankData && $bankData['building_count'] > 0) {
+        // 銀行1レベルあたり時間あたり10コインを生産
+        $coinRate = 10 * $bankData['total_level'];
+        $coinsProduced = (int)floor($coinRate * $hoursPassed);
+        
+        if ($coinsProduced > 0) {
+            $stmt = $pdo->prepare("UPDATE users SET coins = coins + ? WHERE id = ?");
+            $stmt->execute([$coinsProduced, $userId]);
+            
+            $collectedResources[] = [
+                'resource_id' => 0,
+                'name' => 'コイン',
+                'icon' => '🪙',
+                'amount' => $coinsProduced,
+                'resource_key' => 'coins',
+                'is_coin' => true
+            ];
         }
     }
     
@@ -1549,6 +1580,7 @@ if ($action === 'complete_buildings') {
         
         $completedNames = [];
         $populationIncrease = 0;
+        $totalExpGained = 0;
         
         foreach ($completedBuildings as $building) {
             // 建設を完了
@@ -1568,6 +1600,10 @@ if ($action === 'complete_buildings') {
             
             // クエスト進捗を更新（建物タイプごとに1回カウント）
             updateCivilizationQuestProgress($pdo, $me['id'], 'build', $building['building_key'], 1);
+            
+            // ⑥ 建設完了時に経験値を付与（レベルに応じてボーナス）
+            $expResult = grant_exp($me['id'], 'civilization_build', $building['level'] * 5);
+            $totalExpGained += $expResult['exp_gained'];
         }
         
         // 人口を増加
@@ -1587,7 +1623,8 @@ if ($action === 'complete_buildings') {
             'ok' => true,
             'completed' => $completedNames,
             'count' => count($completedNames),
-            'population_increase' => $populationIncrease
+            'population_increase' => $populationIncrease,
+            'exp_gained' => $totalExpGained
         ]);
     } catch (Exception $e) {
         $pdo->rollBack();
@@ -2091,6 +2128,44 @@ if ($action === 'exchange_resources') {
             throw new Exception('市場を建設してから交換してください');
         }
         
+        // ⑤ 市場交換制限チェック（1時間ごとに10k × 市場建築数）
+        $hourlyLimit = 10000 * $marketCount;
+        
+        // 現在の交換制限状態を確認
+        $stmt = $pdo->prepare("
+            SELECT exchanged_amount, reset_at 
+            FROM user_market_exchange_limits 
+            WHERE user_id = ? AND resource_type_id = ?
+        ");
+        $stmt->execute([$me['id'], $fromResourceId]);
+        $limitData = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        $currentExchanged = 0;
+        $now = new DateTime();
+        
+        if ($limitData) {
+            $resetAt = new DateTime($limitData['reset_at']);
+            if ($now < $resetAt) {
+                // まだリセット時間に達していない
+                $currentExchanged = (int)$limitData['exchanged_amount'];
+            } else {
+                // リセット時間を過ぎたので、カウントをリセット
+                $currentExchanged = 0;
+            }
+        }
+        
+        // 交換可能量をチェック
+        $remainingLimit = $hourlyLimit - $currentExchanged;
+        if ($remainingLimit <= 0) {
+            $resetAt = $limitData ? new DateTime($limitData['reset_at']) : (clone $now)->modify('+1 hour');
+            $remainingMinutes = max(0, (int)floor(($resetAt->getTimestamp() - $now->getTimestamp()) / 60));
+            throw new Exception("1時間の交換上限（{$hourlyLimit}）に達しました。あと約{$remainingMinutes}分でリセットされます。");
+        }
+        
+        if ($amount > $remainingLimit) {
+            throw new Exception("交換可能量を超えています。現在あと{$remainingLimit}まで交換できます（上限: {$hourlyLimit}/時間）");
+        }
+        
         // 資源を確認
         $stmt = $pdo->prepare("
             SELECT ucr.amount, rt.name as from_name, rt.icon as from_icon, rt.resource_key as from_key
@@ -2162,9 +2237,25 @@ if ($action === 'exchange_resources') {
         ");
         $stmt->execute([$received, $me['id'], $toResourceId]);
         
+        // ⑤ 交換制限カウンターを更新
+        $nextResetAt = (clone $now)->modify('+1 hour')->format('Y-m-d H:i:s');
+        $stmt = $pdo->prepare("
+            INSERT INTO user_market_exchange_limits (user_id, resource_type_id, exchanged_amount, reset_at)
+            VALUES (?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+                exchanged_amount = IF(reset_at <= NOW(), ?, exchanged_amount + ?),
+                reset_at = IF(reset_at <= NOW(), ?, reset_at)
+        ");
+        $stmt->execute([
+            $me['id'], $fromResourceId, $amount, $nextResetAt,
+            $amount, $amount, $nextResetAt
+        ]);
+        
         $pdo->commit();
         
         $ratePercent = round($finalRate * 100);
+        $newExchanged = $currentExchanged + $amount;
+        $newRemaining = max(0, $hourlyLimit - $newExchanged);
         echo json_encode([
             'ok' => true,
             'message' => "{$fromResource['from_icon']} {$amount} → {$toResource['to_icon']} {$received} に交換しました！（レート: {$ratePercent}%）",
@@ -2172,7 +2263,9 @@ if ($action === 'exchange_resources') {
             'to_amount' => $received,
             'exchange_rate' => $finalRate,
             'market_count' => $marketCount,
-            'market_bonus' => $marketBonus
+            'market_bonus' => $marketBonus,
+            'hourly_limit' => $hourlyLimit,
+            'remaining_limit' => $newRemaining
         ]);
     } catch (Exception $e) {
         $pdo->rollBack();
