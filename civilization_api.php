@@ -989,11 +989,14 @@ if ($action === 'get_data') {
                    prereq_b.name as prerequisite_building_name,
                    prereq_r.name as prerequisite_research_name,
                    COALESCE(bt.troop_deployment_bonus, 0) as troop_deployment_bonus,
-                   COALESCE(bt.transfer_limit_bonus, 0) as transfer_limit_bonus
+                   COALESCE(bt.transfer_limit_bonus, 0) as transfer_limit_bonus,
+                   res.name as produces_resource_name,
+                   res.icon as produces_resource_icon
             FROM civilization_building_types bt
             LEFT JOIN civilization_eras e ON bt.unlock_era_id = e.id
             LEFT JOIN civilization_building_types prereq_b ON bt.prerequisite_building_id = prereq_b.id
             LEFT JOIN civilization_researches prereq_r ON bt.prerequisite_research_id = prereq_r.id
+            LEFT JOIN civilization_resource_types res ON bt.produces_resource_id = res.id
             WHERE bt.unlock_era_id IS NULL OR bt.unlock_era_id <= ?
             ORDER BY bt.unlock_era_id, bt.id
         ");

@@ -883,7 +883,7 @@ if ($action === 'hero_event_gacha') {
     try {
         // イベントを確認
         $stmt = $pdo->prepare("
-            SELECT ce.*, he.featured_hero_id, he.bonus_shard_rate, he.gacha_discount_percent,
+            SELECT ce.*, he.id as hero_event_id, he.featured_hero_id, he.bonus_shard_rate, he.gacha_discount_percent,
                    h.name as hero_name, h.icon as hero_icon
             FROM civilization_events ce
             JOIN hero_events he ON ce.id = he.event_id
@@ -990,12 +990,22 @@ if ($action === 'hero_event_gacha') {
         // ヒーローイベントタスク「ガチャを回す」進捗を更新
         updateHeroEventTaskProgress($pdo, $me['id'], $eventId, 'gacha', 1);
         
+        // ③ 限定ガチャでイベントポイントを付与（1回につき10ポイント）
+        $gachaPoints = 10;
+        $stmt = $pdo->prepare("
+            INSERT INTO user_hero_event_progress (user_id, hero_event_id, current_points, claimed_rewards)
+            VALUES (?, ?, ?, '[]')
+            ON DUPLICATE KEY UPDATE current_points = current_points + ?
+        ");
+        $stmt->execute([$me['id'], $event['hero_event_id'], $gachaPoints, $gachaPoints]);
+        
         $pdo->commit();
         
         echo json_encode([
             'ok' => true,
             'result' => $result,
-            'cost' => $finalCost
+            'cost' => $finalCost,
+            'points_gained' => $gachaPoints
         ]);
     } catch (Exception $e) {
         $pdo->rollBack();
@@ -1015,7 +1025,7 @@ if ($action === 'hero_event_gacha_10') {
     try {
         // イベントを確認
         $stmt = $pdo->prepare("
-            SELECT ce.*, he.featured_hero_id, he.bonus_shard_rate, he.gacha_discount_percent,
+            SELECT ce.*, he.id as hero_event_id, he.featured_hero_id, he.bonus_shard_rate, he.gacha_discount_percent,
                    h.name as hero_name, h.icon as hero_icon
             FROM civilization_events ce
             JOIN hero_events he ON ce.id = he.event_id
@@ -1131,6 +1141,15 @@ if ($action === 'hero_event_gacha_10') {
         // ヒーローイベントタスク「ガチャを回す」進捗を更新（10回分）
         updateHeroEventTaskProgress($pdo, $me['id'], $eventId, 'gacha', 10);
         
+        // ③ 限定ガチャでイベントポイントを付与（10連につき100ポイント）
+        $gachaPoints = 100;
+        $stmt = $pdo->prepare("
+            INSERT INTO user_hero_event_progress (user_id, hero_event_id, current_points, claimed_rewards)
+            VALUES (?, ?, ?, '[]')
+            ON DUPLICATE KEY UPDATE current_points = current_points + ?
+        ");
+        $stmt->execute([$me['id'], $event['hero_event_id'], $gachaPoints, $gachaPoints]);
+        
         // 更新後の残高を取得
         $stmt = $pdo->prepare("SELECT coins, crystals, diamonds FROM users WHERE id = ?");
         $stmt->execute([$me['id']]);
@@ -1142,7 +1161,8 @@ if ($action === 'hero_event_gacha_10') {
             'ok' => true,
             'results' => $results,
             'cost' => $finalCost,
-            'balance' => $balance
+            'balance' => $balance,
+            'points_gained' => $gachaPoints
         ]);
     } catch (Exception $e) {
         $pdo->rollBack();

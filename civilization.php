@@ -2390,9 +2390,12 @@ function renderBuildingsGrid(availableBuildings, ownedBuildings, resources) {
                     <span class="building-name">${bt.name}</span>
                     ${ownedCount > 0 ? `<span class="building-level">×${ownedCount}</span>` : ''}
                 </div>
+                ${bt.produces_resource_name ? `<div style="color: #48bb78; font-size: 13px; margin-bottom: 8px; display: flex; align-items: center; gap: 5px;"><span>生産:</span><span style="font-size: 16px;">${bt.produces_resource_icon || '📦'}</span><span>${bt.produces_resource_name}</span></div>` : ''}
+                ${bt.building_key === 'bank' ? `<div style="color: #ffd700; font-size: 13px; margin-bottom: 8px; display: flex; align-items: center; gap: 5px;"><span>生産:</span><span style="font-size: 16px;">🪙</span><span>コイン</span></div>` : ''}
                 <div class="building-desc">${bt.description || ''}</div>
                 <div class="building-stats">
-                    ${bt.production_rate > 0 ? `<span class="building-stat">⚡ ${bt.production_rate}/h</span>` : ''}
+                    ${bt.production_rate > 0 ? `<span class="building-stat">${bt.produces_resource_icon || '⚡'} ${bt.production_rate}/h</span>` : ''}
+                    ${bt.building_key === 'bank' ? `<span class="building-stat">🪙 10/h×Lv</span>` : ''}
                     ${bt.population_capacity > 0 ? `<span class="building-stat">👥 +${bt.population_capacity}</span>` : ''}
                     ${bt.military_power > 0 ? `<span class="building-stat">⚔️ +${bt.military_power}</span>` : ''}
                     ${bt.troop_deployment_bonus > 0 ? `<span class="building-stat" title="出撃兵士数上限">🚀 +${bt.troop_deployment_bonus}/Lv</span>` : ''}
@@ -5563,7 +5566,9 @@ async function openHeroEventGacha(eventId, heroId, cost = 100) {
                 resultHtml += `<div style="color: #ff69b4; margin-top: 5px;">欠片 ×${data.result.shards}</div>`;
             }
             
-            showNotification(`ガチャ結果: ${data.result.name || 'アイテム'} 獲得！`, 'success');
+            // ③ ポイント獲得通知
+            const pointsMsg = data.points_gained ? ` (+${data.points_gained}pt)` : '';
+            showNotification(`ガチャ結果: ${data.result.name || 'アイテム'} 獲得！${pointsMsg}`, 'success');
             loadEventContent('hero');
             loadData();
         } else {
@@ -5591,8 +5596,8 @@ async function openHeroEventGacha10(eventId, cost10 = 900) {
         const data = await res.json();
         
         if (data.ok) {
-            // 10連ガチャ結果モーダルを表示
-            showHeroEventGacha10Results(data.results, data.cost);
+            // 10連ガチャ結果モーダルを表示（ポイント情報を追加）
+            showHeroEventGacha10Results(data.results, data.cost, data.points_gained);
             loadEventContent('hero');
             loadData();
         } else {
@@ -5605,7 +5610,7 @@ async function openHeroEventGacha10(eventId, cost10 = 900) {
 }
 
 // ⑤ 10連ガチャ結果モーダルを表示
-function showHeroEventGacha10Results(results, cost) {
+function showHeroEventGacha10Results(results, cost, pointsGained = 0) {
     // モーダルが既に存在する場合は削除
     const existingModal = document.getElementById('heroGacha10Modal');
     if (existingModal) {
@@ -5626,6 +5631,9 @@ function showHeroEventGacha10Results(results, cost) {
         `;
     });
     
+    // ③ ポイント表示を追加
+    const pointsHtml = pointsGained > 0 ? `<span style="color: #48bb78; margin-left: 15px;">✨ +${pointsGained}pt</span>` : '';
+    
     // モーダルHTMLを作成
     const modalHtml = `
         <div id="heroGacha10Modal" class="modal-overlay" onclick="closeHeroGacha10Modal(event)">
@@ -5635,7 +5643,7 @@ function showHeroEventGacha10Results(results, cost) {
                     ${resultsHtml}
                 </div>
                 <div style="text-align: center; margin-top: 20px;">
-                    <span style="color: #888;">消費クリスタル: 💎 ${cost}</span>
+                    <span style="color: #888;">消費クリスタル: 💎 ${cost}</span>${pointsHtml}
                 </div>
                 <button onclick="closeHeroGacha10Modal()" class="gacha10-close-btn">OK</button>
             </div>
@@ -5647,6 +5655,18 @@ function showHeroEventGacha10Results(results, cost) {
         const style = document.createElement('style');
         style.id = 'heroGacha10Style';
         style.textContent = `
+            .modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.9);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+            }
             .gacha10-modal-content {
                 background: linear-gradient(135deg, #1e1e2f 0%, #2d2d44 100%);
                 border-radius: 20px;
