@@ -64,6 +64,108 @@ INSERT IGNORE INTO battle_special_skills (skill_key, name, icon, description, ef
 ('nuclear_contamination', '核汚染', '☢️', '放射能で敵に継続ダメージを与える（毎ターン固定ダメージ、上限付き）', 'nuclear_dot', 'enemy', 50, 99, 20);
 
 -- ===============================================
+-- 15: ユニットスキルの振り分け変更（1スキル1兵種）
+-- 追加のユニークスキルを作成
+-- ===============================================
+
+INSERT IGNORE INTO battle_special_skills (skill_key, name, icon, description, effect_type, effect_target, effect_value, duration_turns, activation_chance) VALUES
+-- 歩兵系ユニークスキル
+('warrior_fury', '戦士の怒り', '😤', '戦士が怒りで攻撃力を30%上昇', 'buff', 'self', 30, 2, 25),
+('spear_thrust', '槍突撃', '🗡️', '槍による貫通攻撃でアーマーを無視', 'debuff', 'enemy', 100, 1, 20),
+('sword_dance', '剣舞', '💃', '剣士の華麗な連撃で追加ダメージ', 'special', 'self', 25, 1, 20),
+('phalanx_wall', 'ファランクス陣', '🧱', '密集陣形でアーマー100%上昇', 'buff', 'self', 100, 2, 30),
+('pike_formation', '槍衾', '🔱', '槍の壁で騎兵に大ダメージ', 'special', 'enemy', 50, 1, 25),
+('marine_assault', '海兵突撃', '🌊', '海兵隊の急襲で先制攻撃', 'special', 'self', 30, 1, 20),
+('elite_tactics', '精鋭戦術', '🎖️', '特殊部隊の戦術でクリティカル率2倍', 'buff', 'self', 100, 2, 15),
+('berserk_rage', '狂戦士の激怒', '🔴', '攻撃力2倍だがアーマー半減', 'special', 'self', 100, 2, 25),
+('royal_command', '王室の命令', '👑', '近衛兵の士気向上でステータス上昇', 'buff', 'self', 40, 3, 20),
+('militia_resolve', '民兵の決意', '✊', '民兵の意志で体力を回復', 'buff', 'self', 20, 1, 30),
+('medic_care', '軍医の治療', '💉', '軍医による高効率治療', 'buff', 'self', 25, 1, 35),
+('surgeon_skill', '外科医の技術', '🏥', '野戦外科医の緊急治療', 'buff', 'self', 30, 1, 30),
+
+-- 騎兵系ユニークスキル
+('chariot_rush', '戦車突進', '🛞', '戦車の突進で敵を轢く', 'special', 'enemy', 35, 1, 25),
+('cavalry_charge', '騎兵突撃', '🐎', '騎馬隊の突撃で大ダメージ', 'special', 'enemy', 40, 1, 20),
+('knight_honor', '騎士の誇り', '⚜️', '騎士道精神でアーマー強化', 'buff', 'self', 60, 2, 25),
+('scout_evasion', '斥候の回避', '👁️', '斥候の回避術で攻撃を躱す', 'buff', 'self', 30, 2, 30),
+('dragoon_fire', '竜騎兵の射撃', '🔫', '馬上射撃で追加ダメージ', 'special', 'enemy', 25, 1, 25),
+('elephant_stomp', '象の踏みつけ', '🐘', '戦象の踏み潰しで敵を粉砕', 'special', 'enemy', 60, 1, 15),
+('tank_armor', '戦車装甲', '🛡️', '重装甲でダメージを大幅軽減', 'buff', 'self', 80, 2, 20),
+('airborne_drop', '空挺降下', '🪂', '空挺部隊の奇襲攻撃', 'special', 'self', 35, 1, 25),
+
+-- 遠距離系ユニークスキル
+('hunter_trap', '狩人の罠', '🪤', '罠で敵を足止め', 'debuff', 'enemy', 30, 2, 20),
+('archer_volley', '弓兵の一斉射撃', '🏹', '矢の雨で敵全体にダメージ', 'special', 'enemy', 20, 1, 25),
+('crossbow_pierce', 'クロスボウ貫通', '🎯', 'クロスボウの貫通射撃', 'debuff', 'enemy', 70, 1, 20),
+('longbow_range', 'ロングボウの射程', '🏴󠁧󠁢󠁥󠁮󠁧󠁿', '長弓の遠距離攻撃', 'special', 'self', 25, 2, 25),
+('musket_smoke', 'マスケットの煙幕', '💨', '煙幕で敵の命中率を下げる', 'debuff', 'enemy', 25, 2, 25),
+('rifleman_aim', 'ライフルの精密射撃', '🔭', '精密射撃でクリティカル率上昇', 'buff', 'self', 60, 2, 20),
+('fighter_dogfight', '戦闘機の空戦', '✈️', '空中戦で優位を取る', 'special', 'self', 30, 1, 20),
+('stealth_ambush', 'ステルスの奇襲', '🥷', 'ステルス機の奇襲攻撃', 'special', 'enemy', 45, 1, 15),
+('submarine_torpedo', '潜水艦の魚雷', '💣', '魚雷攻撃で大ダメージ', 'special', 'enemy', 50, 1, 15),
+('nuclear_sub_launch', '核潜水艦のミサイル発射', '🚀', '核ミサイルで壊滅的ダメージ', 'special', 'enemy', 80, 1, 10),
+
+-- 攻城系ユニークスキル
+('catapult_siege', 'カタパルト攻城', '🏰', '城壁を破壊する攻城攻撃', 'debuff', 'enemy', 60, 1, 20),
+('cannon_blast', '大砲の砲撃', '💥', '砲撃で敵陣を吹き飛ばす', 'special', 'enemy', 45, 1, 25),
+('trebuchet_launch', 'トレビュシェット投擲', '🪨', '巨石投擲で城壁破壊', 'debuff', 'enemy', 80, 1, 15),
+('artillery_barrage', '砲兵の弾幕', '🎆', '弾幕射撃で敵全体にダメージ', 'special', 'enemy', 30, 1, 20),
+('missile_strike', 'ミサイル攻撃', '🎯', 'ミサイル攻撃で精密打撃', 'special', 'enemy', 55, 1, 20),
+('siege_tower_climb', '攻城塔登攀', '🗼', '攻城塔で城壁を越える', 'special', 'self', 40, 1, 25),
+('battering_ram_smash', '破城槌の粉砕', '🔨', '城門を破壊する衝撃', 'debuff', 'enemy', 90, 1, 15),
+('carrier_launch', '空母の艦載機発進', '🛫', '艦載機で広範囲攻撃', 'special', 'enemy', 40, 1, 20),
+('bomber_payload', '爆撃機の爆撃', '💣', '大型爆弾で敵を焼き払う', 'special', 'enemy', 50, 1, 20),
+
+-- 艦船系ユニークスキル
+('galleon_broadside', 'ガレオン船の舷側砲', '⛵', '舷側砲の一斉射撃', 'special', 'enemy', 35, 1, 25),
+('frigate_maneuver', 'フリゲート艦の機動', '⚓', '素早い機動で回避', 'buff', 'self', 35, 2, 25),
+('ironclad_ram', '装甲艦の体当たり', '🚢', '装甲艦の体当たり攻撃', 'special', 'enemy', 45, 1, 20);
+
+-- 兵種にユニークスキルを割り当てる
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'hunter_trap' LIMIT 1) WHERE troop_key = 'hunter';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'warrior_fury' LIMIT 1) WHERE troop_key = 'warrior';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'spear_thrust' LIMIT 1) WHERE troop_key = 'spearman';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'chariot_rush' LIMIT 1) WHERE troop_key = 'chariot';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'sword_dance' LIMIT 1) WHERE troop_key = 'swordsman';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'cavalry_charge' LIMIT 1) WHERE troop_key = 'cavalry';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'archer_volley' LIMIT 1) WHERE troop_key = 'archer';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'knight_honor' LIMIT 1) WHERE troop_key = 'knight';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'crossbow_pierce' LIMIT 1) WHERE troop_key = 'crossbowman';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'catapult_siege' LIMIT 1) WHERE troop_key = 'catapult';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'musket_smoke' LIMIT 1) WHERE troop_key = 'musketeer';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'cannon_blast' LIMIT 1) WHERE troop_key = 'cannon';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'galleon_broadside' LIMIT 1) WHERE troop_key = 'galleon';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'militia_resolve' LIMIT 1) WHERE troop_key = 'infantry';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'artillery_barrage' LIMIT 1) WHERE troop_key = 'artillery';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'ironclad_ram' LIMIT 1) WHERE troop_key = 'ironclad';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'tank_armor' LIMIT 1) WHERE troop_key = 'tank';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'fighter_dogfight' LIMIT 1) WHERE troop_key = 'fighter';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'bomber_payload' LIMIT 1) WHERE troop_key = 'bomber';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'submarine_torpedo' LIMIT 1) WHERE troop_key = 'submarine';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'scout_evasion' LIMIT 1) WHERE troop_key = 'scout';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'phalanx_wall' LIMIT 1) WHERE troop_key = 'phalanx';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'pike_formation' LIMIT 1) WHERE troop_key = 'pikeman';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'longbow_range' LIMIT 1) WHERE troop_key = 'longbowman';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'trebuchet_launch' LIMIT 1) WHERE troop_key = 'trebuchet';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'elephant_stomp' LIMIT 1) WHERE troop_key = 'war_elephant';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'rifleman_aim' LIMIT 1) WHERE troop_key = 'rifleman';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'dragoon_fire' LIMIT 1) WHERE troop_key = 'dragoon';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'frigate_maneuver' LIMIT 1) WHERE troop_key = 'frigate';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'marine_assault' LIMIT 1) WHERE troop_key = 'marine';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'airborne_drop' LIMIT 1) WHERE troop_key = 'paratroopers';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'elite_tactics' LIMIT 1) WHERE troop_key = 'special_forces';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'missile_strike' LIMIT 1) WHERE troop_key = 'missile_launcher';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'stealth_ambush' LIMIT 1) WHERE troop_key = 'stealth_fighter';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'carrier_launch' LIMIT 1) WHERE troop_key = 'aircraft_carrier';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'nuclear_sub_launch' LIMIT 1) WHERE troop_key = 'nuclear_submarine';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'medic_care' LIMIT 1) WHERE troop_key = 'medic';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'surgeon_skill' LIMIT 1) WHERE troop_key = 'field_surgeon';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'siege_tower_climb' LIMIT 1) WHERE troop_key = 'siege_tower';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'battering_ram_smash' LIMIT 1) WHERE troop_key = 'battering_ram';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'royal_command' LIMIT 1) WHERE troop_key = 'royal_guard';
+UPDATE civilization_troop_types SET special_skill_id = (SELECT id FROM battle_special_skills WHERE skill_key = 'berserk_rage' LIMIT 1) WHERE troop_key = 'berserker';
+
+-- ===============================================
 -- ② イベントシステム用テーブル
 -- ===============================================
 
