@@ -97,7 +97,7 @@ INSERT IGNORE INTO battle_special_skills (skill_key, name, icon, description, ef
 ('hunter_trap', '狩人の罠', '🪤', '罠で敵を足止め', 'debuff', 'enemy', 30, 2, 20),
 ('archer_volley', '弓兵の一斉射撃', '🏹', '矢の雨で敵全体にダメージ', 'special', 'enemy', 20, 1, 25),
 ('crossbow_pierce', 'クロスボウ貫通', '🎯', 'クロスボウの貫通射撃', 'debuff', 'enemy', 70, 1, 20),
-('longbow_range', 'ロングボウの射程', '🏴󠁧󠁢󠁥󠁮󠁧󠁿', '長弓の遠距離攻撃', 'special', 'self', 25, 2, 25),
+('longbow_range', 'ロングボウの射程', '🏹', '長弓の遠距離攻撃', 'special', 'self', 25, 2, 25),
 ('musket_smoke', 'マスケットの煙幕', '💨', '煙幕で敵の命中率を下げる', 'debuff', 'enemy', 25, 2, 25),
 ('rifleman_aim', 'ライフルの精密射撃', '🔭', '精密射撃でクリティカル率上昇', 'buff', 'self', 60, 2, 20),
 ('fighter_dogfight', '戦闘機の空戦', '✈️', '空中戦で優位を取る', 'special', 'self', 30, 1, 20),
@@ -418,14 +418,14 @@ INSERT IGNORE INTO civilization_daily_tasks (task_key, name, description, icon, 
 -- ===============================================
 
 INSERT IGNORE INTO civilization_events (event_key, event_type, name, description, icon, start_date, end_date, is_active, config) VALUES
-('new_year_2024', 'special', '新春祭2024', '新年を祝う限定イベント！特別なボスを倒して限定アイテムを集めよう！', '🎍', '2024-01-01 00:00:00', '2024-01-15 23:59:59', TRUE, '{"bonus_drop_rate": 1.5, "special_boss_enabled": true}');
+('new_year_2025', 'special', '新春祭2025', '新年を祝う限定イベント！特別なボスを倒して限定アイテムを集めよう！', '🎍', '2025-01-01 00:00:00', '2025-01-31 23:59:59', TRUE, '{"bonus_drop_rate": 1.5, "special_boss_enabled": true}');
 
 -- 限定アイテム
 INSERT IGNORE INTO special_event_items (event_id, item_key, name, icon, description, rarity, drop_rate) VALUES
-((SELECT id FROM civilization_events WHERE event_key = 'new_year_2024'), 'new_year_coin', '新春コイン', '🧧', '新年の幸運を象徴するコイン', 'common', 30.00),
-((SELECT id FROM civilization_events WHERE event_key = 'new_year_2024'), 'lucky_charm', '幸運のお守り', '🎐', '幸福をもたらすお守り', 'uncommon', 15.00),
-((SELECT id FROM civilization_events WHERE event_key = 'new_year_2024'), 'golden_dragon', '金龍の鱗', '🐉', '伝説の龍の鱗', 'rare', 5.00),
-((SELECT id FROM civilization_events WHERE event_key = 'new_year_2024'), 'phoenix_feather', '鳳凰の羽', '🔥', '不死鳥の神秘的な羽', 'epic', 2.00);
+((SELECT id FROM civilization_events WHERE event_key = 'new_year_2025'), 'new_year_coin', '新春コイン', '🧧', '新年の幸運を象徴するコイン', 'common', 30.00),
+((SELECT id FROM civilization_events WHERE event_key = 'new_year_2025'), 'lucky_charm', '幸運のお守り', '🎐', '幸福をもたらすお守り', 'uncommon', 15.00),
+((SELECT id FROM civilization_events WHERE event_key = 'new_year_2025'), 'golden_dragon', '金龍の鱗', '🐉', '伝説の龍の鱗', 'rare', 5.00),
+((SELECT id FROM civilization_events WHERE event_key = 'new_year_2025'), 'phoenix_feather', '鳳凰の羽', '🔥', '不死鳥の神秘的な羽', 'epic', 2.00);
 
 -- ===============================================
 -- 完了メッセージ

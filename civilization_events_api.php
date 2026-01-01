@@ -187,7 +187,7 @@ if ($action === 'claim_daily_task') {
         
         // 経験値を付与
         if ($task['reward_exp'] > 0) {
-            grant_exp($me['id'], 'daily_task', 0);
+            grant_exp($me['id'], 'daily_task', $task['reward_exp']);
         }
         
         // 報酬受取済みに更新
