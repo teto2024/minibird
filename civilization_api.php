@@ -8,6 +8,34 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/battle_engine.php';
 require_once __DIR__ . '/exp_system.php';
 
+/**
+ * デイリータスクの進捗を更新（civilization_events_api.phpと同一ロジック）
+ */
+function updateDailyTaskProgressFromCiv($pdo, $userId, $taskType, $amount = 1) {
+    $today = date('Y-m-d');
+    
+    // タスクタイプに該当するタスクを取得
+    $stmt = $pdo->prepare("SELECT id, target_count FROM civilization_daily_tasks WHERE task_type = ? AND is_active = TRUE");
+    $stmt->execute([$taskType]);
+    $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    foreach ($tasks as $task) {
+        // 進捗を更新
+        $stmt = $pdo->prepare("
+            INSERT INTO user_daily_task_progress (user_id, task_id, task_date, current_progress)
+            VALUES (?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+                current_progress = LEAST(current_progress + ?, ?),
+                is_completed = (current_progress + ? >= ?)
+        ");
+        $stmt->execute([
+            $userId, $task['id'], $today, min($amount, $task['target_count']),
+            $amount, $task['target_count'],
+            $amount, $task['target_count']
+        ]);
+    }
+}
+
 // 文明システム設定定数
 define('CIV_COINS_TO_RESEARCH_RATIO', 10);     // 研究ポイント1あたりのコイン
 define('CIV_RESOURCE_BONUS_RATIO', 10);        // 資源ボーナス1あたりのコイン
@@ -799,6 +827,22 @@ if ($action === 'get_data') {
         $civ = getUserCivilization($pdo, $me['id']);
         $collected = collectResources($pdo, $me['id']);
         
+        // ③ デイリータスク「ログイン」進捗を更新
+        try {
+            updateDailyTaskProgressFromCiv($pdo, $me['id'], 'login', 1);
+        } catch (Exception $e) {
+            // デイリータスクテーブルがない場合は無視
+        }
+        
+        // ③ デイリータスク「資源収集」進捗を更新（収集した資源種類の数をカウント）
+        if (!empty($collected)) {
+            try {
+                updateDailyTaskProgressFromCiv($pdo, $me['id'], 'collect', count($collected));
+            } catch (Exception $e) {
+                // テーブルがない場合は無視
+            }
+        }
+        
         // 時代情報
         $stmt = $pdo->prepare("SELECT * FROM civilization_eras ORDER BY era_order");
         $stmt->execute();
@@ -985,6 +1029,13 @@ if ($action === 'invest_coins') {
         
         // クエスト進捗を更新（投資額をカウント）
         updateCivilizationQuestProgress($pdo, $me['id'], 'invest', null, $amount);
+        
+        // ③ デイリータスク「コイン投資」進捗を更新
+        try {
+            updateDailyTaskProgressFromCiv($pdo, $me['id'], 'invest', 1);
+        } catch (Exception $e) {
+            // テーブルがない場合は無視
+        }
         
         $pdo->commit();
         
@@ -1258,6 +1309,15 @@ if ($action === 'complete_researches') {
             updateCivilizationQuestProgress($pdo, $me['id'], 'research', $research['research_key'] ?? null, 1);
         }
         
+        // ③ デイリータスク「研究」進捗を更新
+        if (count($completedNames) > 0) {
+            try {
+                updateDailyTaskProgressFromCiv($pdo, $me['id'], 'research', count($completedNames));
+            } catch (Exception $e) {
+                // テーブルがない場合は無視
+            }
+        }
+        
         $pdo->commit();
         
         echo json_encode([
@@ -1452,6 +1512,13 @@ if ($action === 'attack') {
             $winnerId, $lootCoins, json_encode($lootResources)
         ]);
         
+        // ③ デイリータスク「戦闘参加」進捗を更新
+        try {
+            updateDailyTaskProgressFromCiv($pdo, $me['id'], 'battle', 1);
+        } catch (Exception $e) {
+            // テーブルがない場合は無視
+        }
+        
         $pdo->commit();
         
         $result = ($winnerId === $me['id']) ? 'victory' : 'defeat';
@@ -1615,6 +1682,15 @@ if ($action === 'complete_buildings') {
                 WHERE user_id = ?
             ");
             $stmt->execute([$populationIncrease, $populationIncrease, $me['id']]);
+        }
+        
+        // ③ デイリータスク「建設」進捗を更新
+        if (count($completedNames) > 0) {
+            try {
+                updateDailyTaskProgressFromCiv($pdo, $me['id'], 'build', count($completedNames));
+            } catch (Exception $e) {
+                // テーブルがない場合は無視
+            }
         }
         
         $pdo->commit();
@@ -2291,6 +2367,32 @@ if ($action === 'get_market_info') {
         $totalMarketLevel = (int)($marketData['total_level'] ?? 0);
         $marketBonus = min(0.5, ($marketCount * 0.05) + ($totalMarketLevel * 0.02));
         
+        // 交換制限情報を取得
+        $hourlyLimit = 10000 * max(1, $marketCount);
+        $exchangeLimits = [];
+        
+        $stmt = $pdo->prepare("
+            SELECT umel.resource_type_id, umel.exchanged_amount, umel.reset_at, rt.name, rt.icon
+            FROM user_market_exchange_limits umel
+            JOIN civilization_resource_types rt ON umel.resource_type_id = rt.id
+            WHERE umel.user_id = ?
+        ");
+        $stmt->execute([$me['id']]);
+        $limitRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        $now = new DateTime();
+        foreach ($limitRows as $row) {
+            $resetAt = new DateTime($row['reset_at']);
+            if ($now < $resetAt) {
+                $exchangeLimits[$row['resource_type_id']] = [
+                    'exchanged' => (int)$row['exchanged_amount'],
+                    'remaining' => max(0, $hourlyLimit - (int)$row['exchanged_amount']),
+                    'reset_at' => $row['reset_at'],
+                    'reset_in_seconds' => $resetAt->getTimestamp() - $now->getTimestamp()
+                ];
+            }
+        }
+        
         // グローバルの資源価値定義を使用
         global $RESOURCE_VALUES;
         
@@ -2299,7 +2401,9 @@ if ($action === 'get_market_info') {
             'market_count' => $marketCount,
             'total_market_level' => $totalMarketLevel,
             'market_bonus' => $marketBonus,
-            'resource_values' => $RESOURCE_VALUES
+            'resource_values' => $RESOURCE_VALUES,
+            'hourly_limit' => $hourlyLimit,
+            'exchange_limits' => $exchangeLimits
         ]);
     } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
@@ -3194,6 +3298,7 @@ if ($action === 'complete_training') {
         $completedTraining = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         $completedNames = [];
+        $totalTrained = 0;
         
         foreach ($completedTraining as $training) {
             // 兵士を追加
@@ -3209,6 +3314,16 @@ if ($action === 'complete_training') {
             $stmt->execute([$training['id']]);
             
             $completedNames[] = "{$training['name']} ×{$training['count']}";
+            $totalTrained += (int)$training['count'];
+        }
+        
+        // ③ デイリータスク「兵士訓練」進捗を更新
+        if ($totalTrained > 0) {
+            try {
+                updateDailyTaskProgressFromCiv($pdo, $me['id'], 'train', $totalTrained);
+            } catch (Exception $e) {
+                // テーブルがない場合は無視
+            }
         }
         
         $pdo->commit();

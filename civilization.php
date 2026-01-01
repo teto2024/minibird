@@ -2543,6 +2543,9 @@ function renderMarketExchange(resources) {
                     <span id="exchangeResult" style="color: #ffd700;">--</span>
                 </div>
                 
+                <!-- ④ 市場交換制限表示 -->
+                <div id="marketLimitDisplay"></div>
+                
                 <button class="build-btn" onclick="exchangeResources()" style="margin-top: 15px; background: linear-gradient(135deg, #d4a574 0%, #8b4513 100%);">
                     交換する
                 </button>
@@ -2583,6 +2586,51 @@ function loadMarketData() {
         const totalMarketLevel = markets.reduce((sum, m) => sum + (parseInt(m.level) || 1), 0);
         const marketBonus = Math.min(0.5, (marketCount * 0.05) + (totalMarketLevel * 0.02));
         
+        // ④ 交換制限表示を追加
+        const hourlyLimit = marketInfo.hourly_limit || (10000 * Math.max(1, marketCount));
+        const exchangeLimits = marketInfo.exchange_limits || {};
+        
+        // 交換制限表示を更新する関数
+        const updateLimitDisplay = () => {
+            const limitDisplay = document.getElementById('marketLimitDisplay');
+            if (!limitDisplay) return;
+            
+            const fromOption = fromSelect.options[fromSelect.selectedIndex];
+            const fromId = fromSelect.value;
+            const fromName = fromOption.textContent.split('(')[0].trim();
+            
+            const limitData = exchangeLimits[fromId];
+            if (limitData) {
+                const remaining = limitData.remaining;
+                const resetMinutes = Math.ceil(limitData.reset_in_seconds / 60);
+                const usedPercent = Math.round(((hourlyLimit - remaining) / hourlyLimit) * 100);
+                const barColor = remaining > hourlyLimit * 0.3 ? '#32cd32' : (remaining > 0 ? '#ffa500' : '#ff6b6b');
+                
+                limitDisplay.innerHTML = `
+                    <div style="margin-top: 15px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span style="color: #888;">🏪 ${fromName}の交換可能量:</span>
+                            <span style="color: ${barColor};">${remaining.toLocaleString()} / ${hourlyLimit.toLocaleString()}</span>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.5); border-radius: 4px; height: 8px; overflow: hidden;">
+                            <div style="background: ${barColor}; height: 100%; width: ${usedPercent}%; transition: width 0.3s;"></div>
+                        </div>
+                        <div style="color: #888; font-size: 11px; margin-top: 5px;">⏱️ あと${resetMinutes}分でリセット | 市場数: ${marketCount}</div>
+                    </div>
+                `;
+            } else {
+                limitDisplay.innerHTML = `
+                    <div style="margin-top: 15px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span style="color: #888;">🏪 1時間の交換上限:</span>
+                            <span style="color: #32cd32;">${hourlyLimit.toLocaleString()}</span>
+                        </div>
+                        <div style="color: #888; font-size: 11px;">市場数: ${marketCount} | 制限なし（未交換）</div>
+                    </div>
+                `;
+            }
+        };
+        
         const updateResult = () => {
             const resultElement = document.getElementById('exchangeResult');
             if (!resultElement) return;
@@ -2612,6 +2660,9 @@ function loadMarketData() {
             const received = Math.floor(amount * finalRate);
             const ratePercent = Math.round(finalRate * 100);
             resultElement.innerHTML = `${amount} ${fromName} → <strong style="color: #32cd32;">${received}</strong> ${toName} <span style="color: #888; font-size: 12px;">(レート: ${ratePercent}%)</span>`;
+            
+            // 制限表示も更新
+            updateLimitDisplay();
         };
         
         fromSelect.addEventListener('change', updateResult);
@@ -3244,6 +3295,14 @@ async function loadTroops() {
                         </span>
                     ` : '';
                     
+                    // 核ユニットインジケーター（ユニット名に'nuclear'または'原子力'が含まれる場合）
+                    const isNuclear = t.troop_key && (t.troop_key.includes('nuclear') || t.name.includes('原子力') || t.name.includes('核'));
+                    const nuclearBadge = isNuclear ? `
+                        <span style="background: rgba(50, 205, 50, 0.5); padding: 3px 8px; border-radius: 4px; font-size: 11px;" title="核兵器搭載ユニット">
+                            ☢️ 核
+                        </span>
+                    ` : '';
+                    
                     return `
                         <div class="target-card" style="border-color: #8b4513; ${!canTrain ? 'opacity: 0.7;' : ''}">
                             <div class="target-header">
@@ -3267,6 +3326,7 @@ async function loadTroops() {
                                     ❤️ ${healthPoints}
                                 </span>
                                 ${stealthBadge}
+                                ${nuclearBadge}
                             </div>
                             ${skillHtml}
                             <div style="color: #c0a080; font-size: 12px; margin-bottom: 10px;">
@@ -5055,14 +5115,15 @@ async function claimCivilizationQuestReward(questId) {
 
 let currentEventType = 'daily';
 
-// イベントサブタブのクリックイベント
-document.querySelectorAll('.event-subtab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+// イベントサブタブのクリックイベント（イベント委譲を使用）
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.event-subtab-btn');
+    if (btn) {
         document.querySelectorAll('.event-subtab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentEventType = btn.dataset.eventType;
         loadEventContent(currentEventType);
-    });
+    }
 });
 
 // イベントコンテンツを読み込む

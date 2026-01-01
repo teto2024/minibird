@@ -418,14 +418,38 @@ INSERT IGNORE INTO civilization_daily_tasks (task_key, name, description, icon, 
 -- ===============================================
 
 INSERT IGNORE INTO civilization_events (event_key, event_type, name, description, icon, start_date, end_date, is_active, config) VALUES
-('new_year_2025', 'special', '新春祭2025', '新年を祝う限定イベント！特別なボスを倒して限定アイテムを集めよう！', '🎍', '2025-01-01 00:00:00', '2025-01-31 23:59:59', TRUE, '{"bonus_drop_rate": 1.5, "special_boss_enabled": true}');
+('new_year_2026', 'special', '新春祭2026', '新年を祝う限定イベント！特別なボスを倒して限定アイテムを集めよう！', '🎍', '2026-01-01 00:00:00', '2026-01-31 23:59:59', TRUE, '{"bonus_drop_rate": 1.5, "special_boss_enabled": true}');
 
 -- 限定アイテム
 INSERT IGNORE INTO special_event_items (event_id, item_key, name, icon, description, rarity, drop_rate) VALUES
-((SELECT id FROM civilization_events WHERE event_key = 'new_year_2025'), 'new_year_coin', '新春コイン', '🧧', '新年の幸運を象徴するコイン', 'common', 30.00),
-((SELECT id FROM civilization_events WHERE event_key = 'new_year_2025'), 'lucky_charm', '幸運のお守り', '🎐', '幸福をもたらすお守り', 'uncommon', 15.00),
-((SELECT id FROM civilization_events WHERE event_key = 'new_year_2025'), 'golden_dragon', '金龍の鱗', '🐉', '伝説の龍の鱗', 'rare', 5.00),
-((SELECT id FROM civilization_events WHERE event_key = 'new_year_2025'), 'phoenix_feather', '鳳凰の羽', '🔥', '不死鳥の神秘的な羽', 'epic', 2.00);
+((SELECT id FROM civilization_events WHERE event_key = 'new_year_2026'), 'new_year_coin', '新春コイン', '🧧', '新年の幸運を象徴するコイン', 'common', 30.00),
+((SELECT id FROM civilization_events WHERE event_key = 'new_year_2026'), 'lucky_charm', '幸運のお守り', '🎐', '幸福をもたらすお守り', 'uncommon', 15.00),
+((SELECT id FROM civilization_events WHERE event_key = 'new_year_2026'), 'golden_dragon', '金龍の鱗', '🐉', '伝説の龍の鱗', 'rare', 5.00),
+((SELECT id FROM civilization_events WHERE event_key = 'new_year_2026'), 'phoenix_feather', '鳳凰の羽', '🔥', '不死鳥の神秘的な羽', 'epic', 2.00);
+
+-- ポータルボスを追加（新春イベント用）
+INSERT IGNORE INTO special_event_portal_bosses (event_id, boss_name, boss_icon, boss_power, attack_interval_hours, loot_table) VALUES
+((SELECT id FROM civilization_events WHERE event_key = 'new_year_2026'), '黄金龍王', '🐲', 500000, 3, '[{"item_id":1,"chance":50,"min_count":1,"max_count":3},{"item_id":2,"chance":30,"min_count":1,"max_count":2},{"item_id":3,"chance":15,"min_count":1,"max_count":1},{"item_id":4,"chance":5,"min_count":1,"max_count":1}]');
+
+-- ヒーローイベントサンプル
+INSERT IGNORE INTO civilization_events (event_key, event_type, name, description, icon, start_date, end_date, is_active, config) VALUES
+('hero_event_jan_2026', 'hero', 'アイアンフォートレス週間', '鉄壁の守護者の欠片を集めよう！', '🛡️', '2026-01-01 00:00:00', '2026-01-07 23:59:59', TRUE, '{"featured_hero_id": 1}');
+
+-- ヒーローイベント詳細
+INSERT IGNORE INTO hero_events (event_id, featured_hero_id, bonus_shard_rate, gacha_discount_percent) VALUES
+((SELECT id FROM civilization_events WHERE event_key = 'hero_event_jan_2026'), 1, 2.0, 20);
+
+-- ヒーローイベントタスク
+INSERT IGNORE INTO hero_event_tasks (hero_event_id, task_key, name, description, icon, task_type, target_count, points_reward) VALUES
+((SELECT id FROM hero_events WHERE event_id = (SELECT id FROM civilization_events WHERE event_key = 'hero_event_jan_2026')), 'hero_login', 'イベント期間中にログイン', '毎日ログインしよう', '🏠', 'login', 1, 10),
+((SELECT id FROM hero_events WHERE event_id = (SELECT id FROM civilization_events WHERE event_key = 'hero_event_jan_2026')), 'hero_battle', '戦闘に参加', '戦闘に3回参加しよう', '⚔️', 'battle', 3, 30),
+((SELECT id FROM hero_events WHERE event_id = (SELECT id FROM civilization_events WHERE event_key = 'hero_event_jan_2026')), 'hero_gacha', 'ガチャを回す', 'ヒーローガチャを5回回そう', '🎰', 'gacha', 5, 50);
+
+-- ヒーローイベントポイント報酬
+INSERT IGNORE INTO hero_event_point_rewards (hero_event_id, required_points, reward_type, reward_amount) VALUES
+((SELECT id FROM hero_events WHERE event_id = (SELECT id FROM civilization_events WHERE event_key = 'hero_event_jan_2026')), 20, 'coins', 1000),
+((SELECT id FROM hero_events WHERE event_id = (SELECT id FROM civilization_events WHERE event_key = 'hero_event_jan_2026')), 50, 'crystals', 10),
+((SELECT id FROM hero_events WHERE event_id = (SELECT id FROM civilization_events WHERE event_key = 'hero_event_jan_2026')), 100, 'hero_shards', 5);
 
 -- ===============================================
 -- 完了メッセージ
