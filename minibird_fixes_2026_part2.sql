@@ -6,6 +6,7 @@
 -- ④ 交換ショップの引換レートを改善
 -- ⑤ 経験値付与修正（PHP側で対応済み）
 -- ⑥ デイリータスク進捗修正（PHP側で対応済み）
+-- ⑦ ポータルボス攻撃制限を30分に1回に緩和
 -- ===============================================
 
 USE microblog;
@@ -85,6 +86,20 @@ SET see.exchange_limit =
         ELSE see.exchange_limit
     END
 WHERE ce.event_key = 'new_year_2026';
+
+-- ===============================================
+-- ⑦ ポータルボスの攻撃制限を30分に1回に緩和
+-- attack_interval_hours カラムを DECIMAL型に変更して0.5時間（30分）を保存
+-- ===============================================
+
+-- カラム型をDECIMAL(5,2)に変更（0.5時間 = 30分をサポート）
+ALTER TABLE special_event_portal_bosses 
+MODIFY COLUMN attack_interval_hours DECIMAL(5,2) NOT NULL DEFAULT 0.50 
+COMMENT '攻撃可能間隔（時間、0.5 = 30分）';
+
+-- 既存のポータルボスの攻撃間隔を30分に更新
+UPDATE special_event_portal_bosses 
+SET attack_interval_hours = 0.50;
 
 -- ===============================================
 -- 完了メッセージ
