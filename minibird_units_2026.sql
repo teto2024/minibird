@@ -2,9 +2,30 @@
 -- MiniBird 新規ユニット追加 2026
 -- 新しい兵種10種類と「陸」「海」「空」カテゴリの追加
 -- 重複資源の解消
+-- 市場交換制限テーブルの外部キー制約修正
 -- ===============================================
 
 USE microblog;
+
+-- ===============================================
+-- ⓪ 市場交換制限テーブルの外部キー制約を修正
+-- resource_type_id = 0 を使用した集計追跡を許可するため
+-- 外部キー制約を削除してインデックスのみに変更
+-- ===============================================
+
+-- 既存の外部キー制約を削除（存在する場合）
+SET @constraint_exists = (
+    SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS 
+    WHERE CONSTRAINT_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'user_market_exchange_limits' 
+    AND CONSTRAINT_NAME = 'user_market_exchange_limits_ibfk_2'
+);
+SET @drop_fk = IF(@constraint_exists > 0, 
+    'ALTER TABLE user_market_exchange_limits DROP FOREIGN KEY user_market_exchange_limits_ibfk_2', 
+    'SELECT 1');
+PREPARE stmt FROM @drop_fk;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- ===============================================
 -- ① 重複資源の解消
@@ -12,7 +33,22 @@ USE microblog;
 -- saltpeter/gunpowder_resを統合（gunpowder_resを使用、saltpeterを削除）
 -- ===============================================
 
--- まず重複リソースを参照している箇所がないか確認してから削除
+-- まず全ての関連テーブルの参照を更新してから削除
+
+-- user_market_exchange_limitsテーブルの参照を更新
+UPDATE user_market_exchange_limits 
+SET resource_type_id = (SELECT id FROM civilization_resource_types WHERE resource_key = 'spices' LIMIT 1)
+WHERE resource_type_id = (SELECT id FROM civilization_resource_types WHERE resource_key = 'spice' LIMIT 1)
+  AND EXISTS (SELECT 1 FROM civilization_resource_types WHERE resource_key = 'spice')
+  AND resource_type_id != 0;
+
+UPDATE user_market_exchange_limits 
+SET resource_type_id = (SELECT id FROM civilization_resource_types WHERE resource_key = 'gunpowder_res' LIMIT 1)
+WHERE resource_type_id = (SELECT id FROM civilization_resource_types WHERE resource_key = 'saltpeter' LIMIT 1)
+  AND EXISTS (SELECT 1 FROM civilization_resource_types WHERE resource_key = 'saltpeter')
+  AND resource_type_id != 0;
+
+-- user_civilization_resourcesテーブルの参照を更新
 -- spiceをspicesに統合（spiceへの参照をspicesに更新）
 UPDATE user_civilization_resources 
 SET resource_type_id = (SELECT id FROM civilization_resource_types WHERE resource_key = 'spices' LIMIT 1)
