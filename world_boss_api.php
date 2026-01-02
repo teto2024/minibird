@@ -582,6 +582,12 @@ if ($action === 'attack_boss') {
         // バトルユニットを準備
         $attackerUnit = prepareBattleUnit($attackerTroops, $equipmentBuffs, $pdo);
         
+        // ⑧ ワールドボス戦では量子戦闘機のスキル（quantum_warfare）を無効化
+        $attackerUnit['skills'] = array_filter($attackerUnit['skills'], function($skill) {
+            return $skill['skill_key'] !== 'quantum_warfare';
+        });
+        $attackerUnit['skills'] = array_values($attackerUnit['skills']); // インデックスをリセット
+        
         // 攻撃側にヒーロースキルを適用
         $attackerHero = getUserBattleHero($pdo, $me['id'], 'world_boss');
         if ($attackerHero) {

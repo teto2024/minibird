@@ -664,6 +664,39 @@ let deploymentLimit = { base_limit: 100, building_bonus: 0, total_limit: 100 }; 
 let currentMonsterPower = 0; // 現在のモンスター戦力
 let currentBossPower = 0; // 現在のボス戦力
 
+// ② ステルス判定ヘルパー関数
+function isStealthUnit(troop) {
+    return troop.is_stealth === true || troop.is_stealth === 1 || troop.is_stealth === '1';
+}
+
+// ② 核ユニット判定ヘルパー関数
+function isNuclearUnit(troop) {
+    return troop.troop_key && (
+        troop.troop_key.includes('nuclear') || 
+        (troop.name && (troop.name.includes('原子力') || troop.name.includes('核')))
+    );
+}
+
+// ② 使い捨てユニット判定ヘルパー関数
+function isDisposableUnit(troop) {
+    return troop.is_disposable === true || troop.is_disposable === 1 || troop.is_disposable === '1';
+}
+
+// ② 出撃画面用のラベルHTMLを生成
+function getTroopLabelsHtml(troop) {
+    let labels = '';
+    if (isNuclearUnit(troop)) {
+        labels += `<span style="background: rgba(50, 205, 50, 0.5); padding: 1px 4px; border-radius: 3px; font-size: 9px; margin-left: 3px;">☢️核</span>`;
+    }
+    if (isStealthUnit(troop)) {
+        labels += `<span style="background: rgba(128, 0, 128, 0.5); padding: 1px 4px; border-radius: 3px; font-size: 9px; margin-left: 3px;">👻隠密</span>`;
+    }
+    if (isDisposableUnit(troop)) {
+        labels += `<span style="background: rgba(255, 69, 0, 0.5); padding: 1px 4px; border-radius: 3px; font-size: 9px; margin-left: 3px;">💀捨</span>`;
+    }
+    return labels;
+}
+
 // 初期データ読み込み
 async function loadData() {
     await Promise.all([
@@ -1044,7 +1077,7 @@ function renderTroopSelector() {
         <div class="troop-select-row">
             <div class="troop-info">
                 <span class="troop-icon">${troop.icon}</span>
-                <span class="troop-name">${troop.name}</span>
+                <span class="troop-name">${troop.name}${getTroopLabelsHtml(troop)}</span>
                 <div class="troop-stats">⚔️${troop.attack_power} 🛡️${troop.defense_power}</div>
             </div>
             <input type="range" class="troop-slider" 
@@ -1478,7 +1511,7 @@ function renderBossTroopSelector() {
         <div class="troop-select-row">
             <div class="troop-info">
                 <span class="troop-icon">${troop.icon}</span>
-                <span class="troop-name">${troop.name}</span>
+                <span class="troop-name">${troop.name}${getTroopLabelsHtml(troop)}</span>
                 <div class="troop-stats">⚔️${troop.attack_power} 🛡️${troop.defense_power}</div>
             </div>
             <input type="range" class="troop-slider" 

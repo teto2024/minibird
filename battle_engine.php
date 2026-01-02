@@ -28,13 +28,16 @@ define('HERO_SKILL_STAR_EFFECT_BONUS', 0.05);        // ③ 星レベルごと�
 define('HERO_SKILL_DAMAGE_RATIO_CAP', 0.3);          // ③ ヒーロースキルダメージの敵HP比率上限（30%）
 define('HERO_SKILL_ATTACKER_POWER_MULTIPLIER', 3.0); // ③ 攻撃者の戦力に基づくダメージ上限倍率
 define('HERO_SKILL_MIN_DAMAGE_CAP', 500);            // ③ ダメージ上限の最低保証値
+define('HERO_SKILL_HEAL_RATIO_CAP', 0.3);            // ⑦ 回復量の最大HP比率上限（30%）
+define('HERO_SKILL_MIN_HEAL_CAP', 100);              // ⑦ 回復量の最低保証値
 define('HERO_STAR_ATTACK_BONUS', 5);                 // 星レベルごとの攻撃力ボーナス
 define('HERO_STAR_ARMOR_BONUS', 3);                  // 星レベルごとの防御力ボーナス
 define('HERO_STAR_HEALTH_BONUS', 50);                // 星レベルごとの体力ボーナス
 
 /**
- * ③ ヒーロースキルのダメージ上限を動的に計算
+ * ③⑥ ヒーロースキルのダメージ上限を動的に計算
  * 攻撃者の戦力と敵HPに基づいてダメージ上限を決定
+ * ⑥ 修正: 2つの上限値の「低い方」を採用（バランス調整）
  * 
  * @param array $attacker 攻撃者のステータス
  * @param array $defender 防御者のステータス
@@ -50,9 +53,10 @@ function calculateHeroSkillDamageCap($attacker, $defender) {
         $defenderHpCap = (int)floor($defender['max_health'] * HERO_SKILL_DAMAGE_RATIO_CAP);
     }
     
-    // 両方の上限の高い方を採用（ただし最低保証値は確保）
-    $dynamicCap = max($attackerBasedCap, $defenderHpCap);
+    // ⑥ 両方の上限の「低い方」を採用（バランス調整）
+    $dynamicCap = min($attackerBasedCap, $defenderHpCap);
     
+    // 最低保証値を確保（500）
     return max($dynamicCap, HERO_SKILL_MIN_DAMAGE_CAP);
 }
 
@@ -293,18 +297,28 @@ function processHeroSkillEffect($skill, $attacker, $defender) {
     // 回復系スキル
     if (isset($effectData['heal_percent'])) {
         $heal = (int)floor($attacker['max_health'] * ($effectData['heal_percent'] / 100) * $multiplier);
+        
+        // ⑦ 回復量のキャップを適用（最大HPの30%、最低保証100）
+        $maxHeal = max(
+            HERO_SKILL_MIN_HEAL_CAP,
+            (int)floor($attacker['max_health'] * HERO_SKILL_HEAL_RATIO_CAP)
+        );
+        $heal = min($heal, $maxHeal);
+        
         $result['heal'] = $heal;
         $result['messages'][] = "{$icon} {$skillName}発動！{$heal}回復！";
         
         // 継続回復（HOT: Heal Over Time）
         if (isset($effectData['hot_percent'])) {
+            // ⑦ 継続回復にもキャップを適用
+            $hotPercent = min($effectData['hot_percent'], HERO_SKILL_HEAL_RATIO_CAP * 100);
             $result['attacker_effects'][] = [
                 'skill_key' => 'heal_over_time',
                 'skill_name' => '継続回復',
                 'skill_icon' => '💚',
                 'effect_type' => 'hot',
                 'effect_target' => 'self',
-                'effect_value' => $effectData['hot_percent'],
+                'effect_value' => $hotPercent,
                 'remaining_turns' => $effectData['hot_duration'] ?? 2
             ];
             $hotDuration = $effectData['hot_duration'] ?? 2;
