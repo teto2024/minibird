@@ -45,6 +45,39 @@ function json_exit($data) {
     exit;
 }
 
+// ⑤ デイリータスク進捗を更新（focus）
+function updateFocusDailyTaskProgress($pdo, $userId) {
+    $today = date('Y-m-d');
+    
+    // タスクタイプに該当するタスクを取得
+    $stmt = $pdo->prepare("SELECT id, target_count FROM civilization_daily_tasks WHERE task_type = 'focus' AND is_active = TRUE");
+    $stmt->execute();
+    $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    foreach ($tasks as $task) {
+        // 進捗を更新（INSERT OR UPDATE pattern）
+        $stmt = $pdo->prepare("
+            INSERT INTO user_daily_task_progress (user_id, task_id, task_date, current_progress, is_completed)
+            VALUES (?, ?, ?, 1, 1 >= ?)
+            ON DUPLICATE KEY UPDATE 
+                current_progress = LEAST(current_progress + 1, ?)
+        ");
+        $stmt->execute([
+            $userId, $task['id'], $today, 
+            $task['target_count'],
+            $task['target_count']
+        ]);
+        
+        // is_completedを更新
+        $stmt = $pdo->prepare("
+            UPDATE user_daily_task_progress 
+            SET is_completed = (current_progress >= ?)
+            WHERE user_id = ? AND task_id = ? AND task_date = ?
+        ");
+        $stmt->execute([$task['target_count'], $userId, $task['id'], $today]);
+    }
+}
+
 // 必須フィールド確認
 if (!$task || !$started_at || !$ended_at || !$uid) {
     json_exit(['ok'=>false,'error'=>'missing fields']);
@@ -237,6 +270,11 @@ if ($actual_seconds_worked < $required_seconds * 0.3) { // 必要最低作業時
             require_once __DIR__ . '/quest_progress.php';
             check_focus_quest_progress($uid, $mins);
         }
+        
+        // --------------------------
+        // ⑤ デイリータスク進捗を更新（focus）
+        // --------------------------
+        updateFocusDailyTaskProgress($pdo, $uid);
         
         // --------------------------
         // 経験値付与（成功時）

@@ -1770,6 +1770,56 @@ function renderApp() {
             <div class="war-section" style="background: linear-gradient(135deg, rgba(139, 69, 19, 0.5) 0%, rgba(50, 30, 10, 0.5) 100%); border-color: #8b4513;">
                 <h3 style="color: #ffd700;">🎖️ 兵士を訓練</h3>
                 <p style="color: #c0a080; margin-bottom: 20px;">兵舎や軍事施設を建設すると、より多くの兵士を訓練できます。訓練には時間がかかります。</p>
+                
+                <!-- ① 絞り込みフィルター -->
+                <div id="troop-filter-section" style="margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px; border: 1px solid rgba(139, 69, 19, 0.5);">
+                    <h4 style="color: #ffd700; margin: 0 0 12px 0; font-size: 14px;">🔍 絞り込みフィルター</h4>
+                    <div style="display: flex; flex-wrap: wrap; gap: 15px;">
+                        <!-- 兵種相性フィルター -->
+                        <div style="flex: 1; min-width: 180px;">
+                            <label style="display: block; color: #c0a080; font-size: 12px; margin-bottom: 5px;">⚔️ 兵種相性</label>
+                            <select id="filter-troop-category" onchange="applyTroopFilters()" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.5); border: 1px solid #8b4513; border-radius: 6px; color: #f5deb3; font-size: 13px;">
+                                <option value="">すべて</option>
+                                <option value="infantry">🗡️ 歩兵</option>
+                                <option value="cavalry">🐴 騎兵</option>
+                                <option value="ranged">🏹 遠距離</option>
+                                <option value="siege">💣 攻城</option>
+                            </select>
+                        </div>
+                        <!-- カテゴリフィルター（陸・海・空） -->
+                        <div style="flex: 1; min-width: 180px;">
+                            <label style="display: block; color: #c0a080; font-size: 12px; margin-bottom: 5px;">🌍 領域カテゴリ</label>
+                            <select id="filter-domain-category" onchange="applyTroopFilters()" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.5); border: 1px solid #8b4513; border-radius: 6px; color: #f5deb3; font-size: 13px;">
+                                <option value="">すべて</option>
+                                <option value="land">🏔️ 陸</option>
+                                <option value="sea">🌊 海</option>
+                                <option value="air">✈️ 空</option>
+                            </select>
+                        </div>
+                        <!-- ステルスフィルター -->
+                        <div style="flex: 1; min-width: 180px;">
+                            <label style="display: block; color: #c0a080; font-size: 12px; margin-bottom: 5px;">👻 ステルス</label>
+                            <select id="filter-stealth" onchange="applyTroopFilters()" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.5); border: 1px solid #8b4513; border-radius: 6px; color: #f5deb3; font-size: 13px;">
+                                <option value="">すべて</option>
+                                <option value="yes">ステルスのみ</option>
+                                <option value="no">ステルス以外</option>
+                            </select>
+                        </div>
+                        <!-- 核フィルター -->
+                        <div style="flex: 1; min-width: 180px;">
+                            <label style="display: block; color: #c0a080; font-size: 12px; margin-bottom: 5px;">☢️ 核</label>
+                            <select id="filter-nuclear" onchange="applyTroopFilters()" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.5); border: 1px solid #8b4513; border-radius: 6px; color: #f5deb3; font-size: 13px;">
+                                <option value="">すべて</option>
+                                <option value="yes">核のみ</option>
+                                <option value="no">核以外</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button onclick="resetTroopFilters()" style="margin-top: 10px; padding: 8px 16px; background: rgba(139, 69, 19, 0.5); border: 1px solid #8b4513; border-radius: 6px; color: #f5deb3; cursor: pointer; font-size: 12px;">
+                        🔄 フィルターをリセット
+                    </button>
+                </div>
+                
                 <div class="targets-list" id="troopsList">
                     <div class="loading">兵種を読み込み中...</div>
                 </div>
@@ -3207,6 +3257,244 @@ async function advanceEra() {
     }
 }
 
+// ① 兵士絞り込み用変数
+let allAvailableTroops = [];
+let allUserTroops = [];
+let troopAdvantageInfo = {};
+
+// ① ステルス判定ヘルパー関数
+function isStealthUnit(troop) {
+    return troop.is_stealth === true || troop.is_stealth === 1 || troop.is_stealth === '1';
+}
+
+// ① 核ユニット判定ヘルパー関数
+function isNuclearUnit(troop) {
+    return troop.troop_key && (
+        troop.troop_key.includes('nuclear') || 
+        (troop.name && (troop.name.includes('原子力') || troop.name.includes('核')))
+    );
+}
+
+// ① フィルターを適用
+function applyTroopFilters() {
+    const categoryFilter = document.getElementById('filter-troop-category')?.value || '';
+    const domainFilter = document.getElementById('filter-domain-category')?.value || '';
+    const stealthFilter = document.getElementById('filter-stealth')?.value || '';
+    const nuclearFilter = document.getElementById('filter-nuclear')?.value || '';
+    
+    const filteredTroops = allAvailableTroops.filter(t => {
+        // 兵種相性フィルター
+        if (categoryFilter && t.troop_category !== categoryFilter) {
+            return false;
+        }
+        // 領域カテゴリフィルター
+        if (domainFilter && (t.domain_category || 'land') !== domainFilter) {
+            return false;
+        }
+        // ステルスフィルター
+        const isStealth = isStealthUnit(t);
+        if (stealthFilter === 'yes' && !isStealth) {
+            return false;
+        }
+        if (stealthFilter === 'no' && isStealth) {
+            return false;
+        }
+        // 核フィルター
+        const isNuclear = isNuclearUnit(t);
+        if (nuclearFilter === 'yes' && !isNuclear) {
+            return false;
+        }
+        if (nuclearFilter === 'no' && isNuclear) {
+            return false;
+        }
+        return true;
+    });
+    
+    renderTroopsList(filteredTroops, allUserTroops, troopAdvantageInfo);
+}
+
+// ① フィルターをリセット
+function resetTroopFilters() {
+    document.getElementById('filter-troop-category').value = '';
+    document.getElementById('filter-domain-category').value = '';
+    document.getElementById('filter-stealth').value = '';
+    document.getElementById('filter-nuclear').value = '';
+    applyTroopFilters();
+}
+
+// ① 兵種リストをレンダリング
+function renderTroopsList(troops, userTroops, advantageInfo) {
+    const troopsList = document.getElementById('troopsList');
+    
+    if (troops && troops.length > 0) {
+        // 相性説明を先頭に追加
+        let advantageHtml = `
+            <div class="target-card" style="border-color: #ffd700; background: rgba(255, 215, 0, 0.1); grid-column: span 2;">
+                <div class="target-header">
+                    <span class="target-name">⚔️ 兵種相性システム</span>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <div style="color: #ffd700; font-weight: bold; margin-bottom: 5px;">🗡️ 歩兵</div>
+                        <div style="color: #32cd32; font-size: 12px;">✓ 遠距離に強い</div>
+                        <div style="color: #ff6b6b; font-size: 12px;">✗ 騎兵に弱い</div>
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <div style="color: #ffd700; font-weight: bold; margin-bottom: 5px;">🐴 騎兵</div>
+                        <div style="color: #32cd32; font-size: 12px;">✓ 歩兵に強い</div>
+                        <div style="color: #ff6b6b; font-size: 12px;">✗ 遠距離に弱い</div>
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <div style="color: #ffd700; font-weight: bold; margin-bottom: 5px;">🏹 遠距離</div>
+                        <div style="color: #32cd32; font-size: 12px;">✓ 騎兵に強い</div>
+                        <div style="color: #ff6b6b; font-size: 12px;">✗ 歩兵に弱い</div>
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <div style="color: #ffd700; font-weight: bold; margin-bottom: 5px;">💣 攻城</div>
+                        <div style="color: #32cd32; font-size: 12px;">✓ 歩兵に強い</div>
+                        <div style="color: #ff6b6b; font-size: 12px;">✗ 騎兵に弱い</div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        troopsList.innerHTML = advantageHtml + troops.map(t => {
+            const owned = userTroops.find(ut => ut.troop_type_id == t.id);
+            const ownedCount = owned ? owned.count : 0;
+            
+            let costText = `🪙 ${t.train_cost_coins}`;
+            if (t.train_cost_resources) {
+                const costs = JSON.parse(t.train_cost_resources);
+                Object.entries(costs).forEach(([key, val]) => {
+                    const resName = getResourceName(key);
+                    costText += ` | ${resName}: ${val}`;
+                });
+            }
+            
+            // 前提条件表示
+            const canTrain = t.can_train !== false;
+            const missingPrereqs = t.missing_prerequisites || [];
+            const prereqText = missingPrereqs.length > 0 
+                ? `<div style="color: #ff6b6b; font-size: 12px; margin-bottom: 10px;">🔒 必要: ${missingPrereqs.join(', ')}</div>` 
+                : '';
+            
+            // 兵種カテゴリと相性を表示
+            const category = t.troop_category || 'infantry';
+            const categoryInfo = advantageInfo[category] || advantageInfo['infantry'];
+            const healthPoints = t.health_points || 100;
+            
+            // 特殊スキル情報を構築
+            let skillHtml = '';
+            if (t.skill_name && t.skill_icon) {
+                const effectType = t.effect_type || '';
+                let effectColor = 'rgba(147, 112, 219, 0.4)'; // デフォルト紫色
+                if (effectType === 'buff') {
+                    effectColor = 'rgba(50, 205, 50, 0.4)'; // バフは緑
+                } else if (effectType === 'debuff') {
+                    effectColor = 'rgba(255, 100, 100, 0.4)'; // デバフは赤
+                } else if (effectType === 'damage_over_time') {
+                    effectColor = 'rgba(255, 165, 0, 0.4)'; // 継続ダメージはオレンジ
+                }
+                const activationChance = t.activation_chance ? `${t.activation_chance}%` : '';
+                const effectValue = t.effect_value ? t.effect_value : '';
+                const durationTurns = t.duration_turns ? `${t.duration_turns}T` : '';
+                
+                skillHtml = `
+                    <div style="background: ${effectColor}; padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; font-size: 12px;">
+                        <div style="display: flex; align-items: center; gap: 5px;">
+                            <span style="font-size: 14px;">${t.skill_icon}</span>
+                            <span style="color: #ffd700; font-weight: bold;">${t.skill_name}</span>
+                            ${activationChance ? `<span style="color: #888; font-size: 10px; margin-left: auto;">発動: ${activationChance}</span>` : ''}
+                        </div>
+                        ${t.skill_description ? `<div style="color: #c0a080; font-size: 11px; margin-top: 3px;">${t.skill_description}</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            // ステルス兵種インジケーター
+            const stealthBadge = isStealthUnit(t) ? `
+                <span style="background: rgba(128, 0, 128, 0.5); padding: 3px 8px; border-radius: 4px; font-size: 11px;" title="敵から見えない隠密兵種">
+                    👻 ステルス
+                </span>
+            ` : '';
+            
+            // 核ユニットインジケーター
+            const nuclearBadge = isNuclearUnit(t) ? `
+                <span style="background: rgba(50, 205, 50, 0.5); padding: 3px 8px; border-radius: 4px; font-size: 11px;" title="核兵器搭載ユニット">
+                    ☢️ 核
+                </span>
+            ` : '';
+            
+            // 領域カテゴリインジケーター（陸・海・空）
+            const domainCategory = t.domain_category || 'land';
+            const domainIcons = {
+                'land': { icon: '🏔️', name: '陸', color: 'rgba(139, 90, 43, 0.5)' },
+                'sea': { icon: '🌊', name: '海', color: 'rgba(30, 144, 255, 0.5)' },
+                'air': { icon: '✈️', name: '空', color: 'rgba(135, 206, 235, 0.5)' }
+            };
+            const domainInfo = domainIcons[domainCategory] || domainIcons['land'];
+            const domainBadge = `
+                <span style="background: ${domainInfo.color}; padding: 3px 8px; border-radius: 4px; font-size: 11px;" title="領域カテゴリ: ${domainInfo.name}">
+                    ${domainInfo.icon} ${domainInfo.name}
+                </span>
+            `;
+            
+            // 使い捨てユニットインジケーター
+            const disposableBadge = t.is_disposable ? `
+                <span style="background: rgba(255, 69, 0, 0.5); padding: 3px 8px; border-radius: 4px; font-size: 11px;" title="出撃後は消滅する使い捨てユニット">
+                    💀 使い捨て
+                </span>
+            ` : '';
+            
+            return `
+                <div class="target-card" style="border-color: #8b4513; ${!canTrain ? 'opacity: 0.7;' : ''}">
+                    <div class="target-header">
+                        <span class="target-name">${t.icon} ${t.name}</span>
+                        <span class="target-power">×${ownedCount}</span>
+                    </div>
+                    <div style="color: #888; font-size: 13px; margin-bottom: 5px;">
+                        ${t.description || ''}
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+                        <span style="background: rgba(139, 69, 19, 0.5); padding: 3px 8px; border-radius: 4px; font-size: 11px;">
+                            ${categoryInfo.icon} ${categoryInfo.name}
+                        </span>
+                        ${domainBadge}
+                        <span style="background: rgba(220, 20, 60, 0.3); padding: 3px 8px; border-radius: 4px; font-size: 11px;">
+                            ⚔️ ${t.attack_power}
+                        </span>
+                        <span style="background: rgba(70, 130, 180, 0.3); padding: 3px 8px; border-radius: 4px; font-size: 11px;">
+                            🛡️ ${t.defense_power}
+                        </span>
+                        <span style="background: rgba(50, 205, 50, 0.3); padding: 3px 8px; border-radius: 4px; font-size: 11px;">
+                            ❤️ ${healthPoints}
+                        </span>
+                        ${stealthBadge}
+                        ${nuclearBadge}
+                        ${disposableBadge}
+                    </div>
+                    ${skillHtml}
+                    <div style="color: #c0a080; font-size: 12px; margin-bottom: 10px;">
+                        ${costText}
+                    </div>
+                    ${prereqText}
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <input type="range" class="troop-select-slider" id="train-slider-${t.id}" min="1" max="100" value="1" 
+                               oninput="document.getElementById('troop-count-${t.id}').value = this.value" ${!canTrain ? 'disabled' : ''}>
+                        <input type="number" id="troop-count-${t.id}" value="1" min="1" max="100" style="width: 60px; padding: 8px; background: rgba(0,0,0,0.3); border: 1px solid #8b4513; border-radius: 4px; color: #f5deb3;" 
+                               oninput="document.getElementById('train-slider-${t.id}').value = Math.min(100, Math.max(1, this.value))" ${!canTrain ? 'disabled' : ''}>
+                        <button class="attack-btn" onclick="trainTroops(${t.id})" style="background: linear-gradient(135deg, #8b4513 0%, #d4a574 100%); flex: 1;" ${!canTrain ? 'disabled' : ''}>
+                            ${!canTrain ? '🔒 ロック中' : '訓練する'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } else {
+        troopsList.innerHTML = '<p style="color: #888;">フィルター条件に一致する兵種がありません。</p>';
+    }
+}
+
 // 兵種を読み込む
 async function loadTroops() {
     try {
@@ -3218,184 +3506,18 @@ async function loadTroops() {
         const data = await res.json();
         
         if (data.ok) {
-            const troopsList = document.getElementById('troopsList');
-            
-            // 兵種カテゴリの相性情報
-            const advantageInfo = data.troop_advantage_info || {
+            // ① グローバル変数にデータを保存（フィルター用）
+            allAvailableTroops = data.available_troops || [];
+            allUserTroops = data.user_troops || [];
+            troopAdvantageInfo = data.troop_advantage_info || {
                 'infantry': {name: '歩兵', icon: '🗡️', strong_against: 'ranged', weak_against: 'cavalry'},
                 'cavalry': {name: '騎兵', icon: '🐴', strong_against: 'infantry', weak_against: 'ranged'},
                 'ranged': {name: '遠距離', icon: '🏹', strong_against: 'cavalry', weak_against: 'infantry'},
                 'siege': {name: '攻城', icon: '💣', strong_against: 'infantry', weak_against: 'cavalry'}
             };
             
-            if (data.available_troops && data.available_troops.length > 0) {
-                // 相性説明を先頭に追加
-                let advantageHtml = `
-                    <div class="target-card" style="border-color: #ffd700; background: rgba(255, 215, 0, 0.1); grid-column: span 2;">
-                        <div class="target-header">
-                            <span class="target-name">⚔️ 兵種相性システム</span>
-                        </div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 10px;">
-                            <div style="flex: 1; min-width: 200px;">
-                                <div style="color: #ffd700; font-weight: bold; margin-bottom: 5px;">🗡️ 歩兵</div>
-                                <div style="color: #32cd32; font-size: 12px;">✓ 遠距離に強い</div>
-                                <div style="color: #ff6b6b; font-size: 12px;">✗ 騎兵に弱い</div>
-                            </div>
-                            <div style="flex: 1; min-width: 200px;">
-                                <div style="color: #ffd700; font-weight: bold; margin-bottom: 5px;">🐴 騎兵</div>
-                                <div style="color: #32cd32; font-size: 12px;">✓ 歩兵に強い</div>
-                                <div style="color: #ff6b6b; font-size: 12px;">✗ 遠距離に弱い</div>
-                            </div>
-                            <div style="flex: 1; min-width: 200px;">
-                                <div style="color: #ffd700; font-weight: bold; margin-bottom: 5px;">🏹 遠距離</div>
-                                <div style="color: #32cd32; font-size: 12px;">✓ 騎兵に強い</div>
-                                <div style="color: #ff6b6b; font-size: 12px;">✗ 歩兵に弱い</div>
-                            </div>
-                            <div style="flex: 1; min-width: 200px;">
-                                <div style="color: #ffd700; font-weight: bold; margin-bottom: 5px;">💣 攻城</div>
-                                <div style="color: #32cd32; font-size: 12px;">✓ 歩兵に強い</div>
-                                <div style="color: #ff6b6b; font-size: 12px;">✗ 騎兵に弱い</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                troopsList.innerHTML = advantageHtml + data.available_troops.map(t => {
-                    const owned = data.user_troops.find(ut => ut.troop_type_id == t.id);
-                    const ownedCount = owned ? owned.count : 0;
-                    
-                    let costText = `🪙 ${t.train_cost_coins}`;
-                    if (t.train_cost_resources) {
-                        const costs = JSON.parse(t.train_cost_resources);
-                        Object.entries(costs).forEach(([key, val]) => {
-                            const resName = getResourceName(key);
-                            costText += ` | ${resName}: ${val}`;
-                        });
-                    }
-                    
-                    // 前提条件表示
-                    const canTrain = t.can_train !== false;
-                    const missingPrereqs = t.missing_prerequisites || [];
-                    const prereqText = missingPrereqs.length > 0 
-                        ? `<div style="color: #ff6b6b; font-size: 12px; margin-bottom: 10px;">🔒 必要: ${missingPrereqs.join(', ')}</div>` 
-                        : '';
-                    
-                    // 兵種カテゴリと相性を表示
-                    const category = t.troop_category || 'infantry';
-                    const categoryInfo = advantageInfo[category] || advantageInfo['infantry'];
-                    const healthPoints = t.health_points || 100;
-                    
-                    // 特殊スキル情報を構築
-                    let skillHtml = '';
-                    if (t.skill_name && t.skill_icon) {
-                        const effectType = t.effect_type || '';
-                        let effectColor = 'rgba(147, 112, 219, 0.4)'; // デフォルト紫色
-                        if (effectType === 'buff') {
-                            effectColor = 'rgba(50, 205, 50, 0.4)'; // バフは緑
-                        } else if (effectType === 'debuff') {
-                            effectColor = 'rgba(255, 100, 100, 0.4)'; // デバフは赤
-                        } else if (effectType === 'damage_over_time') {
-                            effectColor = 'rgba(255, 165, 0, 0.4)'; // 継続ダメージはオレンジ
-                        }
-                        const activationChance = t.activation_chance ? `${t.activation_chance}%` : '';
-                        const effectValue = t.effect_value ? t.effect_value : '';
-                        const durationTurns = t.duration_turns ? `${t.duration_turns}T` : '';
-                        
-                        skillHtml = `
-                            <div style="background: ${effectColor}; padding: 6px 10px; border-radius: 6px; margin-bottom: 8px; font-size: 12px;">
-                                <div style="display: flex; align-items: center; gap: 5px;">
-                                    <span style="font-size: 14px;">${t.skill_icon}</span>
-                                    <span style="color: #ffd700; font-weight: bold;">${t.skill_name}</span>
-                                    ${activationChance ? `<span style="color: #888; font-size: 10px; margin-left: auto;">発動: ${activationChance}</span>` : ''}
-                                </div>
-                                ${t.skill_description ? `<div style="color: #c0a080; font-size: 11px; margin-top: 3px;">${t.skill_description}</div>` : ''}
-                            </div>
-                        `;
-                    }
-                    
-                    // ステルス兵種インジケーター
-                    const stealthBadge = t.is_stealth ? `
-                        <span style="background: rgba(128, 0, 128, 0.5); padding: 3px 8px; border-radius: 4px; font-size: 11px;" title="敵から見えない隠密兵種">
-                            👻 ステルス
-                        </span>
-                    ` : '';
-                    
-                    // 核ユニットインジケーター（ユニット名に'nuclear'または'原子力'が含まれる場合）
-                    const isNuclear = t.troop_key && (t.troop_key.includes('nuclear') || t.name.includes('原子力') || t.name.includes('核'));
-                    const nuclearBadge = isNuclear ? `
-                        <span style="background: rgba(50, 205, 50, 0.5); padding: 3px 8px; border-radius: 4px; font-size: 11px;" title="核兵器搭載ユニット">
-                            ☢️ 核
-                        </span>
-                    ` : '';
-                    
-                    // 領域カテゴリインジケーター（陸・海・空）
-                    const domainCategory = t.domain_category || 'land';
-                    const domainIcons = {
-                        'land': { icon: '🏔️', name: '陸', color: 'rgba(139, 90, 43, 0.5)' },
-                        'sea': { icon: '🌊', name: '海', color: 'rgba(30, 144, 255, 0.5)' },
-                        'air': { icon: '✈️', name: '空', color: 'rgba(135, 206, 235, 0.5)' }
-                    };
-                    const domainInfo = domainIcons[domainCategory] || domainIcons['land'];
-                    const domainBadge = `
-                        <span style="background: ${domainInfo.color}; padding: 3px 8px; border-radius: 4px; font-size: 11px;" title="領域カテゴリ: ${domainInfo.name}">
-                            ${domainInfo.icon} ${domainInfo.name}
-                        </span>
-                    `;
-                    
-                    // 使い捨てユニットインジケーター
-                    const disposableBadge = t.is_disposable ? `
-                        <span style="background: rgba(255, 69, 0, 0.5); padding: 3px 8px; border-radius: 4px; font-size: 11px;" title="出撃後は消滅する使い捨てユニット">
-                            💀 使い捨て
-                        </span>
-                    ` : '';
-                    
-                    return `
-                        <div class="target-card" style="border-color: #8b4513; ${!canTrain ? 'opacity: 0.7;' : ''}">
-                            <div class="target-header">
-                                <span class="target-name">${t.icon} ${t.name}</span>
-                                <span class="target-power">×${ownedCount}</span>
-                            </div>
-                            <div style="color: #888; font-size: 13px; margin-bottom: 5px;">
-                                ${t.description || ''}
-                            </div>
-                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
-                                <span style="background: rgba(139, 69, 19, 0.5); padding: 3px 8px; border-radius: 4px; font-size: 11px;">
-                                    ${categoryInfo.icon} ${categoryInfo.name}
-                                </span>
-                                ${domainBadge}
-                                <span style="background: rgba(220, 20, 60, 0.3); padding: 3px 8px; border-radius: 4px; font-size: 11px;">
-                                    ⚔️ ${t.attack_power}
-                                </span>
-                                <span style="background: rgba(70, 130, 180, 0.3); padding: 3px 8px; border-radius: 4px; font-size: 11px;">
-                                    🛡️ ${t.defense_power}
-                                </span>
-                                <span style="background: rgba(50, 205, 50, 0.3); padding: 3px 8px; border-radius: 4px; font-size: 11px;">
-                                    ❤️ ${healthPoints}
-                                </span>
-                                ${stealthBadge}
-                                ${nuclearBadge}
-                                ${disposableBadge}
-                            </div>
-                            ${skillHtml}
-                            <div style="color: #c0a080; font-size: 12px; margin-bottom: 10px;">
-                                ${costText}
-                            </div>
-                            ${prereqText}
-                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                                <input type="range" class="troop-select-slider" id="train-slider-${t.id}" min="1" max="100" value="1" 
-                                       oninput="document.getElementById('troop-count-${t.id}').value = this.value" ${!canTrain ? 'disabled' : ''}>
-                                <input type="number" id="troop-count-${t.id}" value="1" min="1" max="100" style="width: 60px; padding: 8px; background: rgba(0,0,0,0.3); border: 1px solid #8b4513; border-radius: 4px; color: #f5deb3;" 
-                                       oninput="document.getElementById('train-slider-${t.id}').value = Math.min(100, Math.max(1, this.value))" ${!canTrain ? 'disabled' : ''}>
-                                <button class="attack-btn" onclick="trainTroops(${t.id})" style="background: linear-gradient(135deg, #8b4513 0%, #d4a574 100%); flex: 1;" ${!canTrain ? 'disabled' : ''}>
-                                    ${!canTrain ? '🔒 ロック中' : '訓練する'}
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            } else {
-                troopsList.innerHTML = '<p style="color: #888;">利用可能な兵種がありません。時代を進めてください。</p>';
-            }
+            // ① フィルターを適用してレンダリング
+            applyTroopFilters();
         }
     } catch (e) {
         console.error(e);

@@ -3224,6 +3224,9 @@ if ($action === 'heal_troops') {
         
         $pdo->commit();
         
+        // ⑤ デイリータスク進捗を更新（heal）
+        updateDailyTaskProgressFromCiv($pdo, $me['id'], 'heal', $count);
+        
         echo json_encode([
             'ok' => true,
             'message' => "{$wounded['name']} ×{$count} の治療を開始しました",

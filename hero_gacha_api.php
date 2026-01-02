@@ -19,6 +19,42 @@ $pdo = db();
 $input = json_decode(file_get_contents('php://input'), true) ?: [];
 $action = $input['action'] ?? '';
 
+/**
+ * ⑤ デイリータスク進捗を更新（gacha）
+ */
+function updateGachaDailyTaskProgress($pdo, $userId, $amount = 1) {
+    $today = date('Y-m-d');
+    
+    // タスクタイプに該当するタスクを取得
+    $stmt = $pdo->prepare("SELECT id, target_count FROM civilization_daily_tasks WHERE task_type = 'gacha' AND is_active = TRUE");
+    $stmt->execute();
+    $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    foreach ($tasks as $task) {
+        // 進捗を更新（INSERT OR UPDATE pattern）
+        $stmt = $pdo->prepare("
+            INSERT INTO user_daily_task_progress (user_id, task_id, task_date, current_progress, is_completed)
+            VALUES (?, ?, ?, LEAST(?, ?), LEAST(?, ?) >= ?)
+            ON DUPLICATE KEY UPDATE 
+                current_progress = LEAST(current_progress + ?, ?)
+        ");
+        $stmt->execute([
+            $userId, $task['id'], $today, 
+            $amount, $task['target_count'],
+            $amount, $task['target_count'], $task['target_count'],
+            $amount, $task['target_count']
+        ]);
+        
+        // is_completedを更新
+        $stmt = $pdo->prepare("
+            UPDATE user_daily_task_progress 
+            SET is_completed = (current_progress >= ?)
+            WHERE user_id = ? AND task_id = ? AND task_date = ?
+        ");
+        $stmt->execute([$task['target_count'], $userId, $task['id'], $today]);
+    }
+}
+
 // ガチャを引く
 if ($action === 'pull') {
     $type = $input['type'] ?? 'normal';
@@ -72,6 +108,9 @@ if ($action === 'pull') {
         $stmt->execute([$me['id'], $type, $reward['type'], json_encode($reward), $cost_coins, $cost_crystals, $cost_diamonds]);
         
         $pdo->commit();
+        
+        // ⑤ デイリータスク進捗を更新（gacha）
+        updateGachaDailyTaskProgress($pdo, $me['id'], 1);
         
         // 更新後の残高を取得
         $stmt = $pdo->prepare("SELECT coins, crystals, diamonds FROM users WHERE id = ?");
@@ -150,6 +189,9 @@ if ($action === 'pull_10') {
         }
         
         $pdo->commit();
+        
+        // ⑤ デイリータスク進捗を更新（gacha 10回分）
+        updateGachaDailyTaskProgress($pdo, $me['id'], 10);
         
         // 更新後の残高を取得
         $stmt = $pdo->prepare("SELECT coins, crystals, diamonds FROM users WHERE id = ?");

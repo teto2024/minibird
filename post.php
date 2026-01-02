@@ -31,6 +31,39 @@ try {
         return true;
     }
     
+    // ⑤ デイリータスク進捗を更新（post）
+    function updatePostDailyTaskProgress($pdo, $userId) {
+        $today = date('Y-m-d');
+        
+        // タスクタイプに該当するタスクを取得
+        $stmt = $pdo->prepare("SELECT id, target_count FROM civilization_daily_tasks WHERE task_type = 'post' AND is_active = TRUE");
+        $stmt->execute();
+        $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($tasks as $task) {
+            // 進捗を更新（INSERT OR UPDATE pattern）
+            $stmt = $pdo->prepare("
+                INSERT INTO user_daily_task_progress (user_id, task_id, task_date, current_progress, is_completed)
+                VALUES (?, ?, ?, 1, 1 >= ?)
+                ON DUPLICATE KEY UPDATE 
+                    current_progress = LEAST(current_progress + 1, ?)
+            ");
+            $stmt->execute([
+                $userId, $task['id'], $today, 
+                $task['target_count'],
+                $task['target_count']
+            ]);
+            
+            // is_completedを更新
+            $stmt = $pdo->prepare("
+                UPDATE user_daily_task_progress 
+                SET is_completed = (current_progress >= ?)
+                WHERE user_id = ? AND task_id = ? AND task_date = ?
+            ");
+            $stmt->execute([$task['target_count'], $userId, $task['id'], $today]);
+        }
+    }
+    
     // ファイルアップロード検証関数
     function validate_and_upload_file($file) {
         if (!isset($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
@@ -253,6 +286,9 @@ try {
             check_quest_progress($_SESSION['uid'], 'post', 1);
             check_quest_progress_with_text($_SESSION['uid'], 'post_contains', $content);
         }
+
+        // ⑤ デイリータスク進捗を更新（post）
+        updatePostDailyTaskProgress($pdo, $_SESSION['uid']);
 
         // メンション通知の処理
         create_mention_notifications($content, $_SESSION['uid'], $post_id, $pdo);
