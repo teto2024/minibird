@@ -481,9 +481,9 @@ $RARITY_NAMES = [
             <ul style="color: #f5deb3; margin: 10px 0; padding-left: 20px;">
                 <li><strong>スキル発動率UP</strong>：基本15% + 星レベル×2%（最大8★で31%）</li>
                 <li><strong>スキル効果UP</strong>：1★から増加毎に+5%（8★で基本効果の135%）</li>
-                <li><strong>攻撃力ボーナス</strong>：星レベル×5（8★で+40攻撃力）</li>
-                <li><strong>防御力ボーナス</strong>：星レベル×3（8★で+24防御力）</li>
-                <li><strong>体力ボーナス</strong>：星レベル×50（8★で+400体力）</li>
+                <li><strong>攻撃力ボーナス</strong>：星レベル×50（8★で+400攻撃力）</li>
+                <li><strong>防御力ボーナス</strong>：星レベル×30（8★で+240防御力）</li>
+                <li><strong>体力ボーナス</strong>：星レベル×500（8★で+4000体力）</li>
             </ul>
             <p style="color: #87ceeb; margin: 10px 0 0 0; font-size: 14px;">
                 💡 スターアップには対応するヒーローの欠片が必要です。ガチャで欠片を集めましょう！
@@ -543,9 +543,9 @@ $RARITY_NAMES = [
                         <div class="skill-desc" style="font-size: 11px;">
                             • スキル発動率: <?= 15 + $starLevel * 2 ?>%<br>
                             • スキル効果倍率: <?= 100 + ($starLevel - 1) * 5 ?>%<br>
-                            • 攻撃力: +<?= $starLevel * 5 ?><br>
-                            • 防御力: +<?= $starLevel * 3 ?><br>
-                            • 体力: +<?= $starLevel * 50 ?>
+                            • 攻撃力: +<?= $starLevel * 50 ?><br>
+                            • 防御力: +<?= $starLevel * 30 ?><br>
+                            • 体力: +<?= $starLevel * 500 ?>
                         </div>
                     </div>
                     <?php endif; ?>
