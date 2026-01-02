@@ -213,103 +213,103 @@ SELECT id, 11, 50, 156250, 1562, 156, '[{"resource_type_id":1,"amount":600}]', N
 
 -- Lv10 ベテランの報酬 (元のLv10の報酬: コイン2倍、資源2倍)
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 1, 1, 20000, 100, 10, '[{"resource_type_id":1,"amount":200},{"resource_type_id":2,"amount":200}]', NULL FROM world_bosses WHERE boss_key = 'titan_lv10_veteran';
+SELECT id, 1, 1, 20000, 100, 10, '[{"resource_type_id":1,"amount":20000}]', NULL FROM world_bosses WHERE boss_key = 'titan_lv10_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 2, 3, 10000, 50, 5, '[{"resource_type_id":1,"amount":100},{"resource_type_id":2,"amount":100}]', NULL FROM world_bosses WHERE boss_key = 'titan_lv10_veteran';
+SELECT id, 2, 3, 10000, 50, 5, '[{"resource_type_id":1,"amount":10000}]', NULL FROM world_bosses WHERE boss_key = 'titan_lv10_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 4, 10, 4000, 20, 2, '[{"resource_type_id":1,"amount":40},{"resource_type_id":2,"amount":40}]', NULL FROM world_bosses WHERE boss_key = 'titan_lv10_veteran';
+SELECT id, 4, 10, 4000, 20, 2, '[{"resource_type_id":1,"amount":4000}]', NULL FROM world_bosses WHERE boss_key = 'titan_lv10_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 11, 50, 1000, 5, 1, '[{"resource_type_id":1,"amount":20}]', NULL FROM world_bosses WHERE boss_key = 'titan_lv10_veteran';
+SELECT id, 11, 50, 1000, 5, 1, '[{"resource_type_id":1,"amount":1000}]', NULL FROM world_bosses WHERE boss_key = 'titan_lv10_veteran';
 
--- Lv20 ベテランの報酬
+-- Lv20 ベテランの報酬 (元のLv20の報酬: コイン2倍、資源2倍)
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 1, 1, 50000, 250, 25, '[{"resource_type_id":1,"amount":500},{"resource_type_id":2,"amount":500},{"resource_type_id":3,"amount":200}]', NULL FROM world_bosses WHERE boss_key = 'hydra_lv20_veteran';
+SELECT id, 1, 1, 50000, 250, 25, '[{"resource_type_id":1,"amount":50000},{"resource_type_id":2,"amount":25000}]', NULL FROM world_bosses WHERE boss_key = 'hydra_lv20_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 2, 3, 24000, 120, 12, '[{"resource_type_id":1,"amount":250},{"resource_type_id":2,"amount":250},{"resource_type_id":3,"amount":100}]', NULL FROM world_bosses WHERE boss_key = 'hydra_lv20_veteran';
+SELECT id, 2, 3, 24000, 120, 12, '[{"resource_type_id":1,"amount":24000},{"resource_type_id":2,"amount":12000}]', NULL FROM world_bosses WHERE boss_key = 'hydra_lv20_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 4, 10, 10000, 50, 5, '[{"resource_type_id":1,"amount":100},{"resource_type_id":2,"amount":100}]', NULL FROM world_bosses WHERE boss_key = 'hydra_lv20_veteran';
+SELECT id, 4, 10, 10000, 50, 5, '[{"resource_type_id":1,"amount":10000},{"resource_type_id":2,"amount":5000}]', NULL FROM world_bosses WHERE boss_key = 'hydra_lv20_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 11, 50, 2000, 10, 2, '[{"resource_type_id":1,"amount":40}]', NULL FROM world_bosses WHERE boss_key = 'hydra_lv20_veteran';
+SELECT id, 11, 50, 2000, 10, 2, '[{"resource_type_id":1,"amount":2000}]', NULL FROM world_bosses WHERE boss_key = 'hydra_lv20_veteran';
 
--- Lv30 ベテランの報酬 (元の報酬データがないため推定)
+-- Lv30 ベテランの報酬 (元のLv30の報酬: コイン2倍、資源2倍)
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 1, 1, 100000, 1000, 100, '[{"resource_type_id":1,"amount":800},{"resource_type_id":2,"amount":800},{"resource_type_id":3,"amount":400},{"resource_type_id":4,"amount":200}]', NULL FROM world_bosses WHERE boss_key = 'phoenix_lv30_veteran';
+SELECT id, 1, 1, 100000, 500, 50, '[{"resource_type_id":1,"amount":100000},{"resource_type_id":2,"amount":50000}]', NULL FROM world_bosses WHERE boss_key = 'phoenix_lv30_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 2, 3, 50000, 500, 50, '[{"resource_type_id":1,"amount":400},{"resource_type_id":2,"amount":400},{"resource_type_id":3,"amount":200}]', NULL FROM world_bosses WHERE boss_key = 'phoenix_lv30_veteran';
+SELECT id, 2, 3, 50000, 250, 25, '[{"resource_type_id":1,"amount":48000}]', NULL FROM world_bosses WHERE boss_key = 'phoenix_lv30_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 4, 10, 20000, 200, 20, '[{"resource_type_id":1,"amount":200},{"resource_type_id":2,"amount":200}]', NULL FROM world_bosses WHERE boss_key = 'phoenix_lv30_veteran';
+SELECT id, 4, 10, 20000, 100, 10, '[{"resource_type_id":1,"amount":20000}]', NULL FROM world_bosses WHERE boss_key = 'phoenix_lv30_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 11, 50, 4000, 40, 4, '[{"resource_type_id":1,"amount":80}]', NULL FROM world_bosses WHERE boss_key = 'phoenix_lv30_veteran';
+SELECT id, 11, 50, 4000, 20, 2, '[{"resource_type_id":1,"amount":4000}]', NULL FROM world_bosses WHERE boss_key = 'phoenix_lv30_veteran';
 
--- Lv40 ベテランの報酬 (元の報酬データがないため推定)
+-- Lv40 ベテランの報酬 (元のLv40の報酬: コイン2倍、資源2倍)
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 1, 1, 150000, 1500, 150, '[{"resource_type_id":1,"amount":1200},{"resource_type_id":2,"amount":1200},{"resource_type_id":3,"amount":800},{"resource_type_id":4,"amount":400},{"resource_type_id":5,"amount":200}]', NULL FROM world_bosses WHERE boss_key = 'kraken_lv40_veteran';
+SELECT id, 1, 1, 200000, 1000, 100, '[{"resource_type_id":1,"amount":200000},{"resource_type_id":2,"amount":100000},{"resource_type_id":3,"amount":50000}]', NULL FROM world_bosses WHERE boss_key = 'kraken_lv40_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 2, 3, 75000, 750, 75, '[{"resource_type_id":1,"amount":600},{"resource_type_id":2,"amount":600},{"resource_type_id":3,"amount":400}]', NULL FROM world_bosses WHERE boss_key = 'kraken_lv40_veteran';
+SELECT id, 2, 3, 100000, 500, 50, '[{"resource_type_id":1,"amount":100000},{"resource_type_id":2,"amount":50000}]', NULL FROM world_bosses WHERE boss_key = 'kraken_lv40_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 4, 10, 30000, 300, 30, '[{"resource_type_id":1,"amount":300},{"resource_type_id":2,"amount":300}]', NULL FROM world_bosses WHERE boss_key = 'kraken_lv40_veteran';
+SELECT id, 4, 10, 50000, 250, 25, '[{"resource_type_id":1,"amount":50000}]', NULL FROM world_bosses WHERE boss_key = 'kraken_lv40_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 11, 50, 6000, 60, 6, '[{"resource_type_id":1,"amount":120}]', NULL FROM world_bosses WHERE boss_key = 'kraken_lv40_veteran';
+SELECT id, 11, 50, 10000, 50, 5, '[{"resource_type_id":1,"amount":10000}]', NULL FROM world_bosses WHERE boss_key = 'kraken_lv40_veteran';
 
--- Lv50 ベテランの報酬
+-- Lv50 ベテランの報酬 (元のLv50の報酬: コイン2倍、資源2倍)
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 1, 1, 400000, 2000, 200, '[{"resource_type_id":1,"amount":2000},{"resource_type_id":2,"amount":2000},{"resource_type_id":3,"amount":1200},{"resource_type_id":4,"amount":800},{"resource_type_id":5,"amount":400},{"resource_type_id":6,"amount":200}]', NULL FROM world_bosses WHERE boss_key = 'behemoth_lv50_veteran';
+SELECT id, 1, 1, 400000, 2000, 200, '[{"resource_type_id":1,"amount":400000},{"resource_type_id":2,"amount":200000},{"resource_type_id":3,"amount":100000},{"resource_type_id":4,"amount":40000}]', NULL FROM world_bosses WHERE boss_key = 'behemoth_lv50_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 2, 3, 200000, 1000, 100, '[{"resource_type_id":1,"amount":1000},{"resource_type_id":2,"amount":1000},{"resource_type_id":3,"amount":600}]', NULL FROM world_bosses WHERE boss_key = 'behemoth_lv50_veteran';
+SELECT id, 2, 3, 200000, 1000, 100, '[{"resource_type_id":1,"amount":200000},{"resource_type_id":2,"amount":100000},{"resource_type_id":3,"amount":50000},{"resource_type_id":4,"amount":20000}]', NULL FROM world_bosses WHERE boss_key = 'behemoth_lv50_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 4, 10, 100000, 500, 50, '[{"resource_type_id":1,"amount":500},{"resource_type_id":2,"amount":500}]', NULL FROM world_bosses WHERE boss_key = 'behemoth_lv50_veteran';
+SELECT id, 4, 10, 100000, 500, 50, '[{"resource_type_id":1,"amount":100000},{"resource_type_id":2,"amount":50000},{"resource_type_id":3,"amount":25000}]', NULL FROM world_bosses WHERE boss_key = 'behemoth_lv50_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 11, 50, 20000, 100, 10, '[{"resource_type_id":1,"amount":200}]', NULL FROM world_bosses WHERE boss_key = 'behemoth_lv50_veteran';
+SELECT id, 11, 50, 20000, 100, 10, '[{"resource_type_id":1,"amount":20000},{"resource_type_id":2,"amount":10000}]', NULL FROM world_bosses WHERE boss_key = 'behemoth_lv50_veteran';
 
--- Lv60 ベテランの報酬 (元の報酬データがないため推定)
+-- Lv60 ベテランの報酬 (元のLv60の報酬: コイン2倍、資源2倍)
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 1, 1, 800000, 8000, 800, '[{"resource_type_id":1,"amount":3000},{"resource_type_id":2,"amount":3000},{"resource_type_id":3,"amount":2000},{"resource_type_id":4,"amount":1200},{"resource_type_id":5,"amount":800},{"resource_type_id":6,"amount":400}]', NULL FROM world_bosses WHERE boss_key = 'chaos_dragon_lv60_veteran';
+SELECT id, 1, 1, 800000, 4000, 400, '[{"resource_type_id":1,"amount":800000},{"resource_type_id":2,"amount":400000},{"resource_type_id":3,"amount":200000},{"resource_type_id":4,"amount":100000}]', NULL FROM world_bosses WHERE boss_key = 'chaos_dragon_lv60_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 2, 3, 400000, 4000, 400, '[{"resource_type_id":1,"amount":1500},{"resource_type_id":2,"amount":1500},{"resource_type_id":3,"amount":1000}]', NULL FROM world_bosses WHERE boss_key = 'chaos_dragon_lv60_veteran';
+SELECT id, 2, 3, 400000, 2000, 200, '[{"resource_type_id":1,"amount":400000},{"resource_type_id":2,"amount":200000}]', NULL FROM world_bosses WHERE boss_key = 'chaos_dragon_lv60_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 4, 10, 160000, 1600, 160, '[{"resource_type_id":1,"amount":750},{"resource_type_id":2,"amount":750}]', NULL FROM world_bosses WHERE boss_key = 'chaos_dragon_lv60_veteran';
+SELECT id, 4, 10, 200000, 1000, 100, '[{"resource_type_id":1,"amount":200000}]', NULL FROM world_bosses WHERE boss_key = 'chaos_dragon_lv60_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 11, 50, 32000, 320, 32, '[{"resource_type_id":1,"amount":300}]', NULL FROM world_bosses WHERE boss_key = 'chaos_dragon_lv60_veteran';
+SELECT id, 11, 50, 40000, 200, 20, '[{"resource_type_id":1,"amount":40000}]', NULL FROM world_bosses WHERE boss_key = 'chaos_dragon_lv60_veteran';
 
--- Lv70 ベテランの報酬 (元の報酬データがないため推定)
+-- Lv70 ベテランの報酬 (元のLv70の報酬: コイン2倍、資源2倍)
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 1, 1, 1600000, 16000, 1600, '[{"resource_type_id":1,"amount":4000},{"resource_type_id":2,"amount":4000},{"resource_type_id":3,"amount":3000},{"resource_type_id":4,"amount":2000},{"resource_type_id":5,"amount":1200},{"resource_type_id":6,"amount":800},{"resource_type_id":7,"amount":400}]', NULL FROM world_bosses WHERE boss_key = 'god_of_war_lv70_veteran';
+SELECT id, 1, 1, 1200000, 6000, 600, '[{"resource_type_id":1,"amount":1200000},{"resource_type_id":2,"amount":600000},{"resource_type_id":3,"amount":300000},{"resource_type_id":4,"amount":150000}]', NULL FROM world_bosses WHERE boss_key = 'god_of_war_lv70_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 2, 3, 800000, 8000, 800, '[{"resource_type_id":1,"amount":2000},{"resource_type_id":2,"amount":2000},{"resource_type_id":3,"amount":1500}]', NULL FROM world_bosses WHERE boss_key = 'god_of_war_lv70_veteran';
+SELECT id, 2, 3, 600000, 3000, 300, '[{"resource_type_id":1,"amount":600000},{"resource_type_id":2,"amount":300000}]', NULL FROM world_bosses WHERE boss_key = 'god_of_war_lv70_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 4, 10, 320000, 3200, 320, '[{"resource_type_id":1,"amount":1000},{"resource_type_id":2,"amount":1000}]', NULL FROM world_bosses WHERE boss_key = 'god_of_war_lv70_veteran';
+SELECT id, 4, 10, 300000, 1500, 150, '[{"resource_type_id":1,"amount":300000}]', NULL FROM world_bosses WHERE boss_key = 'god_of_war_lv70_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 11, 50, 64000, 640, 64, '[{"resource_type_id":1,"amount":400}]', NULL FROM world_bosses WHERE boss_key = 'god_of_war_lv70_veteran';
+SELECT id, 11, 50, 60000, 300, 30, '[{"resource_type_id":1,"amount":60000}]', NULL FROM world_bosses WHERE boss_key = 'god_of_war_lv70_veteran';
 
--- Lv80 ベテランの報酬 (元の報酬データがないため推定)
+-- Lv80 ベテランの報酬 (元のLv80の報酬: コイン2倍、資源2倍)
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 1, 1, 3200000, 32000, 3200, '[{"resource_type_id":1,"amount":6000},{"resource_type_id":2,"amount":6000},{"resource_type_id":3,"amount":4000},{"resource_type_id":4,"amount":3000},{"resource_type_id":5,"amount":2000},{"resource_type_id":6,"amount":1200},{"resource_type_id":7,"amount":800}]', NULL FROM world_bosses WHERE boss_key = 'world_eater_lv80_veteran';
+SELECT id, 1, 1, 2000000, 10000, 1000, '[{"resource_type_id":1,"amount":2000000},{"resource_type_id":2,"amount":1000000},{"resource_type_id":3,"amount":500000},{"resource_type_id":4,"amount":250000}]', NULL FROM world_bosses WHERE boss_key = 'world_eater_lv80_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 2, 3, 1600000, 16000, 1600, '[{"resource_type_id":1,"amount":3000},{"resource_type_id":2,"amount":3000},{"resource_type_id":3,"amount":2000}]', NULL FROM world_bosses WHERE boss_key = 'world_eater_lv80_veteran';
+SELECT id, 2, 3, 1000000, 5000, 500, '[{"resource_type_id":1,"amount":1000000},{"resource_type_id":2,"amount":500000}]', NULL FROM world_bosses WHERE boss_key = 'world_eater_lv80_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 4, 10, 640000, 6400, 640, '[{"resource_type_id":1,"amount":1500},{"resource_type_id":2,"amount":1500}]', NULL FROM world_bosses WHERE boss_key = 'world_eater_lv80_veteran';
+SELECT id, 4, 10, 500000, 2500, 250, '[{"resource_type_id":1,"amount":500000}]', NULL FROM world_bosses WHERE boss_key = 'world_eater_lv80_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 11, 50, 128000, 1280, 128, '[{"resource_type_id":1,"amount":600}]', NULL FROM world_bosses WHERE boss_key = 'world_eater_lv80_veteran';
+SELECT id, 11, 50, 100000, 500, 50, '[{"resource_type_id":1,"amount":100000}]', NULL FROM world_bosses WHERE boss_key = 'world_eater_lv80_veteran';
 
--- Lv90 ベテランの報酬 (元の報酬データがないため推定)
+-- Lv90 ベテランの報酬 (元のLv90の報酬: コイン2倍、資源2倍)
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 1, 1, 6400000, 64000, 6400, '[{"resource_type_id":1,"amount":8000},{"resource_type_id":2,"amount":8000},{"resource_type_id":3,"amount":6000},{"resource_type_id":4,"amount":4000},{"resource_type_id":5,"amount":3000},{"resource_type_id":6,"amount":2000},{"resource_type_id":7,"amount":1200},{"resource_type_id":8,"amount":800}]', NULL FROM world_bosses WHERE boss_key = 'void_lord_lv90_veteran';
+SELECT id, 1, 1, 4000000, 20000, 2000, '[{"resource_type_id":1,"amount":4000000},{"resource_type_id":2,"amount":2000000},{"resource_type_id":3,"amount":1000000},{"resource_type_id":4,"amount":500000}]', NULL FROM world_bosses WHERE boss_key = 'void_lord_lv90_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 2, 3, 3200000, 32000, 3200, '[{"resource_type_id":1,"amount":4000},{"resource_type_id":2,"amount":4000},{"resource_type_id":3,"amount":3000}]', NULL FROM world_bosses WHERE boss_key = 'void_lord_lv90_veteran';
+SELECT id, 2, 3, 2000000, 10000, 1000, '[{"resource_type_id":1,"amount":2000000},{"resource_type_id":2,"amount":1000000}]', NULL FROM world_bosses WHERE boss_key = 'void_lord_lv90_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 4, 10, 1280000, 12800, 1280, '[{"resource_type_id":1,"amount":2000},{"resource_type_id":2,"amount":2000}]', NULL FROM world_bosses WHERE boss_key = 'void_lord_lv90_veteran';
+SELECT id, 4, 10, 1000000, 5000, 500, '[{"resource_type_id":1,"amount":1000000}]', NULL FROM world_bosses WHERE boss_key = 'void_lord_lv90_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 11, 50, 256000, 2560, 256, '[{"resource_type_id":1,"amount":800}]', NULL FROM world_bosses WHERE boss_key = 'void_lord_lv90_veteran';
+SELECT id, 11, 50, 200000, 1000, 100, '[{"resource_type_id":1,"amount":200000}]', NULL FROM world_bosses WHERE boss_key = 'void_lord_lv90_veteran';
 
--- Lv100 ベテランの報酬
+-- Lv100 ベテランの報酬 (元のLv100の報酬: コイン2倍、資源2倍)
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 1, 1, 10000000, 50000, 5000, '[{"resource_type_id":1,"amount":10000},{"resource_type_id":2,"amount":10000},{"resource_type_id":3,"amount":8000},{"resource_type_id":4,"amount":6000},{"resource_type_id":5,"amount":4000},{"resource_type_id":6,"amount":3000},{"resource_type_id":7,"amount":2000},{"resource_type_id":8,"amount":1000}]', NULL FROM world_bosses WHERE boss_key = 'cosmic_entity_lv100_veteran';
+SELECT id, 1, 1, 10000000, 50000, 5000, '[{"resource_type_id":1,"amount":10000000},{"resource_type_id":2,"amount":5000000},{"resource_type_id":3,"amount":2500000},{"resource_type_id":4,"amount":1250000},{"resource_type_id":5,"amount":625000}]', NULL FROM world_bosses WHERE boss_key = 'cosmic_entity_lv100_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 2, 3, 5000000, 25000, 2500, '[{"resource_type_id":1,"amount":5000},{"resource_type_id":2,"amount":5000},{"resource_type_id":3,"amount":4000}]', NULL FROM world_bosses WHERE boss_key = 'cosmic_entity_lv100_veteran';
+SELECT id, 2, 3, 5000000, 25000, 2500, '[{"resource_type_id":1,"amount":5000000},{"resource_type_id":2,"amount":2500000},{"resource_type_id":3,"amount":1250000},{"resource_type_id":4,"amount":625000}]', NULL FROM world_bosses WHERE boss_key = 'cosmic_entity_lv100_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 4, 10, 2000000, 10000, 1000, '[{"resource_type_id":1,"amount":2500},{"resource_type_id":2,"amount":2500}]', NULL FROM world_bosses WHERE boss_key = 'cosmic_entity_lv100_veteran';
+SELECT id, 4, 10, 2000000, 10000, 1000, '[{"resource_type_id":1,"amount":2000000},{"resource_type_id":2,"amount":1000000},{"resource_type_id":3,"amount":500000}]', NULL FROM world_bosses WHERE boss_key = 'cosmic_entity_lv100_veteran';
 INSERT IGNORE INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops) 
-SELECT id, 11, 50, 500000, 2500, 250, '[{"resource_type_id":1,"amount":1000}]', NULL FROM world_bosses WHERE boss_key = 'cosmic_entity_lv100_veteran';
+SELECT id, 11, 50, 500000, 2500, 250, '[{"resource_type_id":1,"amount":500000},{"resource_type_id":2,"amount":250000}]', NULL FROM world_bosses WHERE boss_key = 'cosmic_entity_lv100_veteran';
 
 -- ===============================================
 -- 完了メッセージ
