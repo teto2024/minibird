@@ -3262,6 +3262,19 @@ let allAvailableTroops = [];
 let allUserTroops = [];
 let troopAdvantageInfo = {};
 
+// ① ステルス判定ヘルパー関数
+function isStealthUnit(troop) {
+    return troop.is_stealth === true || troop.is_stealth === 1 || troop.is_stealth === '1';
+}
+
+// ① 核ユニット判定ヘルパー関数
+function isNuclearUnit(troop) {
+    return troop.troop_key && (
+        troop.troop_key.includes('nuclear') || 
+        (troop.name && (troop.name.includes('原子力') || troop.name.includes('核')))
+    );
+}
+
 // ① フィルターを適用
 function applyTroopFilters() {
     const categoryFilter = document.getElementById('filter-troop-category')?.value || '';
@@ -3279,7 +3292,7 @@ function applyTroopFilters() {
             return false;
         }
         // ステルスフィルター
-        const isStealth = t.is_stealth == true || t.is_stealth == 1;
+        const isStealth = isStealthUnit(t);
         if (stealthFilter === 'yes' && !isStealth) {
             return false;
         }
@@ -3287,7 +3300,7 @@ function applyTroopFilters() {
             return false;
         }
         // 核フィルター
-        const isNuclear = t.troop_key && (t.troop_key.includes('nuclear') || (t.name && (t.name.includes('原子力') || t.name.includes('核'))));
+        const isNuclear = isNuclearUnit(t);
         if (nuclearFilter === 'yes' && !isNuclear) {
             return false;
         }
@@ -3399,16 +3412,14 @@ function renderTroopsList(troops, userTroops, advantageInfo) {
             }
             
             // ステルス兵種インジケーター
-            const isStealth = t.is_stealth == true || t.is_stealth == 1;
-            const stealthBadge = isStealth ? `
+            const stealthBadge = isStealthUnit(t) ? `
                 <span style="background: rgba(128, 0, 128, 0.5); padding: 3px 8px; border-radius: 4px; font-size: 11px;" title="敵から見えない隠密兵種">
                     👻 ステルス
                 </span>
             ` : '';
             
-            // 核ユニットインジケーター（ユニット名に'nuclear'または'原子力'が含まれる場合）
-            const isNuclear = t.troop_key && (t.troop_key.includes('nuclear') || (t.name && (t.name.includes('原子力') || t.name.includes('核'))));
-            const nuclearBadge = isNuclear ? `
+            // 核ユニットインジケーター
+            const nuclearBadge = isNuclearUnit(t) ? `
                 <span style="background: rgba(50, 205, 50, 0.5); padding: 3px 8px; border-radius: 4px; font-size: 11px;" title="核兵器搭載ユニット">
                     ☢️ 核
                 </span>

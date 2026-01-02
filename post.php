@@ -41,16 +41,15 @@ try {
         $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         foreach ($tasks as $task) {
-            // 進捗を更新
+            // 進捗を更新（INSERT OR UPDATE pattern）
             $stmt = $pdo->prepare("
                 INSERT INTO user_daily_task_progress (user_id, task_id, task_date, current_progress, is_completed)
-                VALUES (?, ?, ?, LEAST(1, ?), 1 >= ?)
+                VALUES (?, ?, ?, 1, 1 >= ?)
                 ON DUPLICATE KEY UPDATE 
                     current_progress = LEAST(current_progress + 1, ?)
             ");
             $stmt->execute([
                 $userId, $task['id'], $today, 
-                $task['target_count'],
                 $task['target_count'],
                 $task['target_count']
             ]);
