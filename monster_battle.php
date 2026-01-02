@@ -100,6 +100,44 @@ body {
     border-color: #ffd700;
 }
 
+/* フィルターボタン */
+.filter-btn {
+    padding: 8px 16px;
+    border: 2px solid #4b0082;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.3);
+    color: #a090c0;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.filter-btn:hover {
+    background: rgba(139, 0, 0, 0.5);
+    border-color: #dc143c;
+}
+
+.filter-btn.active {
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    color: #000;
+    border-color: #ffd700;
+    font-weight: bold;
+}
+
+/* ベテランラベル */
+.veteran-label {
+    display: inline-block;
+    background: linear-gradient(135deg, #ff6b6b 0%, #dc143c 100%);
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-top: 5px;
+    box-shadow: 0 2px 8px rgba(220, 20, 60, 0.4);
+    border: 1px solid #ffd700;
+}
+
 .tab-content {
     display: none;
 }
@@ -604,6 +642,20 @@ body {
     <div class="tab-content" id="tab-worldboss">
         <div id="activeBosses"></div>
         <h3 style="color: #ffd700; margin-bottom: 15px;">召喚可能なワールドボス</h3>
+        
+        <!-- フィルターボタン -->
+        <div class="boss-filter-buttons" style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+            <button class="filter-btn active" data-filter="all" onclick="filterWorldBosses('all')">
+                🐉 すべて
+            </button>
+            <button class="filter-btn" data-filter="veteran" onclick="filterWorldBosses('veteran')">
+                💪 ベテランのみ
+            </button>
+            <button class="filter-btn" data-filter="normal" onclick="filterWorldBosses('normal')">
+                📋 ベテラン以外
+            </button>
+        </div>
+        
         <div id="bossList" class="monster-grid">
             <div class="loading">読み込み中...</div>
         </div>
@@ -663,6 +715,7 @@ let lastBattleTurnLogs = [];  // 最後のバトルログを保存
 let deploymentLimit = { base_limit: 100, building_bonus: 0, total_limit: 100 }; // 出撃上限
 let currentMonsterPower = 0; // 現在のモンスター戦力
 let currentBossPower = 0; // 現在のボス戦力
+let currentBossFilter = 'all'; // ワールドボスフィルター（all, veteran, normal）
 
 // ② ステルス判定ヘルパー関数
 function isStealthUnit(troop) {
@@ -775,10 +828,11 @@ async function loadActiveEncounter() {
 // ワールドボス一覧を取得
 async function loadWorldBosses() {
     try {
+        const filterParam = currentBossFilter === 'all' ? {} : { filter_label: currentBossFilter };
         const res = await fetch('world_boss_api.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({action: 'get_bosses'})
+            body: JSON.stringify({action: 'get_bosses', ...filterParam})
         });
         const data = await res.json();
         
@@ -872,6 +926,8 @@ function renderActiveBosses(instances) {
         const hpPercent = inst.max_health > 0 ? Math.round((inst.current_health / inst.max_health) * 100) : 0;
         const hpClass = hpPercent < 30 ? 'danger' : '';
         const remaining = formatTime(inst.seconds_remaining);
+        const isVeteran = inst.labels && inst.labels.includes('ベテラン');
+        const veteranLabel = isVeteran ? '<span class="veteran-label" style="margin-left: 10px; font-size: 11px;">💪 ベテラン</span>' : '';
         
         return `
             <div class="active-boss-section">
@@ -879,6 +935,7 @@ function renderActiveBosses(instances) {
                     <div>
                         <span style="font-size: 32px;">${inst.boss_icon}</span>
                         <span style="font-size: 20px; font-weight: bold; color: #ffd700; margin-left: 10px;">${escapeHtml(inst.boss_name)}</span>
+                        ${veteranLabel}
                         <span style="color: #888; margin-left: 10px;">Lv.${inst.boss_level}</span>
                     </div>
                     <div class="timer">⏰ 残り ${remaining}</div>
@@ -914,10 +971,14 @@ function renderBossList(bosses, userLevel) {
     
     document.getElementById('bossList').innerHTML = bosses.map(b => {
         const canSummon = userLevel >= b.min_user_level;
+        const isVeteran = b.labels && b.labels.includes('ベテラン');
+        const veteranLabel = isVeteran ? '<div class="veteran-label">💪 ベテラン</div>' : '';
+        
         return `
             <div class="monster-card boss ${canSummon ? '' : 'disabled'}" onclick="${canSummon ? `summonBoss(${b.id})` : ''}">
                 <div class="monster-icon">${b.icon}</div>
                 <div class="monster-name">${escapeHtml(b.name)}</div>
+                ${veteranLabel}
                 <div class="monster-level">必要レベル: ${b.min_user_level}</div>
                 <div class="monster-stats">
                     <div class="stat-item">
@@ -941,6 +1002,20 @@ function renderBossList(bosses, userLevel) {
             </div>
         `;
     }).join('');
+}
+
+// ワールドボスのフィルターを変更
+function filterWorldBosses(filter) {
+    currentBossFilter = filter;
+    
+    // フィルターボタンのアクティブ状態を更新
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`.filter-btn[data-filter="${filter}"]`).classList.add('active');
+    
+    // ボス一覧を再読み込み
+    loadWorldBosses();
 }
 
 // モンスターに遭遇
