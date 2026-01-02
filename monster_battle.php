@@ -717,6 +717,48 @@ let currentMonsterPower = 0; // 現在のモンスター戦力
 let currentBossPower = 0; // 現在のボス戦力
 let currentBossFilter = 'all'; // ワールドボスフィルター（all, veteran, normal）
 
+// ③ 設定保持用のlocalStorageキー
+const DEPLOYMENT_SETTINGS_KEY = 'minibird_deployment_settings';
+
+// ③ 設定を保存
+function saveDeploymentSettings(type) {
+    const excludeDisposable = document.getElementById(`${type}-exclude-disposable`)?.checked || false;
+    const excludeNuclear = document.getElementById(`${type}-exclude-nuclear`)?.checked || false;
+    const prioritizeStealth = document.getElementById(`${type}-prioritize-stealth`)?.checked || false;
+    const keepSettings = document.getElementById(`${type}-keep-settings`)?.checked || false;
+    
+    const settings = JSON.parse(localStorage.getItem(DEPLOYMENT_SETTINGS_KEY) || '{}');
+    settings[type] = {
+        excludeDisposable,
+        excludeNuclear,
+        prioritizeStealth,
+        keepSettings
+    };
+    localStorage.setItem(DEPLOYMENT_SETTINGS_KEY, JSON.stringify(settings));
+}
+
+// ③ 設定を読み込み
+function loadDeploymentSettings(type) {
+    const settings = JSON.parse(localStorage.getItem(DEPLOYMENT_SETTINGS_KEY) || '{}');
+    return settings[type] || { excludeDisposable: false, excludeNuclear: false, prioritizeStealth: false, keepSettings: false };
+}
+
+// ③ 保存された設定をチェックボックスに適用
+function applyDeploymentSettings(type) {
+    const settings = loadDeploymentSettings(type);
+    if (!settings.keepSettings) return; // 設定保持が無効なら適用しない
+    
+    const excludeDisposable = document.getElementById(`${type}-exclude-disposable`);
+    const excludeNuclear = document.getElementById(`${type}-exclude-nuclear`);
+    const prioritizeStealth = document.getElementById(`${type}-prioritize-stealth`);
+    const keepSettings = document.getElementById(`${type}-keep-settings`);
+    
+    if (excludeDisposable) excludeDisposable.checked = settings.excludeDisposable;
+    if (excludeNuclear) excludeNuclear.checked = settings.excludeNuclear;
+    if (prioritizeStealth) prioritizeStealth.checked = settings.prioritizeStealth;
+    if (keepSettings) keepSettings.checked = settings.keepSettings;
+}
+
 // ② ステルス判定ヘルパー関数
 function isStealthUnit(troop) {
     return troop.is_stealth === true || troop.is_stealth === 1 || troop.is_stealth === '1';
@@ -1138,6 +1180,8 @@ function renderBattleModal(encounter) {
     `;
     
     setupTroopSliders();
+    // ③ 保存された設定を適用
+    setTimeout(() => applyDeploymentSettings('monster'), 0);
 }
 
 // 部隊選択UIを描画
@@ -1156,16 +1200,20 @@ function renderTroopSelector() {
         </div>
         <div style="display: flex; gap: 10px; margin-bottom: 10px; padding: 6px; background: rgba(0,0,0,0.15); border-radius: 4px; font-size: 11px; flex-wrap: wrap;">
             <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ddd;">
-                <input type="checkbox" id="monster-exclude-disposable" style="cursor: pointer;">
+                <input type="checkbox" id="monster-exclude-disposable" onchange="saveDeploymentSettings('monster')" style="cursor: pointer;">
                 <span>🗑️ 使い捨てを除外</span>
             </label>
             <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ddd;">
-                <input type="checkbox" id="monster-exclude-nuclear" style="cursor: pointer;">
+                <input type="checkbox" id="monster-exclude-nuclear" onchange="saveDeploymentSettings('monster')" style="cursor: pointer;">
                 <span>☢️ 核ユニットを除外</span>
             </label>
             <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ddd;">
-                <input type="checkbox" id="monster-prioritize-stealth" style="cursor: pointer;">
+                <input type="checkbox" id="monster-prioritize-stealth" onchange="saveDeploymentSettings('monster')" style="cursor: pointer;">
                 <span>🥷 ステルスを優先</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ffd700; border-left: 1px solid #555; padding-left: 10px; margin-left: 5px;">
+                <input type="checkbox" id="monster-keep-settings" onchange="saveDeploymentSettings('monster')" style="cursor: pointer;">
+                <span>💾 設定を保持</span>
             </label>
         </div>
     ` + userTroops.filter(t => t.count > 0).map(troop => `
@@ -1677,6 +1725,8 @@ function renderBossDetailModal(data) {
     `;
     
     setupBossTroopSliders();
+    // ③ 保存された設定を適用
+    setTimeout(() => applyDeploymentSettings('boss'), 0);
 }
 
 // ボス用の部隊選択
@@ -1698,16 +1748,20 @@ function renderBossTroopSelector() {
         </div>
         <div style="display: flex; gap: 10px; margin-bottom: 10px; padding: 6px; background: rgba(0,0,0,0.15); border-radius: 4px; font-size: 11px; flex-wrap: wrap;">
             <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ddd;">
-                <input type="checkbox" id="boss-exclude-disposable" style="cursor: pointer;">
+                <input type="checkbox" id="boss-exclude-disposable" onchange="saveDeploymentSettings('boss')" style="cursor: pointer;">
                 <span>🗑️ 使い捨てを除外</span>
             </label>
             <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ddd;">
-                <input type="checkbox" id="boss-exclude-nuclear" style="cursor: pointer;">
+                <input type="checkbox" id="boss-exclude-nuclear" onchange="saveDeploymentSettings('boss')" style="cursor: pointer;">
                 <span>☢️ 核ユニットを除外</span>
             </label>
             <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ddd;">
-                <input type="checkbox" id="boss-prioritize-stealth" style="cursor: pointer;">
+                <input type="checkbox" id="boss-prioritize-stealth" onchange="saveDeploymentSettings('boss')" style="cursor: pointer;">
                 <span>🥷 ステルスを優先</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ffd700; border-left: 1px solid #555; padding-left: 10px; margin-left: 5px;">
+                <input type="checkbox" id="boss-keep-settings" onchange="saveDeploymentSettings('boss')" style="cursor: pointer;">
+                <span>💾 設定を保持</span>
             </label>
         </div>
     ` + userTroops.filter(t => t.count > 0).map(troop => `

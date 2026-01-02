@@ -545,7 +545,8 @@ function prepareBattleUnit($troops, $equipmentBuffs, $pdo) {
             'health' => $health,
             'category' => $troopType['troop_category'] ?? 'infantry',
             'domain_category' => $troopType['domain_category'] ?? 'land',
-            'troop_key' => $troopType['troop_key'] ?? ''
+            'troop_key' => $troopType['troop_key'] ?? '',
+            'is_disposable' => !empty($troopType['is_disposable'])
         ];
     }
     
