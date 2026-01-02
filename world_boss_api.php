@@ -238,7 +238,13 @@ function distributeWorldBossRewards($pdo, $instanceId, $isDefeated) {
 if ($action === 'get_bosses') {
     try {
         $userLevel = getWorldBossUserLevel($pdo, $me['id']);
-        $filterLabel = $input['filter_label'] ?? null; // フィルター: 'veteran' または null
+        $filterLabel = $input['filter_label'] ?? null;
+        
+        // フィルターラベルのバリデーション
+        $allowedFilters = ['veteran', 'normal', null];
+        if (!in_array($filterLabel, $allowedFilters, true)) {
+            throw new Exception('不正なフィルターです');
+        }
         
         // 期限切れのボスを処理
         processExpiredWorldBosses($pdo);
