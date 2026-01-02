@@ -1149,7 +1149,24 @@ function renderTroopSelector() {
     return `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 6px;">
             <div style="color: #da70d6; font-size: 12px;">出撃兵数: <span id="monster-troop-count" style="color: #32cd32;">0</span>/${deploymentLimit.total_limit}人</div>
-            <button type="button" onclick="selectMaxByStrongest('monster')" style="padding: 4px 10px; font-size: 11px; background: linear-gradient(135deg, #dc143c 0%, #ff6b6b 100%); color: #fff; border: none; border-radius: 4px; cursor: pointer;">💪 強い順に一括選択</button>
+            <div style="display: flex; gap: 5px; align-items: center;">
+                <button type="button" onclick="selectMaxByStrongest('monster')" style="padding: 4px 10px; font-size: 11px; background: linear-gradient(135deg, #dc143c 0%, #ff6b6b 100%); color: #fff; border: none; border-radius: 4px; cursor: pointer;">💪 強い順に選択</button>
+                <button type="button" onclick="selectByLargestNumber('monster')" style="padding: 4px 10px; font-size: 11px; background: linear-gradient(135deg, #4169e1 0%, #87ceeb 100%); color: #fff; border: none; border-radius: 4px; cursor: pointer;">📊 数が多い順に選択</button>
+            </div>
+        </div>
+        <div style="display: flex; gap: 10px; margin-bottom: 10px; padding: 6px; background: rgba(0,0,0,0.15); border-radius: 4px; font-size: 11px; flex-wrap: wrap;">
+            <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ddd;">
+                <input type="checkbox" id="monster-exclude-disposable" style="cursor: pointer;">
+                <span>🗑️ 使い捨てを除外</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ddd;">
+                <input type="checkbox" id="monster-exclude-nuclear" style="cursor: pointer;">
+                <span>☢️ 核ユニットを除外</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ddd;">
+                <input type="checkbox" id="monster-prioritize-stealth" style="cursor: pointer;">
+                <span>🥷 ステルスを優先</span>
+            </label>
         </div>
     ` + userTroops.filter(t => t.count > 0).map(troop => `
         <div class="troop-select-row">
@@ -1173,6 +1190,25 @@ function renderTroopSelector() {
     `).join('');
 }
 
+// フィルタ適用後の兵種を取得
+function getFilteredTroops(type) {
+    const excludeDisposable = document.getElementById(`${type}-exclude-disposable`)?.checked || false;
+    const excludeNuclear = document.getElementById(`${type}-exclude-nuclear`)?.checked || false;
+    const prioritizeStealth = document.getElementById(`${type}-prioritize-stealth`)?.checked || false;
+    
+    let filtered = [...userTroops].filter(t => t.count > 0);
+    
+    // フィルタを適用
+    if (excludeDisposable) {
+        filtered = filtered.filter(t => !isDisposableUnit(t));
+    }
+    if (excludeNuclear) {
+        filtered = filtered.filter(t => !isNuclearUnit(t));
+    }
+    
+    return { filtered, prioritizeStealth };
+}
+
 // 強い順に一括選択
 function selectMaxByStrongest(type) {
     const prefix = type === 'monster' ? 'attack' : 'boss';
@@ -1186,12 +1222,84 @@ function selectMaxByStrongest(type) {
         if (slider) slider.value = 0;
     });
     
-    // 兵種を攻撃力+防御力/2でソート（強い順）
-    const sortedTroops = [...userTroops].filter(t => t.count > 0).sort((a, b) => {
-        const powerA = parseInt(a.attack_power) + Math.floor(parseInt(a.defense_power) / 2);
-        const powerB = parseInt(b.attack_power) + Math.floor(parseInt(b.defense_power) / 2);
-        return powerB - powerA;
+    const { filtered, prioritizeStealth } = getFilteredTroops(type);
+    
+    // ステルスを優先する場合は2段階でソート
+    let sortedTroops;
+    if (prioritizeStealth) {
+        // ステルスユニットを最優先
+        const stealthTroops = filtered.filter(t => isStealthUnit(t));
+        const nonStealthTroops = filtered.filter(t => !isStealthUnit(t));
+        
+        // それぞれを強さでソート
+        const sortByPower = (a, b) => {
+            const powerA = parseInt(a.attack_power) + Math.floor(parseInt(a.defense_power) / 2);
+            const powerB = parseInt(b.attack_power) + Math.floor(parseInt(b.defense_power) / 2);
+            return powerB - powerA;
+        };
+        
+        sortedTroops = [...stealthTroops.sort(sortByPower), ...nonStealthTroops.sort(sortByPower)];
+    } else {
+        // 兵種を攻撃力+防御力/2でソート（強い順）
+        sortedTroops = filtered.sort((a, b) => {
+            const powerA = parseInt(a.attack_power) + Math.floor(parseInt(a.defense_power) / 2);
+            const powerB = parseInt(b.attack_power) + Math.floor(parseInt(b.defense_power) / 2);
+            return powerB - powerA;
+        });
+    }
+    
+    let remaining = limit;
+    
+    for (const troop of sortedTroops) {
+        if (remaining <= 0) break;
+        
+        const troopId = troop.troop_type_id;
+        const available = parseInt(troop.count);
+        const toSelect = Math.min(available, remaining);
+        
+        const input = document.getElementById(`${prefix}-count-${troopId}`);
+        const slider = document.getElementById(`${prefix}-slider-${troopId}`);
+        
+        if (input && slider) {
+            input.value = toSelect;
+            slider.value = toSelect;
+            remaining -= toSelect;
+        }
+    }
+    
+    updateMonsterTroopCount(type);
+}
+
+// 数が多い順に一括選択
+function selectByLargestNumber(type) {
+    const prefix = type === 'monster' ? 'attack' : 'boss';
+    const limit = type === 'boss' ? 1000 : deploymentLimit.total_limit; // ワールドボスは1000固定
+    
+    // まずすべてをリセット
+    document.querySelectorAll(`[id^="${prefix}-count-"]`).forEach(input => {
+        input.value = 0;
+        const troopId = input.dataset.troopId;
+        const slider = document.getElementById(`${prefix}-slider-${troopId}`);
+        if (slider) slider.value = 0;
     });
+    
+    const { filtered, prioritizeStealth } = getFilteredTroops(type);
+    
+    // ステルスを優先する場合は2段階でソート
+    let sortedTroops;
+    if (prioritizeStealth) {
+        // ステルスユニットを最優先
+        const stealthTroops = filtered.filter(t => isStealthUnit(t));
+        const nonStealthTroops = filtered.filter(t => !isStealthUnit(t));
+        
+        // それぞれを数でソート
+        const sortByCount = (a, b) => parseInt(b.count) - parseInt(a.count);
+        
+        sortedTroops = [...stealthTroops.sort(sortByCount), ...nonStealthTroops.sort(sortByCount)];
+    } else {
+        // 兵種を数の多い順でソート
+        sortedTroops = filtered.sort((a, b) => parseInt(b.count) - parseInt(a.count));
+    }
     
     let remaining = limit;
     
@@ -1583,7 +1691,24 @@ function renderBossTroopSelector() {
     return `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 6px;">
             <div style="color: #ffd700; font-size: 12px;">出撃兵数: <span id="boss-troop-count" style="color: #32cd32;">0</span>/${bossLimit}人（固定）</div>
-            <button type="button" onclick="selectMaxByStrongest('boss')" style="padding: 4px 10px; font-size: 11px; background: linear-gradient(135deg, #dc143c 0%, #ff6b6b 100%); color: #fff; border: none; border-radius: 4px; cursor: pointer;">💪 強い順に一括選択</button>
+            <div style="display: flex; gap: 5px; align-items: center;">
+                <button type="button" onclick="selectMaxByStrongest('boss')" style="padding: 4px 10px; font-size: 11px; background: linear-gradient(135deg, #dc143c 0%, #ff6b6b 100%); color: #fff; border: none; border-radius: 4px; cursor: pointer;">💪 強い順に選択</button>
+                <button type="button" onclick="selectByLargestNumber('boss')" style="padding: 4px 10px; font-size: 11px; background: linear-gradient(135deg, #4169e1 0%, #87ceeb 100%); color: #fff; border: none; border-radius: 4px; cursor: pointer;">📊 数が多い順に選択</button>
+            </div>
+        </div>
+        <div style="display: flex; gap: 10px; margin-bottom: 10px; padding: 6px; background: rgba(0,0,0,0.15); border-radius: 4px; font-size: 11px; flex-wrap: wrap;">
+            <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ddd;">
+                <input type="checkbox" id="boss-exclude-disposable" style="cursor: pointer;">
+                <span>🗑️ 使い捨てを除外</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ddd;">
+                <input type="checkbox" id="boss-exclude-nuclear" style="cursor: pointer;">
+                <span>☢️ 核ユニットを除外</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ddd;">
+                <input type="checkbox" id="boss-prioritize-stealth" style="cursor: pointer;">
+                <span>🥷 ステルスを優先</span>
+            </label>
         </div>
     ` + userTroops.filter(t => t.count > 0).map(troop => `
         <div class="troop-select-row">
