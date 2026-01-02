@@ -3,10 +3,10 @@
 -- ボスレベルごとに報酬の種類と量が段階的に増加
 -- 基本資源は多く、希少資源は少なめに配分
 -- JSON内でのサブクエリの問題を修正（JSON_OBJECT使用）
--- 資源ID、キー、名前、アイコンを含む完全な情報を提供
+-- 資源名とアイコンは直接挿入（サブクエリなし）
 -- ===============================================
 
-USE microblog;
+USE syugetsu2025_clone;
 
 -- ===============================================
 -- 既存の報酬設定を削除（クリーンスタート）
@@ -24,22 +24,22 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 2500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 1500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 1000
   )
 ), NULL
@@ -51,15 +51,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 1200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 750
   )
 ), NULL
@@ -71,8 +71,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 500
   )
 ), NULL
@@ -84,8 +84,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 250
   )
 ), NULL
@@ -98,22 +98,22 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 5000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 3000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 2000
   )
 ), NULL
@@ -125,15 +125,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 2500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 1500
   )
 ), NULL
@@ -145,15 +145,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 1000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 600
   )
 ), NULL
@@ -165,8 +165,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 500
   )
 ), NULL
@@ -179,29 +179,29 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 7500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 4500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 3000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
     'resource_key', 'bronze',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
+    'name', '青銅',
+    'icon', '🔶',
     'amount', 375
   )
 ), NULL
@@ -213,15 +213,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 3750
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 2250
   )
 ), NULL
@@ -233,8 +233,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 1500
   )
 ), NULL
@@ -246,8 +246,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 650
   )
 ), NULL
@@ -260,36 +260,36 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 10000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 6000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 4000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
     'resource_key', 'bronze',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
+    'name', '青銅',
+    'icon', '🔶',
     'amount', 500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
     'resource_key', 'herbs',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
+    'name', '薬草',
+    'icon', '🌿',
     'amount', 300
   )
 ), NULL
@@ -301,22 +301,22 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 5000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 3000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
     'resource_key', 'bronze',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
+    'name', '青銅',
+    'icon', '🔶',
     'amount', 250
   )
 ), NULL
@@ -328,15 +328,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 2000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 1200
   )
 ), NULL
@@ -348,8 +348,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 800
   )
 ), NULL
@@ -362,43 +362,43 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 15000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 9000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 6000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
     'resource_key', 'bronze',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
+    'name', '青銅',
+    'icon', '🔶',
     'amount', 750
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
     'resource_key', 'herbs',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
+    'name', '薬草',
+    'icon', '🌿',
     'amount', 450
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'cloth' LIMIT 1),
     'resource_key', 'cloth',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'cloth' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'cloth' LIMIT 1),
+    'name', '布',
+    'icon', '🧵',
     'amount', 300
   )
 ), NULL
@@ -410,22 +410,22 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 7500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 4500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
     'resource_key', 'bronze',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
+    'name', '青銅',
+    'icon', '🔶',
     'amount', 375
   )
 ), NULL
@@ -437,15 +437,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 3000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 1800
   )
 ), NULL
@@ -457,8 +457,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 1100
   )
 ), NULL
@@ -471,64 +471,64 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 20000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 12000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 8000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
     'resource_key', 'bronze',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
+    'name', '青銅',
+    'icon', '🔶',
     'amount', 1000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
     'resource_key', 'herbs',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
+    'name', '薬草',
+    'icon', '🌿',
     'amount', 600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'cloth' LIMIT 1),
     'resource_key', 'cloth',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'cloth' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'cloth' LIMIT 1),
+    'name', '布',
+    'icon', '🧵',
     'amount', 400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'horses' LIMIT 1),
     'resource_key', 'horses',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'horses' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'horses' LIMIT 1),
+    'name', '馬',
+    'icon', '🐴',
     'amount', 300
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bandages' LIMIT 1),
     'resource_key', 'bandages',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bandages' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bandages' LIMIT 1),
+    'name', '包帯',
+    'icon', '🩹',
     'amount', 500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 200
   )
 ), NULL
@@ -540,29 +540,29 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 10000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 6000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
     'resource_key', 'bronze',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
+    'name', '青銅',
+    'icon', '🔶',
     'amount', 500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 100
   )
 ), NULL
@@ -574,15 +574,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 4000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 2400
   )
 ), NULL
@@ -594,8 +594,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 1500
   )
 ), NULL
@@ -608,71 +608,71 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 30000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 18000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 12000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
     'resource_key', 'bronze',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
+    'name', '青銅',
+    'icon', '🔶',
     'amount', 1500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
     'resource_key', 'herbs',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
+    'name', '薬草',
+    'icon', '🌿',
     'amount', 900
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'cloth' LIMIT 1),
     'resource_key', 'cloth',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'cloth' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'cloth' LIMIT 1),
+    'name', '布',
+    'icon', '🧵',
     'amount', 600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'horses' LIMIT 1),
     'resource_key', 'horses',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'horses' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'horses' LIMIT 1),
+    'name', '馬',
+    'icon', '🐴',
     'amount', 450
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bandages' LIMIT 1),
     'resource_key', 'bandages',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bandages' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bandages' LIMIT 1),
+    'name', '包帯',
+    'icon', '🩹',
     'amount', 750
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 300
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'glass' LIMIT 1),
     'resource_key', 'glass',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'glass' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'glass' LIMIT 1),
+    'name', 'ガラス',
+    'icon', '🔮',
     'amount', 225
   )
 ), NULL
@@ -684,29 +684,29 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 15000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 9000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
     'resource_key', 'bronze',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
+    'name', '青銅',
+    'icon', '🔶',
     'amount', 750
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 150
   )
 ), NULL
@@ -718,15 +718,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 6000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 3600
   )
 ), NULL
@@ -738,8 +738,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 2250
   )
 ), NULL
@@ -752,92 +752,92 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 40000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 24000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 16000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
     'resource_key', 'bronze',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
+    'name', '青銅',
+    'icon', '🔶',
     'amount', 2000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
     'resource_key', 'herbs',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
+    'name', '薬草',
+    'icon', '🌿',
     'amount', 1200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'cloth' LIMIT 1),
     'resource_key', 'cloth',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'cloth' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'cloth' LIMIT 1),
+    'name', '布',
+    'icon', '🧵',
     'amount', 800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'horses' LIMIT 1),
     'resource_key', 'horses',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'horses' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'horses' LIMIT 1),
+    'name', '馬',
+    'icon', '🐴',
     'amount', 600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bandages' LIMIT 1),
     'resource_key', 'bandages',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bandages' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bandages' LIMIT 1),
+    'name', '包帯',
+    'icon', '🩹',
     'amount', 1000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'glass' LIMIT 1),
     'resource_key', 'glass',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'glass' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'glass' LIMIT 1),
+    'name', 'ガラス',
+    'icon', '🔮',
     'amount', 300
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'marble' LIMIT 1),
     'resource_key', 'marble',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'marble' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'marble' LIMIT 1),
+    'name', '大理石',
+    'icon', '🏛️',
     'amount', 250
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'sulfur' LIMIT 1),
     'resource_key', 'sulfur',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'sulfur' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'sulfur' LIMIT 1),
+    'name', '硫黄',
+    'icon', '🔶',
     'amount', 200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 150
   )
 ), NULL
@@ -849,36 +849,36 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 20000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 12000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
     'resource_key', 'bronze',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
+    'name', '青銅',
+    'icon', '🔶',
     'amount', 1000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 75
   )
 ), NULL
@@ -890,22 +890,22 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 8000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 4800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 100
   )
 ), NULL
@@ -917,8 +917,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 3000
   )
 ), NULL
@@ -931,64 +931,64 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 60000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 36000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 24000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 225
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'medicine' LIMIT 1),
     'resource_key', 'medicine',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'medicine' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'medicine' LIMIT 1),
+    'name', '医薬品',
+    'icon', '💊',
     'amount', 375
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 75
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 150
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
     'resource_key', 'coal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
+    'name', '石炭',
+    'icon', '⬛',
     'amount', 225
   )
 ), NULL
@@ -1000,29 +1000,29 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 30000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 18000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 300
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 112
   )
 ), NULL
@@ -1034,22 +1034,22 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 12000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 7200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 150
   )
 ), NULL
@@ -1061,8 +1061,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 4500
   )
 ), NULL
@@ -1075,127 +1075,127 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 80000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 48000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 32000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
     'resource_key', 'bronze',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
+    'name', '青銅',
+    'icon', '🔶',
     'amount', 4000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
     'resource_key', 'herbs',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
+    'name', '薬草',
+    'icon', '🌿',
     'amount', 2400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'cloth' LIMIT 1),
     'resource_key', 'cloth',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'cloth' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'cloth' LIMIT 1),
+    'name', '布',
+    'icon', '🧵',
     'amount', 1600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'horses' LIMIT 1),
     'resource_key', 'horses',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'horses' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'horses' LIMIT 1),
+    'name', '馬',
+    'icon', '🐴',
     'amount', 1200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bandages' LIMIT 1),
     'resource_key', 'bandages',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bandages' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bandages' LIMIT 1),
+    'name', '包帯',
+    'icon', '🩹',
     'amount', 2000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'glass' LIMIT 1),
     'resource_key', 'glass',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'glass' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'glass' LIMIT 1),
+    'name', 'ガラス',
+    'icon', '🔮',
     'amount', 600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'marble' LIMIT 1),
     'resource_key', 'marble',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'marble' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'marble' LIMIT 1),
+    'name', '大理石',
+    'icon', '🏛️',
     'amount', 500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'sulfur' LIMIT 1),
     'resource_key', 'sulfur',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'sulfur' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'sulfur' LIMIT 1),
+    'name', '硫黄',
+    'icon', '🔶',
     'amount', 400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 300
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'medicine' LIMIT 1),
     'resource_key', 'medicine',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'medicine' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'medicine' LIMIT 1),
+    'name', '医薬品',
+    'icon', '💊',
     'amount', 250
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 50
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 100
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
     'resource_key', 'coal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
+    'name', '石炭',
+    'icon', '⬛',
     'amount', 150
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
     'resource_key', 'knowledge',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
+    'name', '知識',
+    'icon', '📚',
     'amount', 80
   )
 ), NULL
@@ -1207,43 +1207,43 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 40000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 24000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 150
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 25
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 50
   )
 ), NULL
@@ -1255,29 +1255,29 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 16000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 9600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
     'resource_key', 'coal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
+    'name', '石炭',
+    'icon', '⬛',
     'amount', 75
   )
 ), NULL
@@ -1289,15 +1289,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 6000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 3600
   )
 ), NULL
@@ -1310,78 +1310,78 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 120000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 72000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 48000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 1200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 450
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 150
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 300
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
     'resource_key', 'coal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
+    'name', '石炭',
+    'icon', '⬛',
     'amount', 450
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
     'resource_key', 'knowledge',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
+    'name', '知識',
+    'icon', '📚',
     'amount', 120
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'spices' LIMIT 1),
     'resource_key', 'spices',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'spices' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'spices' LIMIT 1),
+    'name', '香辛料',
+    'icon', '🌶️',
     'amount', 90
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
     'resource_key', 'gunpowder',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
+    'name', '火薬',
+    'icon', '💥',
     'amount', 60
   )
 ), NULL
@@ -1393,36 +1393,36 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 60000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 36000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 225
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 75
   )
 ), NULL
@@ -1434,22 +1434,22 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 24000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 14400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 300
   )
 ), NULL
@@ -1461,8 +1461,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 9000
   )
 ), NULL
@@ -1475,92 +1475,92 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 160000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 96000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 64000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 1600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'medicine' LIMIT 1),
     'resource_key', 'medicine',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'medicine' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'medicine' LIMIT 1),
+    'name', '医薬品',
+    'icon', '💊',
     'amount', 500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 100
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
     'resource_key', 'coal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
+    'name', '石炭',
+    'icon', '⬛',
     'amount', 300
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
     'resource_key', 'knowledge',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
+    'name', '知識',
+    'icon', '📚',
     'amount', 160
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'spices' LIMIT 1),
     'resource_key', 'spices',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'spices' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'spices' LIMIT 1),
+    'name', '香辛料',
+    'icon', '🌶️',
     'amount', 120
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
     'resource_key', 'gunpowder',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
+    'name', '火薬',
+    'icon', '💥',
     'amount', 80
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
     'resource_key', 'oil',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
+    'name', '石油',
+    'icon', '🛢️',
     'amount', 100
   )
 ), NULL
@@ -1572,50 +1572,50 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 80000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 48000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 300
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 50
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 100
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
     'resource_key', 'gunpowder',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
+    'name', '火薬',
+    'icon', '💥',
     'amount', 40
   )
 ), NULL
@@ -1627,29 +1627,29 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 32000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 19200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
     'resource_key', 'coal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
+    'name', '石炭',
+    'icon', '⬛',
     'amount', 150
   )
 ), NULL
@@ -1661,15 +1661,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 12000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 7200
   )
 ), NULL
@@ -1682,92 +1682,92 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 240000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 144000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 96000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 2400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 900
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 300
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
     'resource_key', 'coal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
+    'name', '石炭',
+    'icon', '⬛',
     'amount', 900
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
     'resource_key', 'knowledge',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
+    'name', '知識',
+    'icon', '📚',
     'amount', 240
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'spices' LIMIT 1),
     'resource_key', 'spices',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'spices' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'spices' LIMIT 1),
+    'name', '香辛料',
+    'icon', '🌶️',
     'amount', 180
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
     'resource_key', 'gunpowder',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
+    'name', '火薬',
+    'icon', '💥',
     'amount', 120
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
     'resource_key', 'oil',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
+    'name', '石油',
+    'icon', '🛢️',
     'amount', 150
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
     'resource_key', 'crystal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
+    'name', '文明クリスタル',
+    'icon', '💎',
     'amount', 75
   )
 ), NULL
@@ -1779,43 +1779,43 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 120000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 72000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 1200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 450
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 150
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 300
   )
 ), NULL
@@ -1827,22 +1827,22 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 48000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 28800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 600
   )
 ), NULL
@@ -1854,8 +1854,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 18000
   )
 ), NULL
@@ -1868,106 +1868,106 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 320000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 192000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 128000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 3200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 1200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
     'resource_key', 'coal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
+    'name', '石炭',
+    'icon', '⬛',
     'amount', 600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
     'resource_key', 'knowledge',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
+    'name', '知識',
+    'icon', '📚',
     'amount', 320
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'spices' LIMIT 1),
     'resource_key', 'spices',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'spices' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'spices' LIMIT 1),
+    'name', '香辛料',
+    'icon', '🌶️',
     'amount', 240
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
     'resource_key', 'gunpowder',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
+    'name', '火薬',
+    'icon', '💥',
     'amount', 160
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
     'resource_key', 'oil',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
+    'name', '石油',
+    'icon', '🛢️',
     'amount', 200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
     'resource_key', 'crystal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
+    'name', '文明クリスタル',
+    'icon', '💎',
     'amount', 50
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'rubber' LIMIT 1),
     'resource_key', 'rubber',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'rubber' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'rubber' LIMIT 1),
+    'name', 'ゴム',
+    'icon', '⚫',
     'amount', 80
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'mana' LIMIT 1),
     'resource_key', 'mana',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'mana' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'mana' LIMIT 1),
+    'name', 'マナ',
+    'icon', '✨',
     'amount', 40
   )
 ), NULL
@@ -1979,50 +1979,50 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 160000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 96000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 1600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 100
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
     'resource_key', 'gunpowder',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
+    'name', '火薬',
+    'icon', '💥',
     'amount', 80
   )
 ), NULL
@@ -2034,29 +2034,29 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 64000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 38400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
     'resource_key', 'coal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
+    'name', '石炭',
+    'icon', '⬛',
     'amount', 300
   )
 ), NULL
@@ -2068,15 +2068,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 24000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 14400
   )
 ), NULL
@@ -2089,106 +2089,106 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 480000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 288000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 192000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 4800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 1800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 1200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
     'resource_key', 'knowledge',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
+    'name', '知識',
+    'icon', '📚',
     'amount', 480
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
     'resource_key', 'gunpowder',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
+    'name', '火薬',
+    'icon', '💥',
     'amount', 240
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
     'resource_key', 'oil',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
+    'name', '石油',
+    'icon', '🛢️',
     'amount', 300
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
     'resource_key', 'crystal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
+    'name', '文明クリスタル',
+    'icon', '💎',
     'amount', 150
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'rubber' LIMIT 1),
     'resource_key', 'rubber',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'rubber' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'rubber' LIMIT 1),
+    'name', 'ゴム',
+    'icon', '⚫',
     'amount', 240
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'mana' LIMIT 1),
     'resource_key', 'mana',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'mana' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'mana' LIMIT 1),
+    'name', 'マナ',
+    'icon', '✨',
     'amount', 120
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
     'resource_key', 'electronics',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
+    'name', '電子部品',
+    'icon', '🔌',
     'amount', 180
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
     'resource_key', 'titanium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
+    'name', 'チタン',
+    'icon', '🔩',
     'amount', 150
   )
 ), NULL
@@ -2200,43 +2200,43 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 240000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 144000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 2400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 900
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 300
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 600
   )
 ), NULL
@@ -2248,22 +2248,22 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 96000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 57600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 1200
   )
 ), NULL
@@ -2275,8 +2275,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 36000
   )
 ), NULL
@@ -2289,120 +2289,120 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 640000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 384000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 256000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 6400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 2400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
     'resource_key', 'coal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
+    'name', '石炭',
+    'icon', '⬛',
     'amount', 1200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
     'resource_key', 'knowledge',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
+    'name', '知識',
+    'icon', '📚',
     'amount', 640
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
     'resource_key', 'gunpowder',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
+    'name', '火薬',
+    'icon', '💥',
     'amount', 320
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
     'resource_key', 'oil',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
+    'name', '石油',
+    'icon', '🛢️',
     'amount', 400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
     'resource_key', 'crystal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
+    'name', '文明クリスタル',
+    'icon', '💎',
     'amount', 100
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'rubber' LIMIT 1),
     'resource_key', 'rubber',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'rubber' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'rubber' LIMIT 1),
+    'name', 'ゴム',
+    'icon', '⚫',
     'amount', 160
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'mana' LIMIT 1),
     'resource_key', 'mana',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'mana' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'mana' LIMIT 1),
+    'name', 'マナ',
+    'icon', '✨',
     'amount', 80
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
     'resource_key', 'electronics',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
+    'name', '電子部品',
+    'icon', '🔌',
     'amount', 120
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
     'resource_key', 'titanium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
+    'name', 'チタン',
+    'icon', '🔩',
     'amount', 100
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
     'resource_key', 'uranium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
+    'name', 'ウラン',
+    'icon', '☢️',
     'amount', 20
   )
 ), NULL
@@ -2414,57 +2414,57 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 320000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 192000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 3200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 1200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
     'resource_key', 'gunpowder',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
+    'name', '火薬',
+    'icon', '💥',
     'amount', 160
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
     'resource_key', 'uranium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
+    'name', 'ウラン',
+    'icon', '☢️',
     'amount', 10
   )
 ), NULL
@@ -2476,29 +2476,29 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 128000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 76800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 1600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
     'resource_key', 'coal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
+    'name', '石炭',
+    'icon', '⬛',
     'amount', 600
   )
 ), NULL
@@ -2510,15 +2510,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 48000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 28800
   )
 ), NULL
@@ -2531,113 +2531,113 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 960000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 576000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 384000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 9600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 3600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 1200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 2400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
     'resource_key', 'knowledge',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
+    'name', '知識',
+    'icon', '📚',
     'amount', 960
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
     'resource_key', 'gunpowder',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
+    'name', '火薬',
+    'icon', '💥',
     'amount', 480
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
     'resource_key', 'oil',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
+    'name', '石油',
+    'icon', '🛢️',
     'amount', 600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
     'resource_key', 'crystal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
+    'name', '文明クリスタル',
+    'icon', '💎',
     'amount', 300
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
     'resource_key', 'electronics',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
+    'name', '電子部品',
+    'icon', '🔌',
     'amount', 360
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
     'resource_key', 'titanium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
+    'name', 'チタン',
+    'icon', '🔩',
     'amount', 300
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
     'resource_key', 'uranium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
+    'name', 'ウラン',
+    'icon', '☢️',
     'amount', 60
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
     'resource_key', 'diamond',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
+    'name', '文明ダイヤモンド',
+    'icon', '💠',
     'amount', 45
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'plutonium' LIMIT 1),
     'resource_key', 'plutonium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'plutonium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'plutonium' LIMIT 1),
+    'name', 'プルトニウム',
+    'icon', '☢️',
     'amount', 37
   )
 ), NULL
@@ -2649,43 +2649,43 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 480000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 288000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 4800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 1800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
     'resource_key', 'uranium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
+    'name', 'ウラン',
+    'icon', '☢️',
     'amount', 30
   )
 ), NULL
@@ -2697,22 +2697,22 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 192000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 115200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 2400
   )
 ), NULL
@@ -2724,8 +2724,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 72000
   )
 ), NULL
@@ -2738,127 +2738,127 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 1280000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 768000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 512000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 12800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 4800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 1600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
     'resource_key', 'knowledge',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
+    'name', '知識',
+    'icon', '📚',
     'amount', 1280
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
     'resource_key', 'gunpowder',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
+    'name', '火薬',
+    'icon', '💥',
     'amount', 640
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
     'resource_key', 'oil',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
+    'name', '石油',
+    'icon', '🛢️',
     'amount', 800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
     'resource_key', 'crystal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
+    'name', '文明クリスタル',
+    'icon', '💎',
     'amount', 200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
     'resource_key', 'electronics',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
+    'name', '電子部品',
+    'icon', '🔌',
     'amount', 240
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
     'resource_key', 'titanium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
+    'name', 'チタン',
+    'icon', '🔩',
     'amount', 200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
     'resource_key', 'uranium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
+    'name', 'ウラン',
+    'icon', '☢️',
     'amount', 40
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
     'resource_key', 'diamond',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
+    'name', '文明ダイヤモンド',
+    'icon', '💠',
     'amount', 30
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'plutonium' LIMIT 1),
     'resource_key', 'plutonium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'plutonium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'plutonium' LIMIT 1),
+    'name', 'プルトニウム',
+    'icon', '☢️',
     'amount', 25
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
     'resource_key', 'silicon',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
+    'name', 'シリコン',
+    'icon', '🔲',
     'amount', 100
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'rare_earth' LIMIT 1),
     'resource_key', 'rare_earth',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'rare_earth' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'rare_earth' LIMIT 1),
+    'name', 'レアアース',
+    'icon', '💫',
     'amount', 80
   )
 ), NULL
@@ -2870,64 +2870,64 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 640000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 384000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 6400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 2400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
     'resource_key', 'uranium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
+    'name', 'ウラン',
+    'icon', '☢️',
     'amount', 20
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
     'resource_key', 'diamond',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
+    'name', '文明ダイヤモンド',
+    'icon', '💠',
     'amount', 15
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
     'resource_key', 'silicon',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
+    'name', 'シリコン',
+    'icon', '🔲',
     'amount', 50
   )
 ), NULL
@@ -2939,29 +2939,29 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 256000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 153600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 3200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
     'resource_key', 'coal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
+    'name', '石炭',
+    'icon', '⬛',
     'amount', 1200
   )
 ), NULL
@@ -2973,15 +2973,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 96000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 57600
   )
 ), NULL
@@ -2994,127 +2994,127 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 1600000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 960000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 640000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 16000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 6000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 2000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 4000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
     'resource_key', 'knowledge',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
+    'name', '知識',
+    'icon', '📚',
     'amount', 1600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
     'resource_key', 'oil',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
+    'name', '石油',
+    'icon', '🛢️',
     'amount', 1000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
     'resource_key', 'electronics',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
+    'name', '電子部品',
+    'icon', '🔌',
     'amount', 600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
     'resource_key', 'titanium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
+    'name', 'チタン',
+    'icon', '🔩',
     'amount', 500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
     'resource_key', 'uranium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
+    'name', 'ウラン',
+    'icon', '☢️',
     'amount', 100
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
     'resource_key', 'diamond',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
+    'name', '文明ダイヤモンド',
+    'icon', '💠',
     'amount', 75
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'plutonium' LIMIT 1),
     'resource_key', 'plutonium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'plutonium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'plutonium' LIMIT 1),
+    'name', 'プルトニウム',
+    'icon', '☢️',
     'amount', 62
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
     'resource_key', 'silicon',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
+    'name', 'シリコン',
+    'icon', '🔲',
     'amount', 250
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'rare_earth' LIMIT 1),
     'resource_key', 'rare_earth',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'rare_earth' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'rare_earth' LIMIT 1),
+    'name', 'レアアース',
+    'icon', '💫',
     'amount', 200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'quantum_crystal' LIMIT 1),
     'resource_key', 'quantum_crystal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'quantum_crystal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'quantum_crystal' LIMIT 1),
+    'name', '量子結晶',
+    'icon', '🔮',
     'amount', 30
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'ai_core' LIMIT 1),
     'resource_key', 'ai_core',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'ai_core' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'ai_core' LIMIT 1),
+    'name', 'AIコア',
+    'icon', '🧠',
     'amount', 22
   )
 ), NULL
@@ -3126,50 +3126,50 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 800000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 480000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 8000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 3000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 1000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
     'resource_key', 'uranium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
+    'name', 'ウラン',
+    'icon', '☢️',
     'amount', 50
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
     'resource_key', 'silicon',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
+    'name', 'シリコン',
+    'icon', '🔲',
     'amount', 125
   )
 ), NULL
@@ -3181,22 +3181,22 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 320000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 192000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 4000
   )
 ), NULL
@@ -3208,8 +3208,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 120000
   )
 ), NULL
@@ -3222,162 +3222,162 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 2000000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 1200000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 800000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 20000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 8000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 1500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 3000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
     'resource_key', 'knowledge',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
+    'name', '知識',
+    'icon', '📚',
     'amount', 2500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
     'resource_key', 'gunpowder',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
+    'name', '火薬',
+    'icon', '💥',
     'amount', 1200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
     'resource_key', 'oil',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
+    'name', '石油',
+    'icon', '🛢️',
     'amount', 1500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
     'resource_key', 'crystal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
+    'name', '文明クリスタル',
+    'icon', '💎',
     'amount', 400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
     'resource_key', 'electronics',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
+    'name', '電子部品',
+    'icon', '🔌',
     'amount', 500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
     'resource_key', 'titanium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
+    'name', 'チタン',
+    'icon', '🔩',
     'amount', 400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
     'resource_key', 'uranium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
+    'name', 'ウラン',
+    'icon', '☢️',
     'amount', 80
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
     'resource_key', 'diamond',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
+    'name', '文明ダイヤモンド',
+    'icon', '💠',
     'amount', 60
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'plutonium' LIMIT 1),
     'resource_key', 'plutonium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'plutonium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'plutonium' LIMIT 1),
+    'name', 'プルトニウム',
+    'icon', '☢️',
     'amount', 50
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
     'resource_key', 'silicon',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
+    'name', 'シリコン',
+    'icon', '🔲',
     'amount', 200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'rare_earth' LIMIT 1),
     'resource_key', 'rare_earth',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'rare_earth' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'rare_earth' LIMIT 1),
+    'name', 'レアアース',
+    'icon', '💫',
     'amount', 150
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'quantum_crystal' LIMIT 1),
     'resource_key', 'quantum_crystal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'quantum_crystal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'quantum_crystal' LIMIT 1),
+    'name', '量子結晶',
+    'icon', '🔮',
     'amount', 20
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'ai_core' LIMIT 1),
     'resource_key', 'ai_core',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'ai_core' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'ai_core' LIMIT 1),
+    'name', 'AIコア',
+    'icon', '🧠',
     'amount', 15
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gene_sample' LIMIT 1),
     'resource_key', 'gene_sample',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gene_sample' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gene_sample' LIMIT 1),
+    'name', '遺伝子サンプル',
+    'icon', '🧬',
     'amount', 25
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'dark_matter' LIMIT 1),
     'resource_key', 'dark_matter',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'dark_matter' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'dark_matter' LIMIT 1),
+    'name', 'ダークマター',
+    'icon', '🌌',
     'amount', 10
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'antimatter' LIMIT 1),
     'resource_key', 'antimatter',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'antimatter' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'antimatter' LIMIT 1),
+    'name', '反物質',
+    'icon', '💥',
     'amount', 5
   )
 ), NULL
@@ -3389,78 +3389,78 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 1000000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 600000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 10000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 4000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 750
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 1500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
     'resource_key', 'uranium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
+    'name', 'ウラン',
+    'icon', '☢️',
     'amount', 40
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
     'resource_key', 'diamond',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
+    'name', '文明ダイヤモンド',
+    'icon', '💠',
     'amount', 30
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
     'resource_key', 'silicon',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
+    'name', 'シリコン',
+    'icon', '🔲',
     'amount', 100
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'quantum_crystal' LIMIT 1),
     'resource_key', 'quantum_crystal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'quantum_crystal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'quantum_crystal' LIMIT 1),
+    'name', '量子結晶',
+    'icon', '🔮',
     'amount', 10
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'ai_core' LIMIT 1),
     'resource_key', 'ai_core',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'ai_core' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'ai_core' LIMIT 1),
+    'name', 'AIコア',
+    'icon', '🧠',
     'amount', 7
   )
 ), NULL
@@ -3472,36 +3472,36 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 400000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 240000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 5000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
     'resource_key', 'coal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
+    'name', '石炭',
+    'icon', '⬛',
     'amount', 2000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
     'resource_key', 'silicon',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
+    'name', 'シリコン',
+    'icon', '🔲',
     'amount', 50
   )
 ), NULL
@@ -3513,15 +3513,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 150000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 90000
   )
 ), NULL
@@ -3538,22 +3538,22 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 10000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 6000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 4000
   )
 ), NULL
@@ -3565,15 +3565,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 5000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 3000
   )
 ), NULL
@@ -3585,15 +3585,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 2000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 1200
   )
 ), NULL
@@ -3605,8 +3605,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 1000
   )
 ), NULL
@@ -3619,36 +3619,36 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 20000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 12000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 8000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
     'resource_key', 'bronze',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
+    'name', '青銅',
+    'icon', '🔶',
     'amount', 1000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
     'resource_key', 'herbs',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
+    'name', '薬草',
+    'icon', '🌿',
     'amount', 600
   )
 ), NULL
@@ -3660,22 +3660,22 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 10000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 6000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
     'resource_key', 'bronze',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
+    'name', '青銅',
+    'icon', '🔶',
     'amount', 500
   )
 ), NULL
@@ -3687,15 +3687,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 4000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 2400
   )
 ), NULL
@@ -3707,8 +3707,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 1600
   )
 ), NULL
@@ -3721,64 +3721,64 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 40000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 24000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 16000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
     'resource_key', 'bronze',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
+    'name', '青銅',
+    'icon', '🔶',
     'amount', 2000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
     'resource_key', 'herbs',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'herbs' LIMIT 1),
+    'name', '薬草',
+    'icon', '🌿',
     'amount', 1200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'cloth' LIMIT 1),
     'resource_key', 'cloth',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'cloth' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'cloth' LIMIT 1),
+    'name', '布',
+    'icon', '🧵',
     'amount', 800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'horses' LIMIT 1),
     'resource_key', 'horses',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'horses' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'horses' LIMIT 1),
+    'name', '馬',
+    'icon', '🐴',
     'amount', 600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bandages' LIMIT 1),
     'resource_key', 'bandages',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bandages' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bandages' LIMIT 1),
+    'name', '包帯',
+    'icon', '🩹',
     'amount', 1000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 400
   )
 ), NULL
@@ -3790,29 +3790,29 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 20000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 12000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
     'resource_key', 'bronze',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'bronze' LIMIT 1),
+    'name', '青銅',
+    'icon', '🔶',
     'amount', 1000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 200
   )
 ), NULL
@@ -3824,15 +3824,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 8000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 4800
   )
 ), NULL
@@ -3844,8 +3844,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 3000
   )
 ), NULL
@@ -3858,50 +3858,50 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 80000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 48000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 32000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 300
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'marble' LIMIT 1),
     'resource_key', 'marble',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'marble' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'marble' LIMIT 1),
+    'name', '大理石',
+    'icon', '🏛️',
     'amount', 500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'sulfur' LIMIT 1),
     'resource_key', 'sulfur',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'sulfur' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'sulfur' LIMIT 1),
+    'name', '硫黄',
+    'icon', '🔶',
     'amount', 400
   )
 ), NULL
@@ -3913,29 +3913,29 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 40000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 24000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 150
   )
 ), NULL
@@ -3947,15 +3947,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 16000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 9600
   )
 ), NULL
@@ -3967,8 +3967,8 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 6000
   )
 ), NULL
@@ -3981,64 +3981,64 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 160000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 96000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 64000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 1600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 100
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
     'resource_key', 'coal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'coal' LIMIT 1),
+    'name', '石炭',
+    'icon', '⬛',
     'amount', 300
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
     'resource_key', 'knowledge',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
+    'name', '知識',
+    'icon', '📚',
     'amount', 160
   )
 ), NULL
@@ -4050,43 +4050,43 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 80000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 48000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 300
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 50
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 100
   )
 ), NULL
@@ -4098,22 +4098,22 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 32000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 19200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 400
   )
 ), NULL
@@ -4125,15 +4125,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 12000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 7200
   )
 ), NULL
@@ -4146,64 +4146,64 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 320000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 192000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 128000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 3200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 1200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
     'resource_key', 'gunpowder',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
+    'name', '火薬',
+    'icon', '💥',
     'amount', 160
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
     'resource_key', 'oil',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'oil' LIMIT 1),
+    'name', '石油',
+    'icon', '🛢️',
     'amount', 200
   )
 ), NULL
@@ -4215,36 +4215,36 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 160000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 96000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 1600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 100
   )
 ), NULL
@@ -4256,22 +4256,22 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 64000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 38400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 800
   )
 ), NULL
@@ -4283,15 +4283,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 24000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 14400
   )
 ), NULL
@@ -4304,71 +4304,71 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 640000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 384000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 256000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 6400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 2400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
     'resource_key', 'gunpowder',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gunpowder' LIMIT 1),
+    'name', '火薬',
+    'icon', '💥',
     'amount', 320
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
     'resource_key', 'crystal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'crystal' LIMIT 1),
+    'name', '文明クリスタル',
+    'icon', '💎',
     'amount', 100
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'mana' LIMIT 1),
     'resource_key', 'mana',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'mana' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'mana' LIMIT 1),
+    'name', 'マナ',
+    'icon', '✨',
     'amount', 80
   )
 ), NULL
@@ -4380,36 +4380,36 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 320000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 192000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 3200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 1200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 200
   )
 ), NULL
@@ -4421,22 +4421,22 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 128000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 76800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 1600
   )
 ), NULL
@@ -4448,15 +4448,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 48000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 28800
   )
 ), NULL
@@ -4469,71 +4469,71 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 1280000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 768000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 512000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 12800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 4800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 1600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
     'resource_key', 'electronics',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'electronics' LIMIT 1),
+    'name', '電子部品',
+    'icon', '🔌',
     'amount', 240
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
     'resource_key', 'titanium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'titanium' LIMIT 1),
+    'name', 'チタン',
+    'icon', '🔩',
     'amount', 200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
     'resource_key', 'uranium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
+    'name', 'ウラン',
+    'icon', '☢️',
     'amount', 40
   )
 ), NULL
@@ -4545,43 +4545,43 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 640000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 384000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 6400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 2400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
     'resource_key', 'uranium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
+    'name', 'ウラン',
+    'icon', '☢️',
     'amount', 20
   )
 ), NULL
@@ -4593,22 +4593,22 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 256000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 153600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 3200
   )
 ), NULL
@@ -4620,15 +4620,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 96000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 57600
   )
 ), NULL
@@ -4641,85 +4641,85 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 2560000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 1536000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 1024000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 25600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 9600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 1600
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 3200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
     'resource_key', 'uranium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
+    'name', 'ウラン',
+    'icon', '☢️',
     'amount', 80
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
     'resource_key', 'diamond',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
+    'name', '文明ダイヤモンド',
+    'icon', '💠',
     'amount', 60
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'plutonium' LIMIT 1),
     'resource_key', 'plutonium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'plutonium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'plutonium' LIMIT 1),
+    'name', 'プルトニウム',
+    'icon', '☢️',
     'amount', 50
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
     'resource_key', 'silicon',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
+    'name', 'シリコン',
+    'icon', '🔲',
     'amount', 200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'rare_earth' LIMIT 1),
     'resource_key', 'rare_earth',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'rare_earth' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'rare_earth' LIMIT 1),
+    'name', 'レアアース',
+    'icon', '💫',
     'amount', 160
   )
 ), NULL
@@ -4731,50 +4731,50 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 1280000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 768000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 12800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 4800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 800
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
     'resource_key', 'uranium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
+    'name', 'ウラン',
+    'icon', '☢️',
     'amount', 40
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
     'resource_key', 'silicon',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
+    'name', 'シリコン',
+    'icon', '🔲',
     'amount', 100
   )
 ), NULL
@@ -4786,22 +4786,22 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 512000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 307200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 6400
   )
 ), NULL
@@ -4813,15 +4813,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 192000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 115200
   )
 ), NULL
@@ -4834,127 +4834,127 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 4000000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 2400000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
     'resource_key', 'stone',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'stone' LIMIT 1),
+    'name', '石材',
+    'icon', '🪨',
     'amount', 1600000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 40000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 16000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 3000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
     'resource_key', 'steel',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'steel' LIMIT 1),
+    'name', '鋼鉄',
+    'icon', '⚙️',
     'amount', 6000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
     'resource_key', 'knowledge',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'knowledge' LIMIT 1),
+    'name', '知識',
+    'icon', '📚',
     'amount', 5000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
     'resource_key', 'uranium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
+    'name', 'ウラン',
+    'icon', '☢️',
     'amount', 160
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
     'resource_key', 'diamond',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'diamond' LIMIT 1),
+    'name', '文明ダイヤモンド',
+    'icon', '💠',
     'amount', 120
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'plutonium' LIMIT 1),
     'resource_key', 'plutonium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'plutonium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'plutonium' LIMIT 1),
+    'name', 'プルトニウム',
+    'icon', '☢️',
     'amount', 100
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
     'resource_key', 'silicon',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
+    'name', 'シリコン',
+    'icon', '🔲',
     'amount', 400
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'rare_earth' LIMIT 1),
     'resource_key', 'rare_earth',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'rare_earth' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'rare_earth' LIMIT 1),
+    'name', 'レアアース',
+    'icon', '💫',
     'amount', 300
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'quantum_crystal' LIMIT 1),
     'resource_key', 'quantum_crystal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'quantum_crystal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'quantum_crystal' LIMIT 1),
+    'name', '量子結晶',
+    'icon', '🔮',
     'amount', 40
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'ai_core' LIMIT 1),
     'resource_key', 'ai_core',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'ai_core' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'ai_core' LIMIT 1),
+    'name', 'AIコア',
+    'icon', '🧠',
     'amount', 30
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gene_sample' LIMIT 1),
     'resource_key', 'gene_sample',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gene_sample' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gene_sample' LIMIT 1),
+    'name', '遺伝子サンプル',
+    'icon', '🧬',
     'amount', 50
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'dark_matter' LIMIT 1),
     'resource_key', 'dark_matter',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'dark_matter' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'dark_matter' LIMIT 1),
+    'name', 'ダークマター',
+    'icon', '🌌',
     'amount', 20
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'antimatter' LIMIT 1),
     'resource_key', 'antimatter',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'antimatter' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'antimatter' LIMIT 1),
+    'name', '反物質',
+    'icon', '💥',
     'amount', 10
   )
 ), NULL
@@ -4966,64 +4966,64 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 2000000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 1200000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 20000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
     'resource_key', 'gold',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gold' LIMIT 1),
+    'name', '金',
+    'icon', '💰',
     'amount', 8000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
     'resource_key', 'gems',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'gems' LIMIT 1),
+    'name', '宝石',
+    'icon', '💎',
     'amount', 1500
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
     'resource_key', 'uranium',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'uranium' LIMIT 1),
+    'name', 'ウラン',
+    'icon', '☢️',
     'amount', 80
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
     'resource_key', 'silicon',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
+    'name', 'シリコン',
+    'icon', '🔲',
     'amount', 200
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'quantum_crystal' LIMIT 1),
     'resource_key', 'quantum_crystal',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'quantum_crystal' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'quantum_crystal' LIMIT 1),
+    'name', '量子結晶',
+    'icon', '🔮',
     'amount', 20
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'ai_core' LIMIT 1),
     'resource_key', 'ai_core',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'ai_core' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'ai_core' LIMIT 1),
+    'name', 'AIコア',
+    'icon', '🧠',
     'amount', 14
   )
 ), NULL
@@ -5035,29 +5035,29 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 800000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 480000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
     'resource_key', 'iron',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'iron' LIMIT 1),
+    'name', '鉄',
+    'icon', '⚙️',
     'amount', 10000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
     'resource_key', 'silicon',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'silicon' LIMIT 1),
+    'name', 'シリコン',
+    'icon', '🔲',
     'amount', 100
   )
 ), NULL
@@ -5069,15 +5069,15 @@ JSON_ARRAY(
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
     'resource_key', 'food',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'food' LIMIT 1),
+    'name', '食料',
+    'icon', '🍖',
     'amount', 300000
   ),
   JSON_OBJECT(
     'resource_type_id', (SELECT id FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
     'resource_key', 'wood',
-    'name', (SELECT name FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
-    'icon', (SELECT icon FROM civilization_resource_types WHERE resource_key = 'wood' LIMIT 1),
+    'name', '木材',
+    'icon', '🪵',
     'amount', 180000
   )
 ), NULL
@@ -5086,5 +5086,5 @@ FROM world_bosses wb WHERE wb.boss_key = 'cosmic_entity_lv100_veteran';
 -- ===============================================
 -- 完了メッセージ
 -- ===============================================
-SELECT 'World boss rewards overhaul 2026 completed. JSON with resource details (id, key, name, icon, amount).' AS status;
+SELECT 'World boss rewards overhaul 2026 completed. JSON with literal resource names and icons.' AS status;
 
