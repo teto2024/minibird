@@ -1677,8 +1677,49 @@ if ($action === 'attack') {
         exit;
     }
     
+    // ⑦ 戦争レート制限チェック（1時間に3回まで）
+    $oneHourAgo = date('Y-m-d H:i:s', strtotime('-1 hour'));
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) as attack_count 
+        FROM user_war_rate_limits 
+        WHERE user_id = ? AND attack_timestamp >= ?
+    ");
+    $stmt->execute([$me['id'], $oneHourAgo]);
+    $attackCount = (int)$stmt->fetchColumn();
+    
+    if ($attackCount >= 3) {
+        // 最も古い攻撃の時刻を取得して、次に攻撃可能な時刻を計算
+        $stmt = $pdo->prepare("
+            SELECT attack_timestamp 
+            FROM user_war_rate_limits 
+            WHERE user_id = ? AND attack_timestamp >= ?
+            ORDER BY attack_timestamp ASC
+            LIMIT 1
+        ");
+        $stmt->execute([$me['id'], $oneHourAgo]);
+        $oldestAttack = $stmt->fetchColumn();
+        $nextAvailable = date('Y-m-d H:i:s', strtotime($oldestAttack . ' +1 hour'));
+        $waitMinutes = max(0, ceil((strtotime($nextAvailable) - time()) / 60));
+        
+        echo json_encode([
+            'ok' => false, 
+            'error' => "戦争は1時間に3回までです。次の攻撃まであと{$waitMinutes}分お待ちください。",
+            'rate_limited' => true,
+            'next_available' => $nextAvailable,
+            'wait_minutes' => $waitMinutes
+        ]);
+        exit;
+    }
+    
     $pdo->beginTransaction();
     try {
+        // 攻撃記録を保存（レート制限用）
+        $stmt = $pdo->prepare("
+            INSERT INTO user_war_rate_limits (user_id, target_user_id, attack_timestamp)
+            VALUES (?, ?, NOW())
+        ");
+        $stmt->execute([$me['id'], $targetUserId]);
+        
         // 攻撃者の文明
         $myCiv = getUserCivilization($pdo, $me['id']);
         
