@@ -127,6 +127,10 @@ define('CIV_INSTANT_DIAMOND_MIN_COST', 1);        // ダイヤモンド即完了
 // 出撃兵士数上限システム定数
 define('CIV_BASE_TROOP_DEPLOYMENT_LIMIT', 100);   // 基本出撃兵士数上限
 
+// ③④ 治療資源要求の時代閾値
+define('CIV_HEAL_MEDICINE_ERA_THRESHOLD', 4);     // 医薬品が必要になる時代閾値
+define('CIV_HEAL_BANDAGE_ERA_THRESHOLD', 6);      // 包帯が必要になる時代閾値
+
 // 訓練・治療時の追加資源消費（微量）
 // 布、薬草、馬、ガラス、石油、医薬品、硫黄、石炭を消費する機会を設ける
 $TRAINING_SUPPLEMENTARY_COSTS = [
@@ -719,23 +723,52 @@ function consumeTrainingSupplementaryResources($pdo, $userId, $count, $troopCate
 }
 
 /**
- * ② 治療時に必要な資源を確認するヘルパー関数
- * 薬草、医薬品が不足していないか事前チェック
+ * ②③④ 治療時に必要な資源を確認するヘルパー関数
+ * 兵種のコスト（時代）に応じて必要資源を変更
+ * - 低コスト兵（時代1-3）: 薬草のみ
+ * - 中コスト兵（時代4-5）: 薬草 + 医薬品
+ * - 高コスト兵（時代6-7、歩兵・騎兵・遠距離）: 薬草 + 医薬品 + 包帯
  * 
  * @param PDO $pdo データベース接続
  * @param int $userId ユーザーID
+ * @param int $troopTypeId 兵種ID
  * @param int $count 治療数
  * @return array ['ok' => bool, 'required' => [...], 'missing' => [...]]
  */
-function checkHealingResourcesAvailable($pdo, $userId, $count) {
-    global $HEALING_SUPPLEMENTARY_COSTS;
+function checkHealingResourcesAvailableForTroop($pdo, $userId, $troopTypeId, $count) {
     $required = [];
     $missing = [];
     
-    // 薬草は5体ごとに1、医薬品は10体ごとに1
-    foreach ($HEALING_SUPPLEMENTARY_COSTS as $resourceKey => $costPerN) {
-        $divisor = ($resourceKey === 'herbs') ? 5 : 10;
-        $requiredAmount = max(1, floor($count / $divisor)) * $costPerN;
+    // 兵種の情報を取得
+    $stmt = $pdo->prepare("
+        SELECT unlock_era_id, troop_category 
+        FROM civilization_troop_types 
+        WHERE id = ?
+    ");
+    $stmt->execute([$troopTypeId]);
+    $troopInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    $eraId = $troopInfo ? (int)$troopInfo['unlock_era_id'] : 1;
+    $category = $troopInfo ? $troopInfo['troop_category'] : 'infantry';
+    
+    // 必要資源を決定
+    $healingCosts = [];
+    
+    // 全ての兵種は薬草が必要（5体ごとに1）
+    $healingCosts['herbs'] = ['divisor' => 5, 'amount' => 1];
+    
+    // 時代4以降は医薬品が必要（10体ごとに2）
+    if ($eraId >= CIV_HEAL_MEDICINE_ERA_THRESHOLD) {
+        $healingCosts['medicine'] = ['divisor' => 10, 'amount' => 2];
+    }
+    
+    // 時代6以降で歩兵・騎兵・遠距離は包帯も必要（10体ごとに1）
+    if ($eraId >= CIV_HEAL_BANDAGE_ERA_THRESHOLD && in_array($category, ['infantry', 'cavalry', 'ranged'])) {
+        $healingCosts['bandages'] = ['divisor' => 10, 'amount' => 1];
+    }
+    
+    foreach ($healingCosts as $resourceKey => $costInfo) {
+        $requiredAmount = max(1, floor($count / $costInfo['divisor'])) * $costInfo['amount'];
         
         if ($requiredAmount <= 0) continue;
         
@@ -749,7 +782,7 @@ function checkHealingResourcesAvailable($pdo, $userId, $count) {
         $stmt->execute([$userId, $resourceKey]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         $currentAmount = $result ? (float)$result['amount'] : 0;
-        $resourceName = $result ? $result['resource_name'] : $resourceKey;
+        $resourceName = $result ? $result['resource_name'] : getResourceName($resourceKey);
         
         $required[$resourceKey] = [
             'name' => $resourceName,
@@ -757,7 +790,7 @@ function checkHealingResourcesAvailable($pdo, $userId, $count) {
             'available' => $currentAmount
         ];
         
-        // ② 資源が不足している場合
+        // 資源が不足している場合
         if ($currentAmount < $requiredAmount) {
             $missing[$resourceKey] = [
                 'name' => $resourceName,
@@ -776,22 +809,99 @@ function checkHealingResourcesAvailable($pdo, $userId, $count) {
 }
 
 /**
- * 治療時の追加資源を消費するヘルパー関数
- * ② 薬草、医薬品を消費する（不足している場合は事前にcheckHealingResourcesAvailableで確認済みの前提）
+ * ②③④ 治療時に必要な資源を確認するヘルパー関数（レガシー：troop_type_idなしの場合）
+ * 薬草のみを要求（低コスト兵用）
  * 
  * @param PDO $pdo データベース接続
  * @param int $userId ユーザーID
  * @param int $count 治療数
+ * @return array ['ok' => bool, 'required' => [...], 'missing' => [...]]
+ */
+function checkHealingResourcesAvailable($pdo, $userId, $count) {
+    $required = [];
+    $missing = [];
+    
+    // 低コスト兵として扱い、薬草のみを要求（5体ごとに1）
+    $resourceKey = 'herbs';
+    $requiredAmount = max(1, floor($count / 5));
+    
+    // 資源を持っているか確認
+    $stmt = $pdo->prepare("
+        SELECT ucr.amount, rt.name as resource_name
+        FROM user_civilization_resources ucr
+        JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
+        WHERE ucr.user_id = ? AND rt.resource_key = ? AND ucr.unlocked = TRUE
+    ");
+    $stmt->execute([$userId, $resourceKey]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $currentAmount = $result ? (float)$result['amount'] : 0;
+    $resourceName = $result ? $result['resource_name'] : getResourceName($resourceKey);
+    
+    $required[$resourceKey] = [
+        'name' => $resourceName,
+        'required' => $requiredAmount,
+        'available' => $currentAmount
+    ];
+    
+    if ($currentAmount < $requiredAmount) {
+        $missing[$resourceKey] = [
+            'name' => $resourceName,
+            'required' => $requiredAmount,
+            'available' => $currentAmount,
+            'shortage' => $requiredAmount - $currentAmount
+        ];
+    }
+    
+    return [
+        'ok' => empty($missing),
+        'required' => $required,
+        'missing' => $missing
+    ];
+}
+
+/**
+ * ③④ 治療時の追加資源を消費するヘルパー関数
+ * 兵種のコスト（時代）に応じて消費資源を変更
+ * 
+ * @param PDO $pdo データベース接続
+ * @param int $userId ユーザーID
+ * @param int $troopTypeId 兵種ID
+ * @param int $count 治療数
  * @return array 消費した資源のリスト
  */
-function consumeHealingSupplementaryResources($pdo, $userId, $count) {
-    global $HEALING_SUPPLEMENTARY_COSTS;
+function consumeHealingSupplementaryResourcesForTroop($pdo, $userId, $troopTypeId, $count) {
     $consumed = [];
     
-    // 薬草は5体ごとに1、医薬品は10体ごとに1
-    foreach ($HEALING_SUPPLEMENTARY_COSTS as $resourceKey => $costPerN) {
-        $divisor = ($resourceKey === 'herbs') ? 5 : 10;
-        $requiredAmount = max(1, floor($count / $divisor)) * $costPerN;
+    // 兵種の情報を取得
+    $stmt = $pdo->prepare("
+        SELECT unlock_era_id, troop_category 
+        FROM civilization_troop_types 
+        WHERE id = ?
+    ");
+    $stmt->execute([$troopTypeId]);
+    $troopInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    $eraId = $troopInfo ? (int)$troopInfo['unlock_era_id'] : 1;
+    $category = $troopInfo ? $troopInfo['troop_category'] : 'infantry';
+    
+    // 必要資源を決定
+    $healingCosts = [];
+    
+    // 全ての兵種は薬草が必要（5体ごとに1）
+    $healingCosts['herbs'] = ['divisor' => 5, 'amount' => 1];
+    
+    // 時代4以降は医薬品が必要（10体ごとに2）
+    if ($eraId >= CIV_HEAL_MEDICINE_ERA_THRESHOLD) {
+        $healingCosts['medicine'] = ['divisor' => 10, 'amount' => 2];
+    }
+    
+    // 時代6以降で歩兵・騎兵・遠距離は包帯も必要（10体ごとに1）
+    if ($eraId >= CIV_HEAL_BANDAGE_ERA_THRESHOLD && in_array($category, ['infantry', 'cavalry', 'ranged'])) {
+        $healingCosts['bandages'] = ['divisor' => 10, 'amount' => 1];
+    }
+    
+    foreach ($healingCosts as $resourceKey => $costInfo) {
+        $requiredAmount = max(1, floor($count / $costInfo['divisor'])) * $costInfo['amount'];
         
         if ($requiredAmount <= 0) continue;
         
@@ -805,6 +915,35 @@ function consumeHealingSupplementaryResources($pdo, $userId, $count) {
         $stmt->execute([$requiredAmount, $userId, $resourceKey]);
         $consumed[$resourceKey] = $requiredAmount;
     }
+    
+    return $consumed;
+}
+
+/**
+ * 治療時の追加資源を消費するヘルパー関数（レガシー：troop_type_idなしの場合）
+ * 薬草のみを消費（低コスト兵用）
+ * 
+ * @param PDO $pdo データベース接続
+ * @param int $userId ユーザーID
+ * @param int $count 治療数
+ * @return array 消費した資源のリスト
+ */
+function consumeHealingSupplementaryResources($pdo, $userId, $count) {
+    $consumed = [];
+    
+    // 低コスト兵として扱い、薬草のみを消費（5体ごとに1）
+    $resourceKey = 'herbs';
+    $requiredAmount = max(1, floor($count / 5));
+    
+    // 資源を消費
+    $stmt = $pdo->prepare("
+        UPDATE user_civilization_resources ucr
+        JOIN civilization_resource_types rt ON ucr.resource_type_id = rt.id
+        SET ucr.amount = ucr.amount - ?
+        WHERE ucr.user_id = ? AND rt.resource_key = ?
+    ");
+    $stmt->execute([$requiredAmount, $userId, $resourceKey]);
+    $consumed[$resourceKey] = $requiredAmount;
     
     return $consumed;
 }
@@ -2230,7 +2369,8 @@ if ($action === 'get_troops') {
             SELECT uct.*, tt.troop_key, tt.name, tt.icon, tt.attack_power, tt.defense_power, 
                    COALESCE(tt.health_points, 100) as health_points, 
                    COALESCE(tt.troop_category, 'infantry') as troop_category,
-                   COALESCE(tt.is_stealth, FALSE) as is_stealth
+                   COALESCE(tt.is_stealth, FALSE) as is_stealth,
+                   COALESCE(tt.is_disposable, FALSE) as is_disposable
             FROM user_civilization_troops uct
             JOIN civilization_troop_types tt ON uct.troop_type_id = tt.id
             WHERE uct.user_id = ?
@@ -3186,8 +3326,8 @@ if ($action === 'heal_troops') {
             throw new Exception('コインが不足しています');
         }
         
-        // ② 追加資源（薬草、医薬品）が十分にあるかチェック
-        $resourceCheck = checkHealingResourcesAvailable($pdo, $me['id'], $count);
+        // ③④ 兵種に応じた追加資源（薬草、医薬品、包帯）が十分にあるかチェック
+        $resourceCheck = checkHealingResourcesAvailableForTroop($pdo, $me['id'], $troopTypeId, $count);
         if (!$resourceCheck['ok']) {
             $missingList = [];
             foreach ($resourceCheck['missing'] as $res) {
@@ -3200,8 +3340,8 @@ if ($action === 'heal_troops') {
         $stmt = $pdo->prepare("UPDATE users SET coins = coins - ? WHERE id = ?");
         $stmt->execute([$totalCost, $me['id']]);
         
-        // ② 追加資源を消費（薬草、医薬品など）
-        $healingSupplementaryConsumed = consumeHealingSupplementaryResources($pdo, $me['id'], $count);
+        // ③④ 兵種に応じた追加資源を消費（薬草、医薬品、包帯）
+        $healingSupplementaryConsumed = consumeHealingSupplementaryResourcesForTroop($pdo, $me['id'], $troopTypeId, $count);
         
         // 治療時間を計算
         $healTime = $wounded['heal_time_seconds'] * $count;

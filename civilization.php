@@ -1229,7 +1229,12 @@ const RESOURCE_KEY_TO_NAME = {
     'cloth': '布', 'marble': '大理石', 'horses': '馬', 'coal': '石炭',
     'glass': 'ガラス', 'spices': '香辛料', 'herbs': '薬草',
     'medicine': '医薬品', 'steel': '鋼鉄', 'gunpowder': '火薬',
-    'gunpowder_res': '火薬資源', 'electronics': '電子部品'
+    'gunpowder_res': '火薬資源', 'electronics': '電子部品',
+    'bandages': '包帯', 'rubber': 'ゴム', 'titanium': 'チタン',
+    'plutonium': 'プルトニウム', 'silicon': 'シリコン',
+    'rare_earth': 'レアアース', 'quantum_crystal': '量子結晶',
+    'ai_core': 'AIコア', 'gene_sample': '遺伝子サンプル',
+    'dark_matter': 'ダークマター', 'antimatter': '反物質'
 };
 
 // 資源キーを日本語名に変換
@@ -1384,7 +1389,7 @@ async function loadAttackTroops() {
                 <div class="troop-select-row">
                     <div class="troop-select-info">
                         <span class="troop-select-icon">${troop.icon}</span>
-                        <span class="troop-select-name">${troop.name}</span>
+                        <span class="troop-select-name">${troop.name}${getTroopLabelsHtml(troop)}</span>
                         <div class="troop-select-stats">⚔️${troop.attack_power} 🛡️${troop.defense_power}</div>
                     </div>
                     <input type="range" class="troop-select-slider" 
@@ -1812,6 +1817,15 @@ function renderApp() {
                                 <option value="">すべて</option>
                                 <option value="yes">核のみ</option>
                                 <option value="no">核以外</option>
+                            </select>
+                        </div>
+                        <!-- 使い捨てフィルター -->
+                        <div style="flex: 1; min-width: 180px;">
+                            <label style="display: block; color: #c0a080; font-size: 12px; margin-bottom: 5px;">💀 使い捨て</label>
+                            <select id="filter-disposable" onchange="applyTroopFilters()" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.5); border: 1px solid #8b4513; border-radius: 6px; color: #f5deb3; font-size: 13px;">
+                                <option value="">すべて</option>
+                                <option value="yes">使い捨てのみ</option>
+                                <option value="no">使い捨て以外</option>
                             </select>
                         </div>
                     </div>
@@ -3275,12 +3289,33 @@ function isNuclearUnit(troop) {
     );
 }
 
+// ① 使い捨てユニット判定ヘルパー関数
+function isDisposableUnit(troop) {
+    return troop.is_disposable === true || troop.is_disposable === 1 || troop.is_disposable === '1';
+}
+
+// ② 出撃画面用のラベルHTMLを生成
+function getTroopLabelsHtml(troop) {
+    let labels = '';
+    if (isNuclearUnit(troop)) {
+        labels += `<span style="background: rgba(50, 205, 50, 0.5); padding: 1px 4px; border-radius: 3px; font-size: 9px; margin-left: 3px;">☢️核</span>`;
+    }
+    if (isStealthUnit(troop)) {
+        labels += `<span style="background: rgba(128, 0, 128, 0.5); padding: 1px 4px; border-radius: 3px; font-size: 9px; margin-left: 3px;">👻隠密</span>`;
+    }
+    if (isDisposableUnit(troop)) {
+        labels += `<span style="background: rgba(255, 69, 0, 0.5); padding: 1px 4px; border-radius: 3px; font-size: 9px; margin-left: 3px;">💀捨</span>`;
+    }
+    return labels;
+}
+
 // ① フィルターを適用
 function applyTroopFilters() {
     const categoryFilter = document.getElementById('filter-troop-category')?.value || '';
     const domainFilter = document.getElementById('filter-domain-category')?.value || '';
     const stealthFilter = document.getElementById('filter-stealth')?.value || '';
     const nuclearFilter = document.getElementById('filter-nuclear')?.value || '';
+    const disposableFilter = document.getElementById('filter-disposable')?.value || '';
     
     const filteredTroops = allAvailableTroops.filter(t => {
         // 兵種相性フィルター
@@ -3307,6 +3342,14 @@ function applyTroopFilters() {
         if (nuclearFilter === 'no' && isNuclear) {
             return false;
         }
+        // 使い捨てフィルター
+        const isDisposable = !!t.is_disposable;
+        if (disposableFilter === 'yes' && !isDisposable) {
+            return false;
+        }
+        if (disposableFilter === 'no' && isDisposable) {
+            return false;
+        }
         return true;
     });
     
@@ -3319,6 +3362,7 @@ function resetTroopFilters() {
     document.getElementById('filter-domain-category').value = '';
     document.getElementById('filter-stealth').value = '';
     document.getElementById('filter-nuclear').value = '';
+    document.getElementById('filter-disposable').value = '';
     applyTroopFilters();
 }
 
@@ -6007,7 +6051,7 @@ async function loadPortalBossTroops() {
                 <div class="troop-select-row">
                     <div class="troop-select-info">
                         <span class="troop-select-icon">${troop.icon}</span>
-                        <span class="troop-select-name">${troop.name}</span>
+                        <span class="troop-select-name">${troop.name}${getTroopLabelsHtml(troop)}</span>
                         <div class="troop-select-stats">⚔️${troop.attack_power} 🛡️${troop.defense_power}</div>
                     </div>
                     <input type="range" class="troop-select-slider" 
