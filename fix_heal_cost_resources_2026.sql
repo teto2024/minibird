@@ -30,12 +30,14 @@ UPDATE civilization_troop_types
 SET heal_cost_resources = '{"medicine": 3}'
 WHERE id = 73 AND heal_cost_resources IS NULL;
 
+-- ID 74: 現代スパイ (Era 7) - infantry
 UPDATE civilization_troop_types 
-SET heal_cost_resources = '{"medicine": 2}'
+SET heal_cost_resources = '{"medicine": 3}'
 WHERE id = 74 AND heal_cost_resources IS NULL;
 
+-- ID 75: ヨット隊 (Era 5) - light unit, uses herbs + medicine like other era 5 units
 UPDATE civilization_troop_types 
-SET heal_cost_resources = '{"medicine": 1}'
+SET heal_cost_resources = '{"herbs": 2, "medicine": 1}'
 WHERE id = 75 AND heal_cost_resources IS NULL;
 
 -- Era 8 兵種（核対応歩兵、ステルス爆撃機）: medicine 3
