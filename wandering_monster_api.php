@@ -447,9 +447,16 @@ if ($action === 'attack_monster') {
             $troopTypeId = $troop['troop_type_id'];
             $count = $troop['count'];
             
-            $totalLossCount = (int)floor($count * $attackerHpLossRate);
-            $deaths = (int)floor($totalLossCount * MONSTER_DEATH_RATE);
-            $wounded = $totalLossCount - $deaths;
+            // ② 使い捨てユニットは全員死亡扱い
+            if (!empty($troop['is_disposable'])) {
+                $deaths = $count;
+                $wounded = 0;
+                $totalLossCount = $count;
+            } else {
+                $totalLossCount = (int)floor($count * $attackerHpLossRate);
+                $deaths = (int)floor($totalLossCount * MONSTER_DEATH_RATE);
+                $wounded = $totalLossCount - $deaths;
+            }
             
             if ($deaths > 0) {
                 $attackerLosses[$troopTypeId] = $deaths;

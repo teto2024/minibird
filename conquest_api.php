@@ -1124,10 +1124,17 @@ if ($action === 'attack_castle') {
             $troopTypeId = $troop['troop_type_id'];
             $count = $troop['count'];
             
-            // HPの減少率に応じた損失
-            $totalLossCount = (int)floor($count * $attackerHpLossRate);
-            $deaths = (int)floor($totalLossCount * CONQUEST_DEATH_RATE / (CONQUEST_DEATH_RATE + CONQUEST_WOUNDED_RATE));
-            $wounded = $totalLossCount - $deaths;
+            // ② 使い捨てユニットは全員死亡扱い
+            if (!empty($troop['is_disposable'])) {
+                $deaths = $count;
+                $wounded = 0;
+                $totalLossCount = $count;
+            } else {
+                // HPの減少率に応じた損失
+                $totalLossCount = (int)floor($count * $attackerHpLossRate);
+                $deaths = (int)floor($totalLossCount * CONQUEST_DEATH_RATE / (CONQUEST_DEATH_RATE + CONQUEST_WOUNDED_RATE));
+                $wounded = $totalLossCount - $deaths;
+            }
             
             if ($deaths > 0) {
                 $attackerLosses[$troopTypeId] = $deaths;
@@ -1163,9 +1170,16 @@ if ($action === 'attack_castle') {
                 $troopTypeId = $troop['troop_type_id'];
                 $count = $troop['count'];
                 
-                $totalLossCount = (int)floor($count * $defenderHpLossRate);
-                $deaths = (int)floor($totalLossCount * CONQUEST_DEATH_RATE / (CONQUEST_DEATH_RATE + CONQUEST_WOUNDED_RATE));
-                $wounded = $totalLossCount - $deaths;
+                // ② 使い捨てユニットは全員死亡扱い
+                if (!empty($troop['is_disposable'])) {
+                    $deaths = $count;
+                    $wounded = 0;
+                    $totalLossCount = $count;
+                } else {
+                    $totalLossCount = (int)floor($count * $defenderHpLossRate);
+                    $deaths = (int)floor($totalLossCount * CONQUEST_DEATH_RATE / (CONQUEST_DEATH_RATE + CONQUEST_WOUNDED_RATE));
+                    $wounded = $totalLossCount - $deaths;
+                }
                 
                 if ($deaths > 0) {
                     $defenderLosses[$troopTypeId] = $deaths;

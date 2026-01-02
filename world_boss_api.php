@@ -665,10 +665,17 @@ if ($action === 'attack_boss') {
             $troopTypeId = $troop['troop_type_id'];
             $count = $troop['count'];
             
-            // HPの減少率に応じた損失（死亡+負傷）、最大でも投入数まで
-            $totalLossCount = min($count, (int)floor($count * $attackerHpLossRate));
-            $deaths = (int)floor($totalLossCount * WORLD_BOSS_DEATH_RATE / (WORLD_BOSS_DEATH_RATE + WORLD_BOSS_WOUNDED_RATE));
-            $wounded = $totalLossCount - $deaths;
+            // ② 使い捨てユニットは全員死亡扱い
+            if (!empty($troop['is_disposable'])) {
+                $deaths = $count;
+                $wounded = 0;
+                $totalLossCount = $count;
+            } else {
+                // HPの減少率に応じた損失（死亡+負傷）、最大でも投入数まで
+                $totalLossCount = min($count, (int)floor($count * $attackerHpLossRate));
+                $deaths = (int)floor($totalLossCount * WORLD_BOSS_DEATH_RATE / (WORLD_BOSS_DEATH_RATE + WORLD_BOSS_WOUNDED_RATE));
+                $wounded = $totalLossCount - $deaths;
+            }
             
             if ($deaths > 0) {
                 $attackerLosses[$troopTypeId] = $deaths;

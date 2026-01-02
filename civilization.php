@@ -1242,6 +1242,48 @@ function getResourceName(key) {
     return RESOURCE_KEY_TO_NAME[key] || key;
 }
 
+// ③ 設定保持用のlocalStorageキー
+const DEPLOYMENT_SETTINGS_KEY = 'minibird_deployment_settings';
+
+// ③ 設定を保存
+function saveDeploymentSettings(type) {
+    const excludeDisposable = document.getElementById(`${type}-exclude-disposable`)?.checked || false;
+    const excludeNuclear = document.getElementById(`${type}-exclude-nuclear`)?.checked || false;
+    const prioritizeStealth = document.getElementById(`${type}-prioritize-stealth`)?.checked || false;
+    const keepSettings = document.getElementById(`${type}-keep-settings`)?.checked || false;
+    
+    const settings = JSON.parse(localStorage.getItem(DEPLOYMENT_SETTINGS_KEY) || '{}');
+    settings[type] = {
+        excludeDisposable,
+        excludeNuclear,
+        prioritizeStealth,
+        keepSettings
+    };
+    localStorage.setItem(DEPLOYMENT_SETTINGS_KEY, JSON.stringify(settings));
+}
+
+// ③ 設定を読み込み
+function loadDeploymentSettings(type) {
+    const settings = JSON.parse(localStorage.getItem(DEPLOYMENT_SETTINGS_KEY) || '{}');
+    return settings[type] || { excludeDisposable: false, excludeNuclear: false, prioritizeStealth: false, keepSettings: false };
+}
+
+// ③ 保存された設定をチェックボックスに適用
+function applyDeploymentSettings(type) {
+    const settings = loadDeploymentSettings(type);
+    if (!settings.keepSettings) return; // 設定保持が無効なら適用しない
+    
+    const excludeDisposable = document.getElementById(`${type}-exclude-disposable`);
+    const excludeNuclear = document.getElementById(`${type}-exclude-nuclear`);
+    const prioritizeStealth = document.getElementById(`${type}-prioritize-stealth`);
+    const keepSettings = document.getElementById(`${type}-keep-settings`);
+    
+    if (excludeDisposable) excludeDisposable.checked = settings.excludeDisposable;
+    if (excludeNuclear) excludeNuclear.checked = settings.excludeNuclear;
+    if (prioritizeStealth) prioritizeStealth.checked = settings.prioritizeStealth;
+    if (keepSettings) keepSettings.checked = settings.keepSettings;
+}
+
 let civData = null;
 let currentTab = 'buildings'; // 現在のアクティブタブを保持
 let selectedAttackTarget = null; // 攻撃対象のユーザーID
@@ -1390,16 +1432,20 @@ async function loadAttackTroops() {
                 </div>
                 <div style="display: flex; gap: 10px; margin-bottom: 10px; padding: 6px; background: rgba(0,0,0,0.15); border-radius: 4px; font-size: 11px; flex-wrap: wrap;">
                     <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ddd;">
-                        <input type="checkbox" id="war-exclude-disposable" style="cursor: pointer;">
+                        <input type="checkbox" id="war-exclude-disposable" onchange="saveDeploymentSettings('war')" style="cursor: pointer;">
                         <span>🗑️ 使い捨てを除外</span>
                     </label>
                     <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ddd;">
-                        <input type="checkbox" id="war-exclude-nuclear" style="cursor: pointer;">
+                        <input type="checkbox" id="war-exclude-nuclear" onchange="saveDeploymentSettings('war')" style="cursor: pointer;">
                         <span>☢️ 核ユニットを除外</span>
                     </label>
                     <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ddd;">
-                        <input type="checkbox" id="war-prioritize-stealth" style="cursor: pointer;">
+                        <input type="checkbox" id="war-prioritize-stealth" onchange="saveDeploymentSettings('war')" style="cursor: pointer;">
                         <span>🥷 ステルスを優先</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ffd700; border-left: 1px solid #555; padding-left: 10px; margin-left: 5px;">
+                        <input type="checkbox" id="war-keep-settings" onchange="saveDeploymentSettings('war')" style="cursor: pointer;">
+                        <span>💾 設定を保持</span>
                     </label>
                 </div>
             ` + userTroops.map(troop => `
@@ -1426,6 +1472,8 @@ async function loadAttackTroops() {
             `).join('');
             
             updateAttackPowerDisplay();
+            // ③ 保存された設定を適用
+            setTimeout(() => applyDeploymentSettings('war'), 0);
         } else {
             container.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">兵士がいません。兵士タブで兵士を訓練してください。</p>';
         }
@@ -6157,16 +6205,20 @@ async function loadPortalBossTroops() {
                 </div>
                 <div style="display: flex; gap: 10px; margin-bottom: 10px; padding: 6px; background: rgba(0,0,0,0.15); border-radius: 4px; font-size: 11px; flex-wrap: wrap;">
                     <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ddd;">
-                        <input type="checkbox" id="war-exclude-disposable" style="cursor: pointer;">
+                        <input type="checkbox" id="war-exclude-disposable" onchange="saveDeploymentSettings('war')" style="cursor: pointer;">
                         <span>🗑️ 使い捨てを除外</span>
                     </label>
                     <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ddd;">
-                        <input type="checkbox" id="war-exclude-nuclear" style="cursor: pointer;">
+                        <input type="checkbox" id="war-exclude-nuclear" onchange="saveDeploymentSettings('war')" style="cursor: pointer;">
                         <span>☢️ 核ユニットを除外</span>
                     </label>
                     <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ddd;">
-                        <input type="checkbox" id="war-prioritize-stealth" style="cursor: pointer;">
+                        <input type="checkbox" id="war-prioritize-stealth" onchange="saveDeploymentSettings('war')" style="cursor: pointer;">
                         <span>🥷 ステルスを優先</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 3px; cursor: pointer; color: #ffd700; border-left: 1px solid #555; padding-left: 10px; margin-left: 5px;">
+                        <input type="checkbox" id="war-keep-settings" onchange="saveDeploymentSettings('war')" style="cursor: pointer;">
+                        <span>💾 設定を保持</span>
                     </label>
                 </div>
             ` + userTroops.map(troop => `
@@ -6193,6 +6245,8 @@ async function loadPortalBossTroops() {
             `).join('');
             
             updateAttackPowerDisplay();
+            // ③ 保存された設定を適用
+            setTimeout(() => applyDeploymentSettings('war'), 0);
         } else {
             container.innerHTML = '<p style="color: #888; text-align: center; padding: 20px;">兵士がいません。兵士タブで兵士を訓練してください。</p>';
         }
