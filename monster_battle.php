@@ -1012,7 +1012,10 @@ function filterWorldBosses(filter) {
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    document.querySelector(`.filter-btn[data-filter="${filter}"]`).classList.add('active');
+    const activeBtn = document.querySelector(`.filter-btn[data-filter="${filter}"]`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+    }
     
     // ボス一覧を再読み込み
     loadWorldBosses();
