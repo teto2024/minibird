@@ -238,22 +238,39 @@ function distributeWorldBossRewards($pdo, $instanceId, $isDefeated) {
 if ($action === 'get_bosses') {
     try {
         $userLevel = getWorldBossUserLevel($pdo, $me['id']);
+        $filterLabel = $input['filter_label'] ?? null;
+        
+        // フィルターラベルのバリデーション
+        $allowedFilters = ['veteran', 'normal', null];
+        if (!in_array($filterLabel, $allowedFilters, true)) {
+            throw new Exception('不正なフィルターです');
+        }
         
         // 期限切れのボスを処理
         processExpiredWorldBosses($pdo);
         
         // 召喚可能なボスを取得（ユーザーレベル以下のボス）
-        $stmt = $pdo->prepare("
-            SELECT * FROM world_bosses 
-            WHERE min_user_level <= ?
-            ORDER BY boss_level ASC
-        ");
-        $stmt->execute([$userLevel]);
+        $sql = "SELECT * FROM world_bosses WHERE min_user_level <= ?";
+        $params = [$userLevel];
+        
+        // ベテランボスフィルター
+        if ($filterLabel === 'veteran') {
+            $sql .= " AND labels LIKE ?";
+            $params[] = '%ベテラン%';
+        } elseif ($filterLabel === 'normal') {
+            $sql .= " AND (labels IS NULL OR labels NOT LIKE ?)";
+            $params[] = '%ベテラン%';
+        }
+        
+        $sql .= " ORDER BY boss_level ASC";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
         $bosses = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // アクティブなインスタンスを取得
         $stmt = $pdo->query("
-            SELECT wbi.*, wb.name as boss_name, wb.icon as boss_icon, wb.boss_level,
+            SELECT wbi.*, wb.name as boss_name, wb.icon as boss_icon, wb.boss_level, wb.labels,
                    u.handle as summoner_handle,
                    TIMESTAMPDIFF(SECOND, NOW(), wbi.ends_at) as seconds_remaining
             FROM world_boss_instances wbi
@@ -268,7 +285,8 @@ if ($action === 'get_bosses') {
             'ok' => true,
             'bosses' => $bosses,
             'active_instances' => $activeInstances,
-            'user_level' => $userLevel
+            'user_level' => $userLevel,
+            'filter_label' => $filterLabel
         ]);
     } catch (Exception $e) {
         echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
@@ -406,7 +424,7 @@ if ($action === 'get_boss_detail') {
         // インスタンス情報を取得
         $stmt = $pdo->prepare("
             SELECT wbi.*, wb.name as boss_name, wb.icon as boss_icon, wb.boss_level,
-                   wb.base_attack, wb.base_defense, wb.description,
+                   wb.base_attack, wb.base_defense, wb.description, wb.labels,
                    u.handle as summoner_handle, u.display_name as summoner_name,
                    TIMESTAMPDIFF(SECOND, NOW(), wbi.ends_at) as seconds_remaining
             FROM world_boss_instances wbi
