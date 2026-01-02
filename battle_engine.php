@@ -19,17 +19,42 @@ define('BATTLE_DOT_BASE_HEALTH', 1000);              // 継続ダメージ計算
 define('BATTLE_DOT_SCALING_FACTOR', 0.3);            // 継続ダメージのスケーリング係数（0.3 = 30%）
 define('BATTLE_MAX_NEW_SKILL_ACTIVATIONS', 3);      // ① 1ターンに新たに発動可能なスキルの最大数
 
-// ③ ヒーロースキルシステム定数（見直し：発動率を下げ、ダメージ上限を設定）
+// ③ ヒーロースキルシステム定数（見直し：発動率を下げ、ダメージ上限を動的に設定）
 define('HERO_SKILL_BASE_ACTIVATION_CHANCE', 15);     // ③ ヒーロースキル基本発動率（%）30→15に減少
 define('HERO_SKILL_STAR_BONUS_CHANCE', 2);           // ③ 星レベルごとの発動率ボーナス（%）5→2に減少
 define('HERO_SKILL_2ND_BASE_ACTIVATION_CHANCE', 10); // ③ 2番目のスキルの基本発動率（%）20→10に減少
 define('HERO_SKILL_2ND_STAR_BONUS_CHANCE', 1);       // ③ 2番目のスキルの星レベルごとのボーナス（%）3→1に減少
 define('HERO_SKILL_STAR_EFFECT_BONUS', 0.05);        // ③ 星レベルごとの効果ボーナス（10%→5%に減少）
-define('HERO_SKILL_MAX_DAMAGE_CAP', 5000);           // ③ ヒーロースキルの最大ダメージ上限
 define('HERO_SKILL_DAMAGE_RATIO_CAP', 0.3);          // ③ ヒーロースキルダメージの敵HP比率上限（30%）
+define('HERO_SKILL_ATTACKER_POWER_MULTIPLIER', 3.0); // ③ 攻撃者の戦力に基づくダメージ上限倍率
+define('HERO_SKILL_MIN_DAMAGE_CAP', 500);            // ③ ダメージ上限の最低保証値
 define('HERO_STAR_ATTACK_BONUS', 5);                 // 星レベルごとの攻撃力ボーナス
 define('HERO_STAR_ARMOR_BONUS', 3);                  // 星レベルごとの防御力ボーナス
 define('HERO_STAR_HEALTH_BONUS', 50);                // 星レベルごとの体力ボーナス
+
+/**
+ * ③ ヒーロースキルのダメージ上限を動的に計算
+ * 攻撃者の戦力と敵HPに基づいてダメージ上限を決定
+ * 
+ * @param array $attacker 攻撃者のステータス
+ * @param array $defender 防御者のステータス
+ * @return int ダメージ上限
+ */
+function calculateHeroSkillDamageCap($attacker, $defender) {
+    // 攻撃者の戦力に基づく上限（攻撃力 × 倍率）
+    $attackerBasedCap = (int)floor($attacker['attack'] * HERO_SKILL_ATTACKER_POWER_MULTIPLIER);
+    
+    // 敵HPに基づく上限（最大HPの30%）
+    $defenderHpCap = HERO_SKILL_MIN_DAMAGE_CAP;
+    if (isset($defender['max_health']) && $defender['max_health'] > 0) {
+        $defenderHpCap = (int)floor($defender['max_health'] * HERO_SKILL_DAMAGE_RATIO_CAP);
+    }
+    
+    // 両方の上限の高い方を採用（ただし最低保証値は確保）
+    $dynamicCap = max($attackerBasedCap, $defenderHpCap);
+    
+    return max($dynamicCap, HERO_SKILL_MIN_DAMAGE_CAP);
+}
 
 /**
  * 特殊スキル情報を取得
@@ -246,16 +271,12 @@ function processHeroSkillEffect($skill, $attacker, $defender) {
     $skillName = $skill['skill_name'];
     $icon = $skill['skill_icon'];
     
-    // ③ ダメージ系スキル（ダメージ上限を適用）
+    // ③ ダメージ系スキル（動的ダメージ上限を適用）
     if (isset($effectData['damage_multiplier'])) {
         $damage = (int)floor($attacker['attack'] * $effectData['damage_multiplier'] * $multiplier);
         
-        // ③ ダメージ上限を適用（固定上限と敵HP比率上限の低い方）
-        $maxDamage = HERO_SKILL_MAX_DAMAGE_CAP;
-        if (isset($defender['max_health'])) {
-            $hpBasedCap = (int)floor($defender['max_health'] * HERO_SKILL_DAMAGE_RATIO_CAP);
-            $maxDamage = min($maxDamage, max($hpBasedCap, 500)); // 最低500ダメージは保証
-        }
+        // ③ 動的ダメージ上限を適用（攻撃者の戦力と敵HPに基づく）
+        $maxDamage = calculateHeroSkillDamageCap($attacker, $defender);
         $damage = min($damage, $maxDamage);
         
         // 連続攻撃（hit_count）
@@ -412,22 +433,24 @@ function processHeroSkillEffect($skill, $attacker, $defender) {
         $result['messages'][] = "{$icon} {$skillName}発動！敵を{$stunDuration}ターン気絶させた！";
     }
     
-    // ③ 即死（ダメージ上限を適用）
+    // ③ 即死（動的ダメージ上限を適用）
     if (isset($effectData['instant_kill_chance'])) {
         if (mt_rand(1, 100) <= $effectData['instant_kill_chance']) {
-            // 即死の場合は敵HP比率上限の2倍まで（ただし固定上限以下）
+            // 即死の場合は通常上限の2倍まで
             $instantKillDamage = $defender['current_health'];
-            $maxInstantDamage = min(HERO_SKILL_MAX_DAMAGE_CAP * 2, (int)floor($defender['max_health'] * HERO_SKILL_DAMAGE_RATIO_CAP * 2));
+            $baseCap = calculateHeroSkillDamageCap($attacker, $defender);
+            $maxInstantDamage = $baseCap * 2;
             $result['damage'] = min($instantKillDamage, max($maxInstantDamage, 1000));
             $result['messages'][] = "{$icon} {$skillName}発動！即死攻撃成功！";
         }
     }
     
-    // ③ 半壊（シャドウアサシン弱体化: 20%で敵HPを半分にする、ダメージ上限適用）
+    // ③ 半壊（シャドウアサシン弱体化: 20%で敵HPを半分にする、動的ダメージ上限適用）
     if (isset($effectData['half_kill_chance'])) {
         if (mt_rand(1, 100) <= $effectData['half_kill_chance']) {
             $halfDamage = (int)floor($defender['current_health'] / 2);
-            $maxHalfDamage = min(HERO_SKILL_MAX_DAMAGE_CAP, (int)floor($defender['max_health'] * HERO_SKILL_DAMAGE_RATIO_CAP * 1.5));
+            $baseCap = calculateHeroSkillDamageCap($attacker, $defender);
+            $maxHalfDamage = (int)floor($baseCap * 1.5);
             $result['damage'] = min($halfDamage, max($maxHalfDamage, 500));
             $result['messages'][] = "{$icon} {$skillName}発動！半壊攻撃成功！敵のHPを半分に！";
         }
