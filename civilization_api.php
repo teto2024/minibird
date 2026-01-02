@@ -127,6 +127,10 @@ define('CIV_INSTANT_DIAMOND_MIN_COST', 1);        // ダイヤモンド即完了
 // 出撃兵士数上限システム定数
 define('CIV_BASE_TROOP_DEPLOYMENT_LIMIT', 100);   // 基本出撃兵士数上限
 
+// ③④ 治療資源要求の時代閾値
+define('CIV_HEAL_MEDICINE_ERA_THRESHOLD', 4);     // 医薬品が必要になる時代閾値
+define('CIV_HEAL_BANDAGE_ERA_THRESHOLD', 6);      // 包帯が必要になる時代閾値
+
 // 訓練・治療時の追加資源消費（微量）
 // 布、薬草、馬、ガラス、石油、医薬品、硫黄、石炭を消費する機会を設ける
 $TRAINING_SUPPLEMENTARY_COSTS = [
@@ -754,12 +758,12 @@ function checkHealingResourcesAvailableForTroop($pdo, $userId, $troopTypeId, $co
     $healingCosts['herbs'] = ['divisor' => 5, 'amount' => 1];
     
     // 時代4以降は医薬品が必要（10体ごとに2）
-    if ($eraId >= 4) {
+    if ($eraId >= CIV_HEAL_MEDICINE_ERA_THRESHOLD) {
         $healingCosts['medicine'] = ['divisor' => 10, 'amount' => 2];
     }
     
     // 時代6以降で歩兵・騎兵・遠距離は包帯も必要（10体ごとに1）
-    if ($eraId >= 6 && in_array($category, ['infantry', 'cavalry', 'ranged'])) {
+    if ($eraId >= CIV_HEAL_BANDAGE_ERA_THRESHOLD && in_array($category, ['infantry', 'cavalry', 'ranged'])) {
         $healingCosts['bandages'] = ['divisor' => 10, 'amount' => 1];
     }
     
@@ -887,12 +891,12 @@ function consumeHealingSupplementaryResourcesForTroop($pdo, $userId, $troopTypeI
     $healingCosts['herbs'] = ['divisor' => 5, 'amount' => 1];
     
     // 時代4以降は医薬品が必要（10体ごとに2）
-    if ($eraId >= 4) {
+    if ($eraId >= CIV_HEAL_MEDICINE_ERA_THRESHOLD) {
         $healingCosts['medicine'] = ['divisor' => 10, 'amount' => 2];
     }
     
     // 時代6以降で歩兵・騎兵・遠距離は包帯も必要（10体ごとに1）
-    if ($eraId >= 6 && in_array($category, ['infantry', 'cavalry', 'ranged'])) {
+    if ($eraId >= CIV_HEAL_BANDAGE_ERA_THRESHOLD && in_array($category, ['infantry', 'cavalry', 'ranged'])) {
         $healingCosts['bandages'] = ['divisor' => 10, 'amount' => 1];
     }
     
