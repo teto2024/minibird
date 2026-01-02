@@ -475,6 +475,20 @@ $RARITY_NAMES = [
     
     <!-- ヒーロー一覧タブ -->
     <div class="tab-content active" id="tab-heroes">
+        <div class="info-box" style="margin-bottom: 20px; background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 170, 0, 0.2) 100%); border: 2px solid #ffd700; border-radius: 10px; padding: 20px;">
+            <h3 style="color: #ffd700; margin: 0 0 10px 0;">⭐ ヒーローのスターレベル効果</h3>
+            <p style="color: #f5deb3; margin: 5px 0;">ヒーローの星を上げることで以下の効果が得られます：</p>
+            <ul style="color: #f5deb3; margin: 10px 0; padding-left: 20px;">
+                <li><strong>スキル発動率UP</strong>：基本15% + 星レベル×2%（最大8★で31%）</li>
+                <li><strong>スキル効果UP</strong>：1★から増加毎に+5%（8★で基本効果の135%）</li>
+                <li><strong>攻撃力ボーナス</strong>：星レベル×50（8★で+400攻撃力）</li>
+                <li><strong>防御力ボーナス</strong>：星レベル×30（8★で+240防御力）</li>
+                <li><strong>体力ボーナス</strong>：星レベル×500（8★で+4000体力）</li>
+            </ul>
+            <p style="color: #87ceeb; margin: 10px 0 0 0; font-size: 14px;">
+                💡 スターアップには対応するヒーローの欠片が必要です。ガチャで欠片を集めましょう！
+            </p>
+        </div>
         <div class="hero-grid">
             <?php foreach ($heroes as $hero): 
                 $isUnlocked = $hero['user_star_level'] > 0;
@@ -523,6 +537,18 @@ $RARITY_NAMES = [
                         <div class="skill-name">🏛️ <?= htmlspecialchars($hero['passive_skill_name']) ?></div>
                         <div class="skill-desc"><?= htmlspecialchars($hero['passive_skill_desc']) ?></div>
                     </div>
+                    <?php if ($isUnlocked): ?>
+                    <div class="skill-item" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div class="skill-name" style="color: #ffd700;">⭐ スターレベル効果 (★<?= $starLevel ?>)</div>
+                        <div class="skill-desc" style="font-size: 11px;">
+                            • スキル発動率: <?= 15 + $starLevel * 2 ?>%<br>
+                            • スキル効果倍率: <?= 100 + ($starLevel - 1) * 5 ?>%<br>
+                            • 攻撃力: +<?= $starLevel * 50 ?><br>
+                            • 防御力: +<?= $starLevel * 30 ?><br>
+                            • 体力: +<?= $starLevel * 500 ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                 </div>
                 
                 <div class="hero-actions">

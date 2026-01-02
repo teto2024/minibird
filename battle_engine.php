@@ -26,13 +26,14 @@ define('HERO_SKILL_2ND_BASE_ACTIVATION_CHANCE', 10); // ③ 2番目のスキル�
 define('HERO_SKILL_2ND_STAR_BONUS_CHANCE', 1);       // ③ 2番目のスキルの星レベルごとのボーナス（%）3→1に減少
 define('HERO_SKILL_STAR_EFFECT_BONUS', 0.05);        // ③ 星レベルごとの効果ボーナス（10%→5%に減少）
 define('HERO_SKILL_DAMAGE_RATIO_CAP', 0.3);          // ③ ヒーロースキルダメージの敵HP比率上限（30%）
-define('HERO_SKILL_ATTACKER_POWER_MULTIPLIER', 3.0); // ③ 攻撃者の戦力に基づくダメージ上限倍率
+define('HERO_SKILL_ATTACKER_POWER_MULTIPLIER', 1.75); // ③ 攻撃者の戦力に基づくダメージ上限倍率
 define('HERO_SKILL_MIN_DAMAGE_CAP', 500);            // ③ ダメージ上限の最低保証値
 define('HERO_SKILL_HEAL_RATIO_CAP', 0.3);            // ⑦ 回復量の最大HP比率上限（30%）
 define('HERO_SKILL_MIN_HEAL_CAP', 100);              // ⑦ 回復量の最低保証値
-define('HERO_STAR_ATTACK_BONUS', 5);                 // 星レベルごとの攻撃力ボーナス
-define('HERO_STAR_ARMOR_BONUS', 3);                  // 星レベルごとの防御力ボーナス
-define('HERO_STAR_HEALTH_BONUS', 50);                // 星レベルごとの体力ボーナス
+define('HERO_STAR_ATTACK_BONUS', 50
+);                 // 星レベルごとの攻撃力ボーナス
+define('HERO_STAR_ARMOR_BONUS', 30);                  // 星レベルごとの防御力ボーナス
+define('HERO_STAR_HEALTH_BONUS', 500);                // 星レベルごとの体力ボーナス
 
 /**
  * ③⑥ ヒーロースキルのダメージ上限を動的に計算
