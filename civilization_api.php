@@ -147,6 +147,258 @@ $HEALING_SUPPLEMENTARY_COSTS = [
     'medicine' => 2    // 医薬品：2 per 10 troops
 ];
 
+/**
+ * 建物の複数前提条件をチェック
+ * @param PDO $pdo
+ * @param int $userId
+ * @param int $buildingTypeId
+ * @param array $userBuildings ユーザーの建物配列
+ * @param array $userResearches ユーザーの研究配列
+ * @return array ['met' => bool, 'missing' => array]
+ */
+function checkBuildingPrerequisites($pdo, $userId, $buildingTypeId, $userBuildings, $userResearches) {
+    // 複数前提条件テーブルから取得
+    $stmt = $pdo->prepare("
+        SELECT bp.prerequisite_building_id, bp.prerequisite_research_id, bp.is_required,
+               b.name as building_name, r.name as research_name
+        FROM civilization_building_prerequisites bp
+        LEFT JOIN civilization_building_types b ON bp.prerequisite_building_id = b.id
+        LEFT JOIN civilization_researches r ON bp.prerequisite_research_id = r.id
+        WHERE bp.building_type_id = ?
+    ");
+    $stmt->execute([$buildingTypeId]);
+    $prerequisites = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    if (empty($prerequisites)) {
+        return ['met' => true, 'missing' => []];
+    }
+    
+    $requiredMissing = [];
+    $optionalMissing = [];
+    $hasOptionalMet = false;
+    
+    foreach ($prerequisites as $prereq) {
+        $isMet = false;
+        
+        // 建物前提条件チェック
+        if ($prereq['prerequisite_building_id']) {
+            foreach ($userBuildings as $ub) {
+                if ($ub['building_type_id'] == $prereq['prerequisite_building_id'] && !$ub['is_constructing']) {
+                    $isMet = true;
+                    break;
+                }
+            }
+        }
+        
+        // 研究前提条件チェック
+        if ($prereq['prerequisite_research_id'] && !$isMet) {
+            foreach ($userResearches as $ur) {
+                if ($ur['research_id'] == $prereq['prerequisite_research_id'] && $ur['is_completed']) {
+                    $isMet = true;
+                    break;
+                }
+            }
+        }
+        
+        // 必須条件（AND）の場合
+        if ($prereq['is_required']) {
+            if (!$isMet) {
+                $name = $prereq['building_name'] ?: $prereq['research_name'] ?: '不明';
+                $icon = $prereq['building_name'] ? '🏗️' : '📚';
+                $requiredMissing[] = "{$icon} {$name}";
+            }
+        } else {
+            // オプション条件（OR）の場合
+            if ($isMet) {
+                $hasOptionalMet = true;
+            } else {
+                $name = $prereq['building_name'] ?: $prereq['research_name'] ?: '不明';
+                $icon = $prereq['building_name'] ? '🏗️' : '📚';
+                $optionalMissing[] = "{$icon} {$name}";
+            }
+        }
+    }
+    
+    // オプション条件がある場合、1つでも満たしていればOK
+    $optionalCheck = empty($optionalMissing) || $hasOptionalMet;
+    
+    $allMet = empty($requiredMissing) && $optionalCheck;
+    $missing = $requiredMissing;
+    if (!$hasOptionalMet && !empty($optionalMissing)) {
+        $missing[] = "いずれか: " . implode(' または ', $optionalMissing);
+    }
+    
+    return ['met' => $allMet, 'missing' => $missing];
+}
+
+/**
+ * 兵種の複数前提条件をチェック
+ * @param PDO $pdo
+ * @param int $userId
+ * @param int $troopTypeId
+ * @return array ['met' => bool, 'missing' => array]
+ */
+function checkTroopPrerequisites($pdo, $userId, $troopTypeId) {
+    $stmt = $pdo->prepare("
+        SELECT tp.prerequisite_building_id, tp.prerequisite_research_id, tp.is_required,
+               b.name as building_name, r.name as research_name
+        FROM civilization_troop_prerequisites tp
+        LEFT JOIN civilization_building_types b ON tp.prerequisite_building_id = b.id
+        LEFT JOIN civilization_researches r ON tp.prerequisite_research_id = r.id
+        WHERE tp.troop_type_id = ?
+    ");
+    $stmt->execute([$troopTypeId]);
+    $prerequisites = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    if (empty($prerequisites)) {
+        return ['met' => true, 'missing' => []];
+    }
+    
+    $requiredMissing = [];
+    $optionalMissing = [];
+    $hasOptionalMet = false;
+    
+    foreach ($prerequisites as $prereq) {
+        $isMet = false;
+        
+        // 建物前提条件チェック
+        if ($prereq['prerequisite_building_id']) {
+            $stmt = $pdo->prepare("
+                SELECT COUNT(*) FROM user_civilization_buildings 
+                WHERE user_id = ? AND building_type_id = ? AND is_constructing = FALSE
+            ");
+            $stmt->execute([$userId, $prereq['prerequisite_building_id']]);
+            if ((int)$stmt->fetchColumn() > 0) {
+                $isMet = true;
+            }
+        }
+        
+        // 研究前提条件チェック
+        if ($prereq['prerequisite_research_id'] && !$isMet) {
+            $stmt = $pdo->prepare("
+                SELECT COUNT(*) FROM user_civilization_researches 
+                WHERE user_id = ? AND research_id = ? AND is_completed = TRUE
+            ");
+            $stmt->execute([$userId, $prereq['prerequisite_research_id']]);
+            if ((int)$stmt->fetchColumn() > 0) {
+                $isMet = true;
+            }
+        }
+        
+        if ($prereq['is_required']) {
+            if (!$isMet) {
+                $name = $prereq['building_name'] ?: $prereq['research_name'] ?: '不明';
+                $icon = $prereq['building_name'] ? '🏗️' : '📚';
+                $requiredMissing[] = "{$icon} {$name}";
+            }
+        } else {
+            if ($isMet) {
+                $hasOptionalMet = true;
+            } else {
+                $name = $prereq['building_name'] ?: $prereq['research_name'] ?: '不明';
+                $icon = $prereq['building_name'] ? '🏗️' : '📚';
+                $optionalMissing[] = "{$icon} {$name}";
+            }
+        }
+    }
+    
+    $optionalCheck = empty($optionalMissing) || $hasOptionalMet;
+    $allMet = empty($requiredMissing) && $optionalCheck;
+    $missing = $requiredMissing;
+    if (!$hasOptionalMet && !empty($optionalMissing)) {
+        $missing[] = "いずれか: " . implode(' または ', $optionalMissing);
+    }
+    
+    return ['met' => $allMet, 'missing' => $missing];
+}
+
+/**
+ * 研究の複数前提条件をチェック
+ * @param PDO $pdo
+ * @param int $userId
+ * @param int $researchId
+ * @return array ['met' => bool, 'missing' => array]
+ */
+function checkResearchPrerequisites($pdo, $userId, $researchId) {
+    $stmt = $pdo->prepare("
+        SELECT rp.prerequisite_research_id, rp.is_required, r.name as research_name
+        FROM civilization_research_prerequisites rp
+        JOIN civilization_researches r ON rp.prerequisite_research_id = r.id
+        WHERE rp.research_id = ?
+    ");
+    $stmt->execute([$researchId]);
+    $prerequisites = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    if (empty($prerequisites)) {
+        return ['met' => true, 'missing' => []];
+    }
+    
+    $requiredMissing = [];
+    $optionalMissing = [];
+    $hasOptionalMet = false;
+    
+    foreach ($prerequisites as $prereq) {
+        $stmt = $pdo->prepare("
+            SELECT is_completed FROM user_civilization_researches 
+            WHERE user_id = ? AND research_id = ?
+        ");
+        $stmt->execute([$userId, $prereq['prerequisite_research_id']]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        $isMet = $result && $result['is_completed'];
+        
+        if ($prereq['is_required']) {
+            if (!$isMet) {
+                $requiredMissing[] = "📚 " . $prereq['research_name'];
+            }
+        } else {
+            if ($isMet) {
+                $hasOptionalMet = true;
+            } else {
+                $optionalMissing[] = "📚 " . $prereq['research_name'];
+            }
+        }
+    }
+    
+    $optionalCheck = empty($optionalMissing) || $hasOptionalMet;
+    $allMet = empty($requiredMissing) && $optionalCheck;
+    $missing = $requiredMissing;
+    if (!$hasOptionalMet && !empty($optionalMissing)) {
+        $missing[] = "いずれか: " . implode(' または ', $optionalMissing);
+    }
+    
+    return ['met' => $allMet, 'missing' => $missing];
+}
+
+/**
+ * 研究完了時に複数のアンロック対象を処理
+ * @param PDO $pdo
+ * @param int $userId
+ * @param int $researchId
+ */
+function unlockResearchTargets($pdo, $userId, $researchId) {
+    $stmt = $pdo->prepare("
+        SELECT unlock_building_id, unlock_resource_id
+        FROM civilization_research_unlocks
+        WHERE research_id = ?
+    ");
+    $stmt->execute([$researchId]);
+    $unlocks = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    foreach ($unlocks as $unlock) {
+        if ($unlock['unlock_resource_id']) {
+            $stmt = $pdo->prepare("
+                INSERT INTO user_civilization_resources (user_id, resource_type_id, amount, unlocked, unlocked_at)
+                VALUES (?, ?, 0, TRUE, NOW())
+                ON DUPLICATE KEY UPDATE unlocked = TRUE, unlocked_at = NOW()
+            ");
+            $stmt->execute([$userId, $unlock['unlock_resource_id']]);
+        }
+        
+        // 建物のアンロックは自動的に利用可能になるため、特別な処理は不要
+        // unlock_building_id は情報として保持されるのみ
+    }
+}
+
 // 資源価値の定義（市場交換レート計算用）
 // 値が高いほど価値が高い資源
 $RESOURCE_VALUES = [
@@ -1170,36 +1422,41 @@ if ($action === 'get_data') {
         
         // 各建物の前提条件を満たしているかチェック
         foreach ($availableBuildings as &$building) {
-            $building['can_build'] = true;
-            $building['missing_prerequisites'] = [];
+            // 複数前提条件をチェック
+            $prereqCheck = checkBuildingPrerequisites($pdo, $me['id'], $building['id'], $buildings, $userResearches);
+            $building['can_build'] = $prereqCheck['met'];
+            $building['missing_prerequisites'] = $prereqCheck['missing'];
             
-            // 前提建物チェック
-            if (!empty($building['prerequisite_building_id'])) {
-                $hasPrereq = false;
-                foreach ($buildings as $userBuilding) {
-                    if ($userBuilding['building_type_id'] == $building['prerequisite_building_id'] && !$userBuilding['is_constructing']) {
-                        $hasPrereq = true;
-                        break;
+            // 後方互換性: 単一前提条件もチェック（新テーブルにデータがない場合）
+            if ($prereqCheck['met'] && empty($prereqCheck['missing'])) {
+                // 前提建物チェック（レガシー）
+                if (!empty($building['prerequisite_building_id'])) {
+                    $hasPrereq = false;
+                    foreach ($buildings as $userBuilding) {
+                        if ($userBuilding['building_type_id'] == $building['prerequisite_building_id'] && !$userBuilding['is_constructing']) {
+                            $hasPrereq = true;
+                            break;
+                        }
+                    }
+                    if (!$hasPrereq) {
+                        $building['can_build'] = false;
+                        $building['missing_prerequisites'][] = "🏗️ " . ($building['prerequisite_building_name'] ?? '必要な建物');
                     }
                 }
-                if (!$hasPrereq) {
-                    $building['can_build'] = false;
-                    $building['missing_prerequisites'][] = "🏗️ " . ($building['prerequisite_building_name'] ?? '必要な建物');
-                }
-            }
-            
-            // 前提研究チェック
-            if (!empty($building['prerequisite_research_id'])) {
-                $hasPrereq = false;
-                foreach ($userResearches as $research) {
-                    if ($research['research_id'] == $building['prerequisite_research_id'] && $research['is_completed']) {
-                        $hasPrereq = true;
-                        break;
+                
+                // 前提研究チェック（レガシー）
+                if (!empty($building['prerequisite_research_id'])) {
+                    $hasPrereq = false;
+                    foreach ($userResearches as $research) {
+                        if ($research['research_id'] == $building['prerequisite_research_id'] && $research['is_completed']) {
+                            $hasPrereq = true;
+                            break;
+                        }
                     }
-                }
-                if (!$hasPrereq) {
-                    $building['can_build'] = false;
-                    $building['missing_prerequisites'][] = "📚 " . ($building['prerequisite_research_name'] ?? '必要な研究');
+                    if (!$hasPrereq) {
+                        $building['can_build'] = false;
+                        $building['missing_prerequisites'][] = "📚 " . ($building['prerequisite_research_name'] ?? '必要な研究');
+                    }
                 }
             }
         }
@@ -1350,39 +1607,63 @@ if ($action === 'build') {
             throw new Exception('この建物はまだ利用できません');
         }
         
-        // 前提建物チェック
-        if (!empty($buildingType['prerequisite_building_id'])) {
-            $stmt = $pdo->prepare("
-                SELECT COUNT(*) FROM user_civilization_buildings ucb
-                WHERE ucb.user_id = ? AND ucb.building_type_id = ? AND ucb.is_constructing = FALSE
-            ");
-            $stmt->execute([$me['id'], $buildingType['prerequisite_building_id']]);
-            $hasPrereqBuilding = (int)$stmt->fetchColumn() > 0;
-            
-            if (!$hasPrereqBuilding) {
-                // 前提建物名を取得
-                $stmt = $pdo->prepare("SELECT name FROM civilization_building_types WHERE id = ?");
-                $stmt->execute([$buildingType['prerequisite_building_id']]);
-                $prereqName = $stmt->fetchColumn() ?: '必要な建物';
-                throw new Exception("「{$prereqName}」を先に建設してください");
-            }
+        // 前提条件チェック（複数前提条件対応）
+        $userBuildings = [];
+        $stmt = $pdo->prepare("SELECT building_type_id, is_constructing FROM user_civilization_buildings WHERE user_id = ?");
+        $stmt->execute([$me['id']]);
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $userBuildings[] = $row;
         }
         
-        // 前提研究チェック
-        if (!empty($buildingType['prerequisite_research_id'])) {
-            $stmt = $pdo->prepare("
-                SELECT COUNT(*) FROM user_civilization_researches
-                WHERE user_id = ? AND research_id = ? AND is_completed = TRUE
-            ");
-            $stmt->execute([$me['id'], $buildingType['prerequisite_research_id']]);
-            $hasPrereqResearch = (int)$stmt->fetchColumn() > 0;
+        $userResearches = [];
+        $stmt = $pdo->prepare("SELECT research_id, is_completed FROM user_civilization_researches WHERE user_id = ?");
+        $stmt->execute([$me['id']]);
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $userResearches[] = $row;
+        }
+        
+        $prereqCheck = checkBuildingPrerequisites($pdo, $me['id'], $buildingType['id'], $userBuildings, $userResearches);
+        if (!$prereqCheck['met']) {
+            $missingList = implode(', ', $prereqCheck['missing']);
+            throw new Exception("前提条件を満たしていません: {$missingList}");
+        }
+        
+        // 後方互換性: レガシー単一前提条件チェック
+        if (empty($prereqCheck['missing'])) {
+            // 前提建物チェック
+            if (!empty($buildingType['prerequisite_building_id'])) {
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) FROM user_civilization_buildings ucb
+                    WHERE ucb.user_id = ? AND ucb.building_type_id = ? AND ucb.is_constructing = FALSE
+                ");
+                $stmt->execute([$me['id'], $buildingType['prerequisite_building_id']]);
+                $hasPrereqBuilding = (int)$stmt->fetchColumn() > 0;
+                
+                if (!$hasPrereqBuilding) {
+                    // 前提建物名を取得
+                    $stmt = $pdo->prepare("SELECT name FROM civilization_building_types WHERE id = ?");
+                    $stmt->execute([$buildingType['prerequisite_building_id']]);
+                    $prereqName = $stmt->fetchColumn() ?: '必要な建物';
+                    throw new Exception("「{$prereqName}」を先に建設してください");
+                }
+            }
             
-            if (!$hasPrereqResearch) {
-                // 前提研究名を取得
-                $stmt = $pdo->prepare("SELECT name FROM civilization_researches WHERE id = ?");
-                $stmt->execute([$buildingType['prerequisite_research_id']]);
-                $prereqName = $stmt->fetchColumn() ?: '必要な研究';
-                throw new Exception("「{$prereqName}」を先に研究してください");
+            // 前提研究チェック
+            if (!empty($buildingType['prerequisite_research_id'])) {
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) FROM user_civilization_researches
+                    WHERE user_id = ? AND research_id = ? AND is_completed = TRUE
+                ");
+                $stmt->execute([$me['id'], $buildingType['prerequisite_research_id']]);
+                $hasPrereqResearch = (int)$stmt->fetchColumn() > 0;
+                
+                if (!$hasPrereqResearch) {
+                    // 前提研究名を取得
+                    $stmt = $pdo->prepare("SELECT name FROM civilization_researches WHERE id = ?");
+                    $stmt->execute([$buildingType['prerequisite_research_id']]);
+                    $prereqName = $stmt->fetchColumn() ?: '必要な研究';
+                    throw new Exception("「{$prereqName}」を先に研究してください");
+                }
             }
         }
         
@@ -1493,8 +1774,15 @@ if ($action === 'research') {
             throw new Exception('この研究は既に進行中です');
         }
         
-        // 前提研究チェック
-        if ($research['prerequisite_research_id']) {
+        // 前提研究チェック（複数前提条件対応）
+        $prereqCheck = checkResearchPrerequisites($pdo, $me['id'], $researchId);
+        if (!$prereqCheck['met']) {
+            $missingList = implode(', ', $prereqCheck['missing']);
+            throw new Exception("前提研究が完了していません: {$missingList}");
+        }
+        
+        // 後方互換性: レガシー単一前提条件チェック
+        if (empty($prereqCheck['missing']) && $research['prerequisite_research_id']) {
             $stmt = $pdo->prepare("
                 SELECT is_completed 
                 FROM user_civilization_researches 
@@ -1568,7 +1856,10 @@ if ($action === 'complete_researches') {
             ");
             $stmt->execute([$research['id']]);
             
-            // 資源アンロック
+            // 複数アンロック対象を処理
+            unlockResearchTargets($pdo, $me['id'], $research['research_id']);
+            
+            // 後方互換性: レガシー単一アンロックチェック
             if ($research['unlock_resource_id']) {
                 $stmt = $pdo->prepare("
                     INSERT INTO user_civilization_resources (user_id, resource_type_id, amount, unlocked, unlocked_at)
@@ -1679,6 +1970,42 @@ if ($action === 'attack') {
     
     $pdo->beginTransaction();
     try {
+        // ⑦ 戦争レート制限チェック（1時間に3回まで）
+        // トランザクション内でチェックすることで、整合性を保証
+        $oneHourAgo = date('Y-m-d H:i:s', strtotime('-1 hour'));
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*) as attack_count 
+            FROM user_war_rate_limits 
+            WHERE user_id = ? AND attack_timestamp >= ?
+        ");
+        $stmt->execute([$me['id'], $oneHourAgo]);
+        $attackCount = (int)$stmt->fetchColumn();
+        
+        if ($attackCount >= 3) {
+            // 最も古い攻撃の時刻を取得して、次に攻撃可能な時刻を計算
+            $stmt = $pdo->prepare("
+                SELECT attack_timestamp 
+                FROM user_war_rate_limits 
+                WHERE user_id = ? AND attack_timestamp >= ?
+                ORDER BY attack_timestamp ASC
+                LIMIT 1
+            ");
+            $stmt->execute([$me['id'], $oneHourAgo]);
+            $oldestAttack = $stmt->fetchColumn();
+            $nextAvailable = date('Y-m-d H:i:s', strtotime($oldestAttack . ' +1 hour'));
+            $waitMinutes = max(0, ceil((strtotime($nextAvailable) - time()) / 60));
+            
+            $pdo->rollBack(); // トランザクションをロールバック
+            echo json_encode([
+                'ok' => false, 
+                'error' => "戦争は1時間に3回までです。次の攻撃まであと{$waitMinutes}分お待ちください。",
+                'rate_limited' => true,
+                'next_available' => $nextAvailable,
+                'wait_minutes' => $waitMinutes
+            ]);
+            exit;
+        }
+        
         // 攻撃者の文明
         $myCiv = getUserCivilization($pdo, $me['id']);
         
@@ -1782,6 +2109,13 @@ if ($action === 'attack') {
                 $stmt->execute([$lootCoins, $me['id']]);
             }
         }
+        
+        // 攻撃記録を保存（レート制限用）- 戦闘成功後に記録
+        $stmt = $pdo->prepare("
+            INSERT INTO user_war_rate_limits (user_id, target_user_id, attack_timestamp)
+            VALUES (?, ?, NOW())
+        ");
+        $stmt->execute([$me['id'], $targetUserId]);
         
         // 戦争ログを記録（詳細情報を含む）
         $stmt = $pdo->prepare("
@@ -2131,7 +2465,10 @@ if ($action === 'instant_complete_research') {
         ");
         $stmt->execute([$researchId]);
         
-        // 資源アンロック
+        // 複数アンロック対象を処理
+        unlockResearchTargets($pdo, $me['id'], $research['research_id']);
+        
+        // 後方互換性: レガシー単一アンロックチェック
         if ($research['unlock_resource_id']) {
             $stmt = $pdo->prepare("
                 INSERT INTO user_civilization_resources (user_id, resource_type_id, amount, unlocked, unlocked_at)
@@ -2187,39 +2524,49 @@ if ($action === 'train_troops') {
             throw new Exception('この兵種はまだ利用できません');
         }
         
-        // 前提建物チェック
-        if (!empty($troopType['prerequisite_building_id'])) {
-            $stmt = $pdo->prepare("
-                SELECT COUNT(*) FROM user_civilization_buildings ucb
-                WHERE ucb.user_id = ? AND ucb.building_type_id = ? AND ucb.is_constructing = FALSE
-            ");
-            $stmt->execute([$me['id'], $troopType['prerequisite_building_id']]);
-            $hasPrereqBuilding = (int)$stmt->fetchColumn() > 0;
-            
-            if (!$hasPrereqBuilding) {
-                // 前提建物名を取得
-                $stmt = $pdo->prepare("SELECT name FROM civilization_building_types WHERE id = ?");
-                $stmt->execute([$troopType['prerequisite_building_id']]);
-                $prereqName = $stmt->fetchColumn() ?: '必要な建物';
-                throw new Exception("「{$prereqName}」を先に建設してください");
-            }
+        // 前提条件チェック（複数前提条件対応）
+        $prereqCheck = checkTroopPrerequisites($pdo, $me['id'], $troopType['id']);
+        if (!$prereqCheck['met']) {
+            $missingList = implode(', ', $prereqCheck['missing']);
+            throw new Exception("前提条件を満たしていません: {$missingList}");
         }
         
-        // 前提研究チェック
-        if (!empty($troopType['prerequisite_research_id'])) {
-            $stmt = $pdo->prepare("
-                SELECT COUNT(*) FROM user_civilization_researches
-                WHERE user_id = ? AND research_id = ? AND is_completed = TRUE
-            ");
-            $stmt->execute([$me['id'], $troopType['prerequisite_research_id']]);
-            $hasPrereqResearch = (int)$stmt->fetchColumn() > 0;
+        // 後方互換性: レガシー単一前提条件チェック
+        if (empty($prereqCheck['missing'])) {
+            // 前提建物チェック
+            if (!empty($troopType['prerequisite_building_id'])) {
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) FROM user_civilization_buildings ucb
+                    WHERE ucb.user_id = ? AND ucb.building_type_id = ? AND ucb.is_constructing = FALSE
+                ");
+                $stmt->execute([$me['id'], $troopType['prerequisite_building_id']]);
+                $hasPrereqBuilding = (int)$stmt->fetchColumn() > 0;
+                
+                if (!$hasPrereqBuilding) {
+                    // 前提建物名を取得
+                    $stmt = $pdo->prepare("SELECT name FROM civilization_building_types WHERE id = ?");
+                    $stmt->execute([$troopType['prerequisite_building_id']]);
+                    $prereqName = $stmt->fetchColumn() ?: '必要な建物';
+                    throw new Exception("「{$prereqName}」を先に建設してください");
+                }
+            }
             
-            if (!$hasPrereqResearch) {
-                // 前提研究名を取得
-                $stmt = $pdo->prepare("SELECT name FROM civilization_researches WHERE id = ?");
-                $stmt->execute([$troopType['prerequisite_research_id']]);
-                $prereqName = $stmt->fetchColumn() ?: '必要な研究';
-                throw new Exception("「{$prereqName}」を先に研究してください");
+            // 前提研究チェック
+            if (!empty($troopType['prerequisite_research_id'])) {
+                $stmt = $pdo->prepare("
+                    SELECT COUNT(*) FROM user_civilization_researches
+                    WHERE user_id = ? AND research_id = ? AND is_completed = TRUE
+                ");
+                $stmt->execute([$me['id'], $troopType['prerequisite_research_id']]);
+                $hasPrereqResearch = (int)$stmt->fetchColumn() > 0;
+                
+                if (!$hasPrereqResearch) {
+                    // 前提研究名を取得
+                    $stmt = $pdo->prepare("SELECT name FROM civilization_researches WHERE id = ?");
+                    $stmt->execute([$troopType['prerequisite_research_id']]);
+                    $prereqName = $stmt->fetchColumn() ?: '必要な研究';
+                    throw new Exception("「{$prereqName}」を先に研究してください");
+                }
             }
         }
         
@@ -3905,7 +4252,10 @@ if ($action === 'instant_complete_research_diamond') {
         ");
         $stmt->execute([$researchId]);
         
-        // 資源アンロック
+        // 複数アンロック対象を処理
+        unlockResearchTargets($pdo, $me['id'], $research['research_id']);
+        
+        // 後方互換性: レガシー単一アンロックチェック
         if ($research['unlock_resource_id']) {
             $stmt = $pdo->prepare("
                 INSERT INTO user_civilization_resources (user_id, resource_type_id, amount, unlocked, unlocked_at)
