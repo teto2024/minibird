@@ -1927,6 +1927,10 @@ loadData();
 setInterval(() => {
     if (!isUserInteracting) {
         loadData();
+        // ランキングタブが表示されている場合はランキングも更新（リアルタイム表示）
+        if (currentTab === 'ranking') {
+            loadRanking();
+        }
     }
 }, 30000);
 
