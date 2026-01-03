@@ -8,6 +8,10 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/battle_engine.php';
 require_once __DIR__ . '/exp_system.php';
 
+// 戦争レート制限の定数
+define('WAR_RATE_LIMIT_MAX_ATTACKS', 3);  // 1時間あたりの最大攻撃回数
+define('WAR_RATE_LIMIT_WINDOW_HOURS', 1); // レート制限の時間枠（時間）
+
 /**
  * デイリータスクの進捗を更新（civilization_events_api.phpと同一ロジック）
  */
@@ -1975,7 +1979,7 @@ if ($action === 'attack') {
         // テーブルが存在しない場合はスキップ（後方互換性）
         $rateCheckPassed = false;
         try {
-            $oneHourAgo = date('Y-m-d H:i:s', strtotime('-1 hour'));
+            $oneHourAgo = date('Y-m-d H:i:s', strtotime('-' . WAR_RATE_LIMIT_WINDOW_HOURS . ' hour'));
             $stmt = $pdo->prepare("
                 SELECT COUNT(*) as attack_count 
                 FROM user_war_rate_limits 
@@ -1984,7 +1988,7 @@ if ($action === 'attack') {
             $stmt->execute([$me['id'], $oneHourAgo]);
             $attackCount = (int)$stmt->fetchColumn();
             
-            if ($attackCount >= 3) {
+            if ($attackCount >= WAR_RATE_LIMIT_MAX_ATTACKS) {
                 // 最も古い攻撃の時刻を取得して、次に攻撃可能な時刻を計算
                 $stmt = $pdo->prepare("
                     SELECT attack_timestamp 
@@ -1995,13 +1999,13 @@ if ($action === 'attack') {
                 ");
                 $stmt->execute([$me['id'], $oneHourAgo]);
                 $oldestAttack = $stmt->fetchColumn();
-                $nextAvailable = date('Y-m-d H:i:s', strtotime($oldestAttack . ' +1 hour'));
+                $nextAvailable = date('Y-m-d H:i:s', strtotime($oldestAttack . ' +' . WAR_RATE_LIMIT_WINDOW_HOURS . ' hour'));
                 $waitMinutes = max(0, ceil((strtotime($nextAvailable) - time()) / 60));
                 
                 $pdo->rollBack(); // トランザクションをロールバック
                 echo json_encode([
                     'ok' => false, 
-                    'error' => "戦争は1時間に3回までです。次の攻撃まであと{$waitMinutes}分お待ちください。",
+                    'error' => "戦争は1時間に" . WAR_RATE_LIMIT_MAX_ATTACKS . "回までです。次の攻撃まであと{$waitMinutes}分お待ちください。",
                     'rate_limited' => true,
                     'next_available' => $nextAvailable,
                     'wait_minutes' => $waitMinutes
@@ -2256,7 +2260,7 @@ if ($action === 'get_targets') {
 // 戦争レート制限の状態を取得
 if ($action === 'get_war_rate_limit_status') {
     try {
-        $oneHourAgo = date('Y-m-d H:i:s', strtotime('-1 hour'));
+        $oneHourAgo = date('Y-m-d H:i:s', strtotime('-' . WAR_RATE_LIMIT_WINDOW_HOURS . ' hour'));
         
         // 過去1時間以内の攻撃回数と攻撃時刻を取得
         $stmt = $pdo->prepare("
@@ -2269,8 +2273,8 @@ if ($action === 'get_war_rate_limit_status') {
         $attacks = $stmt->fetchAll(PDO::FETCH_COLUMN);
         
         $attackCount = count($attacks);
-        $remainingAttacks = max(0, 3 - $attackCount);
-        $isLimited = $attackCount >= 3;
+        $remainingAttacks = max(0, WAR_RATE_LIMIT_MAX_ATTACKS - $attackCount);
+        $isLimited = $attackCount >= WAR_RATE_LIMIT_MAX_ATTACKS;
         
         $nextAvailable = null;
         $waitSeconds = 0;
@@ -2278,14 +2282,14 @@ if ($action === 'get_war_rate_limit_status') {
         if ($isLimited && !empty($attacks)) {
             // 最も古い攻撃の1時間後が次の利用可能時刻
             $oldestAttack = $attacks[0];
-            $nextAvailable = date('Y-m-d H:i:s', strtotime($oldestAttack . ' +1 hour'));
+            $nextAvailable = date('Y-m-d H:i:s', strtotime($oldestAttack . ' +' . WAR_RATE_LIMIT_WINDOW_HOURS . ' hour'));
             $waitSeconds = max(0, strtotime($nextAvailable) - time());
         }
         
         echo json_encode([
             'ok' => true,
             'attack_count' => $attackCount,
-            'max_attacks' => 3,
+            'max_attacks' => WAR_RATE_LIMIT_MAX_ATTACKS,
             'remaining_attacks' => $remainingAttacks,
             'is_limited' => $isLimited,
             'next_available' => $nextAvailable,
@@ -2297,8 +2301,8 @@ if ($action === 'get_war_rate_limit_status') {
         echo json_encode([
             'ok' => true,
             'attack_count' => 0,
-            'max_attacks' => 3,
-            'remaining_attacks' => 3,
+            'max_attacks' => WAR_RATE_LIMIT_MAX_ATTACKS,
+            'remaining_attacks' => WAR_RATE_LIMIT_MAX_ATTACKS,
             'is_limited' => false,
             'next_available' => null,
             'wait_seconds' => 0,
