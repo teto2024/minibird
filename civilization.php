@@ -4281,9 +4281,8 @@ function updateWarRateLimitDisplay(rateLimitData) {
     
     // メッセージを表示
     if (isLimited && waitSeconds > 0) {
-        const minutes = Math.ceil(waitSeconds / 60);
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
+        const hours = Math.floor(waitSeconds / 3600);
+        const mins = Math.floor((waitSeconds % 3600) / 60);
         
         let timeText = '';
         if (hours > 0) {

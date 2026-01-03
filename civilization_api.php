@@ -2015,10 +2015,6 @@ if ($action === 'attack') {
             $rateCheckPassed = true; // 後方互換性のため続行
         }
         
-        if (!$rateCheckPassed) {
-            throw new Exception('レート制限チェックに失敗しました');
-        }
-        
         // 攻撃者の文明
         $myCiv = getUserCivilization($pdo, $me['id']);
         
