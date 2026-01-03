@@ -545,6 +545,79 @@ body {
 </div>
 
 <script>
+// メンテナンスモード検出（定期的にチェック）
+let maintenanceCheckInterval = null;
+let isMaintenanceMode = false;
+
+async function checkGameMaintenance() {
+    try {
+        const res = await fetch('conquest_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'check_game_maintenance'})
+        });
+        const data = await res.json();
+        
+        if (data.maintenance && !isMaintenanceMode) {
+            isMaintenanceMode = true;
+            showMaintenanceOverlay(data.message);
+        } else if (!data.maintenance && isMaintenanceMode) {
+            isMaintenanceMode = false;
+            hideMaintenanceOverlay();
+        }
+    } catch (e) {
+        console.error('メンテナンス状態チェックエラー:', e);
+    }
+}
+
+function showMaintenanceOverlay(message) {
+    // 既存のオーバーレイがあれば削除
+    const existing = document.getElementById('maintenance-overlay');
+    if (existing) existing.remove();
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'maintenance-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.9);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 99999;
+        color: #f5deb3;
+        font-size: 1.2em;
+        text-align: center;
+        padding: 20px;
+    `;
+    overlay.innerHTML = `
+        <div style="font-size: 4em; margin-bottom: 20px;">🔧</div>
+        <h2 style="margin-bottom: 20px;">メンテナンス中</h2>
+        <p style="max-width: 400px;">${message || 'ゲームシステムはメンテナンス中です。しばらくお待ちください。'}</p>
+        <p style="margin-top: 30px; font-size: 0.9em; color: #888;">メンテナンス終了後、自動的に再開します</p>
+    `;
+    document.body.appendChild(overlay);
+}
+
+function hideMaintenanceOverlay() {
+    const overlay = document.getElementById('maintenance-overlay');
+    if (overlay) {
+        overlay.remove();
+        // データを再読み込み
+        loadSeason();
+    }
+}
+
+// 初回チェック & 30秒ごとにチェック
+document.addEventListener('DOMContentLoaded', () => {
+    checkGameMaintenance();
+    maintenanceCheckInterval = setInterval(checkGameMaintenance, 30000);
+});
+
 let seasonData = null;
 let userTroops = [];
 let selectedCastle = null;

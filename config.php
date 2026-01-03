@@ -17,6 +17,33 @@ define('ASSETS_VERSION', '2.6.0');
 // ----- 集中タイマー設定 -----
 define('FOCUS_MAX_MINUTES', 180);
 
+// ----- ゲーム内メンテナンスモード設定 -----
+// ゲーム機能のみメンテナンスモードにする設定（サイト全体には影響しない）
+// true にするとゲーム関連API（civilization_api, conquest_api等）がメンテナンス中になる
+define('GAME_MAINTENANCE_MODE', getenv('GAME_MAINTENANCE_MODE') === 'true' ? true : false);
+define('GAME_MAINTENANCE_MESSAGE', getenv('GAME_MAINTENANCE_MESSAGE') ?: 'ゲームシステムはメンテナンス中です。しばらくお待ちください。');
+
+/**
+ * ゲームメンテナンスモードをチェックし、メンテナンス中の場合はJSONエラーを返す
+ * @param bool $exitOnMaintenance メンテナンス中の場合にexitするかどうか
+ * @return bool メンテナンス中かどうか
+ */
+function check_game_maintenance($exitOnMaintenance = true) {
+    if (GAME_MAINTENANCE_MODE) {
+        if ($exitOnMaintenance) {
+            echo json_encode([
+                'ok' => false,
+                'error' => 'maintenance',
+                'maintenance' => true,
+                'message' => GAME_MAINTENANCE_MESSAGE
+            ]);
+            exit;
+        }
+        return true;
+    }
+    return false;
+}
+
 // ----- セッション -----
 session_set_cookie_params([
     'lifetime' => 60*60*24*30,

@@ -507,6 +507,19 @@ $pdo = db();
 $input = json_decode(file_get_contents('php://input'), true) ?: [];
 $action = $input['action'] ?? '';
 
+// メンテナンス状態取得はメンテナンス中でも許可
+if ($action === 'check_game_maintenance') {
+    echo json_encode([
+        'ok' => true,
+        'maintenance' => GAME_MAINTENANCE_MODE,
+        'message' => GAME_MAINTENANCE_MODE ? GAME_MAINTENANCE_MESSAGE : null
+    ]);
+    exit;
+}
+
+// ゲームメンテナンスモードのチェック
+check_game_maintenance();
+
 // ユーザーの文明を取得または作成
 function getUserCivilization($pdo, $userId) {
     $stmt = $pdo->prepare("SELECT * FROM user_civilizations WHERE user_id = ?");
@@ -1975,46 +1988,39 @@ if ($action === 'attack') {
     $pdo->beginTransaction();
     try {
         // ⑦ 戦争レート制限チェック（1時間に3回まで）
-        // トランザクション内でチェックすることで、整合性を保証
-        // テーブルが存在しない場合はスキップ（後方互換性）
-        try {
-            $oneHourAgo = date('Y-m-d H:i:s', strtotime('-' . WAR_RATE_LIMIT_WINDOW_HOURS . ' hour'));
+        // civilization_war_logsテーブルを使用して攻撃回数をカウント
+        $oneHourAgo = date('Y-m-d H:i:s', strtotime('-' . WAR_RATE_LIMIT_WINDOW_HOURS . ' hour'));
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*) as attack_count 
+            FROM civilization_war_logs 
+            WHERE attacker_user_id = ? AND battle_at >= ?
+        ");
+        $stmt->execute([$me['id'], $oneHourAgo]);
+        $attackCount = (int)$stmt->fetchColumn();
+        
+        if ($attackCount >= WAR_RATE_LIMIT_MAX_ATTACKS) {
+            // 最も古い攻撃の時刻を取得して、次に攻撃可能な時刻を計算
             $stmt = $pdo->prepare("
-                SELECT COUNT(*) as attack_count 
-                FROM user_war_rate_limits 
-                WHERE user_id = ? AND attack_timestamp >= ?
+                SELECT battle_at 
+                FROM civilization_war_logs 
+                WHERE attacker_user_id = ? AND battle_at >= ?
+                ORDER BY battle_at ASC
+                LIMIT 1
             ");
             $stmt->execute([$me['id'], $oneHourAgo]);
-            $attackCount = (int)$stmt->fetchColumn();
+            $oldestAttack = $stmt->fetchColumn();
+            $nextAvailable = date('Y-m-d H:i:s', strtotime($oldestAttack . ' +' . WAR_RATE_LIMIT_WINDOW_HOURS . ' hour'));
+            $waitMinutes = max(0, ceil((strtotime($nextAvailable) - time()) / 60));
             
-            if ($attackCount >= WAR_RATE_LIMIT_MAX_ATTACKS) {
-                // 最も古い攻撃の時刻を取得して、次に攻撃可能な時刻を計算
-                $stmt = $pdo->prepare("
-                    SELECT attack_timestamp 
-                    FROM user_war_rate_limits 
-                    WHERE user_id = ? AND attack_timestamp >= ?
-                    ORDER BY attack_timestamp ASC
-                    LIMIT 1
-                ");
-                $stmt->execute([$me['id'], $oneHourAgo]);
-                $oldestAttack = $stmt->fetchColumn();
-                $nextAvailable = date('Y-m-d H:i:s', strtotime($oldestAttack . ' +' . WAR_RATE_LIMIT_WINDOW_HOURS . ' hour'));
-                $waitMinutes = max(0, ceil((strtotime($nextAvailable) - time()) / 60));
-                
-                $pdo->rollBack(); // トランザクションをロールバック
-                echo json_encode([
-                    'ok' => false, 
-                    'error' => "戦争は1時間に" . WAR_RATE_LIMIT_MAX_ATTACKS . "回までです。次の攻撃まであと{$waitMinutes}分お待ちください。",
-                    'rate_limited' => true,
-                    'next_available' => $nextAvailable,
-                    'wait_minutes' => $waitMinutes
-                ]);
-                exit;
-            }
-        } catch (PDOException $e) {
-            // テーブルが存在しない場合、レート制限をスキップ
-            error_log("War rate limit check skipped - user_war_rate_limits table does not exist (backward compatibility mode)");
-            // 後方互換性のため続行
+            $pdo->rollBack(); // トランザクションをロールバック
+            echo json_encode([
+                'ok' => false, 
+                'error' => "戦争は1時間に" . WAR_RATE_LIMIT_MAX_ATTACKS . "回までです。次の攻撃まであと{$waitMinutes}分お待ちください。",
+                'rate_limited' => true,
+                'next_available' => $nextAvailable,
+                'wait_minutes' => $waitMinutes
+            ]);
+            exit;
         }
         
         // 攻撃者の文明
@@ -2121,20 +2127,7 @@ if ($action === 'attack') {
             }
         }
         
-        // 攻撃記録を保存（レート制限用）- 戦闘成功後に記録
-        // テーブルが存在しない場合はスキップ（後方互換性）
-        try {
-            $stmt = $pdo->prepare("
-                INSERT INTO user_war_rate_limits (user_id, target_user_id, attack_timestamp)
-                VALUES (?, ?, NOW())
-            ");
-            $stmt->execute([$me['id'], $targetUserId]);
-        } catch (PDOException $e) {
-            // テーブルが存在しない場合は記録をスキップ
-            error_log("War rate limit recording skipped - user_war_rate_limits table does not exist (backward compatibility mode)");
-        }
-        
-        // 戦争ログを記録（詳細情報を含む）
+        // 戦争ログを記録（詳細情報を含む）- レート制限もこのテーブルを参照
         $stmt = $pdo->prepare("
             INSERT INTO civilization_war_logs 
             (attacker_user_id, defender_user_id, attacker_power, attacker_troop_power, attacker_equipment_power, defender_power, defender_troop_power, defender_equipment_power, troop_advantage_bonus, winner_user_id, loot_coins, loot_resources)
@@ -2260,12 +2253,12 @@ if ($action === 'get_war_rate_limit_status') {
     try {
         $oneHourAgo = date('Y-m-d H:i:s', strtotime('-' . WAR_RATE_LIMIT_WINDOW_HOURS . ' hour'));
         
-        // 過去1時間以内の攻撃回数と攻撃時刻を取得
+        // civilization_war_logsテーブルから過去1時間以内の攻撃回数と攻撃時刻を取得
         $stmt = $pdo->prepare("
-            SELECT attack_timestamp 
-            FROM user_war_rate_limits 
-            WHERE user_id = ? AND attack_timestamp >= ?
-            ORDER BY attack_timestamp ASC
+            SELECT battle_at 
+            FROM civilization_war_logs 
+            WHERE attacker_user_id = ? AND battle_at >= ?
+            ORDER BY battle_at ASC
         ");
         $stmt->execute([$me['id'], $oneHourAgo]);
         $attacks = $stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -2292,21 +2285,9 @@ if ($action === 'get_war_rate_limit_status') {
             'is_limited' => $isLimited,
             'next_available' => $nextAvailable,
             'wait_seconds' => $waitSeconds
-            // 攻撃履歴のタイムスタンプは除外（プライバシー保護）
         ]);
     } catch (PDOException $e) {
-        // テーブルが存在しない場合は制限なしとして扱う
-        echo json_encode([
-            'ok' => true,
-            'attack_count' => 0,
-            'max_attacks' => WAR_RATE_LIMIT_MAX_ATTACKS,
-            'remaining_attacks' => WAR_RATE_LIMIT_MAX_ATTACKS,
-            'is_limited' => false,
-            'next_available' => null,
-            'wait_seconds' => 0,
-            'table_missing' => true
-            // エラーメッセージは除外（セキュリティ）
-        ]);
+        echo json_encode(['ok' => false, 'error' => 'レート制限状態の取得に失敗しました']);
     }
     exit;
 }

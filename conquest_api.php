@@ -57,6 +57,10 @@ define('CONQUEST_ANNOUNCEMENT_BOT_ID', 5);               // お知らせbot ユ�
 // 出撃兵士数上限システム定数（civilization_api.phpと同じ）
 define('CONQUEST_BASE_TROOP_DEPLOYMENT_LIMIT', 100);     // 基本出撃兵士数上限
 
+// 占領戦レート制限定数（攻撃のみ、駐屯は含まない）
+define('CONQUEST_RATE_LIMIT_MAX_ATTACKS', 10);           // 1時間あたりの最大攻撃回数
+define('CONQUEST_RATE_LIMIT_WINDOW_HOURS', 1);           // レート制限の時間枠（時間）
+
 header('Content-Type: application/json');
 
 $me = user();
@@ -68,6 +72,19 @@ if (!$me) {
 $pdo = db();
 $input = json_decode(file_get_contents('php://input'), true) ?: [];
 $action = $input['action'] ?? '';
+
+// メンテナンス状態取得はメンテナンス中でも許可
+if ($action === 'check_game_maintenance') {
+    echo json_encode([
+        'ok' => true,
+        'maintenance' => GAME_MAINTENANCE_MODE,
+        'message' => GAME_MAINTENANCE_MODE ? GAME_MAINTENANCE_MESSAGE : null
+    ]);
+    exit;
+}
+
+// ゲームメンテナンスモードのチェック
+check_game_maintenance();
 
 /**
  * ユーザーの装備バフを取得するヘルパー関数
@@ -979,6 +996,44 @@ if ($action === 'attack_castle') {
     $pdo->beginTransaction();
     try {
         $season = getOrCreateActiveSeason($pdo);
+        
+        // 占領戦レート制限チェック（1時間に10回まで、攻撃のみ）
+        // conquest_battle_logsテーブルを使用して攻撃回数をカウント
+        $oneHourAgo = date('Y-m-d H:i:s', strtotime('-' . CONQUEST_RATE_LIMIT_WINDOW_HOURS . ' hour'));
+        $stmt = $pdo->prepare("
+            SELECT COUNT(*) as attack_count 
+            FROM conquest_battle_logs 
+            WHERE attacker_user_id = ? AND season_id = ? AND battle_at >= ?
+                AND (log_type IS NULL OR log_type != 'bombardment')
+        ");
+        $stmt->execute([$me['id'], $season['id'], $oneHourAgo]);
+        $attackCount = (int)$stmt->fetchColumn();
+        
+        if ($attackCount >= CONQUEST_RATE_LIMIT_MAX_ATTACKS) {
+            // 最も古い攻撃の時刻を取得して、次に攻撃可能な時刻を計算
+            $stmt = $pdo->prepare("
+                SELECT battle_at 
+                FROM conquest_battle_logs 
+                WHERE attacker_user_id = ? AND season_id = ? AND battle_at >= ?
+                    AND (log_type IS NULL OR log_type != 'bombardment')
+                ORDER BY battle_at ASC
+                LIMIT 1
+            ");
+            $stmt->execute([$me['id'], $season['id'], $oneHourAgo]);
+            $oldestAttack = $stmt->fetchColumn();
+            $nextAvailable = date('Y-m-d H:i:s', strtotime($oldestAttack . ' +' . CONQUEST_RATE_LIMIT_WINDOW_HOURS . ' hour'));
+            $waitMinutes = max(0, ceil((strtotime($nextAvailable) - time()) / 60));
+            
+            $pdo->rollBack();
+            echo json_encode([
+                'ok' => false, 
+                'error' => "占領戦は1時間に" . CONQUEST_RATE_LIMIT_MAX_ATTACKS . "回までです。次の攻撃まであと{$waitMinutes}分お待ちください。",
+                'rate_limited' => true,
+                'next_available' => $nextAvailable,
+                'wait_minutes' => $waitMinutes
+            ]);
+            exit;
+        }
         
         // 城を取得
         $stmt = $pdo->prepare("SELECT * FROM conquest_castles WHERE id = ? AND season_id = ?");
@@ -2341,6 +2396,55 @@ function processCompletedMovement($pdo, $movement) {
         $pdo->rollBack();
         error_log("Movement completion error: " . $e->getMessage());
     }
+}
+
+// ===============================================
+// 占領戦レート制限の状態を取得
+// ===============================================
+if ($action === 'get_conquest_rate_limit_status') {
+    try {
+        $season = getOrCreateActiveSeason($pdo);
+        $oneHourAgo = date('Y-m-d H:i:s', strtotime('-' . CONQUEST_RATE_LIMIT_WINDOW_HOURS . ' hour'));
+        
+        // conquest_battle_logsテーブルから過去1時間以内の攻撃回数と攻撃時刻を取得
+        // 砲撃（bombardment）は除外
+        $stmt = $pdo->prepare("
+            SELECT battle_at 
+            FROM conquest_battle_logs 
+            WHERE attacker_user_id = ? AND season_id = ? AND battle_at >= ?
+                AND (log_type IS NULL OR log_type != 'bombardment')
+            ORDER BY battle_at ASC
+        ");
+        $stmt->execute([$me['id'], $season['id'], $oneHourAgo]);
+        $attacks = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        $attackCount = count($attacks);
+        $remainingAttacks = max(0, CONQUEST_RATE_LIMIT_MAX_ATTACKS - $attackCount);
+        $isLimited = $attackCount >= CONQUEST_RATE_LIMIT_MAX_ATTACKS;
+        
+        $nextAvailable = null;
+        $waitSeconds = 0;
+        
+        if ($isLimited && !empty($attacks)) {
+            // 最も古い攻撃の1時間後が次の利用可能時刻
+            $oldestAttack = $attacks[0];
+            $nextAvailable = date('Y-m-d H:i:s', strtotime($oldestAttack . ' +' . CONQUEST_RATE_LIMIT_WINDOW_HOURS . ' hour'));
+            $waitSeconds = max(0, strtotime($nextAvailable) - time());
+        }
+        
+        echo json_encode([
+            'ok' => true,
+            'attack_count' => $attackCount,
+            'max_attacks' => CONQUEST_RATE_LIMIT_MAX_ATTACKS,
+            'remaining_attacks' => $remainingAttacks,
+            'is_limited' => $isLimited,
+            'next_available' => $nextAvailable,
+            'wait_seconds' => $waitSeconds
+        ]);
+    } catch (PDOException $e) {
+        echo json_encode(['ok' => false, 'error' => 'レート制限状態の取得に失敗しました']);
+    }
+    exit;
 }
 
 echo json_encode(['ok' => false, 'error' => 'invalid_action']);
