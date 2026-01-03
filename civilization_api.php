@@ -2011,7 +2011,7 @@ if ($action === 'attack') {
             $rateCheckPassed = true;
         } catch (PDOException $e) {
             // テーブルが存在しない場合、レート制限をスキップ（警告ログに記録すべき）
-            error_log("War rate limit table missing: " . $e->getMessage());
+            error_log("War rate limit check failed - table may be missing. Error code: " . $e->getCode());
             $rateCheckPassed = true; // 後方互換性のため続行
         }
         
@@ -2129,7 +2129,7 @@ if ($action === 'attack') {
             $stmt->execute([$me['id'], $targetUserId]);
         } catch (PDOException $e) {
             // テーブルが存在しない場合は記録をスキップ
-            error_log("Could not record war rate limit: " . $e->getMessage());
+            error_log("Failed to record war rate limit - table may be missing. Error code: " . $e->getCode());
         }
         
         // 戦争ログを記録（詳細情報を含む）
@@ -2289,8 +2289,8 @@ if ($action === 'get_war_rate_limit_status') {
             'remaining_attacks' => $remainingAttacks,
             'is_limited' => $isLimited,
             'next_available' => $nextAvailable,
-            'wait_seconds' => $waitSeconds,
-            'attacks' => $attacks // 攻撃履歴のタイムスタンプ配列
+            'wait_seconds' => $waitSeconds
+            // 攻撃履歴のタイムスタンプは除外（プライバシー保護）
         ]);
     } catch (Exception $e) {
         // テーブルが存在しない場合は制限なしとして扱う
@@ -2302,9 +2302,8 @@ if ($action === 'get_war_rate_limit_status') {
             'is_limited' => false,
             'next_available' => null,
             'wait_seconds' => 0,
-            'attacks' => [],
-            'table_missing' => true,
-            'error_message' => $e->getMessage()
+            'table_missing' => true
+            // エラーメッセージは除外（セキュリティ）
         ]);
     }
     exit;

@@ -4179,13 +4179,13 @@ async function attack(targetUserId) {
             if (isVictory) {
                 loadData();
             }
-            // 攻撃後、レート制限状態を更新
-            loadTargets();
+            // 攻撃後、レート制限状態のみを更新（効率的）
+            updateWarRateLimitStatus();
         } else {
             showNotification(data.error, true);
             // エラーの場合もレート制限状態を更新（制限到達の可能性）
             if (data.rate_limited) {
-                loadTargets();
+                updateWarRateLimitStatus();
             }
         }
     } catch (e) {
@@ -4243,6 +4243,21 @@ function showNotification(message, isError = false) {
     setTimeout(() => notification.remove(), 4000);
 }
 
+// 戦争レート制限の状態のみを更新
+async function updateWarRateLimitStatus() {
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_war_rate_limit_status'})
+        });
+        const rateLimitData = await res.json();
+        updateWarRateLimitDisplay(rateLimitData);
+    } catch (e) {
+        console.error('Failed to update war rate limit status:', e);
+    }
+}
+
 // 戦争レート制限の状態を表示
 function updateWarRateLimitDisplay(rateLimitData) {
     if (!rateLimitData || !rateLimitData.ok) return;
@@ -4282,7 +4297,7 @@ function updateWarRateLimitDisplay(rateLimitData) {
     // メッセージを表示
     if (isLimited && waitSeconds > 0) {
         const hours = Math.floor(waitSeconds / 3600);
-        const mins = Math.floor((waitSeconds % 3600) / 60);
+        const mins = Math.ceil((waitSeconds % 3600) / 60);
         
         let timeText = '';
         if (hours > 0) {
