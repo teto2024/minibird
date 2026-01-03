@@ -112,3 +112,6 @@ mysql -u root -p microblog < add_new_troops_2026.sql
 - 前提条件（研究・建物）は既存のシステムに基づいて設定されています
 - スキルはバランスを考慮して設定されています
 - INSERT IGNOREを使用しているため、既存のデータを上書きせず安全に適用できます
+
+## PHP実装について
+一部の条件付きスキル（対空掃射、戦車駆逐）は、battle_engine.phpでの追加実装が必要になる可能性があります。詳細は `PHP_IMPLEMENTATION_NOTES.md` を参照してください。
