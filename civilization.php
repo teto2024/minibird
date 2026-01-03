@@ -4297,11 +4297,20 @@ function updateWarRateLimitDisplay(rateLimitData) {
     // メッセージを表示
     if (isLimited && waitSeconds > 0) {
         const hours = Math.floor(waitSeconds / 3600);
-        const mins = Math.ceil((waitSeconds % 3600) / 60);
+        let mins = Math.ceil((waitSeconds % 3600) / 60);
+        
+        // 60分の場合は1時間に繰り上げ
+        let adjustedHours = hours;
+        if (mins === 60) {
+            adjustedHours = hours + 1;
+            mins = 0;
+        }
         
         let timeText = '';
-        if (hours > 0) {
-            timeText = `${hours}時間${mins}分`;
+        if (adjustedHours > 0 && mins > 0) {
+            timeText = `${adjustedHours}時間${mins}分`;
+        } else if (adjustedHours > 0) {
+            timeText = `${adjustedHours}時間`;
         } else {
             timeText = `${mins}分`;
         }
