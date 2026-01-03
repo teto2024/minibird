@@ -16,6 +16,13 @@ USE microblog;
 -- ベテランの場合はクリスタルとダイヤモンドが2倍
 -- ===============================================
 
+-- 一時テーブルがすでに存在する場合は削除
+DROP TEMPORARY TABLE IF EXISTS temp_4_10_rewards;
+DROP TEMPORARY TABLE IF EXISTS temp_4_10_rewards_veteran;
+
+-- トランザクション開始
+START TRANSACTION;
+
 -- ===============================================
 -- 通常ボスの報酬更新 (ベテラン以外)
 -- ===============================================
@@ -47,13 +54,6 @@ WHERE wbr.rank_start = 4
   AND wbr.rank_end = 10
   AND (wb.labels IS NULL OR wb.labels NOT LIKE '%ベテラン%');
 
--- 既存の4位〜10位のレコードを削除
-DELETE wbr FROM world_boss_rewards wbr
-JOIN world_bosses wb ON wbr.boss_id = wb.id
-WHERE wbr.rank_start = 4 
-  AND wbr.rank_end = 10
-  AND (wb.labels IS NULL OR wb.labels NOT LIKE '%ベテラン%');
-
 -- 4位〜5位の新しいレコードを挿入 (1位の1/5: クリスタル200, ダイヤモンド100)
 INSERT INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops)
 SELECT boss_id, 4, 5, reward_coins, 200, 100, reward_resources, reward_troops
@@ -63,6 +63,13 @@ FROM temp_4_10_rewards;
 INSERT INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops)
 SELECT boss_id, 6, 10, reward_coins, 100, 50, reward_resources, reward_troops
 FROM temp_4_10_rewards;
+
+-- INSERTが成功した後に既存の4位〜10位のレコードを削除
+DELETE wbr FROM world_boss_rewards wbr
+JOIN world_bosses wb ON wbr.boss_id = wb.id
+WHERE wbr.rank_start = 4 
+  AND wbr.rank_end = 10
+  AND (wb.labels IS NULL OR wb.labels NOT LIKE '%ベテラン%');
 
 -- 一時テーブルを削除
 DROP TEMPORARY TABLE IF EXISTS temp_4_10_rewards;
@@ -107,13 +114,6 @@ WHERE wbr.rank_start = 4
   AND wbr.rank_end = 10
   AND wb.labels LIKE '%ベテラン%';
 
--- 既存の4位〜10位のレコードを削除
-DELETE wbr FROM world_boss_rewards wbr
-JOIN world_bosses wb ON wbr.boss_id = wb.id
-WHERE wbr.rank_start = 4 
-  AND wbr.rank_end = 10
-  AND wb.labels LIKE '%ベテラン%';
-
 -- 4位〜5位の新しいレコードを挿入 (クリスタル400, ダイヤモンド200)
 INSERT INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops)
 SELECT boss_id, 4, 5, reward_coins, 400, 200, reward_resources, reward_troops
@@ -123,6 +123,13 @@ FROM temp_4_10_rewards_veteran;
 INSERT INTO world_boss_rewards (boss_id, rank_start, rank_end, reward_coins, reward_crystals, reward_diamonds, reward_resources, reward_troops)
 SELECT boss_id, 6, 10, reward_coins, 200, 100, reward_resources, reward_troops
 FROM temp_4_10_rewards_veteran;
+
+-- INSERTが成功した後に既存の4位〜10位のレコードを削除
+DELETE wbr FROM world_boss_rewards wbr
+JOIN world_bosses wb ON wbr.boss_id = wb.id
+WHERE wbr.rank_start = 4 
+  AND wbr.rank_end = 10
+  AND wb.labels LIKE '%ベテラン%';
 
 -- 一時テーブルを削除
 DROP TEMPORARY TABLE IF EXISTS temp_4_10_rewards_veteran;
@@ -139,4 +146,8 @@ WHERE wbr.rank_start = 11
 -- ===============================================
 -- 完了メッセージ
 -- ===============================================
+
+-- トランザクションをコミット
+COMMIT;
+
 SELECT 'World boss drop rewards updated successfully' AS status;
