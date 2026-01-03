@@ -21,8 +21,29 @@ define('FOCUS_MAX_MINUTES', 180);
 // ゲーム機能のみメンテナンスモードにする設定（サイト全体には影響しない）
 // true にするとゲーム関連API（civilization_api, conquest_api等）がメンテナンス中になる
 // 環境変数で true, 1, yes, on などの値を受け付ける
-define('GAME_MAINTENANCE_MODE', filter_var(getenv('GAME_MAINTENANCE_MODE'), FILTER_VALIDATE_BOOLEAN));
-define('GAME_MAINTENANCE_MESSAGE', getenv('GAME_MAINTENANCE_MESSAGE') ?: 'ゲームシステムはメンテナンス中です。しばらくお待ちください。');
+// または maintenance_config.php ファイルまたは管理者ページから設定可能
+
+// メンテナンス設定を読み込み（ファイルまたは環境変数）
+$maintenance_mode_enabled = false;
+$maintenance_message = 'ゲームシステムはメンテナンス中です。しばらくお待ちください。';
+
+// maintenance_config.php から設定を読み込む（存在する場合）
+if (file_exists(__DIR__ . '/maintenance_config.php')) {
+    require_once __DIR__ . '/maintenance_config.php';
+}
+
+// 環境変数で上書き（設定されている場合）
+$env_mode = getenv('GAME_MAINTENANCE_MODE');
+if ($env_mode !== false && $env_mode !== '') {
+    $maintenance_mode_enabled = filter_var($env_mode, FILTER_VALIDATE_BOOLEAN);
+}
+$env_message = getenv('GAME_MAINTENANCE_MESSAGE');
+if ($env_message !== false && $env_message !== '') {
+    $maintenance_message = $env_message;
+}
+
+define('GAME_MAINTENANCE_MODE', $maintenance_mode_enabled);
+define('GAME_MAINTENANCE_MESSAGE', $maintenance_message);
 
 /**
  * ゲームメンテナンスモードをチェックし、メンテナンス中の場合はJSONエラーを返す
