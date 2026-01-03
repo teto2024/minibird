@@ -171,6 +171,9 @@ if ($_SERVER['REQUEST_METHOD']==='POST'){
     $enabled = isset($_POST['enabled']) && $_POST['enabled'] === '1';
     $message = $_POST['message'] ?? 'ゲームシステムはメンテナンス中です。しばらくお待ちください。';
     
+    // メッセージの長さを制限（最大500文字）
+    $message = mb_substr($message, 0, 500);
+    
     // maintenance_config.php を更新
     $config_content = "<?php\n";
     $config_content .= "/**\n";
@@ -184,7 +187,16 @@ if ($_SERVER['REQUEST_METHOD']==='POST'){
     $config_content .= "// メンテナンスメッセージ (オプション)\n";
     $config_content .= '$maintenance_message = ' . var_export($message, true) . ";\n";
     
-    file_put_contents(__DIR__ . '/maintenance_config.php', $config_content);
+    // ファイルへの書き込みを試み、エラーハンドリングを追加
+    $config_file = __DIR__ . '/maintenance_config.php';
+    $write_result = @file_put_contents($config_file, $config_content);
+    
+    if ($write_result === false) {
+      // 書き込みに失敗した場合、エラーメッセージをセッションに保存
+      $_SESSION['admin_error'] = 'maintenance_config.php への書き込みに失敗しました。ファイルの権限を確認してください。';
+    } else {
+      $_SESSION['admin_success'] = 'メンテナンスモード設定を保存しました。';
+    }
   }
   
   header("Location: admin_unified.php"); 
@@ -1066,6 +1078,20 @@ body {
             </p>
             
             <?php
+            // 成功/エラーメッセージを表示
+            if (isset($_SESSION['admin_success'])) {
+                echo '<div style="background: rgba(68, 255, 68, 0.1); border-left: 4px solid #44ff44; padding: 12px; margin-bottom: 20px; border-radius: 4px; color: #44ff44;">';
+                echo '✓ ' . htmlspecialchars($_SESSION['admin_success']);
+                echo '</div>';
+                unset($_SESSION['admin_success']);
+            }
+            if (isset($_SESSION['admin_error'])) {
+                echo '<div style="background: rgba(255, 68, 68, 0.1); border-left: 4px solid #ff4444; padding: 12px; margin-bottom: 20px; border-radius: 4px; color: #ff4444;">';
+                echo '✗ ' . htmlspecialchars($_SESSION['admin_error']);
+                echo '</div>';
+                unset($_SESSION['admin_error']);
+            }
+            ?>
             // 現在のメンテナンスモード状態を取得
             $current_maintenance_mode = GAME_MAINTENANCE_MODE;
             $current_maintenance_message = GAME_MAINTENANCE_MESSAGE;
@@ -1109,9 +1135,9 @@ body {
                     <label style="display: block; margin-bottom: 8px; font-weight: 600;">
                         メンテナンスメッセージ
                     </label>
-                    <textarea name="message" rows="3" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font-size: 14px; resize: vertical;" placeholder="ユーザーに表示するメンテナンスメッセージ"><?= htmlspecialchars($current_maintenance_message) ?></textarea>
+                    <textarea name="message" rows="3" maxlength="500" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font-size: 14px; resize: vertical;" placeholder="ユーザーに表示するメンテナンスメッセージ"><?= htmlspecialchars($current_maintenance_message) ?></textarea>
                     <div style="color: var(--muted); font-size: 12px; margin-top: 5px;">
-                        メンテナンス中にユーザーに表示されるメッセージです
+                        メンテナンス中にユーザーに表示されるメッセージです（最大500文字）
                     </div>
                 </div>
                 

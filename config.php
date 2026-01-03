@@ -28,8 +28,15 @@ $maintenance_mode_enabled = false;
 $maintenance_message = 'ゲームシステムはメンテナンス中です。しばらくお待ちください。';
 
 // maintenance_config.php から設定を読み込む（存在する場合）
-if (file_exists(__DIR__ . '/maintenance_config.php')) {
-    require_once __DIR__ . '/maintenance_config.php';
+$config_file = __DIR__ . '/maintenance_config.php';
+if (file_exists($config_file)) {
+    try {
+        // エラーを抑制してインクルード、失敗してもデフォルト値を使用
+        @include $config_file;
+    } catch (Throwable $e) {
+        // 設定ファイルの読み込みに失敗した場合はデフォルト値を使用
+        error_log('Failed to load maintenance_config.php: ' . $e->getMessage());
+    }
 }
 
 // 環境変数で上書き（設定されている場合）
