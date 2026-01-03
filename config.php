@@ -104,7 +104,9 @@ function db() {
 
 // ----- ユーザー認証 -----
 function require_login() {
-    if (!isset($_SESSION['uid'])) {
+    // 凍結されたユーザーを検知して強制ログアウト
+    $u = user();
+    if (!$u) {
         http_response_code(403);
         echo json_encode(['ok'=>false,'error'=>'login_required']);
         exit;
@@ -117,6 +119,12 @@ function user() {
     $st = $pdo->prepare("SELECT * FROM users WHERE id=?");
     $st->execute([$_SESSION['uid']]);
     $user = $st->fetch();
+    
+    // 凍結されたユーザーを検知して強制ログアウト
+    if ($user && (int)$user['frozen'] === 1) {
+        unset($_SESSION['uid']);
+        return null;
+    }
     
     // 最終操作時刻を更新（1分ごとに更新）
     if ($user) {
