@@ -1780,6 +1780,17 @@ if ($action === 'get_ranking') {
                 $ranking['sacred_occupation_seconds'] = (int)$ranking['sacred_occupation_seconds'] + $currentSacredOccupationTimes[$userId];
             }
         }
+        unset($ranking); // 参照を解除
+        
+        // リアルタイム占領時間を加算後、再度ソート（重要：これによりランキングがリアルタイムで変動）
+        usort($rankings, function($a, $b) {
+            // 神城累計占領時間が長い順
+            if ($a['sacred_occupation_seconds'] != $b['sacred_occupation_seconds']) {
+                return $b['sacred_occupation_seconds'] - $a['sacred_occupation_seconds'];
+            }
+            // 占領時間が同じ場合は城数順
+            return $b['castle_count'] - $a['castle_count'];
+        });
         
         echo json_encode([
             'ok' => true,
