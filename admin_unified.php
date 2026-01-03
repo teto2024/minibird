@@ -174,6 +174,9 @@ if ($_SERVER['REQUEST_METHOD']==='POST'){
     // メッセージの長さを制限（最大500文字）
     $message = mb_substr($message, 0, 500);
     
+    // メッセージを安全にエスケープ（シングルクォートとバックスラッシュをエスケープ）
+    $escaped_message = addslashes($message);
+    
     // maintenance_config.php を更新
     $config_content = "<?php\n";
     $config_content .= "/**\n";
@@ -185,11 +188,11 @@ if ($_SERVER['REQUEST_METHOD']==='POST'){
     $config_content .= "// メンテナンスモード (true: 有効, false: 無効)\n";
     $config_content .= '$maintenance_mode_enabled = ' . ($enabled ? 'true' : 'false') . ";\n\n";
     $config_content .= "// メンテナンスメッセージ (オプション)\n";
-    $config_content .= '$maintenance_message = ' . var_export($message, true) . ";\n";
+    $config_content .= '$maintenance_message = \'' . $escaped_message . "';\n";
     
     // ファイルへの書き込みを試み、エラーハンドリングを追加
     $config_file = __DIR__ . '/maintenance_config.php';
-    $write_result = @file_put_contents($config_file, $config_content);
+    $write_result = file_put_contents($config_file, $config_content);
     
     if ($write_result === false) {
       // 書き込みに失敗した場合、エラーメッセージをセッションに保存
@@ -1091,7 +1094,7 @@ body {
                 echo '</div>';
                 unset($_SESSION['admin_error']);
             }
-            ?>
+            
             // 現在のメンテナンスモード状態を取得
             $current_maintenance_mode = GAME_MAINTENANCE_MODE;
             $current_maintenance_message = GAME_MAINTENANCE_MESSAGE;

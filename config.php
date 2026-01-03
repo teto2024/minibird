@@ -29,14 +29,12 @@ $maintenance_message = 'ゲームシステムはメンテナンス中です。�
 
 // maintenance_config.php から設定を読み込む（存在する場合）
 $config_file = __DIR__ . '/maintenance_config.php';
-if (file_exists($config_file)) {
-    try {
-        // エラーを抑制してインクルード、失敗してもデフォルト値を使用
-        @include $config_file;
-    } catch (Throwable $e) {
-        // 設定ファイルの読み込みに失敗した場合はデフォルト値を使用
-        error_log('Failed to load maintenance_config.php: ' . $e->getMessage());
-    }
+if (file_exists($config_file) && is_readable($config_file)) {
+    // includeで読み込み、エラーが発生してもデフォルト値を使用
+    $error_level = error_reporting();
+    error_reporting(0); // 一時的にエラー報告を無効化
+    include $config_file;
+    error_reporting($error_level); // エラー報告を復元
 }
 
 // 環境変数で上書き（設定されている場合）
