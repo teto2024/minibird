@@ -11,7 +11,8 @@ require_once __DIR__ . '/quest_helpers.php';
 
 // ワールドボス定数
 define('WORLD_BOSS_ATTACK_COOLDOWN_SECONDS', 60);   // 攻撃クールダウン（秒）
-define('WORLD_BOSS_SUMMON_COOLDOWN_SECONDS', 3600); // 召喚クールダウン（秒）- 1時間
+define('WORLD_BOSS_SUMMON_COOLDOWN_SECONDS', 3600); // 召喚クールダウン（秒）- 1時間（通常ボス）
+define('WORLD_BOSS_SUMMON_COOLDOWN_VETERAN_SECONDS', 7200); // 召喚クールダウン（秒）- 2時間（ベテランボス）
 define('WORLD_BOSS_DAMAGE_VARIANCE', 0.2);          // ダメージの乱数幅（±20%）
 define('WORLD_BOSS_WOUNDED_RATE', 0.3);             // 負傷兵発生率（30%）
 define('WORLD_BOSS_DEATH_RATE', 0.1);               // 戦死率（10%）
@@ -336,11 +337,14 @@ if ($action === 'summon_boss') {
             throw new Exception("このボスを召喚するにはレベル{$boss['min_user_level']}以上が必要です");
         }
         
-        // 召喚クールダウンをチェック（1人1時間に1回まで）
+        // 召喚クールダウンをチェック
+        // 最後に召喚したボスの情報を取得（ベテランかどうかを判定するため）
         $stmt = $pdo->prepare("
-            SELECT started_at FROM world_boss_instances 
-            WHERE summoner_user_id = ?
-            ORDER BY started_at DESC
+            SELECT wbi.started_at, wb.labels
+            FROM world_boss_instances wbi
+            JOIN world_bosses wb ON wbi.boss_id = wb.id
+            WHERE wbi.summoner_user_id = ?
+            ORDER BY wbi.started_at DESC
             LIMIT 1
         ");
         $stmt->execute([$me['id']]);
@@ -348,10 +352,27 @@ if ($action === 'summon_boss') {
         
         if ($lastSummon) {
             $lastSummonTime = strtotime($lastSummon['started_at']);
-            $cooldownRemaining = WORLD_BOSS_SUMMON_COOLDOWN_SECONDS - (time() - $lastSummonTime);
+            
+            // 最後に召喚したボスがベテランかどうかをチェック
+            $lastBossIsVeteran = !empty($lastSummon['labels']) && stripos($lastSummon['labels'], 'ベテラン') !== false;
+            
+            // ベテランボスは2時間、通常ボスは1時間のクールダウン
+            $cooldownSeconds = $lastBossIsVeteran ? WORLD_BOSS_SUMMON_COOLDOWN_VETERAN_SECONDS : WORLD_BOSS_SUMMON_COOLDOWN_SECONDS;
+            $cooldownRemaining = $cooldownSeconds - (time() - $lastSummonTime);
+            
             if ($cooldownRemaining > 0) {
-                $remainingMinutes = ceil($cooldownRemaining / 60);
-                throw new Exception("召喚クールダウン中です（残り{$remainingMinutes}分）");
+                $remainingHours = floor($cooldownRemaining / 3600);
+                $remainingMinutes = ceil(($cooldownRemaining % 3600) / 60);
+                
+                $timeStr = '';
+                if ($remainingHours > 0) {
+                    $timeStr = "{$remainingHours}時間{$remainingMinutes}分";
+                } else {
+                    $timeStr = "{$remainingMinutes}分";
+                }
+                
+                $bossTypeStr = $lastBossIsVeteran ? 'ベテランボス' : '通常ボス';
+                throw new Exception("召喚クールダウン中です（最後に召喚: {$bossTypeStr}、残り{$timeStr}）");
             }
         }
         

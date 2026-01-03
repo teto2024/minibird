@@ -712,6 +712,14 @@ async function loadData() {
         seasonData = await seasonRes.json();
         
         if (!seasonData.ok) {
+            // メンテナンスモードチェック
+            if (seasonData.maintenance || seasonData.error === 'maintenance') {
+                if (!isMaintenanceMode) {
+                    isMaintenanceMode = true;
+                    showMaintenanceOverlay(seasonData.message);
+                }
+                return;
+            }
             document.getElementById('app').innerHTML = `<div class="loading">エラー: ${seasonData.error}</div>`;
             return;
         }
@@ -730,12 +738,112 @@ async function loadData() {
             if (troopsData.deployment_limit) {
                 deploymentLimit = troopsData.deployment_limit;
             }
+        } else if (troopsData.maintenance || troopsData.error === 'maintenance') {
+            // 兵士取得でメンテナンスエラーが返った場合
+            if (!isMaintenanceMode) {
+                isMaintenanceMode = true;
+                showMaintenanceOverlay(troopsData.message);
+            }
+            return;
         }
         
         renderApp();
     } catch (e) {
         console.error(e);
         document.getElementById('app').innerHTML = '<div class="loading">読み込みエラーが発生しました</div>';
+    }
+}
+
+// 占領戦レート制限の状態のみを更新
+async function updateConquestRateLimitStatus() {
+    try {
+        const res = await fetch('conquest_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_conquest_rate_limit_status'})
+        });
+        const rateLimitData = await res.json();
+        updateConquestRateLimitDisplay(rateLimitData);
+    } catch (e) {
+        console.error('Failed to update conquest rate limit status:', e);
+    }
+}
+
+// 占領戦レート制限の状態を表示
+function updateConquestRateLimitDisplay(rateLimitData) {
+    if (!rateLimitData || !rateLimitData.ok) return;
+    
+    const section = document.getElementById('conquestRateLimitSection');
+    const remainingEl = document.getElementById('conquestRemainingAttacks');
+    const barEl = document.getElementById('conquestRateLimitBar');
+    const messageEl = document.getElementById('conquestRateLimitMessage');
+    
+    if (!section || !remainingEl || !barEl || !messageEl) return;
+    
+    // セクションを表示
+    section.style.display = 'block';
+    
+    const attackCount = rateLimitData.attack_count || 0;
+    const maxAttacks = rateLimitData.max_attacks || 10;
+    const remainingAttacks = rateLimitData.remaining_attacks || 0;
+    const isLimited = rateLimitData.is_limited || false;
+    const waitSeconds = rateLimitData.wait_seconds || 0;
+    
+    // 残り攻撃回数を表示
+    remainingEl.textContent = `${remainingAttacks} / ${maxAttacks}`;
+    
+    // プログレスバーを更新
+    const percentage = (remainingAttacks / maxAttacks) * 100;
+    barEl.style.width = `${percentage}%`;
+    
+    // バーの色を更新
+    if (remainingAttacks === 0) {
+        barEl.style.background = 'linear-gradient(90deg, #8b0000 0%, #dc143c 100%)';
+    } else if (remainingAttacks <= 2) {
+        barEl.style.background = 'linear-gradient(90deg, #ffa500 0%, #ff6b6b 100%)';
+    } else {
+        barEl.style.background = 'linear-gradient(90deg, #32cd32 0%, #228b22 100%)';
+    }
+    
+    // メッセージを更新
+    if (isLimited) {
+        const hours = Math.floor(waitSeconds / 3600);
+        const minutes = Math.floor((waitSeconds % 3600) / 60);
+        let timeText = '';
+        if (hours > 0) {
+            timeText = `${hours}時間${minutes}分`;
+        } else if (minutes > 0) {
+            timeText = `${minutes}分`;
+        } else {
+            timeText = '1分未満';
+        }
+        
+        messageEl.innerHTML = `⚠️ <span style="color: #ff6b6b; font-weight: bold;">レート制限中</span> - 次の攻撃まで <span style="color: #ffd700; font-weight: bold;">${timeText}</span> お待ちください`;
+        section.style.borderColor = '#ff6b6b';
+        section.style.background = 'rgba(139, 0, 0, 0.3)';
+    } else if (remainingAttacks === 1) {
+        messageEl.innerHTML = `⚠️ あと <span style="color: #ffd700; font-weight: bold;">1回</span> 攻撃すると制限されます`;
+        section.style.borderColor = '#ffa500';
+        section.style.background = 'rgba(139, 69, 0, 0.2)';
+    } else if (remainingAttacks <= 3) {
+        messageEl.innerHTML = `💡 あと <span style="color: #ffd700;">${remainingAttacks}回</span> 攻撃できます`;
+        section.style.borderColor = '#ffa500';
+        section.style.background = 'rgba(139, 69, 0, 0.2)';
+    } else {
+        messageEl.innerHTML = `✅ 占領戦の攻撃は1時間に${maxAttacks}回まで可能です（残り${remainingAttacks}回）`;
+        section.style.borderColor = '#32cd32';
+        section.style.background = 'rgba(0, 100, 0, 0.15)';
+    }
+    
+    // エラーハンドリング（APIでエラーが返された場合）
+    if (rateLimitData.error) {
+        messageEl.innerHTML = `⚠️ レート制限情報の取得に失敗しました`;
+        const warningSpan = document.createElement('span');
+        warningSpan.style.color = '#ff6b6b';
+        warningSpan.style.fontSize = '11px';
+        warningSpan.textContent = '⚠️ レート制限機能が利用できません。管理者に連絡してください。';
+        messageEl.appendChild(document.createElement('br'));
+        messageEl.appendChild(warningSpan);
     }
 }
 
@@ -773,6 +881,23 @@ function renderApp() {
                     </button>
                 </div>
             ` : ''}
+        </div>
+        
+        <!-- 占領戦レート制限表示 -->
+        <div id="conquestRateLimitSection" style="background: rgba(139, 0, 0, 0.2); border: 2px solid #8b0000; padding: 15px; border-radius: 10px; margin-bottom: 20px; display: none;">
+            <h4 style="color: #ff6b6b; margin: 0 0 10px 0;">⏱️ 占領戦レート制限（1時間に10回まで）</h4>
+            <div style="margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="color: #c0a080;">残り攻撃可能回数</span>
+                    <span id="conquestRemainingAttacks" style="color: #ffd700; font-weight: bold;">--</span>
+                </div>
+                <div style="background: rgba(0,0,0,0.3); border-radius: 8px; height: 12px; overflow: hidden;">
+                    <div id="conquestRateLimitBar" style="background: linear-gradient(90deg, #32cd32 0%, #228b22 100%); height: 100%; width: 100%; transition: width 0.3s;"></div>
+                </div>
+            </div>
+            <div id="conquestRateLimitMessage" style="color: #c0a080; font-size: 12px; text-align: center;">
+                レート制限情報を取得中...
+            </div>
         </div>
         
         <div class="tabs">
@@ -833,6 +958,9 @@ function renderApp() {
     } else if (currentTab === 'history') {
         loadHistory();
     }
+    
+    // レート制限状態を更新
+    updateConquestRateLimitStatus();
 }
 
 // マップを描画
@@ -1432,8 +1560,22 @@ async function attackCastle(castleId) {
             showNotification(data.message, !isVictory);
             closeCastleModal();
             loadData(); // データを再読み込み
+            // 攻撃後、レート制限状態のみを更新（効率的）
+            updateConquestRateLimitStatus();
         } else {
+            // メンテナンスモードチェック
+            if (data.maintenance || data.error === 'maintenance') {
+                if (!isMaintenanceMode) {
+                    isMaintenanceMode = true;
+                    showMaintenanceOverlay(data.message);
+                }
+                return;
+            }
             showNotification(data.error, true);
+            // エラーの場合もレート制限状態を更新（制限到達の可能性）
+            if (data.rate_limited) {
+                updateConquestRateLimitStatus();
+            }
         }
     } catch (e) {
         showNotification('エラーが発生しました', true);
@@ -1466,6 +1608,14 @@ async function setDefense(castleId) {
             closeCastleModal();
             loadData();
         } else {
+            // メンテナンスモードチェック
+            if (data.maintenance || data.error === 'maintenance') {
+                if (!isMaintenanceMode) {
+                    isMaintenanceMode = true;
+                    showMaintenanceOverlay(data.message);
+                }
+                return;
+            }
             showNotification(data.error, true);
         }
     } catch (e) {
@@ -1495,6 +1645,14 @@ async function withdrawDefense(castleId) {
             closeCastleModal();
             loadData();
         } else {
+            // メンテナンスモードチェック
+            if (data.maintenance || data.error === 'maintenance') {
+                if (!isMaintenanceMode) {
+                    isMaintenanceMode = true;
+                    showMaintenanceOverlay(data.message);
+                }
+                return;
+            }
             showNotification(data.error, true);
         }
     } catch (e) {
