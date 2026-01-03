@@ -20,7 +20,8 @@ define('FOCUS_MAX_MINUTES', 180);
 // ----- ゲーム内メンテナンスモード設定 -----
 // ゲーム機能のみメンテナンスモードにする設定（サイト全体には影響しない）
 // true にするとゲーム関連API（civilization_api, conquest_api等）がメンテナンス中になる
-define('GAME_MAINTENANCE_MODE', getenv('GAME_MAINTENANCE_MODE') === 'true' ? true : false);
+// 環境変数で true, 1, yes, on などの値を受け付ける
+define('GAME_MAINTENANCE_MODE', filter_var(getenv('GAME_MAINTENANCE_MODE'), FILTER_VALIDATE_BOOLEAN));
 define('GAME_MAINTENANCE_MESSAGE', getenv('GAME_MAINTENANCE_MESSAGE') ?: 'ゲームシステムはメンテナンス中です。しばらくお待ちください。');
 
 /**
