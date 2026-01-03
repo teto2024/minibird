@@ -1977,7 +1977,6 @@ if ($action === 'attack') {
         // ⑦ 戦争レート制限チェック（1時間に3回まで）
         // トランザクション内でチェックすることで、整合性を保証
         // テーブルが存在しない場合はスキップ（後方互換性）
-        $rateCheckPassed = false;
         try {
             $oneHourAgo = date('Y-m-d H:i:s', strtotime('-' . WAR_RATE_LIMIT_WINDOW_HOURS . ' hour'));
             $stmt = $pdo->prepare("
@@ -2012,7 +2011,6 @@ if ($action === 'attack') {
                 ]);
                 exit;
             }
-            $rateCheckPassed = true;
         } catch (PDOException $e) {
             // テーブルが存在しない場合、レート制限をスキップ
             error_log("War rate limit check skipped - user_war_rate_limits table does not exist (backward compatibility mode)");

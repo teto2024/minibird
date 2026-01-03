@@ -4329,7 +4329,12 @@ function updateWarRateLimitDisplay(rateLimitData) {
     
     // テーブルが存在しない場合の警告
     if (rateLimitData.table_missing) {
-        messageEl.innerHTML += '<br><span style="color: #ff6b6b; font-size: 11px;">⚠️ レート制限機能が利用できません。管理者に連絡してください。</span>';
+        const warningSpan = document.createElement('span');
+        warningSpan.style.color = '#ff6b6b';
+        warningSpan.style.fontSize = '11px';
+        warningSpan.textContent = '⚠️ レート制限機能が利用できません。管理者に連絡してください。';
+        messageEl.appendChild(document.createElement('br'));
+        messageEl.appendChild(warningSpan);
     }
 }
 
