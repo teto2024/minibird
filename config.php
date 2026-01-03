@@ -78,6 +78,23 @@ function check_game_maintenance($exitOnMaintenance = true) {
     return false;
 }
 
+/**
+ * メンテナンスモードの状態を取得（管理者バイパスを考慮）
+ * APIの check_game_maintenance アクションで使用
+ * @return bool メンテナンス中かどうか（管理者の場合は常にfalse）
+ */
+function is_game_in_maintenance() {
+    if (GAME_MAINTENANCE_MODE) {
+        // 管理者はメンテナンスモードをバイパス
+        $currentUser = user();
+        if ($currentUser && isset($currentUser['role']) && $currentUser['role'] === 'admin') {
+            return false; // 管理者にはメンテナンス中と見なさない
+        }
+        return true;
+    }
+    return false;
+}
+
 // ----- セッション -----
 session_set_cookie_params([
     'lifetime' => 60*60*24*30,

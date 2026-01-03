@@ -39,10 +39,11 @@ $action = $input['action'] ?? '';
 
 // メンテナンス状態取得はメンテナンス中でも許可
 if ($action === 'check_game_maintenance') {
+    $inMaintenance = is_game_in_maintenance();
     echo json_encode([
         'ok' => true,
-        'maintenance' => GAME_MAINTENANCE_MODE,
-        'message' => GAME_MAINTENANCE_MODE ? GAME_MAINTENANCE_MESSAGE : null
+        'maintenance' => $inMaintenance,
+        'message' => $inMaintenance ? GAME_MAINTENANCE_MESSAGE : null
     ]);
     exit;
 }
