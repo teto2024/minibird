@@ -2621,4 +2621,25 @@ if ($action === 'get_conquest_rate_limit_status') {
     exit;
 }
 
+// ===============================================
+// 報酬テーブルを取得
+// ===============================================
+if ($action === 'get_rewards') {
+    try {
+        echo json_encode([
+            'ok' => true,
+            'rewards' => [
+                ['rank' => '1位', 'coins' => CONQUEST_REWARD_RANK_1[0], 'crystals' => CONQUEST_REWARD_RANK_1[1], 'diamonds' => CONQUEST_REWARD_RANK_1[2]],
+                ['rank' => '2位', 'coins' => CONQUEST_REWARD_RANK_2[0], 'crystals' => CONQUEST_REWARD_RANK_2[1], 'diamonds' => CONQUEST_REWARD_RANK_2[2]],
+                ['rank' => '3位', 'coins' => CONQUEST_REWARD_RANK_3[0], 'crystals' => CONQUEST_REWARD_RANK_3[1], 'diamonds' => CONQUEST_REWARD_RANK_3[2]],
+                ['rank' => '4-10位', 'coins' => CONQUEST_REWARD_RANK_4_10[0], 'crystals' => CONQUEST_REWARD_RANK_4_10[1], 'diamonds' => CONQUEST_REWARD_RANK_4_10[2]],
+                ['rank' => '11位以下', 'coins' => CONQUEST_REWARD_PARTICIPANT[0], 'crystals' => CONQUEST_REWARD_PARTICIPANT[1], 'diamonds' => CONQUEST_REWARD_PARTICIPANT[2]]
+            ]
+        ]);
+    } catch (Exception $e) {
+        echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 echo json_encode(['ok' => false, 'error' => 'invalid_action']);

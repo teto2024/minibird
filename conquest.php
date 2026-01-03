@@ -1671,22 +1671,24 @@ function closeCastleModal() {
 // ランキングを読み込む
 async function loadRanking() {
     try {
-        const res = await fetch('conquest_api.php', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({action: 'get_ranking'})
-        });
-        const data = await res.json();
+        const [rankingRes, rewardsRes] = await Promise.all([
+            fetch('conquest_api.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'get_ranking'})
+            }),
+            fetch('conquest_api.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'get_rewards'})
+            })
+        ]);
         
-        if (data.ok) {
-            // 報酬テーブルを定義（conquest_api.phpの定数と同期）
-            const rewards = [
-                { rank: '1位', coins: 100000, crystals: 1000, diamonds: 100 },
-                { rank: '2位', coins: 50000, crystals: 500, diamonds: 50 },
-                { rank: '3位', coins: 30000, crystals: 300, diamonds: 30 },
-                { rank: '4-10位', coins: 10000, crystals: 100, diamonds: 10 },
-                { rank: '11位以下', coins: 500, crystals: 5, diamonds: 1 }
-            ];
+        const data = await rankingRes.json();
+        const rewardsData = await rewardsRes.json();
+        
+        if (data.ok && rewardsData.ok) {
+            const rewards = rewardsData.rewards;
             
             document.getElementById('rankingContent').innerHTML = `
                 <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
