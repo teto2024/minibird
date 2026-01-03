@@ -90,6 +90,12 @@ function user() {
         $st->execute([$uid]);
         $cache[$uid] = $st->fetch();
     }
+    // 凍結されたユーザーを検知して強制ログアウト
+    if ($cache[$uid] && (int)$cache[$uid]['frozen'] === 1) {
+        unset($_SESSION['uid']);
+        $cache = [];
+        return null;
+    }
     return $cache[$uid];
 }
 
