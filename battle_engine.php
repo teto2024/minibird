@@ -615,9 +615,10 @@ function prepareBattleUnit($troops, $equipmentBuffs, $pdo) {
  * @param int $targetArmor 対象のアーマー
  * @param array $attackerEffects 攻撃者の状態効果
  * @param array $defenderEffects 防御者の状態効果
+ * @param array $defenderData 防御側のデータ（カテゴリチェック用、オプション）
  * @return array [damage, isCritical, messages]
  */
-function calculateDamage($baseAttack, $targetArmor, $attackerEffects = [], $defenderEffects = []) {
+function calculateDamage($baseAttack, $targetArmor, $attackerEffects = [], $defenderEffects = [], $defenderData = null) {
     $messages = [];
     
     // 攻撃力の調整（状態異常による）
@@ -635,6 +636,32 @@ function calculateDamage($baseAttack, $targetArmor, $attackerEffects = [], $defe
             $attackMultiplier += $effect['effect_value'] / 100;
             $messages[] = "🩸 血の渇望！攻撃力上昇 (+{$effect['effect_value']}%)";
         }
+        
+        // 対空掃射スキル：相手に空カテゴリがいる場合、攻撃力40%アップ
+        if ($effect['skill_key'] === 'anti_air_barrage' && $defenderData !== null) {
+            if (isset($defenderData['domain_categories']) && in_array('air', $defenderData['domain_categories'])) {
+                $attackMultiplier += $effect['effect_value'] / 100;
+                $messages[] = "🎯 対空掃射！空カテゴリに対して攻撃力上昇 (+{$effect['effect_value']}%)";
+            }
+        }
+        
+        // 戦車駆逐スキル：相手に陸カテゴリかつ騎兵カテゴリがいる場合、攻撃力40%アップ
+        if ($effect['skill_key'] === 'tank_destroyer' && $defenderData !== null) {
+            $hasLandCavalry = false;
+            if (isset($defenderData['troops'])) {
+                foreach ($defenderData['troops'] as $troop) {
+                    if (isset($troop['domain_category']) && $troop['domain_category'] === 'land' && 
+                        isset($troop['category']) && $troop['category'] === 'cavalry') {
+                        $hasLandCavalry = true;
+                        break;
+                    }
+                }
+            }
+            if ($hasLandCavalry) {
+                $attackMultiplier += $effect['effect_value'] / 100;
+                $messages[] = "🎖️ 戦車駆逐！陸上騎兵に対して攻撃力上昇 (+{$effect['effect_value']}%)";
+            }
+        }
     }
     foreach ($defenderEffects as $effect) {
         if ($effect['skill_key'] === 'attack_down') {
@@ -645,9 +672,17 @@ function calculateDamage($baseAttack, $targetArmor, $attackerEffects = [], $defe
             $attackMultiplier -= $effect['effect_value'] / 100;
             $messages[] = "😵 弱体化中 (-{$effect['effect_value']}%)";
         }
+        if ($effect['skill_key'] === 'weaken') {
+            $attackMultiplier -= $effect['effect_value'] / 100;
+            $messages[] = "💀 弱体化！攻撃力低下 (-{$effect['effect_value']}%)";
+        }
         if ($effect['skill_key'] === 'fear') {
             $attackMultiplier -= $effect['effect_value'] / 100;
             $messages[] = "😱 恐怖！攻撃力低下 (-{$effect['effect_value']}%)";
+        }
+        if ($effect['skill_key'] === 'disarm') {
+            $attackMultiplier -= $effect['effect_value'] / 100;
+            $messages[] = "🚫 武装解除！攻撃力低下 (-{$effect['effect_value']}%)";
         }
     }
     $attackMultiplier = max(0.1, $attackMultiplier);
@@ -676,6 +711,10 @@ function calculateDamage($baseAttack, $targetArmor, $attackerEffects = [], $defe
             $armorMultiplier += $effect['effect_value'] / 100;
             $messages[] = "🛡️ アーマー硬化中 (+{$effect['effect_value']}%)";
         }
+        if ($effect['skill_key'] === 'defense_formation') {
+            $armorMultiplier += $effect['effect_value'] / 100;
+            $messages[] = "🛡️ 防御陣形！防御力上昇 (+{$effect['effect_value']}%)";
+        }
         if ($effect['skill_key'] === 'fortify') {
             $armorMultiplier += $effect['effect_value'] / 100;
             $messages[] = "🛡️ 防御陣形 (+{$effect['effect_value']}%防御力)";
@@ -687,6 +726,10 @@ function calculateDamage($baseAttack, $targetArmor, $attackerEffects = [], $defe
         if ($effect['skill_key'] === 'shield_wall') {
             $armorMultiplier += $effect['effect_value'] / 100;
             $messages[] = "🔰 盾の壁 (+{$effect['effect_value']}%ダメージ軽減)";
+        }
+        if ($effect['skill_key'] === 'weaken') {
+            $armorMultiplier -= $effect['effect_value'] / 100;
+            $messages[] = "💀 弱体化！防御力低下 (-{$effect['effect_value']}%)";
         }
     }
     $armorMultiplier = max(0, $armorMultiplier);
@@ -708,6 +751,10 @@ function calculateDamage($baseAttack, $targetArmor, $attackerEffects = [], $defe
         if ($effect['skill_key'] === 'precision') {
             $critChance += $effect['effect_value'];
             $messages[] = "🎯 精密射撃！クリティカル率上昇";
+        }
+        if ($effect['skill_key'] === 'precision_shot') {
+            $critChance += $effect['effect_value'];
+            $messages[] = "🔭 精密射撃！クリティカル率大幅上昇";
         }
     }
     // 相手に弱点露出デバフがある場合はクリティカルダメージ増加
@@ -825,6 +872,24 @@ function tryActivateSkill($unit, $target, $isAttacker) {
                 $effect['effect_type'] = 'reflect';
                 $newEffects[] = $effect;
                 $messages[] = "⛵ 扇動発動！受けた攻撃を跳ね返す！";
+            }
+            // 反撃スキル（ダメージを受けた時に反撃）
+            else if ($skill['skill_key'] === 'counter') {
+                $effect['effect_type'] = 'counter';
+                $newEffects[] = $effect;
+                $messages[] = "⚔️ 反撃構え！ダメージを受けた時に反撃する！";
+            }
+            // 回避スキル（攻撃を回避）
+            else if ($skill['skill_key'] === 'evasion') {
+                $effect['effect_type'] = 'evasion';
+                $newEffects[] = $effect;
+                $messages[] = "💨 回避体制！攻撃を回避する確率が上昇！";
+            }
+            // 鼓舞スキル（味方全体の攻撃力上昇）
+            else if ($skill['skill_key'] === 'inspire') {
+                $effect['effect_type'] = 'buff';
+                $newEffects[] = $effect;
+                $messages[] = "📣 鼓舞！味方全体の攻撃力を上昇させる！";
             }
             else {
                 $newEffects[] = $effect;
@@ -1042,16 +1107,50 @@ function executeTurnBattle($attacker, $defender, $maxTurns = null) {
             for ($i = 0; $i < $attackCount; $i++) {
                 if ($defender['current_health'] <= 0) break;
                 
+                // 回避スキルチェック（防御側）
+                $evaded = false;
+                foreach ($defender['active_effects'] as $evasionEffect) {
+                    if (isset($evasionEffect['skill_key']) && $evasionEffect['skill_key'] === 'evasion') {
+                        $evasionChance = $evasionEffect['effect_value'] ?? 35;
+                        if (mt_rand(1, 100) <= $evasionChance) {
+                            $evaded = true;
+                            $attackNum = $i + 1;
+                            $attackLabel = $attackCount > 1 ? "[攻撃{$attackNum}] " : "";
+                            $turnMessages[] = "{$attackLabel}💨 回避！攻撃を回避した！";
+                            break;
+                        }
+                    }
+                }
+                
+                if ($evaded) {
+                    continue; // 回避した場合はダメージ計算をスキップ
+                }
+                
                 // ダメージ計算
                 $damageResult = calculateDamage(
                     $attacker['attack'],
                     $defender['armor'],
                     $attacker['active_effects'],
-                    $defender['active_effects']
+                    $defender['active_effects'],
+                    $defender  // 防御側のデータを渡す（カテゴリチェック用）
                 );
                 
                 $defender['current_health'] -= $damageResult['damage'];
                 $defender['current_health'] = max(0, $defender['current_health']);
+                
+                // 反撃スキルチェック（防御側）
+                foreach ($defender['active_effects'] as $counterEffect) {
+                    if (isset($counterEffect['skill_key']) && $counterEffect['skill_key'] === 'counter') {
+                        $counterChance = $counterEffect['activation_chance'] ?? 30;
+                        if (mt_rand(1, 100) <= $counterChance) {
+                            $counterDamage = (int)floor($damageResult['damage'] * ($counterEffect['effect_value'] / 100));
+                            $attacker['current_health'] -= $counterDamage;
+                            $attacker['current_health'] = max(0, $attacker['current_health']);
+                            $turnMessages[] = "⚔️ 反撃！{$counterDamage}ダメージを与えた！";
+                            $turnMessages[] = "攻撃側HP: {$attacker['current_health']}/{$attacker['max_health']}";
+                        }
+                    }
+                }
                 
                 // 反射効果チェック（防御側）
                 foreach ($defender['active_effects'] as $reflectEffect) {
@@ -1208,16 +1307,50 @@ function executeTurnBattle($attacker, $defender, $maxTurns = null) {
             for ($i = 0; $i < $attackCount; $i++) {
                 if ($attacker['current_health'] <= 0) break;
                 
+                // 回避スキルチェック（攻撃側）
+                $evaded = false;
+                foreach ($attacker['active_effects'] as $evasionEffect) {
+                    if (isset($evasionEffect['skill_key']) && $evasionEffect['skill_key'] === 'evasion') {
+                        $evasionChance = $evasionEffect['effect_value'] ?? 35;
+                        if (mt_rand(1, 100) <= $evasionChance) {
+                            $evaded = true;
+                            $attackNum = $i + 1;
+                            $attackLabel = $attackCount > 1 ? "[攻撃{$attackNum}] " : "";
+                            $turnMessages[] = "{$attackLabel}💨 回避！攻撃を回避した！";
+                            break;
+                        }
+                    }
+                }
+                
+                if ($evaded) {
+                    continue; // 回避した場合はダメージ計算をスキップ
+                }
+                
                 // ダメージ計算
                 $damageResult = calculateDamage(
                     $defender['attack'],
                     $attacker['armor'],
                     $defender['active_effects'],
-                    $attacker['active_effects']
+                    $attacker['active_effects'],
+                    $attacker  // 攻撃側のデータを渡す（カテゴリチェック用）
                 );
                 
                 $attacker['current_health'] -= $damageResult['damage'];
                 $attacker['current_health'] = max(0, $attacker['current_health']);
+                
+                // 反撃スキルチェック（攻撃側）
+                foreach ($attacker['active_effects'] as $counterEffect) {
+                    if (isset($counterEffect['skill_key']) && $counterEffect['skill_key'] === 'counter') {
+                        $counterChance = $counterEffect['activation_chance'] ?? 30;
+                        if (mt_rand(1, 100) <= $counterChance) {
+                            $counterDamage = (int)floor($damageResult['damage'] * ($counterEffect['effect_value'] / 100));
+                            $defender['current_health'] -= $counterDamage;
+                            $defender['current_health'] = max(0, $defender['current_health']);
+                            $turnMessages[] = "⚔️ 反撃！{$counterDamage}ダメージを与えた！";
+                            $turnMessages[] = "防御側HP: {$defender['current_health']}/{$defender['max_health']}";
+                        }
+                    }
+                }
                 
                 // 反射効果チェック（攻撃側）
                 foreach ($attacker['active_effects'] as $reflectEffect) {
