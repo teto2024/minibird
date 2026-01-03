@@ -75,7 +75,9 @@ session_start();
 // ログインチェック・ユーザー情報取得
 // -------------------------
 function require_login() {
-    if (empty($_SESSION['uid'])) {
+    // 凍結されたユーザーを検知して強制ログアウト
+    $u = user();
+    if (!$u) {
         http_response_code(403);
         exit('Not logged in');
     }
@@ -89,6 +91,12 @@ function user() {
         $st = db()->prepare("SELECT * FROM users WHERE id=?");
         $st->execute([$uid]);
         $cache[$uid] = $st->fetch();
+    }
+    // 凍結されたユーザーを検知して強制ログアウト
+    if ($cache[$uid] && (int)$cache[$uid]['frozen'] === 1) {
+        unset($_SESSION['uid']);
+        unset($cache[$uid]);
+        return null;
     }
     return $cache[$uid];
 }
