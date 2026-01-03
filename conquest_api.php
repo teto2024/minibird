@@ -1980,8 +1980,13 @@ function processBombardment($pdo, $castleId, $seasonId) {
             $castleFallen = true;
             $logMessages[] = "⚠️ {$castle['name']}が陥落！所有者はNPCに変更されました。";
             
+            // 神城の場合、前の所有者の占領時間を更新
+            if ($castle['is_sacred']) {
+                updateSacredOccupationTime($pdo, $seasonId, $castle['owner_user_id'], null);
+            }
+            
             // 城をNPCに渡し、耐久度をリセット
-            $stmt = $pdo->prepare("UPDATE conquest_castles SET owner_user_id = NULL, durability = ? WHERE id = ?");
+            $stmt = $pdo->prepare("UPDATE conquest_castles SET owner_user_id = NULL, durability = ?, sacred_occupation_started_at = NULL WHERE id = ?");
             $stmt->execute([$maxDurability, $castleId]);
             
             // お知らせ投稿（外周以外の場合）
