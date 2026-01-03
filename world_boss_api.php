@@ -354,6 +354,8 @@ if ($action === 'summon_boss') {
             $lastSummonTime = strtotime($lastSummon['started_at']);
             
             // 最後に召喚したボスがベテランかどうかをチェック
+            // Note: labelsカラムの文字列マッチングで判定（現在の実装）
+            // 将来的にはis_veteranのようなboolean列を追加することを検討
             $lastBossIsVeteran = !empty($lastSummon['labels']) && stripos($lastSummon['labels'], 'ベテラン') !== false;
             
             // ベテランボスは2時間、通常ボスは1時間のクールダウン
