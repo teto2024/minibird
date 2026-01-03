@@ -2086,6 +2086,22 @@ function renderApp() {
                     </div>
                     <p style="color: #888; font-size: 11px; margin-top: 10px;">💡 装備のバフ（攻撃力・体力・アーマー）が戦闘力に影響します。アーマーは敵の攻撃を軽減します。</p>
                 </div>
+                
+                <!-- 戦争レート制限表示 -->
+                <div id="warRateLimitSection" style="background: rgba(139, 0, 0, 0.2); border: 2px solid #8b0000; padding: 15px; border-radius: 10px; margin-bottom: 20px; display: none;">
+                    <h4 style="color: #ff6b6b; margin: 0 0 10px 0;">⏱️ 戦争レート制限（1時間に3回まで）</h4>
+                    <div style="margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span style="color: #c0a080;">残り攻撃可能回数</span>
+                            <span style="color: #ffd700; font-weight: bold;" id="remainingAttacks">3 / 3</span>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.3); height: 20px; border-radius: 10px; overflow: hidden;">
+                            <div id="rateLimitProgressBar" style="background: linear-gradient(90deg, #32cd32 0%, #ffd700 50%, #ff6b6b 100%); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+                        </div>
+                    </div>
+                    <div id="rateLimitMessage" style="color: #888; font-size: 12px; text-align: center;"></div>
+                </div>
+                
                 <p style="color: #c0a080; margin-bottom: 20px;">軍事施設を建設して軍事力を上げ、他の文明から資源を略奪しましょう！</p>
                 <div class="targets-list" id="targetsList">
                     <div class="loading">攻撃対象を読み込み中...</div>
@@ -2968,12 +2984,25 @@ async function exchangeResources() {
 // 攻撃対象を読み込む
 async function loadTargets() {
     try {
-        const res = await fetch('civilization_api.php', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({action: 'get_targets'})
-        });
-        const data = await res.json();
+        // 並行して攻撃対象とレート制限状態を取得
+        const [targetsRes, rateLimitRes] = await Promise.all([
+            fetch('civilization_api.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'get_targets'})
+            }),
+            fetch('civilization_api.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'get_war_rate_limit_status'})
+            })
+        ]);
+        
+        const data = await targetsRes.json();
+        const rateLimitData = await rateLimitRes.json();
+        
+        // レート制限状態を表示
+        updateWarRateLimitDisplay(rateLimitData);
         
         // 自分の軍事力を更新
         if (data.my_military_power) {
@@ -4150,8 +4179,14 @@ async function attack(targetUserId) {
             if (isVictory) {
                 loadData();
             }
+            // 攻撃後、レート制限状態のみを更新（効率的）
+            updateWarRateLimitStatus();
         } else {
             showNotification(data.error, true);
+            // エラーの場合もレート制限状態を更新（制限到達の可能性）
+            if (data.rate_limited) {
+                updateWarRateLimitStatus();
+            }
         }
     } catch (e) {
         showNotification('エラーが発生しました', true);
@@ -4206,6 +4241,101 @@ function showNotification(message, isError = false) {
     document.body.appendChild(notification);
     
     setTimeout(() => notification.remove(), 4000);
+}
+
+// 戦争レート制限の状態のみを更新
+async function updateWarRateLimitStatus() {
+    try {
+        const res = await fetch('civilization_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_war_rate_limit_status'})
+        });
+        const rateLimitData = await res.json();
+        updateWarRateLimitDisplay(rateLimitData);
+    } catch (e) {
+        console.error('Failed to update war rate limit status:', e);
+    }
+}
+
+// 戦争レート制限の状態を表示
+function updateWarRateLimitDisplay(rateLimitData) {
+    if (!rateLimitData || !rateLimitData.ok) return;
+    
+    const section = document.getElementById('warRateLimitSection');
+    const remainingAttacksEl = document.getElementById('remainingAttacks');
+    const progressBar = document.getElementById('rateLimitProgressBar');
+    const messageEl = document.getElementById('rateLimitMessage');
+    
+    if (!section || !remainingAttacksEl || !progressBar || !messageEl) return;
+    
+    const attackCount = rateLimitData.attack_count || 0;
+    const maxAttacks = rateLimitData.max_attacks || 3;
+    const remainingAttacks = rateLimitData.remaining_attacks || 0;
+    const isLimited = rateLimitData.is_limited || false;
+    const waitSeconds = rateLimitData.wait_seconds || 0;
+    
+    // セクションを表示
+    section.style.display = 'block';
+    
+    // 残り回数を表示
+    remainingAttacksEl.textContent = `${remainingAttacks} / ${maxAttacks}`;
+    
+    // プログレスバーの幅を設定（使用した割合）
+    const usedPercentage = (attackCount / maxAttacks) * 100;
+    progressBar.style.width = `${usedPercentage}%`;
+    
+    // プログレスバーの色を変更（残り回数に応じて）
+    if (remainingAttacks === 0) {
+        progressBar.style.background = '#ff6b6b'; // 赤（制限中）
+    } else if (remainingAttacks === 1) {
+        progressBar.style.background = '#ffd700'; // 黄色（残り1回）
+    } else {
+        progressBar.style.background = 'linear-gradient(90deg, #32cd32 0%, #ffd700 50%, #ff6b6b 100%)';
+    }
+    
+    // メッセージを表示
+    if (isLimited && waitSeconds > 0) {
+        const hours = Math.floor(waitSeconds / 3600);
+        const mins = Math.floor((waitSeconds % 3600) / 60);
+        
+        let timeText = '';
+        if (hours > 0 && mins > 0) {
+            timeText = `${hours}時間${mins}分`;
+        } else if (hours > 0) {
+            timeText = `${hours}時間`;
+        } else if (mins > 0) {
+            timeText = `${mins}分`;
+        } else {
+            timeText = '1分未満';
+        }
+        
+        messageEl.innerHTML = `⚠️ <span style="color: #ff6b6b; font-weight: bold;">レート制限中</span> - 次の攻撃まで <span style="color: #ffd700; font-weight: bold;">${timeText}</span> お待ちください`;
+        section.style.borderColor = '#ff6b6b';
+        section.style.background = 'rgba(139, 0, 0, 0.3)';
+    } else if (remainingAttacks === 1) {
+        messageEl.innerHTML = `⚠️ 残り <span style="color: #ffd700; font-weight: bold;">1回</span> のみ攻撃可能です`;
+        section.style.borderColor = '#ffd700';
+        section.style.background = 'rgba(255, 215, 0, 0.1)';
+    } else if (remainingAttacks === 2) {
+        messageEl.innerHTML = `✅ 残り <span style="color: #32cd32; font-weight: bold;">2回</span> 攻撃可能です`;
+        section.style.borderColor = '#32cd32';
+        section.style.background = 'rgba(50, 205, 50, 0.1)';
+    } else {
+        messageEl.innerHTML = `✅ <span style="color: #32cd32; font-weight: bold;">すべて利用可能</span> - ${maxAttacks}回攻撃できます`;
+        section.style.borderColor = '#32cd32';
+        section.style.background = 'rgba(50, 205, 50, 0.1)';
+    }
+    
+    // テーブルが存在しない場合の警告
+    if (rateLimitData.table_missing) {
+        const warningSpan = document.createElement('span');
+        warningSpan.style.color = '#ff6b6b';
+        warningSpan.style.fontSize = '11px';
+        warningSpan.textContent = '⚠️ レート制限機能が利用できません。管理者に連絡してください。';
+        messageEl.appendChild(document.createElement('br'));
+        messageEl.appendChild(warningSpan);
+    }
 }
 
 // 建物を即完了
