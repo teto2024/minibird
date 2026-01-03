@@ -52,11 +52,18 @@ define('GAME_MAINTENANCE_MESSAGE', $maintenance_message);
 
 /**
  * ゲームメンテナンスモードをチェックし、メンテナンス中の場合はJSONエラーを返す
+ * 管理者（role='admin'）にはメンテナンスモードを適用しない
  * @param bool $exitOnMaintenance メンテナンス中の場合にexitするかどうか
  * @return bool メンテナンス中かどうか
  */
 function check_game_maintenance($exitOnMaintenance = true) {
     if (GAME_MAINTENANCE_MODE) {
+        // 管理者はメンテナンスモードをバイパス
+        $currentUser = user();
+        if ($currentUser && isset($currentUser['role']) && $currentUser['role'] === 'admin') {
+            return false; // 管理者にはメンテナンス中と見なさない
+        }
+        
         if ($exitOnMaintenance) {
             echo json_encode([
                 'ok' => false,
