@@ -2238,6 +2238,63 @@ if ($action === 'get_targets') {
     exit;
 }
 
+// 戦争レート制限の状態を取得
+if ($action === 'get_war_rate_limit_status') {
+    try {
+        $oneHourAgo = date('Y-m-d H:i:s', strtotime('-1 hour'));
+        
+        // 過去1時間以内の攻撃回数と攻撃時刻を取得
+        $stmt = $pdo->prepare("
+            SELECT attack_timestamp 
+            FROM user_war_rate_limits 
+            WHERE user_id = ? AND attack_timestamp >= ?
+            ORDER BY attack_timestamp ASC
+        ");
+        $stmt->execute([$me['id'], $oneHourAgo]);
+        $attacks = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        $attackCount = count($attacks);
+        $remainingAttacks = max(0, 3 - $attackCount);
+        $isLimited = $attackCount >= 3;
+        
+        $nextAvailable = null;
+        $waitSeconds = 0;
+        
+        if ($isLimited && !empty($attacks)) {
+            // 最も古い攻撃の1時間後が次の利用可能時刻
+            $oldestAttack = $attacks[0];
+            $nextAvailable = date('Y-m-d H:i:s', strtotime($oldestAttack . ' +1 hour'));
+            $waitSeconds = max(0, strtotime($nextAvailable) - time());
+        }
+        
+        echo json_encode([
+            'ok' => true,
+            'attack_count' => $attackCount,
+            'max_attacks' => 3,
+            'remaining_attacks' => $remainingAttacks,
+            'is_limited' => $isLimited,
+            'next_available' => $nextAvailable,
+            'wait_seconds' => $waitSeconds,
+            'attacks' => $attacks // 攻撃履歴のタイムスタンプ配列
+        ]);
+    } catch (Exception $e) {
+        // テーブルが存在しない場合は制限なしとして扱う
+        echo json_encode([
+            'ok' => true,
+            'attack_count' => 0,
+            'max_attacks' => 3,
+            'remaining_attacks' => 3,
+            'is_limited' => false,
+            'next_available' => null,
+            'wait_seconds' => 0,
+            'attacks' => [],
+            'table_missing' => true,
+            'error_message' => $e->getMessage()
+        ]);
+    }
+    exit;
+}
+
 // 文明名を変更
 if ($action === 'rename') {
     $newName = trim($input['name'] ?? '');
