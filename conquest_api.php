@@ -1717,27 +1717,59 @@ if ($action === 'get_ranking') {
         // 新しいランキングアルゴリズム:
         // 1. 神城累計占領時間が長い順（全プレイヤー対象）
         // 2. 占領時間が同じ場合のみ城数順
+        // 注: 城を持っていないプレイヤーも神城累計占領時間があればランキングに表示
         $stmt = $pdo->prepare("
             SELECT 
-                cc.owner_user_id, 
-                u.handle, 
-                uc.civilization_name,
-                COUNT(*) as castle_count,
-                SUM(CASE WHEN cc.is_sacred THEN 1 ELSE 0 END) as sacred_count,
-                COALESCE(csot.total_occupation_seconds, 0) as sacred_occupation_seconds
-            FROM conquest_castles cc
-            JOIN users u ON cc.owner_user_id = u.id
-            JOIN user_civilizations uc ON cc.owner_user_id = uc.user_id
-            LEFT JOIN conquest_sacred_occupation_time csot 
-                ON cc.owner_user_id = csot.user_id AND cc.season_id = csot.season_id
-            WHERE cc.season_id = ? AND cc.owner_user_id IS NOT NULL
-            GROUP BY cc.owner_user_id
+                user_id as owner_user_id,
+                handle,
+                civilization_name,
+                castle_count,
+                sacred_count,
+                sacred_occupation_seconds
+            FROM (
+                -- 現在城を持っているプレイヤー
+                SELECT 
+                    cc.owner_user_id as user_id,
+                    u.handle,
+                    uc.civilization_name,
+                    COUNT(*) as castle_count,
+                    SUM(CASE WHEN cc.is_sacred THEN 1 ELSE 0 END) as sacred_count,
+                    COALESCE(csot.total_occupation_seconds, 0) as sacred_occupation_seconds
+                FROM conquest_castles cc
+                JOIN users u ON cc.owner_user_id = u.id
+                JOIN user_civilizations uc ON cc.owner_user_id = uc.user_id
+                LEFT JOIN conquest_sacred_occupation_time csot 
+                    ON cc.owner_user_id = csot.user_id AND cc.season_id = csot.season_id
+                WHERE cc.season_id = ? AND cc.owner_user_id IS NOT NULL
+                GROUP BY cc.owner_user_id
+                
+                UNION
+                
+                -- 城を持っていないが神城占領時間があるプレイヤー
+                SELECT 
+                    csot.user_id,
+                    u.handle,
+                    uc.civilization_name,
+                    0 as castle_count,
+                    0 as sacred_count,
+                    csot.total_occupation_seconds as sacred_occupation_seconds
+                FROM conquest_sacred_occupation_time csot
+                JOIN users u ON csot.user_id = u.id
+                JOIN user_civilizations uc ON csot.user_id = uc.user_id
+                WHERE csot.season_id = ?
+                    AND csot.total_occupation_seconds > 0
+                    AND csot.user_id NOT IN (
+                        SELECT DISTINCT owner_user_id 
+                        FROM conquest_castles 
+                        WHERE season_id = ? AND owner_user_id IS NOT NULL
+                    )
+            ) combined
             ORDER BY 
-                COALESCE(csot.total_occupation_seconds, 0) DESC,
-                COUNT(*) DESC
+                sacred_occupation_seconds DESC,
+                castle_count DESC
             LIMIT 20
         ");
-        $stmt->execute([$season['id']]);
+        $stmt->execute([$season['id'], $season['id'], $season['id']]);
         $rankings = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // 現在占領中のプレイヤーの累計時間に現在の占領時間を加算（表示用）
