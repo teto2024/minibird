@@ -2011,7 +2011,7 @@ if ($action === 'attack') {
             $rateCheckPassed = true;
         } catch (PDOException $e) {
             // テーブルが存在しない場合、レート制限をスキップ
-            error_log("War rate limit check skipped - rate limit table may not exist");
+            error_log("War rate limit check skipped - user_war_rate_limits table does not exist (backward compatibility mode)");
             // 後方互換性のため続行
         }
         
@@ -2129,7 +2129,7 @@ if ($action === 'attack') {
             $stmt->execute([$me['id'], $targetUserId]);
         } catch (PDOException $e) {
             // テーブルが存在しない場合は記録をスキップ
-            error_log("War rate limit recording skipped - rate limit table may not exist");
+            error_log("War rate limit recording skipped - user_war_rate_limits table does not exist (backward compatibility mode)");
         }
         
         // 戦争ログを記録（詳細情報を含む）
