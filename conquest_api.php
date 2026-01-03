@@ -359,6 +359,88 @@ function getVisibleDefenseTroops($pdo, $troops) {
 }
 
 /**
+ * 神城の累計占領時間を更新する
+ * @param PDO $pdo
+ * @param int $seasonId
+ * @param int|null $oldOwnerId 前の所有者（nullの場合はNPC）
+ * @param int|null $newOwnerId 新しい所有者（nullの場合はNPC）
+ */
+function updateSacredOccupationTime($pdo, $seasonId, $oldOwnerId, $newOwnerId) {
+    // 前の所有者の占領時間を更新
+    if ($oldOwnerId !== null) {
+        // 最後の占領開始時刻を取得
+        $stmt = $pdo->prepare("
+            SELECT last_occupation_start 
+            FROM conquest_sacred_occupation_time 
+            WHERE season_id = ? AND user_id = ?
+        ");
+        $stmt->execute([$seasonId, $oldOwnerId]);
+        $lastStart = $stmt->fetchColumn();
+        
+        if ($lastStart) {
+            // 占領時間を計算して加算
+            $occupationSeconds = max(0, time() - strtotime($lastStart));
+            $stmt = $pdo->prepare("
+                UPDATE conquest_sacred_occupation_time 
+                SET total_occupation_seconds = total_occupation_seconds + ?,
+                    last_occupation_start = NULL
+                WHERE season_id = ? AND user_id = ?
+            ");
+            $stmt->execute([$occupationSeconds, $seasonId, $oldOwnerId]);
+        }
+    }
+    
+    // 新しい所有者の占領開始時刻を記録
+    if ($newOwnerId !== null) {
+        $stmt = $pdo->prepare("
+            INSERT INTO conquest_sacred_occupation_time 
+            (season_id, user_id, last_occupation_start)
+            VALUES (?, ?, NOW())
+            ON DUPLICATE KEY UPDATE last_occupation_start = NOW()
+        ");
+        $stmt->execute([$seasonId, $newOwnerId]);
+    }
+}
+
+/**
+ * シーズン終了時に全プレイヤーの神城占領時間を最終更新
+ * @param PDO $pdo
+ * @param int $seasonId
+ */
+function finalizeSacredOccupationTimes($pdo, $seasonId) {
+    // 現在神城を占領しているプレイヤーの占領時間を更新
+    $stmt = $pdo->prepare("
+        SELECT owner_user_id 
+        FROM conquest_castles 
+        WHERE season_id = ? AND is_sacred = TRUE AND owner_user_id IS NOT NULL
+    ");
+    $stmt->execute([$seasonId]);
+    $currentOwner = $stmt->fetchColumn();
+    
+    if ($currentOwner) {
+        // 最後の占領時間を加算
+        $stmt = $pdo->prepare("
+            SELECT last_occupation_start 
+            FROM conquest_sacred_occupation_time 
+            WHERE season_id = ? AND user_id = ?
+        ");
+        $stmt->execute([$seasonId, $currentOwner]);
+        $lastStart = $stmt->fetchColumn();
+        
+        if ($lastStart) {
+            $occupationSeconds = max(0, time() - strtotime($lastStart));
+            $stmt = $pdo->prepare("
+                UPDATE conquest_sacred_occupation_time 
+                SET total_occupation_seconds = total_occupation_seconds + ?,
+                    last_occupation_start = NULL
+                WHERE season_id = ? AND user_id = ?
+            ");
+            $stmt->execute([$occupationSeconds, $seasonId, $currentOwner]);
+        }
+    }
+}
+
+/**
  * シーズン終了時に報酬を配布する
  * @param PDO $pdo
  * @param int $seasonId
@@ -373,15 +455,27 @@ function distributeSeasonRewards($pdo, $seasonId) {
         return; // 既に配布済み
     }
     
-    // ランキングを取得（城の数でソート、神城所有者が1位）
+    // シーズン終了時に全プレイヤーの神城占領時間を最終更新
+    finalizeSacredOccupationTimes($pdo, $seasonId);
+    
+    // 新しいランキングアルゴリズム:
+    // 1. 神城累計占領時間が長い順
+    // 2. 神城累計占領時間が0の場合は城数順
     $stmt = $pdo->prepare("
-        SELECT cc.owner_user_id, 
-               COUNT(*) as castle_count,
-               SUM(CASE WHEN cc.is_sacred THEN 1 ELSE 0 END) as sacred_count
+        SELECT 
+            cc.owner_user_id,
+            COUNT(*) as castle_count,
+            COALESCE(csot.total_occupation_seconds, 0) as sacred_occupation_seconds
         FROM conquest_castles cc
+        LEFT JOIN conquest_sacred_occupation_time csot 
+            ON cc.owner_user_id = csot.user_id AND cc.season_id = csot.season_id
         WHERE cc.season_id = ? AND cc.owner_user_id IS NOT NULL
         GROUP BY cc.owner_user_id
-        ORDER BY sacred_count DESC, castle_count DESC
+        ORDER BY 
+            CASE WHEN COALESCE(csot.total_occupation_seconds, 0) > 0 
+                THEN 0 ELSE 1 END,
+            COALESCE(csot.total_occupation_seconds, 0) DESC,
+            COUNT(*) DESC
     ");
     $stmt->execute([$seasonId]);
     $rankings = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -418,10 +512,10 @@ function distributeSeasonRewards($pdo, $seasonId) {
         
         // 報酬ログを記録
         $stmt = $pdo->prepare("
-            INSERT INTO conquest_season_rewards (season_id, user_id, rank_position, coins_reward, crystals_reward, diamonds_reward, castle_count)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO conquest_season_rewards (season_id, user_id, rank_position, coins_reward, crystals_reward, diamonds_reward, castle_count, sacred_occupation_seconds)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$seasonId, $userId, $rankNum, $coins, $crystals, $diamonds, $player['castle_count']]);
+        $stmt->execute([$seasonId, $userId, $rankNum, $coins, $crystals, $diamonds, $player['castle_count'], $player['sacred_occupation_seconds']]);
     }
     
     // 報酬配布済みフラグを設定
@@ -1291,8 +1385,17 @@ if ($action === 'attack_castle') {
                 if ($newDurability <= 0) {
                     $castleCaptured = true;
                     
+                    // 神城の場合、前の所有者の占領時間を更新
+                    if ($castle['is_sacred']) {
+                        updateSacredOccupationTime($pdo, $season['id'], $castle['owner_user_id'], $me['id']);
+                    }
+                    
                     // 城を占領し、耐久度をリセット
-                    $stmt = $pdo->prepare("UPDATE conquest_castles SET owner_user_id = ?, durability = ? WHERE id = ?");
+                    if ($castle['is_sacred']) {
+                        $stmt = $pdo->prepare("UPDATE conquest_castles SET owner_user_id = ?, durability = ?, sacred_occupation_started_at = NOW() WHERE id = ?");
+                    } else {
+                        $stmt = $pdo->prepare("UPDATE conquest_castles SET owner_user_id = ?, durability = ? WHERE id = ?");
+                    }
                     $stmt->execute([$me['id'], $maxDurability, $castle['id']]);
                     
                     // 古い防御部隊をクリア
@@ -1305,6 +1408,11 @@ if ($action === 'attack_castle') {
             } else {
                 // 守備兵がいる場合は通常の占領
                 $castleCaptured = true;
+                
+                // 神城の場合、前の所有者の占領時間を更新
+                if ($castle['is_sacred']) {
+                    updateSacredOccupationTime($pdo, $season['id'], $castle['owner_user_id'], $me['id']);
+                }
                 
                 // 残りの防御部隊を元の所有者に戻す
                 if (!$defense['is_npc'] && !empty($defense['defender_user_id'])) {
@@ -1323,7 +1431,11 @@ if ($action === 'attack_castle') {
                 }
                 
                 // 城を占領し、耐久度をリセット
-                $stmt = $pdo->prepare("UPDATE conquest_castles SET owner_user_id = ?, durability = ? WHERE id = ?");
+                if ($castle['is_sacred']) {
+                    $stmt = $pdo->prepare("UPDATE conquest_castles SET owner_user_id = ?, durability = ?, sacred_occupation_started_at = NOW() WHERE id = ?");
+                } else {
+                    $stmt = $pdo->prepare("UPDATE conquest_castles SET owner_user_id = ?, durability = ? WHERE id = ?");
+                }
                 $stmt->execute([$me['id'], $maxDurability, $castle['id']]);
                 
                 // 古い防御部隊をクリア
@@ -1567,21 +1679,78 @@ if ($action === 'get_ranking') {
     try {
         $season = getOrCreateActiveSeason($pdo);
         
-        // 城の数でランキング
+        // 現在神城を占領しているプレイヤーの累計時間を一時的に更新（表示用）
+        $currentSacredOccupationTimes = [];
         $stmt = $pdo->prepare("
-            SELECT cc.owner_user_id, u.handle, uc.civilization_name,
-                   COUNT(*) as castle_count,
-                   SUM(CASE WHEN cc.is_sacred THEN 1 ELSE 0 END) as sacred_count
+            SELECT owner_user_id, sacred_occupation_started_at 
+            FROM conquest_castles 
+            WHERE season_id = ? AND is_sacred = TRUE AND owner_user_id IS NOT NULL
+        ");
+        $stmt->execute([$season['id']]);
+        $currentSacredCastles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($currentSacredCastles as $castle) {
+            $ownerId = $castle['owner_user_id'];
+            $startedAt = $castle['sacred_occupation_started_at'];
+            
+            if ($startedAt) {
+                // 現在までの占領時間を計算
+                $currentOccupationSeconds = max(0, time() - strtotime($startedAt));
+            } else {
+                // sacred_occupation_started_atがない場合、last_occupation_startから計算
+                $stmt = $pdo->prepare("
+                    SELECT last_occupation_start 
+                    FROM conquest_sacred_occupation_time 
+                    WHERE season_id = ? AND user_id = ?
+                ");
+                $stmt->execute([$season['id'], $ownerId]);
+                $lastStart = $stmt->fetchColumn();
+                
+                if ($lastStart) {
+                    $currentOccupationSeconds = max(0, time() - strtotime($lastStart));
+                } else {
+                    $currentOccupationSeconds = 0;
+                }
+            }
+            
+            $currentSacredOccupationTimes[$ownerId] = $currentOccupationSeconds;
+        }
+        
+        // 新しいランキングアルゴリズム:
+        // 1. 神城累計占領時間が長い順
+        // 2. 神城累計占領時間が0の場合は城数順
+        $stmt = $pdo->prepare("
+            SELECT 
+                cc.owner_user_id, 
+                u.handle, 
+                uc.civilization_name,
+                COUNT(*) as castle_count,
+                SUM(CASE WHEN cc.is_sacred THEN 1 ELSE 0 END) as sacred_count,
+                COALESCE(csot.total_occupation_seconds, 0) as sacred_occupation_seconds
             FROM conquest_castles cc
             JOIN users u ON cc.owner_user_id = u.id
             JOIN user_civilizations uc ON cc.owner_user_id = uc.user_id
+            LEFT JOIN conquest_sacred_occupation_time csot 
+                ON cc.owner_user_id = csot.user_id AND cc.season_id = csot.season_id
             WHERE cc.season_id = ? AND cc.owner_user_id IS NOT NULL
             GROUP BY cc.owner_user_id
-            ORDER BY sacred_count DESC, castle_count DESC
+            ORDER BY 
+                CASE WHEN COALESCE(csot.total_occupation_seconds, 0) > 0 
+                    THEN 0 ELSE 1 END,
+                COALESCE(csot.total_occupation_seconds, 0) DESC,
+                COUNT(*) DESC
             LIMIT 20
         ");
         $stmt->execute([$season['id']]);
         $rankings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 現在占領中のプレイヤーの累計時間に現在の占領時間を加算（表示用）
+        foreach ($rankings as &$ranking) {
+            $userId = $ranking['owner_user_id'];
+            if (isset($currentSacredOccupationTimes[$userId])) {
+                $ranking['sacred_occupation_seconds'] = (int)$ranking['sacred_occupation_seconds'] + $currentSacredOccupationTimes[$userId];
+            }
+        }
         
         echo json_encode([
             'ok' => true,
