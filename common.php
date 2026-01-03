@@ -79,6 +79,12 @@ function require_login() {
         http_response_code(403);
         exit('Not logged in');
     }
+    // 凍結されたユーザーを検知して強制ログアウト
+    $u = user();
+    if (!$u) {
+        http_response_code(403);
+        exit('Not logged in');
+    }
 }
 
 function user() {
