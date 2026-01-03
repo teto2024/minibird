@@ -916,7 +916,9 @@ function renderApp() {
                 <ul style="color: #a090c0; margin: 0; padding-left: 20px; line-height: 1.8;">
                     <li>城を持っていない場合、外周の城から攻撃できます</li>
                     <li>城を占領すると、隣接する城を攻撃できます</li>
-                    <li>中央の神城⛩️を占領した状態でシーズン終了すると勝利</li>
+                    <li><strong style="color: #ffd700;">中央の神城⛩️を占領すると占領時間が記録されます</strong></li>
+                    <li><strong style="color: #ffd700;">シーズン終了時、神城の累計占領時間が最も長いプレイヤーが優勝</strong></li>
+                    <li>神城の累計占領時間が0のプレイヤーは保有城数で順位が決まります</li>
                     <li>占領した城には防御部隊を配置できます</li>
                     <li>シーズン終了時、ランキング順位に応じてコイン・クリスタル・ダイヤモンドの報酬を獲得</li>
                 </ul>
@@ -1669,38 +1671,89 @@ function closeCastleModal() {
 // ランキングを読み込む
 async function loadRanking() {
     try {
-        const res = await fetch('conquest_api.php', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({action: 'get_ranking'})
-        });
-        const data = await res.json();
+        const [rankingRes, rewardsRes] = await Promise.all([
+            fetch('conquest_api.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'get_ranking'})
+            }),
+            fetch('conquest_api.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'get_rewards'})
+            })
+        ]);
         
-        if (data.ok) {
+        const data = await rankingRes.json();
+        const rewardsData = await rewardsRes.json();
+        
+        if (data.ok && rewardsData.ok) {
+            const rewards = rewardsData.rewards;
+            
             document.getElementById('rankingContent').innerHTML = `
-                <table class="ranking-table">
-                    <thead>
-                        <tr>
-                            <th>順位</th>
-                            <th>文明名</th>
-                            <th>プレイヤー</th>
-                            <th>城数</th>
-                            <th>神城</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.rankings.map((r, i) => `
-                            <tr class="${i < 3 ? 'rank-' + (i + 1) : ''}">
-                                <td>${i + 1}</td>
-                                <td>${escapeHtml(r.civilization_name)}</td>
-                                <td>@${escapeHtml(r.handle)}</td>
-                                <td>${r.castle_count}</td>
-                                <td>${r.sacred_count > 0 ? '⛩️' : '-'}</td>
+                <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                    <h4 style="color: #da70d6; margin: 0 0 10px 0;">🎁 シーズン報酬</h4>
+                    <table class="ranking-table" style="margin-bottom: 0;">
+                        <thead>
+                            <tr>
+                                <th>順位</th>
+                                <th>💰 コイン</th>
+                                <th>💎 クリスタル</th>
+                                <th>💠 ダイヤモンド</th>
                             </tr>
-                        `).join('')}
-                        ${data.rankings.length === 0 ? '<tr><td colspan="5" style="text-align: center; color: #888;">まだ城を占領したプレイヤーがいません</td></tr>' : ''}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            ${rewards.map(r => `
+                                <tr>
+                                    <td style="font-weight: bold; color: #ffd700;">${r.rank}</td>
+                                    <td>${r.coins.toLocaleString()}</td>
+                                    <td>${r.crystals.toLocaleString()}</td>
+                                    <td>${r.diamonds}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <p style="color: #888; font-size: 12px; margin: 10px 0 0 0;">
+                        ※ シーズン終了時に自動的に配布されます
+                    </p>
+                </div>
+                
+                <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px;">
+                    <h4 style="color: #da70d6; margin: 0 0 10px 0;">🏆 現在のランキング</h4>
+                    <table class="ranking-table">
+                        <thead>
+                            <tr>
+                                <th>順位</th>
+                                <th>文明名</th>
+                                <th>プレイヤー</th>
+                                <th>神城<br>占領時間</th>
+                                <th>城数</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.rankings.map((r, i) => {
+                                const hours = Math.floor(r.sacred_occupation_seconds / 3600);
+                                const minutes = Math.floor((r.sacred_occupation_seconds % 3600) / 60);
+                                const timeStr = r.sacred_occupation_seconds > 0 
+                                    ? (hours > 0 ? `${hours}時間${minutes}分` : `${minutes}分`)
+                                    : '-';
+                                
+                                return `
+                                    <tr class="${i < 3 ? 'rank-' + (i + 1) : ''}">
+                                        <td style="font-weight: bold;">${i + 1}</td>
+                                        <td>${escapeHtml(r.civilization_name)}</td>
+                                        <td>@${escapeHtml(r.handle)}</td>
+                                        <td style="color: ${r.sacred_occupation_seconds > 0 ? '#ffd700' : '#888'}; font-weight: ${r.sacred_occupation_seconds > 0 ? 'bold' : 'normal'};">
+                                            ${r.sacred_count > 0 ? '⛩️ ' : ''}${timeStr}
+                                        </td>
+                                        <td>${r.castle_count}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                            ${data.rankings.length === 0 ? '<tr><td colspan="5" style="text-align: center; color: #888;">まだ城を占領したプレイヤーがいません</td></tr>' : ''}
+                        </tbody>
+                    </table>
+                </div>
             `;
         }
     } catch (e) {
