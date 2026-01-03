@@ -21,11 +21,11 @@ define('CONQUEST_ATTACKER_BONUS', 1.1);               // 攻撃側ボーナス
 
 // シーズン報酬定数
 // 順位に応じた報酬 [coins, crystals, diamonds]
-define('CONQUEST_REWARD_RANK_1', [100000, 1000, 100]);   // 1位報酬
-define('CONQUEST_REWARD_RANK_2', [50000, 500, 50]);     // 2位報酬
-define('CONQUEST_REWARD_RANK_3', [30000, 300, 30]);     // 3位報酬
-define('CONQUEST_REWARD_RANK_4_10', [10000, 100, 10]);   // 4-10位報酬
-define('CONQUEST_REWARD_PARTICIPANT', [500, 5, 1]);   // 参加報酬（11位以下）
+define('CONQUEST_REWARD_RANK_1', [1000000, 1000, 100]);   // 1位報酬
+define('CONQUEST_REWARD_RANK_2', [500000, 500, 50]);     // 2位報酬
+define('CONQUEST_REWARD_RANK_3', [300000, 300, 30]);     // 3位報酬
+define('CONQUEST_REWARD_RANK_4_10', [100000, 100, 10]);   // 4-10位報酬
+define('CONQUEST_REWARD_PARTICIPANT', [5000, 5, 1]);   // 参加報酬（11位以下）
 
 // 装備バフの軍事力への変換定数
 define('CONQUEST_HEALTH_TO_POWER_RATIO', 10);       // 体力から軍事力への変換比率
