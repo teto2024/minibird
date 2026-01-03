@@ -35,7 +35,7 @@ UNION クエリを使用して、以下の2つのグループのプレイヤー�
 1. **現在城を持っているプレイヤー**（元のクエリと同じ）
 2. **城を持っていないが、神城累計占領時間が記録されているプレイヤー**
 
-### 修正後のクエリ
+### 修正後のクエリ（最適化版）
 ```sql
 SELECT 
     user_id as owner_user_id,
@@ -74,13 +74,11 @@ FROM (
     FROM conquest_sacred_occupation_time csot
     JOIN users u ON csot.user_id = u.id
     JOIN user_civilizations uc ON csot.user_id = uc.user_id
+    LEFT JOIN conquest_castles cc 
+        ON csot.user_id = cc.owner_user_id AND csot.season_id = cc.season_id
     WHERE csot.season_id = ?
         AND csot.total_occupation_seconds > 0
-        AND csot.user_id NOT IN (
-            SELECT DISTINCT owner_user_id 
-            FROM conquest_castles 
-            WHERE season_id = ? AND owner_user_id IS NOT NULL
-        )
+        AND cc.owner_user_id IS NULL
 ) combined
 ORDER BY 
     sacred_occupation_seconds DESC,
@@ -94,13 +92,17 @@ LIMIT 20
    - 第1のクエリ: 城を持っているプレイヤー（既存のロジック）
    - 第2のクエリ: 城を持っていないが神城占領時間があるプレイヤー
 
-2. **重複排除**: `NOT IN` 句で、第2のクエリに城を持っているプレイヤーが含まれないようにする
+2. **重複排除（最適化版）**: `LEFT JOIN` + `IS NULL` で城を持っていないプレイヤーを効率的にフィルタ
+   - 元の `NOT IN` サブクエリより高速
+   - NULL値の扱いが正確
 
 3. **適切なデフォルト値**: 城を持っていないプレイヤーは `castle_count = 0`, `sacred_count = 0` を設定
 
 4. **ソート順の維持**: 
    - 第1優先: `sacred_occupation_seconds DESC` （神城累計占領時間が長い順）
    - 第2優先: `castle_count DESC` （城数が多い順）
+
+5. **コードの可読性**: `$seasonId` 変数を使用してパラメータを明確化
 
 ## 期待される動作
 

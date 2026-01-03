@@ -1718,6 +1718,7 @@ if ($action === 'get_ranking') {
         // 1. 神城累計占領時間が長い順（全プレイヤー対象）
         // 2. 占領時間が同じ場合のみ城数順
         // 注: 城を持っていないプレイヤーも神城累計占領時間があればランキングに表示
+        $seasonId = $season['id'];
         $stmt = $pdo->prepare("
             SELECT 
                 user_id as owner_user_id,
@@ -1756,20 +1757,18 @@ if ($action === 'get_ranking') {
                 FROM conquest_sacred_occupation_time csot
                 JOIN users u ON csot.user_id = u.id
                 JOIN user_civilizations uc ON csot.user_id = uc.user_id
+                LEFT JOIN conquest_castles cc 
+                    ON csot.user_id = cc.owner_user_id AND csot.season_id = cc.season_id
                 WHERE csot.season_id = ?
                     AND csot.total_occupation_seconds > 0
-                    AND csot.user_id NOT IN (
-                        SELECT DISTINCT owner_user_id 
-                        FROM conquest_castles 
-                        WHERE season_id = ? AND owner_user_id IS NOT NULL
-                    )
+                    AND cc.owner_user_id IS NULL
             ) combined
             ORDER BY 
                 sacred_occupation_seconds DESC,
                 castle_count DESC
             LIMIT 20
         ");
-        $stmt->execute([$season['id'], $season['id'], $season['id']]);
+        $stmt->execute([$seasonId, $seasonId]);
         $rankings = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // 現在占領中のプレイヤーの累計時間に現在の占領時間を加算（表示用）
