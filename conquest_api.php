@@ -1768,6 +1768,7 @@ if ($action === 'get_ranking') {
                 castle_count DESC
             LIMIT 20
         ");
+        // 2つのパラメータは両方とも$seasonId（UNIONの各部分で1つずつ必要）
         $stmt->execute([$seasonId, $seasonId]);
         $rankings = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
