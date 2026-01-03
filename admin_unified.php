@@ -166,6 +166,42 @@ if ($_SERVER['REQUEST_METHOD']==='POST'){
     ]);
   }
   
+  // 管理者専用：メンテナンスモード切り替え
+  if ($isAdmin && $action === 'toggle_maintenance') {
+    $enabled = isset($_POST['enabled']) && $_POST['enabled'] === '1';
+    $message = $_POST['message'] ?? 'ゲームシステムはメンテナンス中です。しばらくお待ちください。';
+    
+    // メッセージの長さを制限（最大500文字）
+    $message = mb_substr($message, 0, 500);
+    
+    // メッセージを安全にエスケープ（シングルクォートとバックスラッシュをエスケープ）
+    $escaped_message = addslashes($message);
+    
+    // maintenance_config.php を更新
+    $config_content = "<?php\n";
+    $config_content .= "/**\n";
+    $config_content .= " * ゲームメンテナンスモード設定ファイル\n";
+    $config_content .= " * \n";
+    $config_content .= " * このファイルを編集してメンテナンスモードを切り替えることができます。\n";
+    $config_content .= " * または、管理者ページ（admin_unified.php）から切り替えることもできます。\n";
+    $config_content .= " */\n\n";
+    $config_content .= "// メンテナンスモード (true: 有効, false: 無効)\n";
+    $config_content .= '$maintenance_mode_enabled = ' . ($enabled ? 'true' : 'false') . ";\n\n";
+    $config_content .= "// メンテナンスメッセージ (オプション)\n";
+    $config_content .= '$maintenance_message = \'' . $escaped_message . "';\n";
+    
+    // ファイルへの書き込みを試み、エラーハンドリングを追加
+    $config_file = __DIR__ . '/maintenance_config.php';
+    $write_result = file_put_contents($config_file, $config_content);
+    
+    if ($write_result === false) {
+      // 書き込みに失敗した場合、エラーメッセージをセッションに保存
+      $_SESSION['admin_error'] = 'maintenance_config.php への書き込みに失敗しました。ファイルの権限を確認してください。';
+    } else {
+      $_SESSION['admin_success'] = 'メンテナンスモード設定を保存しました。';
+    }
+  }
+  
   header("Location: admin_unified.php"); 
   exit;
 }
@@ -681,6 +717,9 @@ body {
         <button class="tab-button admin-only" onclick="switchTab('password')">
             🔐 パスワード管理 <span style="font-size: 10px;">👑</span>
         </button>
+        <button class="tab-button admin-only" onclick="switchTab('system')">
+            ⚙️ システム設定 <span style="font-size: 10px;">👑</span>
+        </button>
         <?php endif; ?>
     </div>
     
@@ -1028,6 +1067,96 @@ body {
                 <a href="admin_password_reset.php" class="btn-link-primary">
                     パスワードリセット管理画面を開く
                 </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- システム設定タブ（管理者のみ） -->
+    <div id="tab-system" class="tab-content">
+        <div class="admin-section">
+            <h3>⚙️ ゲームメンテナンスモード</h3>
+            <p style="color: var(--muted); margin-bottom: 20px;">
+                ゲーム機能（文明育成、占領戦、ワールドボス等）のメンテナンスモードを管理します。<br>
+                メンテナンス中はゲーム関連APIが停止し、ユーザーにメンテナンスメッセージが表示されます。
+            </p>
+            
+            <?php
+            // 成功/エラーメッセージを表示
+            if (isset($_SESSION['admin_success'])) {
+                echo '<div style="background: rgba(68, 255, 68, 0.1); border-left: 4px solid #44ff44; padding: 12px; margin-bottom: 20px; border-radius: 4px; color: #44ff44;">';
+                echo '✓ ' . htmlspecialchars($_SESSION['admin_success']);
+                echo '</div>';
+                unset($_SESSION['admin_success']);
+            }
+            if (isset($_SESSION['admin_error'])) {
+                echo '<div style="background: rgba(255, 68, 68, 0.1); border-left: 4px solid #ff4444; padding: 12px; margin-bottom: 20px; border-radius: 4px; color: #ff4444;">';
+                echo '✗ ' . htmlspecialchars($_SESSION['admin_error']);
+                echo '</div>';
+                unset($_SESSION['admin_error']);
+            }
+            
+            // 現在のメンテナンスモード状態を取得
+            $current_maintenance_mode = GAME_MAINTENANCE_MODE;
+            $current_maintenance_message = GAME_MAINTENANCE_MESSAGE;
+            ?>
+            
+            <div style="background: var(--bg); border: 2px solid <?= $current_maintenance_mode ? '#ff4444' : '#44ff44' ?>; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                    <div style="font-size: 48px;"><?= $current_maintenance_mode ? '🔴' : '🟢' ?></div>
+                    <div>
+                        <div style="font-size: 24px; font-weight: bold; color: <?= $current_maintenance_mode ? '#ff4444' : '#44ff44' ?>;">
+                            <?= $current_maintenance_mode ? 'メンテナンス中' : '通常運用中' ?>
+                        </div>
+                        <div style="color: var(--muted); font-size: 14px; margin-top: 5px;">
+                            現在のステータス
+                        </div>
+                    </div>
+                </div>
+                
+                <?php if ($current_maintenance_mode): ?>
+                <div style="background: rgba(255, 68, 68, 0.1); border-left: 4px solid #ff4444; padding: 12px; border-radius: 4px;">
+                    <strong>メンテナンスメッセージ:</strong><br>
+                    <?= htmlspecialchars($current_maintenance_message) ?>
+                </div>
+                <?php endif; ?>
+            </div>
+            
+            <form method="POST" style="background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">
+                <input type="hidden" name="action" value="toggle_maintenance">
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">
+                        メンテナンスモード設定
+                    </label>
+                    <select name="enabled" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font-size: 14px;">
+                        <option value="0" <?= !$current_maintenance_mode ? 'selected' : '' ?>>🟢 無効（通常運用）</option>
+                        <option value="1" <?= $current_maintenance_mode ? 'selected' : '' ?>>🔴 有効（メンテナンス中）</option>
+                    </select>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">
+                        メンテナンスメッセージ
+                    </label>
+                    <textarea name="message" rows="3" maxlength="500" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font-size: 14px; resize: vertical;" placeholder="ユーザーに表示するメンテナンスメッセージ"><?= htmlspecialchars($current_maintenance_message) ?></textarea>
+                    <div style="color: var(--muted); font-size: 12px; margin-top: 5px;">
+                        メンテナンス中にユーザーに表示されるメッセージです（最大500文字）
+                    </div>
+                </div>
+                
+                <button type="submit" style="padding: 12px 24px; background: var(--blue); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 15px; width: 100%;">
+                    💾 設定を保存
+                </button>
+            </form>
+            
+            <div style="margin-top: 20px; padding: 15px; background: rgba(29, 155, 240, 0.1); border-radius: 8px; border-left: 4px solid var(--blue);">
+                <strong>💡 ヒント:</strong>
+                <ul style="margin: 10px 0 0 0; padding-left: 20px; color: var(--muted);">
+                    <li>メンテナンスモードはゲーム機能のみに影響し、サイト全体は通常通り動作します</li>
+                    <li>設定は <code>maintenance_config.php</code> ファイルに保存されます</li>
+                    <li>このファイルを直接編集することもできます</li>
+                    <li>環境変数 <code>GAME_MAINTENANCE_MODE</code> が設定されている場合、そちらが優先されます</li>
+                </ul>
             </div>
         </div>
     </div>
