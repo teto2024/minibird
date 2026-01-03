@@ -4297,22 +4297,17 @@ function updateWarRateLimitDisplay(rateLimitData) {
     // メッセージを表示
     if (isLimited && waitSeconds > 0) {
         const hours = Math.floor(waitSeconds / 3600);
-        let mins = Math.ceil((waitSeconds % 3600) / 60);
-        
-        // 60分の場合は1時間に繰り上げ
-        let adjustedHours = hours;
-        if (mins === 60) {
-            adjustedHours = hours + 1;
-            mins = 0;
-        }
+        const mins = Math.floor((waitSeconds % 3600) / 60);
         
         let timeText = '';
-        if (adjustedHours > 0 && mins > 0) {
-            timeText = `${adjustedHours}時間${mins}分`;
-        } else if (adjustedHours > 0) {
-            timeText = `${adjustedHours}時間`;
-        } else {
+        if (hours > 0 && mins > 0) {
+            timeText = `${hours}時間${mins}分`;
+        } else if (hours > 0) {
+            timeText = `${hours}時間`;
+        } else if (mins > 0) {
             timeText = `${mins}分`;
+        } else {
+            timeText = '1分未満';
         }
         
         messageEl.innerHTML = `⚠️ <span style="color: #ff6b6b; font-weight: bold;">レート制限中</span> - 次の攻撃まで <span style="color: #ffd700; font-weight: bold;">${timeText}</span> お待ちください`;
