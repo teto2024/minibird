@@ -459,8 +459,8 @@ function distributeSeasonRewards($pdo, $seasonId) {
     finalizeSacredOccupationTimes($pdo, $seasonId);
     
     // 新しいランキングアルゴリズム:
-    // 1. 神城累計占領時間が長い順
-    // 2. 神城累計占領時間が0の場合は城数順
+    // 1. 神城累計占領時間が長い順（全プレイヤー対象）
+    // 2. 占領時間が同じ場合のみ城数順
     $stmt = $pdo->prepare("
         SELECT 
             cc.owner_user_id,
@@ -472,8 +472,6 @@ function distributeSeasonRewards($pdo, $seasonId) {
         WHERE cc.season_id = ? AND cc.owner_user_id IS NOT NULL
         GROUP BY cc.owner_user_id
         ORDER BY 
-            CASE WHEN COALESCE(csot.total_occupation_seconds, 0) > 0 
-                THEN 0 ELSE 1 END,
             COALESCE(csot.total_occupation_seconds, 0) DESC,
             COUNT(*) DESC
     ");
@@ -1717,8 +1715,8 @@ if ($action === 'get_ranking') {
         }
         
         // 新しいランキングアルゴリズム:
-        // 1. 神城累計占領時間が長い順
-        // 2. 神城累計占領時間が0の場合は城数順
+        // 1. 神城累計占領時間が長い順（全プレイヤー対象）
+        // 2. 占領時間が同じ場合のみ城数順
         $stmt = $pdo->prepare("
             SELECT 
                 cc.owner_user_id, 
@@ -1735,8 +1733,6 @@ if ($action === 'get_ranking') {
             WHERE cc.season_id = ? AND cc.owner_user_id IS NOT NULL
             GROUP BY cc.owner_user_id
             ORDER BY 
-                CASE WHEN COALESCE(csot.total_occupation_seconds, 0) > 0 
-                    THEN 0 ELSE 1 END,
                 COALESCE(csot.total_occupation_seconds, 0) DESC,
                 COUNT(*) DESC
             LIMIT 20
