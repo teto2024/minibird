@@ -54,7 +54,7 @@ function createWarBattleMails($pdo, $attackerUserId, $defenderUserId, $attackerU
             $lootText .= "・🪙 コイン: {$lootCoins}\n";
         }
         foreach ($lootResources as $key => $amount) {
-            $resourceName = getResourceName($pdo, $key);
+            $resourceName = getResourceNameFromDB($pdo, $key);
             $lootText .= "・{$resourceName}: {$amount}\n";
         }
     }
@@ -342,9 +342,9 @@ function formatLossesForMail($pdo, $losses) {
 }
 
 /**
- * 資源キーから資源名を取得
+ * 資源キーから資源名を取得（データベースから取得）
  */
-function getResourceName($pdo, $resourceKey) {
+function getResourceNameFromDB($pdo, $resourceKey) {
     $stmt = $pdo->prepare("SELECT name, icon FROM civilization_resource_types WHERE resource_key = ?");
     $stmt->execute([$resourceKey]);
     $resource = $stmt->fetch(PDO::FETCH_ASSOC);
