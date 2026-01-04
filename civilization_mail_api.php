@@ -874,11 +874,12 @@ if ($action === 'reconnaissance_conquest') {
             }
         }
         
-        // 駐屯部隊情報を取得
+        // 駐屯部隊情報を取得（複数ユーザーの部隊を集計）
         $stmt = $pdo->prepare("
-            SELECT ccd.troop_type_id, ccd.count, ccd.user_id
+            SELECT ccd.troop_type_id, SUM(ccd.count) as count
             FROM conquest_castle_defense ccd
             WHERE ccd.castle_id = ? AND ccd.count > 0
+            GROUP BY ccd.troop_type_id
         ");
         $stmt->execute([$castleId]);
         $garrisons = $stmt->fetchAll(PDO::FETCH_ASSOC);
