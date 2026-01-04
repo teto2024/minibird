@@ -114,8 +114,8 @@ function applyStealthError($count, $isStealth) {
     if (!$isStealth) {
         return $count;
     }
-    // 25%〜175%の誤差を適用
-    $errorPercent = mt_rand(RECONNAISSANCE_STEALTH_ERROR_MIN, RECONNAISSANCE_STEALTH_ERROR_MAX);
+    // 25%〜175%の誤差を適用（random_int使用）
+    $errorPercent = random_int(RECONNAISSANCE_STEALTH_ERROR_MIN, RECONNAISSANCE_STEALTH_ERROR_MAX);
     return (int)round($count * $errorPercent / 100);
 }
 
@@ -618,8 +618,8 @@ if ($action === 'reconnaissance_war') {
             throw new Exception('偵察対象が存在しません');
         }
         
-        // 偵察成功/失敗判定（30%で失敗）
-        $isSuccessful = mt_rand(1, 100) > RECONNAISSANCE_FAILURE_RATE;
+        // 偵察成功/失敗判定（30%で失敗、random_int使用）
+        $isSuccessful = random_int(1, 100) > RECONNAISSANCE_FAILURE_RATE;
         
         if (!$isSuccessful) {
             // 失敗ログを記録
@@ -813,8 +813,8 @@ if ($action === 'reconnaissance_conquest') {
             throw new Exception('自分の城を偵察することはできません');
         }
         
-        // 偵察成功/失敗判定（30%で失敗）
-        $isSuccessful = mt_rand(1, 100) > RECONNAISSANCE_FAILURE_RATE;
+        // 偵察成功/失敗判定（30%で失敗、random_int使用）
+        $isSuccessful = random_int(1, 100) > RECONNAISSANCE_FAILURE_RATE;
         
         if (!$isSuccessful) {
             // 失敗ログを記録

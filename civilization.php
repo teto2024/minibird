@@ -7085,11 +7085,7 @@ function closeMailDetailModal() {
     if (modal) modal.remove();
 }
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// escapeHtml is already defined above (line 4373)
 
 // 補填を受け取る
 async function claimCompensation(mailId) {

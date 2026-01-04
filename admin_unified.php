@@ -1313,8 +1313,20 @@ async function confirmAndSendMail() {
     if (resourcesStr) {
         try {
             resources = JSON.parse(resourcesStr);
+            // 構造の検証：オブジェクトであり、値が全て数値であることを確認
+            if (typeof resources !== 'object' || resources === null || Array.isArray(resources)) {
+                throw new Error('オブジェクト形式ではありません');
+            }
+            for (const [key, value] of Object.entries(resources)) {
+                if (typeof key !== 'string' || !/^[a-zA-Z_]+$/.test(key)) {
+                    throw new Error('無効な資源キー: ' + key);
+                }
+                if (typeof value !== 'number' || value < 0) {
+                    throw new Error('無効な値: ' + value);
+                }
+            }
         } catch (e) {
-            alert('資源のJSON形式が正しくありません。');
+            alert('資源のJSON形式が正しくありません。\n例: {"food": 100, "wood": 50}\n\nエラー: ' + e.message);
             return;
         }
     }
