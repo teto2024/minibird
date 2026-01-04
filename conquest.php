@@ -2122,7 +2122,7 @@ function showReconnaissanceResult(data) {
     
     const modalHtml = `
         <div id="reconResultModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 10000;" onclick="if(event.target===this) document.getElementById('reconResultModal').remove()">
-            <div style="background: linear-gradient(135deg, #1a0f0a 0%, #2d1810 100%); border: 2px solid #32cd32; border-radius: 16px; padding: 25px; max-width: 400px; width: 90%;">
+            <div style="background: linear-gradient(135deg, #1a0f0a 0%, #2d1810 100%); border: 2px solid #32cd32; border-radius: 16px; padding: 25px; max-width: 400px; width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h3 style="color: #32cd32; margin: 0;">🔭 偵察報告</h3>
                     <button onclick="document.getElementById('reconResultModal').remove()" style="background: none; border: none; color: #888; font-size: 24px; cursor: pointer;">&times;</button>
@@ -2132,7 +2132,7 @@ function showReconnaissanceResult(data) {
                     <div style="color: #888; font-size: 12px;">座標: ${data.castle_coords || ''}</div>
                     <div style="color: #888; font-size: 12px;">所有者: ${ownerInfo}</div>
                 </div>
-                <div style="margin-bottom: 10px;">
+                <div style="margin-bottom: 10px; overflow-y: auto; flex: 1;">
                     <div style="color: #90ee90; font-weight: bold; margin-bottom: 10px;">■ 駐屯部隊:</div>
                     ${troopsHtml}
                 </div>
