@@ -714,6 +714,9 @@ body {
         <button class="tab-button admin-only" onclick="switchTab('frames')">
             🎨 フレーム審査 <span style="font-size: 10px;">👑</span>
         </button>
+        <button class="tab-button admin-only" onclick="switchTab('mail')">
+            📬 ゲーム内メール <span style="font-size: 10px;">👑</span>
+        </button>
         <button class="tab-button admin-only" onclick="switchTab('password')">
             🔐 パスワード管理 <span style="font-size: 10px;">👑</span>
         </button>
@@ -1055,6 +1058,85 @@ body {
         <?php endif; ?>
     </div>
     
+    <!-- ゲーム内メールタブ（管理者のみ） -->
+    <div id="tab-mail" class="tab-content">
+        <div class="admin-section">
+            <h3>📬 ゲーム内メール送信</h3>
+            <p style="color: var(--muted); margin-bottom: 20px;">
+                文明育成ゲームのプレイヤー全員または個別のプレイヤーにメールを送信できます。<br>
+                補填としてコイン、クリスタル、ダイヤモンド、資源を添付することも可能です。
+            </p>
+            
+            <div class="info-box" style="background: rgba(255, 215, 0, 0.1); border-left: 4px solid #ffd700; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+                <strong style="color: #ffd700;">⚠️ 注意</strong>
+                <p style="margin: 10px 0 0 0; color: var(--text);">
+                    補填を含むメールは全プレイヤーに影響します。送信前に内容を十分に確認してください。
+                </p>
+            </div>
+            
+            <form id="adminMailForm">
+                <!-- 送信タイプ -->
+                <div style="margin-bottom: 20px;">
+                    <label style="color: var(--text); font-weight: bold; display: block; margin-bottom: 10px;">送信タイプ</label>
+                    <select id="mailSendType" style="width: 100%; padding: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 8px;">
+                        <option value="broadcast">📢 全体送信（全プレイヤー宛て）</option>
+                        <option value="individual">👤 個別送信（特定ユーザー宛て）</option>
+                    </select>
+                </div>
+                
+                <!-- 個別送信時のユーザーID入力 -->
+                <div id="individualUserSection" style="display: none; margin-bottom: 20px;">
+                    <label style="color: var(--text); font-weight: bold; display: block; margin-bottom: 10px;">受取人ユーザーID</label>
+                    <input type="number" id="recipientUserId" placeholder="ユーザーIDを入力" style="width: 100%; padding: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 8px;">
+                </div>
+                
+                <!-- 件名 -->
+                <div style="margin-bottom: 20px;">
+                    <label style="color: var(--text); font-weight: bold; display: block; margin-bottom: 10px;">件名</label>
+                    <input type="text" id="mailSubject" placeholder="メールの件名を入力" style="width: 100%; padding: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 8px;">
+                </div>
+                
+                <!-- 本文 -->
+                <div style="margin-bottom: 20px;">
+                    <label style="color: var(--text); font-weight: bold; display: block; margin-bottom: 10px;">本文</label>
+                    <textarea id="mailBody" rows="6" placeholder="メールの本文を入力" style="width: 100%; padding: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 8px; resize: vertical;"></textarea>
+                </div>
+                
+                <!-- 補填設定 -->
+                <div style="margin-bottom: 20px; background: rgba(100, 149, 237, 0.1); border: 1px solid #6495ed; border-radius: 8px; padding: 15px;">
+                    <label style="color: #87ceeb; font-weight: bold; display: block; margin-bottom: 15px;">🎁 補填（任意）</label>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                        <div>
+                            <label style="color: var(--muted); font-size: 12px;">🪙 コイン</label>
+                            <input type="number" id="compCoins" min="0" placeholder="0" style="width: 100%; padding: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label style="color: var(--muted); font-size: 12px;">💎 クリスタル</label>
+                            <input type="number" id="compCrystals" min="0" placeholder="0" style="width: 100%; padding: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label style="color: var(--muted); font-size: 12px;">💠 ダイヤモンド</label>
+                            <input type="number" id="compDiamonds" min="0" placeholder="0" style="width: 100%; padding: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px;">
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <label style="color: var(--muted); font-size: 12px; display: block; margin-bottom: 10px;">資源（JSON形式: {"food": 100, "wood": 50}）</label>
+                        <input type="text" id="compResources" placeholder='{"food": 100, "wood": 50}' style="width: 100%; padding: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px;">
+                    </div>
+                </div>
+                
+                <!-- 送信ボタン -->
+                <div style="text-align: center;">
+                    <button type="button" onclick="confirmAndSendMail()" style="padding: 15px 40px; background: linear-gradient(135deg, #4a90d9, #357abd); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold;">
+                        📤 メールを送信
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
     <!-- パスワード管理タブ（管理者のみ） -->
     <div id="tab-password" class="tab-content">
         <div class="admin-section">
@@ -1183,6 +1265,132 @@ function toggleReviewForm(id) {
     const form = document.getElementById('review-form-' + id);
     if (form) {
         form.classList.toggle('show');
+    }
+}
+
+// =====================================
+// ゲーム内メール送信機能
+// =====================================
+
+// 送信タイプ変更時の処理
+document.getElementById('mailSendType')?.addEventListener('change', function() {
+    const individualSection = document.getElementById('individualUserSection');
+    if (this.value === 'individual') {
+        individualSection.style.display = 'block';
+    } else {
+        individualSection.style.display = 'none';
+    }
+});
+
+// メール送信（2段階確認）
+async function confirmAndSendMail() {
+    const sendType = document.getElementById('mailSendType').value;
+    const recipientUserId = document.getElementById('recipientUserId')?.value || '';
+    const subject = document.getElementById('mailSubject').value.trim();
+    const body = document.getElementById('mailBody').value.trim();
+    
+    // バリデーション
+    if (!subject) {
+        alert('件名を入力してください。');
+        return;
+    }
+    if (!body) {
+        alert('本文を入力してください。');
+        return;
+    }
+    if (sendType === 'individual' && !recipientUserId) {
+        alert('受取人のユーザーIDを入力してください。');
+        return;
+    }
+    
+    // 補填を取得
+    const coins = parseInt(document.getElementById('compCoins')?.value) || 0;
+    const crystals = parseInt(document.getElementById('compCrystals')?.value) || 0;
+    const diamonds = parseInt(document.getElementById('compDiamonds')?.value) || 0;
+    
+    let resources = {};
+    const resourcesStr = document.getElementById('compResources')?.value.trim();
+    if (resourcesStr) {
+        try {
+            resources = JSON.parse(resourcesStr);
+        } catch (e) {
+            alert('資源のJSON形式が正しくありません。');
+            return;
+        }
+    }
+    
+    const hasCompensation = coins > 0 || crystals > 0 || diamonds > 0 || Object.keys(resources).length > 0;
+    
+    // 1段階目の確認
+    let confirmMessage = sendType === 'broadcast' 
+        ? '全プレイヤーにメールを送信します。'
+        : `ユーザーID ${recipientUserId} にメールを送信します。`;
+    
+    if (hasCompensation) {
+        confirmMessage += '\n\n補填内容:';
+        if (coins > 0) confirmMessage += `\n🪙 コイン: ${coins}`;
+        if (crystals > 0) confirmMessage += `\n💎 クリスタル: ${crystals}`;
+        if (diamonds > 0) confirmMessage += `\n💠 ダイヤモンド: ${diamonds}`;
+        if (Object.keys(resources).length > 0) confirmMessage += `\n📦 資源: ${JSON.stringify(resources)}`;
+    }
+    
+    confirmMessage += '\n\n送信しますか？';
+    
+    if (!confirm(confirmMessage)) return;
+    
+    // 2段階目の確認（補填がある場合）
+    if (hasCompensation) {
+        const finalConfirm = confirm('【最終確認】\n\n補填を含むメールを送信します。この操作は取り消せません。\n\n本当に送信しますか？');
+        if (!finalConfirm) return;
+    }
+    
+    // メール送信
+    try {
+        const action = sendType === 'broadcast' ? 'send_broadcast_mail' : 'send_individual_mail';
+        const payload = {
+            action: action,
+            subject: subject,
+            body: body
+        };
+        
+        if (sendType === 'individual') {
+            payload.recipient_user_id = parseInt(recipientUserId);
+        }
+        
+        if (hasCompensation) {
+            payload.compensation = {
+                coins: coins,
+                crystals: crystals,
+                diamonds: diamonds,
+                resources: resources
+            };
+        }
+        
+        const res = await fetch('civilization_mail_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            alert('✅ ' + data.message);
+            // フォームをリセット
+            document.getElementById('mailSubject').value = '';
+            document.getElementById('mailBody').value = '';
+            document.getElementById('compCoins').value = '';
+            document.getElementById('compCrystals').value = '';
+            document.getElementById('compDiamonds').value = '';
+            document.getElementById('compResources').value = '';
+            if (document.getElementById('recipientUserId')) {
+                document.getElementById('recipientUserId').value = '';
+            }
+        } else {
+            alert('❌ エラー: ' + (data.error || '送信に失敗しました'));
+        }
+    } catch (e) {
+        console.error(e);
+        alert('エラーが発生しました');
     }
 }
 </script>
