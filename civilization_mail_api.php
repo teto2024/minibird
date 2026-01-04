@@ -914,7 +914,7 @@ if ($action === 'reconnaissance_conquest') {
         
         // メール本文作成
         $castleName = $castle['name'] ?? '城';
-        $castleCoords = "({$castle['x']}, {$castle['y']})";
+        $castleCoords = "({$castle['position_x']}, {$castle['position_y']})";
         
         $troopListText = '';
         foreach ($formattedTroops as $t) {
@@ -949,7 +949,7 @@ if ($action === 'reconnaissance_conquest') {
                 'reconnaissance_type' => 'conquest',
                 'castle_id' => $castleId,
                 'castle_name' => $castleName,
-                'castle_coords' => ['x' => $castle['x'], 'y' => $castle['y']],
+                'castle_coords' => ['x' => $castle['position_x'], 'y' => $castle['position_y']],
                 'owner_user_id' => $castle['owner_user_id'],
                 'owner_handle' => $ownerHandle,
                 'owner_civilization' => $ownerCivName,
@@ -983,7 +983,7 @@ if ($action === 'reconnaissance_conquest') {
                     'reconnaissance_type' => 'conquest',
                     'castle_id' => $castleId,
                     'castle_name' => $castleName,
-                    'castle_coords' => ['x' => $castle['x'], 'y' => $castle['y']],
+                    'castle_coords' => ['x' => $castle['position_x'], 'y' => $castle['position_y']],
                     'scout_user_id' => $me['id'],
                     'scout_handle' => $myHandle,
                     'scout_civilization' => $myCivName

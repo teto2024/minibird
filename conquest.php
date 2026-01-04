@@ -1117,8 +1117,25 @@ function renderCastleDetail(data) {
                     <button class="action-btn attack-btn" onclick="attackCastle(${castle.id})">
                         ⚔️ 攻撃する
                     </button>
-                    <button class="action-btn" onclick="reconnaissanceCastle(${castle.id}, '${escapeHtml(castle.name)}', '(${castle.x}, ${castle.y})')" style="background: linear-gradient(135deg, #32cd32, #228b22);">
+                    <button class="action-btn" onclick="reconnaissanceCastle(${castle.id}, '${escapeHtml(castle.name)}', '(${castle.position_x}, ${castle.position_y})')" style="background: linear-gradient(135deg, #32cd32, #228b22);">
                         🔭 偵察
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    // 偵察UI（自分の城でなく、攻撃可能でない場合も偵察可能にする）
+    if (!isOwned && !isAttackable) {
+        html += `
+            <div class="castle-detail-section" style="background: linear-gradient(135deg, rgba(50, 205, 50, 0.2) 0%, rgba(34, 139, 34, 0.2) 100%); border: 1px solid #32cd32;">
+                <h4>🔭 偵察</h4>
+                <p style="color: #90ee90; font-size: 12px; margin-bottom: 15px;">
+                    この城は攻撃範囲外ですが、偵察を行うことができます。
+                </p>
+                <div style="text-align: center;">
+                    <button class="action-btn" onclick="reconnaissanceCastle(${castle.id}, '${escapeHtml(castle.name)}', '(${castle.position_x}, ${castle.position_y})')" style="background: linear-gradient(135deg, #32cd32, #228b22);">
+                        🔭 偵察する
                     </button>
                 </div>
             </div>
