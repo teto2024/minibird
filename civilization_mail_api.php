@@ -126,22 +126,38 @@ function checkReconnaissanceRateLimit($pdo, $userId, $type) {
     $limit = ($type === 'war') ? RECONNAISSANCE_WAR_LIMIT_PER_HOUR : RECONNAISSANCE_CONQUEST_LIMIT_PER_HOUR;
     $oneHourAgo = date('Y-m-d H:i:s', strtotime('-1 hour'));
     
+    // 過去1時間以内の偵察回数と最も古い偵察時刻を取得
     $stmt = $pdo->prepare("
-        SELECT COUNT(*) as count
+        SELECT created_at
         FROM civilization_reconnaissance_logs
         WHERE user_id = ? AND reconnaissance_type = ? AND created_at >= ?
+        ORDER BY created_at ASC
     ");
     $stmt->execute([$userId, $type, $oneHourAgo]);
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $logs = $stmt->fetchAll(PDO::FETCH_COLUMN);
     
-    $currentCount = (int)$result['count'];
+    $currentCount = count($logs);
     $remaining = max(0, $limit - $currentCount);
+    $isLimited = $remaining <= 0;
+    
+    $waitSeconds = 0;
+    $nextAvailable = null;
+    
+    // レート制限中の場合、次の偵察可能時刻を計算
+    if ($isLimited && !empty($logs)) {
+        $oldestLog = $logs[0];
+        $nextAvailable = date('Y-m-d H:i:s', strtotime($oldestLog . ' +1 hour'));
+        $waitSeconds = max(0, strtotime($nextAvailable) - time());
+    }
     
     return [
         'allowed' => $remaining > 0,
         'limit' => $limit,
         'used' => $currentCount,
-        'remaining' => $remaining
+        'remaining' => $remaining,
+        'is_limited' => $isLimited,
+        'wait_seconds' => $waitSeconds,
+        'next_available' => $nextAvailable
     ];
 }
 
@@ -153,6 +169,10 @@ if ($action === 'get_mails') {
     $perPage = min(50, max(10, (int)($input['per_page'] ?? 20)));
     $mailType = $input['mail_type'] ?? null; // null: 全て, info, war, conquest, reconnaissance
     $offset = ($page - 1) * $perPage;
+    
+    // 整数型にキャスト済みのため、SQLインジェクションの危険性なし
+    $limitVal = (int)$perPage;
+    $offsetVal = (int)$offset;
     
     try {
         // 条件構築
@@ -167,7 +187,8 @@ if ($action === 'get_mails') {
         $whereClause = implode(' AND ', $conditions);
         
         // メール取得
-        $stmt = $pdo->prepare("
+        // LIMIT/OFFSETは整数値を直接SQLに埋め込む（整数キャスト済みのため安全）
+        $sql = "
             SELECT 
                 m.*,
                 COALESCE(mrs.is_read, FALSE) as is_read,
@@ -180,9 +201,10 @@ if ($action === 'get_mails') {
             LEFT JOIN users sender ON m.sender_user_id = sender.id
             WHERE {$whereClause}
             ORDER BY m.created_at DESC
-            LIMIT ? OFFSET ?
-        ");
-        $allParams = array_merge([$me['id']], $params, [$perPage, $offset]);
+            LIMIT {$limitVal} OFFSET {$offsetVal}
+        ";
+        $stmt = $pdo->prepare($sql);
+        $allParams = array_merge([$me['id']], $params);
         $stmt->execute($allParams);
         $mails = $stmt->fetchAll(PDO::FETCH_ASSOC);
         

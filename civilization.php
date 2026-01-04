@@ -2126,20 +2126,52 @@ function renderApp() {
                 <p style="color: #c0a080; margin-bottom: 15px;">
                     敵の防御部隊を事前に偵察できます。偵察結果はメールに送信されます。
                 </p>
-                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                    <div class="stat-box" style="background: rgba(0,0,0,0.3); flex: 1; min-width: 200px;">
-                        <div style="font-size: 24px;">⚔️</div>
-                        <div style="color: #ffa500; font-size: 14px;">戦争偵察</div>
-                        <div style="color: #888; font-size: 12px;">1時間に5回まで</div>
-                        <div id="war-recon-status" style="color: #90ee90; font-size: 12px; margin-top: 5px;"></div>
+                
+                <!-- 偵察レート制限表示 -->
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 15px;">
+                    <!-- 戦争偵察 -->
+                    <div id="warReconRateLimitSection" style="flex: 1; min-width: 280px; background: rgba(0,0,0,0.3); border: 2px solid #ffa500; padding: 15px; border-radius: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                            <span style="font-size: 24px;">⚔️</span>
+                            <div>
+                                <div style="color: #ffa500; font-weight: bold;">戦争偵察</div>
+                                <div style="color: #888; font-size: 11px;">1時間に5回まで</div>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                                <span style="color: #c0a080; font-size: 12px;">残り偵察可能回数</span>
+                                <span id="warReconRemaining" style="color: #ffd700; font-weight: bold; font-size: 12px;">-- / 5</span>
+                            </div>
+                            <div style="background: rgba(0,0,0,0.3); border-radius: 6px; height: 12px; overflow: hidden;">
+                                <div id="warReconProgressBar" style="background: linear-gradient(90deg, #32cd32 0%, #228b22 100%); height: 100%; width: 100%; transition: width 0.3s;"></div>
+                            </div>
+                        </div>
+                        <div id="warReconMessage" style="color: #888; font-size: 11px; text-align: center;">読み込み中...</div>
                     </div>
-                    <div class="stat-box" style="background: rgba(0,0,0,0.3); flex: 1; min-width: 200px;">
-                        <div style="font-size: 24px;">🏰</div>
-                        <div style="color: #da70d6; font-size: 14px;">占領戦偵察</div>
-                        <div style="color: #888; font-size: 12px;">1時間に15回まで</div>
-                        <div id="conquest-recon-status" style="color: #90ee90; font-size: 12px; margin-top: 5px;"></div>
+                    
+                    <!-- 占領戦偵察 -->
+                    <div id="conquestReconRateLimitSection" style="flex: 1; min-width: 280px; background: rgba(0,0,0,0.3); border: 2px solid #da70d6; padding: 15px; border-radius: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                            <span style="font-size: 24px;">🏰</span>
+                            <div>
+                                <div style="color: #da70d6; font-weight: bold;">占領戦偵察</div>
+                                <div style="color: #888; font-size: 11px;">1時間に15回まで</div>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                                <span style="color: #c0a080; font-size: 12px;">残り偵察可能回数</span>
+                                <span id="conquestReconRemaining" style="color: #ffd700; font-weight: bold; font-size: 12px;">-- / 15</span>
+                            </div>
+                            <div style="background: rgba(0,0,0,0.3); border-radius: 6px; height: 12px; overflow: hidden;">
+                                <div id="conquestReconProgressBar" style="background: linear-gradient(90deg, #32cd32 0%, #228b22 100%); height: 100%; width: 100%; transition: width 0.3s;"></div>
+                            </div>
+                        </div>
+                        <div id="conquestReconMessage" style="color: #888; font-size: 11px; text-align: center;">読み込み中...</div>
                     </div>
                 </div>
+                
                 <div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
                     <p style="color: #ffcc00; font-size: 12px; margin: 0;">
                         ⚠️ 偵察は30%の確率で失敗します。ステルス部隊の数値には25%〜175%の誤差が生じます。
@@ -7137,18 +7169,75 @@ async function loadReconnaissanceStatus() {
         const data = await res.json();
         
         if (data.ok) {
-            const warStatus = document.getElementById('war-recon-status');
-            const conquestStatus = document.getElementById('conquest-recon-status');
+            // 戦争偵察の表示を更新
+            updateReconnaissanceRateLimitDisplay('war', data.war);
             
-            if (warStatus) {
-                warStatus.textContent = `残り: ${data.war.remaining}/${data.war.limit}回`;
-            }
-            if (conquestStatus) {
-                conquestStatus.textContent = `残り: ${data.conquest.remaining}/${data.conquest.limit}回`;
-            }
+            // 占領戦偵察の表示を更新
+            updateReconnaissanceRateLimitDisplay('conquest', data.conquest);
         }
     } catch (e) {
         console.error(e);
+    }
+}
+
+// 偵察レート制限の表示を更新
+function updateReconnaissanceRateLimitDisplay(type, limitData) {
+    const prefix = type === 'war' ? 'warRecon' : 'conquestRecon';
+    const sectionEl = document.getElementById(`${prefix}RateLimitSection`);
+    const remainingEl = document.getElementById(`${prefix}Remaining`);
+    const barEl = document.getElementById(`${prefix}ProgressBar`);
+    const messageEl = document.getElementById(`${prefix}Message`);
+    
+    if (!sectionEl || !remainingEl || !barEl || !messageEl) return;
+    
+    const remaining = limitData.remaining || 0;
+    const limit = limitData.limit || (type === 'war' ? 5 : 15);
+    const isLimited = limitData.is_limited || false;
+    const waitSeconds = limitData.wait_seconds || 0;
+    
+    // 残り回数を表示
+    remainingEl.textContent = `${remaining} / ${limit}`;
+    
+    // プログレスバーを更新
+    const percentage = (remaining / limit) * 100;
+    barEl.style.width = `${percentage}%`;
+    
+    // バーの色を更新
+    if (remaining === 0) {
+        barEl.style.background = 'linear-gradient(90deg, #8b0000 0%, #dc143c 100%)';
+        sectionEl.style.borderColor = '#ff6b6b';
+    } else if (remaining <= 2) {
+        barEl.style.background = 'linear-gradient(90deg, #ffa500 0%, #ff6b6b 100%)';
+        sectionEl.style.borderColor = type === 'war' ? '#ffa500' : '#da70d6';
+    } else {
+        barEl.style.background = 'linear-gradient(90deg, #32cd32 0%, #228b22 100%)';
+        sectionEl.style.borderColor = type === 'war' ? '#ffa500' : '#da70d6';
+    }
+    
+    // メッセージを更新
+    if (isLimited) {
+        const hours = Math.floor(waitSeconds / 3600);
+        const minutes = Math.floor((waitSeconds % 3600) / 60);
+        let timeText = '';
+        if (hours > 0) {
+            timeText = `${hours}時間${minutes}分`;
+        } else if (minutes > 0) {
+            timeText = `${minutes}分`;
+        } else {
+            timeText = '1分未満';
+        }
+        
+        messageEl.innerHTML = `⚠️ <span style="color: #ff6b6b; font-weight: bold;">制限中</span> - 次まで <span style="color: #ffd700; font-weight: bold;">${timeText}</span>`;
+        sectionEl.style.background = 'rgba(139, 0, 0, 0.3)';
+    } else if (remaining === 1) {
+        messageEl.innerHTML = `⚠️ あと <span style="color: #ffd700; font-weight: bold;">1回</span> で制限`;
+        sectionEl.style.background = 'rgba(139, 69, 0, 0.2)';
+    } else if (remaining <= 3) {
+        messageEl.innerHTML = `💡 あと <span style="color: #ffd700;">${remaining}回</span> 偵察可能`;
+        sectionEl.style.background = 'rgba(139, 69, 0, 0.15)';
+    } else {
+        messageEl.innerHTML = `✅ 偵察可能（残り${remaining}回）`;
+        sectionEl.style.background = 'rgba(0,0,0,0.3)';
     }
 }
 
@@ -7181,14 +7270,8 @@ async function performReconnaissance(type, targetId, targetName, castleInfo = nu
                 showNotification(`❌ ${data.message}`, true);
             }
             
-            // レート制限表示を更新
-            if (data.rate_limit) {
-                const statusId = type === 'war' ? 'war-recon-status' : 'conquest-recon-status';
-                const statusEl = document.getElementById(statusId);
-                if (statusEl) {
-                    statusEl.textContent = `残り: ${data.rate_limit.remaining}/${data.rate_limit.limit}回`;
-                }
-            }
+            // レート制限表示を更新（新しいプログレスバー付き表示）
+            loadReconnaissanceStatus();
         } else {
             showNotification(data.error || '偵察に失敗しました', true);
         }
