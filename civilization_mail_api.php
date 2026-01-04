@@ -876,9 +876,9 @@ if ($action === 'reconnaissance_conquest') {
         
         // 駐屯部隊情報を取得
         $stmt = $pdo->prepare("
-            SELECT cg.troop_type_id, cg.count, cg.user_id
-            FROM conquest_garrisons cg
-            WHERE cg.castle_id = ? AND cg.count > 0
+            SELECT ccd.troop_type_id, ccd.count, ccd.user_id
+            FROM conquest_castle_defense ccd
+            WHERE ccd.castle_id = ? AND ccd.count > 0
         ");
         $stmt->execute([$castleId]);
         $garrisons = $stmt->fetchAll(PDO::FETCH_ASSOC);
