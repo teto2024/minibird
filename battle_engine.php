@@ -1035,10 +1035,11 @@ function calculateDoTDamage($maxHealth, $effectValue) {
  * 兵数やHPが増えても継続ダメージが比例して大きくならないよう、
  * 平方根スケーリングを使用して調整
  * @param array $unit ユニット
- * @return array [damage, messages, updated_effects]
+ * @return array [damage, heal, messages, updated_effects]
  */
 function processDamageOverTime($unit) {
     $totalDamage = 0;
+    $totalHeal = 0;
     $messages = [];
     $updatedEffects = [];
     
@@ -1072,7 +1073,7 @@ function processDamageOverTime($unit) {
                 (int)floor($unit['max_health'] * HERO_SKILL_HEAL_RATIO_CAP)
             );
             $hotHeal = min($hotHeal, $maxHeal);
-            $unit['current_health'] = min($unit['max_health'], $unit['current_health'] + $hotHeal);
+            $totalHeal += $hotHeal;
             $messages[] = "{$effect['skill_icon']} {$effect['skill_name']}により{$hotHeal}回復！";
         }
         
@@ -1087,6 +1088,7 @@ function processDamageOverTime($unit) {
     
     return [
         'damage' => $totalDamage,
+        'heal' => $totalHeal,
         'messages' => $messages,
         'updated_effects' => $updatedEffects
     ];
@@ -1128,12 +1130,15 @@ function executeTurnBattle($attacker, $defender, $maxTurns = null) {
         }
         
         if (!$attackerFrozen && !$attackerStunned) {
-            // 継続ダメージ処理
+            // 継続ダメージ/回復処理
             $dotResult = processDamageOverTime($attacker);
             if ($dotResult['damage'] > 0) {
                 $attacker['current_health'] -= $dotResult['damage'];
-                $turnMessages = array_merge($turnMessages, $dotResult['messages']);
             }
+            if ($dotResult['heal'] > 0) {
+                $attacker['current_health'] = min($attacker['max_health'], $attacker['current_health'] + $dotResult['heal']);
+            }
+            $turnMessages = array_merge($turnMessages, $dotResult['messages']);
             $attacker['active_effects'] = $dotResult['updated_effects'];
             
             if ($attacker['current_health'] <= 0) {
@@ -1334,12 +1339,15 @@ function executeTurnBattle($attacker, $defender, $maxTurns = null) {
         }
         
         if (!$defenderFrozen && !$defenderStunned) {
-            // 継続ダメージ処理
+            // 継続ダメージ/回復処理
             $dotResult = processDamageOverTime($defender);
             if ($dotResult['damage'] > 0) {
                 $defender['current_health'] -= $dotResult['damage'];
-                $turnMessages = array_merge($turnMessages, $dotResult['messages']);
             }
+            if ($dotResult['heal'] > 0) {
+                $defender['current_health'] = min($defender['max_health'], $defender['current_health'] + $dotResult['heal']);
+            }
+            $turnMessages = array_merge($turnMessages, $dotResult['messages']);
             $defender['active_effects'] = $dotResult['updated_effects'];
             
             if ($defender['current_health'] <= 0) {
