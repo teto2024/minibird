@@ -7,6 +7,7 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/battle_engine.php';
 require_once __DIR__ . '/exp_system.php';
+require_once __DIR__ . '/battle_mail_helpers.php';
 
 // 戦争レート制限の定数
 define('WAR_RATE_LIMIT_MAX_ATTACKS', 3);  // 1時間あたりの最大攻撃回数
@@ -3499,6 +3500,23 @@ if ($action === 'attack_with_troops') {
         
         // ターン制バトルログを保存
         saveCivilizationBattleTurnLogs($pdo, $warLogId, $battleResult['turn_logs']);
+        
+        // 戦争メールを作成（攻撃者と防御者両方に送信）
+        try {
+            list($attackerMailId, $defenderMailId) = createWarBattleMails(
+                $pdo, $me['id'], $targetUserId,
+                $attackerUnit, $defenderUnit, $battleResult,
+                $attackerLosses, $defenderLosses,
+                $lootCoins, $lootResources, $warLogId
+            );
+            
+            // 戦争ログにメールIDを紐付け
+            $stmt = $pdo->prepare("UPDATE civilization_war_logs SET attacker_mail_id = ?, defender_mail_id = ? WHERE id = ?");
+            $stmt->execute([$attackerMailId, $defenderMailId, $warLogId]);
+        } catch (Exception $e) {
+            // メール作成に失敗しても戦闘処理は継続
+            error_log("Failed to create war battle mails: " . $e->getMessage());
+        }
         
         // クエスト進捗を更新（攻撃を1回カウント、勝利時は conquest も更新）
         updateCivilizationQuestProgress($pdo, $me['id'], 'attack', null, 1);

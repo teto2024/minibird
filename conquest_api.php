@@ -7,6 +7,7 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/battle_engine.php';
 require_once __DIR__ . '/quest_helpers.php';
+require_once __DIR__ . '/battle_mail_helpers.php';
 
 // 占領戦システム定数
 define('CONQUEST_SEASON_DURATION_DAYS', 7);           // シーズン期間（日）
@@ -1486,6 +1487,23 @@ if ($action === 'attack_castle') {
         
         // ターン制バトルログを保存
         saveConquestBattleTurnLogs($pdo, $battleId, $battleResult['turn_logs']);
+        
+        // 占領戦メールを作成（攻撃者と防御者両方に送信、砲撃ログは除く）
+        try {
+            list($attackerMailId, $defenderMailId) = createConquestBattleMails(
+                $pdo, $me['id'], $defenderId, $castle,
+                $attackerUnit, $defenderUnit, $battleResult,
+                $attackerLosses, $defenderLosses,
+                $castleCaptured, $durabilityDamage, $battleId
+            );
+            
+            // 戦闘ログにメールIDを紐付け
+            $stmt = $pdo->prepare("UPDATE conquest_battle_logs SET attacker_mail_id = ?, defender_mail_id = ? WHERE id = ?");
+            $stmt->execute([$attackerMailId, $defenderMailId, $battleId]);
+        } catch (Exception $e) {
+            // メール作成に失敗しても戦闘処理は継続
+            error_log("Failed to create conquest battle mails: " . $e->getMessage());
+        }
         
         // 城を占領した場合にクエスト進捗を更新
         if ($castleCaptured) {

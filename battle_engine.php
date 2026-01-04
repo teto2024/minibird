@@ -531,7 +531,8 @@ function prepareBattleUnit($troops, $equipmentBuffs, $pdo) {
                 'troop_type_id' => $troop['troop_type_id'],
                 'troop_name' => $troopType['name'],
                 'troop_icon' => $troopType['icon'],
-                'count' => $count
+                'count' => $count,
+                'troop_attack_power' => $attack  // ④ スキル持ち部隊の合計攻撃力（兵士1体の攻撃力×兵数）
             ];
         }
         

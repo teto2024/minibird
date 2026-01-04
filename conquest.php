@@ -1113,9 +1113,12 @@ function renderCastleDetail(data) {
                 <div class="troop-selector" id="attackTroopSelector">
                     ${renderTroopSelector('attack')}
                 </div>
-                <div style="margin-top: 15px; text-align: center;">
+                <div style="margin-top: 15px; text-align: center; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
                     <button class="action-btn attack-btn" onclick="attackCastle(${castle.id})">
                         ⚔️ 攻撃する
+                    </button>
+                    <button class="action-btn" onclick="reconnaissanceCastle(${castle.id}, '${escapeHtml(castle.name)}', '(${castle.x}, ${castle.y})')" style="background: linear-gradient(135deg, #32cd32, #228b22);">
+                        🔭 偵察
                     </button>
                 </div>
             </div>
@@ -2045,6 +2048,85 @@ async function showConquestBattleLogs(battleId) {
 function closeConquestBattleLogModal() {
     const modal = document.getElementById('battleLogModal');
     if (modal) modal.remove();
+}
+
+// 城の偵察を実行
+async function reconnaissanceCastle(castleId, castleName, coords) {
+    if (!confirm(`${castleName} ${coords}を偵察しますか？\n\n⚠️ 30%の確率で失敗します。\nステルス部隊の数値には25%〜175%の誤差が生じます。`)) return;
+    
+    try {
+        const res = await fetch('civilization_mail_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ action: 'reconnaissance_conquest', castle_id: castleId })
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            if (data.success) {
+                showNotification(`🔭 偵察成功！結果はメールに送信されました。`);
+                // 偵察結果をポップアップで表示
+                showReconnaissanceResult(data);
+            } else {
+                showNotification(`❌ ${data.message}`, true);
+            }
+            
+            // レート制限を表示
+            if (data.rate_limit) {
+                showNotification(`📊 占領戦偵察: 残り${data.rate_limit.remaining}/${data.rate_limit.limit}回`);
+            }
+        } else {
+            showNotification(data.error || '偵察に失敗しました', true);
+        }
+    } catch (e) {
+        console.error(e);
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// 偵察結果をポップアップで表示
+function showReconnaissanceResult(data) {
+    let troopsHtml = '';
+    if (data.troops && data.troops.length > 0) {
+        data.troops.forEach(t => {
+            const approx = t.is_approximate ? '約' : '';
+            const stealthNote = t.is_stealth ? '<span style="color: #ffcc00; font-size: 10px;"> (ステルス)</span>' : '';
+            troopsHtml += `<div style="padding: 5px; background: rgba(0,0,0,0.3); border-radius: 4px; margin-bottom: 5px;">
+                ${t.icon} ${t.name}: ${approx}${t.count}体${stealthNote}
+            </div>`;
+        });
+    } else {
+        troopsHtml = '<div style="color: #888;">駐屯部隊はいません</div>';
+    }
+    
+    const ownerInfo = data.owner_civilization 
+        ? `${data.owner_civilization}` 
+        : 'NPC';
+    
+    const modalHtml = `
+        <div id="reconResultModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 10000;" onclick="if(event.target===this) document.getElementById('reconResultModal').remove()">
+            <div style="background: linear-gradient(135deg, #1a0f0a 0%, #2d1810 100%); border: 2px solid #32cd32; border-radius: 16px; padding: 25px; max-width: 400px; width: 90%;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="color: #32cd32; margin: 0;">🔭 偵察報告</h3>
+                    <button onclick="document.getElementById('reconResultModal').remove()" style="background: none; border: none; color: #888; font-size: 24px; cursor: pointer;">&times;</button>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <div style="color: #ffd700; font-size: 16px; margin-bottom: 5px;">🏰 ${data.castle_name || '城'}</div>
+                    <div style="color: #888; font-size: 12px;">座標: ${data.castle_coords || ''}</div>
+                    <div style="color: #888; font-size: 12px;">所有者: ${ownerInfo}</div>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <div style="color: #90ee90; font-weight: bold; margin-bottom: 10px;">■ 駐屯部隊:</div>
+                    ${troopsHtml}
+                </div>
+                <div style="color: #ffcc00; font-size: 11px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+                    ⚠️ ステルス部隊の数値には誤差が含まれます
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 </script>
 </body>

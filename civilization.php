@@ -1944,6 +1944,7 @@ function renderApp() {
             <button class="tab-btn ${currentTab === 'alliance' ? 'active' : ''}" data-tab="alliance">🤝 同盟</button>
             <button class="tab-btn ${currentTab === 'war' ? 'active' : ''}" data-tab="war">⚔️ 戦争</button>
             <button class="tab-btn ${currentTab === 'conquest' ? 'active' : ''}" data-tab="conquest">🏰 占領戦</button>
+            <button class="tab-btn ${currentTab === 'mail' ? 'active' : ''}" data-tab="mail" style="background: linear-gradient(135deg, rgba(100, 149, 237, 0.3) 0%, rgba(65, 105, 225, 0.3) 100%);">📬 メール<span id="mail-badge" class="tab-badge" style="display:none;"></span></button>
             <button class="tab-btn ${currentTab === 'monster' ? 'active' : ''}" data-tab="monster">🐉 モンスター</button>
             <button class="tab-btn ${currentTab === 'events' ? 'active' : ''}" data-tab="events" style="background: linear-gradient(135deg, rgba(255, 105, 180, 0.3) 0%, rgba(255, 20, 147, 0.3) 100%);">🎉 イベント<span id="events-badge" class="tab-badge" style="display:none;"></span></button>
             <button class="tab-btn ${currentTab === 'leaderboard' ? 'active' : ''}" data-tab="leaderboard" style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 165, 0, 0.3) 100%);">🏆 リーダーボード</button>
@@ -2091,6 +2092,59 @@ function renderApp() {
                 <a href="./conquest.php" class="invest-btn" style="display: inline-block; text-decoration: none; padding: 15px 30px; font-size: 18px; background: linear-gradient(135deg, #9932cc 0%, #da70d6 100%);">
                     ⚔️ 占領戦に参加する
                 </a>
+            </div>
+        </div>
+        
+        <!-- メールタブ -->
+        <div class="tab-content ${currentTab === 'mail' ? 'active' : ''}" id="tab-mail">
+            <div class="mail-section" style="background: linear-gradient(135deg, rgba(100, 149, 237, 0.3) 0%, rgba(65, 105, 225, 0.3) 100%); border: 2px solid #6495ed; border-radius: 16px; padding: 25px; margin-bottom: 25px;">
+                <h3 style="color: #87ceeb; margin-bottom: 20px;">📬 メールボックス</h3>
+                
+                <!-- メールフィルター -->
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
+                    <button class="mail-filter-btn active" data-filter="all" style="padding: 8px 16px; border: 1px solid #6495ed; background: rgba(100, 149, 237, 0.3); color: #87ceeb; border-radius: 8px; cursor: pointer;">📋 すべて</button>
+                    <button class="mail-filter-btn" data-filter="info" style="padding: 8px 16px; border: 1px solid #6495ed; background: rgba(0,0,0,0.3); color: #87ceeb; border-radius: 8px; cursor: pointer;">📢 情報</button>
+                    <button class="mail-filter-btn" data-filter="war" style="padding: 8px 16px; border: 1px solid #6495ed; background: rgba(0,0,0,0.3); color: #87ceeb; border-radius: 8px; cursor: pointer;">⚔️ 戦争</button>
+                    <button class="mail-filter-btn" data-filter="conquest" style="padding: 8px 16px; border: 1px solid #6495ed; background: rgba(0,0,0,0.3); color: #87ceeb; border-radius: 8px; cursor: pointer;">🏰 占領戦</button>
+                    <button class="mail-filter-btn" data-filter="reconnaissance" style="padding: 8px 16px; border: 1px solid #6495ed; background: rgba(0,0,0,0.3); color: #87ceeb; border-radius: 8px; cursor: pointer;">🔭 偵察</button>
+                </div>
+                
+                <!-- メールリスト -->
+                <div id="mail-list" style="max-height: 500px; overflow-y: auto;">
+                    <div style="text-align: center; padding: 40px; color: #888;">
+                        📭 メールを読み込み中...
+                    </div>
+                </div>
+                
+                <!-- ページネーション -->
+                <div id="mail-pagination" style="display: flex; justify-content: center; gap: 10px; margin-top: 20px;"></div>
+            </div>
+            
+            <!-- 偵察セクション -->
+            <div class="reconnaissance-section" style="background: linear-gradient(135deg, rgba(50, 205, 50, 0.3) 0%, rgba(34, 139, 34, 0.3) 100%); border: 2px solid #32cd32; border-radius: 16px; padding: 25px;">
+                <h3 style="color: #90ee90; margin-bottom: 20px;">🔭 偵察システム</h3>
+                <p style="color: #c0a080; margin-bottom: 15px;">
+                    敵の防御部隊を事前に偵察できます。偵察結果はメールに送信されます。
+                </p>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div class="stat-box" style="background: rgba(0,0,0,0.3); flex: 1; min-width: 200px;">
+                        <div style="font-size: 24px;">⚔️</div>
+                        <div style="color: #ffa500; font-size: 14px;">戦争偵察</div>
+                        <div style="color: #888; font-size: 12px;">1時間に5回まで</div>
+                        <div id="war-recon-status" style="color: #90ee90; font-size: 12px; margin-top: 5px;"></div>
+                    </div>
+                    <div class="stat-box" style="background: rgba(0,0,0,0.3); flex: 1; min-width: 200px;">
+                        <div style="font-size: 24px;">🏰</div>
+                        <div style="color: #da70d6; font-size: 14px;">占領戦偵察</div>
+                        <div style="color: #888; font-size: 12px;">1時間に15回まで</div>
+                        <div id="conquest-recon-status" style="color: #90ee90; font-size: 12px; margin-top: 5px;"></div>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                    <p style="color: #ffcc00; font-size: 12px; margin: 0;">
+                        ⚠️ 偵察は30%の確率で失敗します。ステルス部隊の数値には25%〜175%の誤差が生じます。
+                    </p>
+                </div>
             </div>
         </div>
         
@@ -3191,9 +3245,14 @@ async function loadTargets() {
                     <div style="font-size: 12px; margin-bottom: 10px; ${powerClass}">
                         ${powerIndicator}
                     </div>
-                    <button class="attack-btn" data-target-id="${Number(t.user_id) || 0}" data-target-name="${escapeHtml(t.civilization_name)}" data-target-power="${Number(targetPower) || 0}">
-                        ⚔️ 攻撃する
-                    </button>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button class="attack-btn" data-target-id="${Number(t.user_id) || 0}" data-target-name="${escapeHtml(t.civilization_name)}" data-target-power="${Number(targetPower) || 0}">
+                            ⚔️ 攻撃する
+                        </button>
+                        <button class="recon-btn" data-target-id="${Number(t.user_id) || 0}" data-target-name="${escapeHtml(t.civilization_name)}" style="background: linear-gradient(135deg, #32cd32, #228b22); color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 12px;">
+                            🔭 偵察
+                        </button>
+                    </div>
                 </div>
             `}).join('');
             
@@ -3210,6 +3269,19 @@ async function loadTargets() {
                         btn.dataset.targetName || '不明',
                         Number(btn.dataset.targetPower) || 0
                     );
+                });
+            });
+            
+            // 偵察ボタンにイベントリスナーを追加
+            document.querySelectorAll('.recon-btn[data-target-id]').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const targetId = Number(btn.dataset.targetId) || 0;
+                    const targetName = btn.dataset.targetName || '不明';
+                    if (targetId <= 0) {
+                        showNotification('偵察対象の情報が正しくありません', true);
+                        return;
+                    }
+                    await performReconnaissance('war', targetId, targetName);
                 });
             });
         } else {
@@ -6795,6 +6867,380 @@ async function removeHeroAssignment(battleType) {
         showNotification('エラーが発生しました', true);
     }
 }
+
+// ===============================================
+// メールシステム
+// ===============================================
+let mailCurrentPage = 1;
+let mailCurrentFilter = 'all';
+let mailUnreadCount = 0;
+
+// メール一覧を読み込む
+async function loadMails(page = 1, filter = null) {
+    if (filter !== null) {
+        mailCurrentFilter = filter;
+    }
+    mailCurrentPage = page;
+    
+    const mailList = document.getElementById('mail-list');
+    if (!mailList) return;
+    
+    mailList.innerHTML = '<div style="text-align: center; padding: 40px; color: #888;">📭 メールを読み込み中...</div>';
+    
+    try {
+        const body = {
+            action: 'get_mails',
+            page: page,
+            per_page: 20
+        };
+        if (mailCurrentFilter !== 'all') {
+            body.mail_type = mailCurrentFilter;
+        }
+        
+        const res = await fetch('civilization_mail_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            mailUnreadCount = data.unread_count;
+            updateMailBadge();
+            renderMailList(data.mails, data.total_pages, page);
+        } else {
+            mailList.innerHTML = `<div style="text-align: center; padding: 40px; color: #ff6b6b;">エラー: ${data.error}</div>`;
+        }
+    } catch (e) {
+        console.error(e);
+        mailList.innerHTML = '<div style="text-align: center; padding: 40px; color: #ff6b6b;">読み込みエラー</div>';
+    }
+}
+
+// メールリストを描画
+function renderMailList(mails, totalPages, currentPage) {
+    const mailList = document.getElementById('mail-list');
+    if (!mailList) return;
+    
+    if (mails.length === 0) {
+        mailList.innerHTML = '<div style="text-align: center; padding: 40px; color: #888;">📭 メールはありません</div>';
+        return;
+    }
+    
+    const typeIcons = {
+        'info': '📢',
+        'war': '⚔️',
+        'conquest': '🏰',
+        'reconnaissance': '🔭'
+    };
+    
+    const typeNames = {
+        'info': '情報',
+        'war': '戦争',
+        'conquest': '占領戦',
+        'reconnaissance': '偵察'
+    };
+    
+    let html = '';
+    mails.forEach(mail => {
+        const isUnread = !mail.is_read;
+        const hasCompensation = mail.compensation && !mail.compensation_claimed;
+        const date = new Date(mail.created_at);
+        const dateStr = date.toLocaleDateString('ja-JP') + ' ' + date.toLocaleTimeString('ja-JP', {hour: '2-digit', minute: '2-digit'});
+        
+        html += `
+            <div class="mail-item" data-mail-id="${mail.id}" 
+                 style="background: ${isUnread ? 'rgba(100, 149, 237, 0.2)' : 'rgba(0,0,0,0.3)'}; 
+                        border: 1px solid ${isUnread ? '#6495ed' : '#444'}; 
+                        border-radius: 8px; padding: 12px; margin-bottom: 10px; cursor: pointer;
+                        transition: all 0.3s;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+                            <span style="font-size: 16px;">${typeIcons[mail.mail_type] || '📧'}</span>
+                            <span style="color: ${isUnread ? '#87ceeb' : '#aaa'}; font-weight: ${isUnread ? 'bold' : 'normal'};">
+                                ${mail.subject}
+                            </span>
+                            ${hasCompensation ? '<span style="background: #ffd700; color: #000; padding: 2px 6px; border-radius: 4px; font-size: 10px;">🎁 補填あり</span>' : ''}
+                        </div>
+                        <div style="font-size: 12px; color: #888;">
+                            差出人: ${mail.sender_display} → 受取人: ${mail.recipient_display}
+                        </div>
+                    </div>
+                    <div style="text-align: right; font-size: 11px; color: #666;">
+                        ${dateStr}
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    mailList.innerHTML = html;
+    
+    // ページネーション
+    const pagination = document.getElementById('mail-pagination');
+    if (pagination && totalPages > 1) {
+        let pagHtml = '';
+        for (let i = 1; i <= totalPages; i++) {
+            pagHtml += `<button onclick="loadMails(${i})" 
+                        style="padding: 5px 12px; border: 1px solid #6495ed; 
+                               background: ${i === currentPage ? '#6495ed' : 'rgba(0,0,0,0.3)'};
+                               color: #fff; border-radius: 4px; cursor: pointer;">${i}</button>`;
+        }
+        pagination.innerHTML = pagHtml;
+    } else if (pagination) {
+        pagination.innerHTML = '';
+    }
+    
+    // クリックイベント
+    document.querySelectorAll('.mail-item').forEach(item => {
+        item.addEventListener('click', () => openMailDetail(item.dataset.mailId));
+    });
+}
+
+// メール詳細を開く
+async function openMailDetail(mailId) {
+    try {
+        const res = await fetch('civilization_mail_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_mail_detail', mail_id: parseInt(mailId)})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showMailDetailModal(data.mail);
+            // 未読バッジを更新
+            loadMails(mailCurrentPage);
+        } else {
+            showNotification(data.error || 'メールの読み込みに失敗しました', true);
+        }
+    } catch (e) {
+        console.error(e);
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// メール詳細モーダルを表示
+function showMailDetailModal(mail) {
+    const typeNames = {
+        'info': '📢 情報',
+        'war': '⚔️ 戦争',
+        'conquest': '🏰 占領戦',
+        'reconnaissance': '🔭 偵察'
+    };
+    
+    const date = new Date(mail.created_at);
+    const dateStr = date.toLocaleDateString('ja-JP') + ' ' + date.toLocaleTimeString('ja-JP');
+    
+    let compensationHtml = '';
+    if (mail.compensation) {
+        compensationHtml = '<div style="background: rgba(255, 215, 0, 0.2); border: 1px solid #ffd700; border-radius: 8px; padding: 15px; margin-top: 15px;">';
+        compensationHtml += '<div style="color: #ffd700; font-weight: bold; margin-bottom: 10px;">🎁 補填内容:</div>';
+        
+        if (mail.compensation.coins) compensationHtml += `<div style="color: #fff;">🪙 コイン: ${mail.compensation.coins}</div>`;
+        if (mail.compensation.crystals) compensationHtml += `<div style="color: #fff;">💎 クリスタル: ${mail.compensation.crystals}</div>`;
+        if (mail.compensation.diamonds) compensationHtml += `<div style="color: #fff;">💠 ダイヤモンド: ${mail.compensation.diamonds}</div>`;
+        if (mail.compensation.resources) {
+            for (const [key, value] of Object.entries(mail.compensation.resources)) {
+                compensationHtml += `<div style="color: #fff;">${key}: ${value}</div>`;
+            }
+        }
+        
+        if (!mail.compensation_claimed) {
+            compensationHtml += `<button onclick="claimCompensation(${mail.id})" style="margin-top: 10px; padding: 10px 20px; background: linear-gradient(135deg, #ffd700, #ffa500); color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;">🎁 補填を受け取る</button>`;
+        } else {
+            compensationHtml += '<div style="color: #90ee90; margin-top: 10px;">✅ 受け取り済み</div>';
+        }
+        compensationHtml += '</div>';
+    }
+    
+    const modalHtml = `
+        <div id="mailDetailModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 10000;" onclick="if(event.target===this) closeMailDetailModal()">
+            <div style="background: linear-gradient(135deg, #1a0f0a 0%, #2d1810 100%); border: 2px solid #6495ed; border-radius: 16px; padding: 25px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                    <div>
+                        <div style="color: #6495ed; font-size: 12px; margin-bottom: 5px;">${typeNames[mail.mail_type] || '📧 メール'}</div>
+                        <h3 style="color: #87ceeb; margin: 0;">${mail.subject}</h3>
+                    </div>
+                    <button onclick="closeMailDetailModal()" style="background: none; border: none; color: #888; font-size: 24px; cursor: pointer;">&times;</button>
+                </div>
+                <div style="color: #888; font-size: 12px; margin-bottom: 15px;">
+                    差出人: ${mail.sender_display} → 受取人: ${mail.recipient_display}<br>
+                    日時: ${dateStr}
+                </div>
+                <div style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 15px; white-space: pre-wrap; color: #f5deb3; line-height: 1.6;">
+                    ${escapeHtml(mail.body)}
+                </div>
+                ${compensationHtml}
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeMailDetailModal() {
+    const modal = document.getElementById('mailDetailModal');
+    if (modal) modal.remove();
+}
+
+// escapeHtml is already defined above (line 4373)
+
+// 補填を受け取る
+async function claimCompensation(mailId) {
+    if (!confirm('補填を受け取りますか？')) return;
+    
+    try {
+        const res = await fetch('civilization_mail_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'claim_compensation', mail_id: mailId})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            showNotification(data.message);
+            closeMailDetailModal();
+            loadMails(mailCurrentPage);
+            loadData(); // 資源を更新
+        } else {
+            showNotification(data.error || '補填の受け取りに失敗しました', true);
+        }
+    } catch (e) {
+        console.error(e);
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// メールバッジを更新
+function updateMailBadge() {
+    const badge = document.getElementById('mail-badge');
+    if (badge) {
+        if (mailUnreadCount > 0) {
+            badge.textContent = mailUnreadCount > 99 ? '99+' : mailUnreadCount;
+            badge.style.display = 'inline-block';
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+}
+
+// 偵察レート制限を読み込む
+async function loadReconnaissanceStatus() {
+    try {
+        const res = await fetch('civilization_mail_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_reconnaissance_rate_limit'})
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            const warStatus = document.getElementById('war-recon-status');
+            const conquestStatus = document.getElementById('conquest-recon-status');
+            
+            if (warStatus) {
+                warStatus.textContent = `残り: ${data.war.remaining}/${data.war.limit}回`;
+            }
+            if (conquestStatus) {
+                conquestStatus.textContent = `残り: ${data.conquest.remaining}/${data.conquest.limit}回`;
+            }
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// 偵察を実行
+async function performReconnaissance(type, targetId, targetName, castleInfo = null) {
+    const confirmMessage = type === 'war' 
+        ? `${targetName}の防御部隊を偵察しますか？\n\n⚠️ 30%の確率で失敗します。`
+        : `${castleInfo?.name || '城'}(${castleInfo?.coords || ''})を偵察しますか？\n\n⚠️ 30%の確率で失敗します。`;
+    
+    if (!confirm(confirmMessage)) return;
+    
+    try {
+        const body = type === 'war' 
+            ? { action: 'reconnaissance_war', target_user_id: targetId }
+            : { action: 'reconnaissance_conquest', castle_id: targetId };
+        
+        const res = await fetch('civilization_mail_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        
+        if (data.ok) {
+            if (data.success) {
+                showNotification(`🔭 ${data.message}`);
+                // メールタブの未読数を更新
+                loadMailUnreadCount();
+            } else {
+                showNotification(`❌ ${data.message}`, true);
+            }
+            
+            // レート制限表示を更新
+            if (data.rate_limit) {
+                const statusId = type === 'war' ? 'war-recon-status' : 'conquest-recon-status';
+                const statusEl = document.getElementById(statusId);
+                if (statusEl) {
+                    statusEl.textContent = `残り: ${data.rate_limit.remaining}/${data.rate_limit.limit}回`;
+                }
+            }
+        } else {
+            showNotification(data.error || '偵察に失敗しました', true);
+        }
+    } catch (e) {
+        console.error(e);
+        showNotification('エラーが発生しました', true);
+    }
+}
+
+// メールフィルターのイベントリスナー
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('mail-filter-btn')) {
+        document.querySelectorAll('.mail-filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+            btn.style.background = 'rgba(0,0,0,0.3)';
+        });
+        e.target.classList.add('active');
+        e.target.style.background = 'rgba(100, 149, 237, 0.3)';
+        
+        loadMails(1, e.target.dataset.filter);
+    }
+});
+
+// タブ切り替え時にメールを読み込む
+const originalTabHandler = document.querySelector('.tab-btn[data-tab="mail"]');
+if (originalTabHandler) {
+    originalTabHandler.addEventListener('click', () => {
+        loadMails(1, mailCurrentFilter);
+        loadReconnaissanceStatus();
+    });
+}
+
+// 初期未読カウント取得
+async function loadMailUnreadCount() {
+    try {
+        const res = await fetch('civilization_mail_api.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'get_unread_count'})
+        });
+        const data = await res.json();
+        if (data.ok) {
+            mailUnreadCount = data.unread_count;
+            updateMailBadge();
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// 初期読み込み時に未読数を取得
+setTimeout(loadMailUnreadCount, 1000);
 
 // 初期読み込み
 loadData();
