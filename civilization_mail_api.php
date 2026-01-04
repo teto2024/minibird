@@ -126,22 +126,38 @@ function checkReconnaissanceRateLimit($pdo, $userId, $type) {
     $limit = ($type === 'war') ? RECONNAISSANCE_WAR_LIMIT_PER_HOUR : RECONNAISSANCE_CONQUEST_LIMIT_PER_HOUR;
     $oneHourAgo = date('Y-m-d H:i:s', strtotime('-1 hour'));
     
+    // 過去1時間以内の偵察回数と最も古い偵察時刻を取得
     $stmt = $pdo->prepare("
-        SELECT COUNT(*) as count
+        SELECT created_at
         FROM civilization_reconnaissance_logs
         WHERE user_id = ? AND reconnaissance_type = ? AND created_at >= ?
+        ORDER BY created_at ASC
     ");
     $stmt->execute([$userId, $type, $oneHourAgo]);
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $logs = $stmt->fetchAll(PDO::FETCH_COLUMN);
     
-    $currentCount = (int)$result['count'];
+    $currentCount = count($logs);
     $remaining = max(0, $limit - $currentCount);
+    $isLimited = $remaining <= 0;
+    
+    $waitSeconds = 0;
+    $nextAvailable = null;
+    
+    // レート制限中の場合、次の偵察可能時刻を計算
+    if ($isLimited && !empty($logs)) {
+        $oldestLog = $logs[0];
+        $nextAvailable = date('Y-m-d H:i:s', strtotime($oldestLog . ' +1 hour'));
+        $waitSeconds = max(0, strtotime($nextAvailable) - time());
+    }
     
     return [
         'allowed' => $remaining > 0,
         'limit' => $limit,
         'used' => $currentCount,
-        'remaining' => $remaining
+        'remaining' => $remaining,
+        'is_limited' => $isLimited,
+        'wait_seconds' => $waitSeconds,
+        'next_available' => $nextAvailable
     ];
 }
 
@@ -167,6 +183,8 @@ if ($action === 'get_mails') {
         $whereClause = implode(' AND ', $conditions);
         
         // メール取得
+        // LIMIT/OFFSETは整数値を直接SQLに埋め込む（PDOのエミュレーションモードでの文字列変換問題を回避）
+        $limitClause = "LIMIT " . (int)$perPage . " OFFSET " . (int)$offset;
         $stmt = $pdo->prepare("
             SELECT 
                 m.*,
@@ -180,9 +198,9 @@ if ($action === 'get_mails') {
             LEFT JOIN users sender ON m.sender_user_id = sender.id
             WHERE {$whereClause}
             ORDER BY m.created_at DESC
-            LIMIT ? OFFSET ?
+            {$limitClause}
         ");
-        $allParams = array_merge([$me['id']], $params, [$perPage, $offset]);
+        $allParams = array_merge([$me['id']], $params);
         $stmt->execute($allParams);
         $mails = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
