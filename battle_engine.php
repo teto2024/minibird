@@ -892,6 +892,95 @@ function tryActivateSkill($unit, $target, $isAttacker) {
                 $newEffects[] = $effect;
                 $messages[] = "📣 鼓舞！味方全体の攻撃力を上昇させる！";
             }
+            // 放射能攻撃（継続ダメージ）
+            else if ($skill['skill_key'] === 'radiation_attack') {
+                $effect['effect_type'] = 'damage_over_time';
+                $newEffects[] = $effect;
+                $messages[] = "☢️ 放射能攻撃！敵に継続ダメージを与える！";
+            }
+            // サイバー攻撃（デバフ）
+            else if ($skill['skill_key'] === 'cyber_attack') {
+                $effect['effect_type'] = 'debuff';
+                $newEffects[] = $effect;
+                $messages[] = "💻 サイバー攻撃！敵のシステムを麻痺させる！";
+            }
+            // ドローン一斉攻撃（即時ダメージ）
+            else if ($skill['skill_key'] === 'drone_barrage') {
+                $barrageDamage = (int)floor($unit['attack'] * ($skill['effect_value'] / 100));
+                $effect['instant_damage'] = $barrageDamage;
+                $effect['effect_type'] = 'instant_damage';
+                $newEffects[] = $effect;
+                $messages[] = "🚁 ドローン一斉攻撃！{$barrageDamage}ダメージ！";
+            }
+            // バイラルプロパガンダ（デバフ）
+            else if ($skill['skill_key'] === 'viral_propaganda') {
+                $effect['effect_type'] = 'debuff';
+                $newEffects[] = $effect;
+                $messages[] = "📲 バイラルプロパガンダ！敵の士気を下げる！";
+            }
+            // 電子妨害（デバフ）
+            else if ($skill['skill_key'] === 'electronic_jamming') {
+                $effect['effect_type'] = 'debuff';
+                $newEffects[] = $effect;
+                $messages[] = "📡 電子妨害！敵のスキル発動率を下げる！";
+            }
+            // 量子トンネル効果（即時ダメージ、防御無視）
+            else if ($skill['skill_key'] === 'quantum_tunneling') {
+                $tunnelingDamage = (int)floor($unit['attack'] * ($skill['effect_value'] / 100));
+                $effect['instant_damage'] = $tunnelingDamage;
+                $effect['effect_type'] = 'instant_damage';
+                $effect['ignore_defense'] = true;
+                $newEffects[] = $effect;
+                $messages[] = "🌀 量子トンネル効果！防御を無視して{$tunnelingDamage}ダメージ！";
+            }
+            // 遺伝子強化（バフ）
+            else if ($skill['skill_key'] === 'gene_enhancement') {
+                $effect['effect_type'] = 'buff';
+                $newEffects[] = $effect;
+                $messages[] = "💪 遺伝子強化！能力を大幅強化！";
+            }
+            // 生体再生（回復）
+            else if ($skill['skill_key'] === 'bio_regeneration') {
+                $regenHeal = (int)floor($unit['max_health'] * ($skill['effect_value'] / 100));
+                $effect['instant_heal'] = $regenHeal;
+                $effect['effect_type'] = 'heal';
+                $newEffects[] = $effect;
+                $messages[] = "🧬 生体再生！{$regenHeal}回復！";
+            }
+            // 疫病散布（継続ダメージ + デバフ）
+            else if ($skill['skill_key'] === 'plague_release') {
+                $effect['effect_type'] = 'damage_over_time';
+                $newEffects[] = $effect;
+                $messages[] = "🦠 疫病散布！敵に継続ダメージと弱体化！";
+            }
+            // 反物質爆発（大ダメージ）
+            else if ($skill['skill_key'] === 'antimatter_explosion') {
+                $explosionDamage = (int)floor($unit['attack'] * ($skill['effect_value'] / 100));
+                $effect['instant_damage'] = $explosionDamage;
+                $effect['effect_type'] = 'instant_damage';
+                $newEffects[] = $effect;
+                $messages[] = "💥 反物質爆発！巨大なダメージ{$explosionDamage}！";
+            }
+            // ワープストライク（即時ダメージ）
+            else if ($skill['skill_key'] === 'warp_strike') {
+                $warpDamage = (int)floor($unit['attack'] * ($skill['effect_value'] / 100));
+                $effect['instant_damage'] = $warpDamage;
+                $effect['effect_type'] = 'instant_damage';
+                $newEffects[] = $effect;
+                $messages[] = "🛸 ワープストライク！瞬間移動で{$warpDamage}ダメージ！";
+            }
+            // スマート照準（クリティカル率上昇）
+            else if ($skill['skill_key'] === 'smart_targeting') {
+                $effect['effect_type'] = 'critical';
+                $newEffects[] = $effect;
+                $messages[] = "🎯 スマート照準！クリティカル率大幅上昇！";
+            }
+            // 自動修復（継続回復）
+            else if ($skill['skill_key'] === 'auto_repair') {
+                $effect['effect_type'] = 'hot'; // heal over time
+                $newEffects[] = $effect;
+                $messages[] = "🔧 自動修復！ダメージを自動で回復！";
+            }
             else {
                 $newEffects[] = $effect;
             }
@@ -954,21 +1043,37 @@ function processDamageOverTime($unit) {
     $updatedEffects = [];
     
     foreach ($unit['active_effects'] as $effect) {
-        if ($effect['effect_type'] === 'damage_over_time') {
-            // 平方根スケーリングを使用して継続ダメージを計算
-            $dotDamage = calculateDoTDamage($unit['max_health'], $effect['effect_value']);
-            $totalDamage += $dotDamage;
-            $messages[] = "{$effect['skill_icon']} {$effect['skill_name']}により{$dotDamage}ダメージ！";
+        // 全ての継続ダメージ系効果タイプを処理
+        // damage_over_time, dot, nuclear_dot を統一的に処理
+        if (in_array($effect['effect_type'], ['damage_over_time', 'dot', 'nuclear_dot'])) {
+            // スキルキーによる特別処理
+            $skillKey = $effect['skill_key'] ?? '';
+            
+            // 核汚染系は固定ダメージ（兵数に応じて上限あり）
+            if ($skillKey === 'nuclear_contamination' || $effect['effect_type'] === 'nuclear_dot') {
+                $baseDamage = $effect['effect_value'];
+                // 最大HPに応じてスケール（ただし上限500ダメージ）
+                $nuclearDamage = min(500, max($baseDamage, (int)floor(sqrt($unit['max_health']) * 2)));
+                $totalDamage += $nuclearDamage;
+                $messages[] = "{$effect['skill_icon']} {$effect['skill_name']}により{$nuclearDamage}の放射能ダメージ！";
+            } else {
+                // その他の継続ダメージは平方根スケーリングを使用
+                $dotDamage = calculateDoTDamage($unit['max_health'], $effect['effect_value']);
+                $totalDamage += $dotDamage;
+                $messages[] = "{$effect['skill_icon']} {$effect['skill_name']}により{$dotDamage}ダメージ！";
+            }
         }
-        
-        // 核汚染スキル（固定ダメージ、兵数に応じて上限あり）
-        if ($effect['effect_type'] === 'nuclear_dot') {
-            // 固定ダメージ（50）だが、兵数が多くても上限を設ける
-            $baseDamage = $effect['effect_value'];
-            // 最大HPに応じてスケール（ただし上限500ダメージ）
-            $nuclearDamage = min(500, max($baseDamage, (int)floor(sqrt($unit['max_health']) * 2)));
-            $totalDamage += $nuclearDamage;
-            $messages[] = "{$effect['skill_icon']} {$effect['skill_name']}により{$nuclearDamage}の放射能ダメージ！";
+        // 継続回復処理 (hot = heal over time)
+        else if ($effect['effect_type'] === 'hot') {
+            $hotHeal = (int)floor($unit['max_health'] * ($effect['effect_value'] / 100));
+            // 回復量のキャップを適用
+            $maxHeal = max(
+                HERO_SKILL_MIN_HEAL_CAP,
+                (int)floor($unit['max_health'] * HERO_SKILL_HEAL_RATIO_CAP)
+            );
+            $hotHeal = min($hotHeal, $maxHeal);
+            $unit['current_health'] = min($unit['max_health'], $unit['current_health'] + $hotHeal);
+            $messages[] = "{$effect['skill_icon']} {$effect['skill_name']}により{$hotHeal}回復！";
         }
         
         // 効果ターン減少
@@ -1056,6 +1161,12 @@ function executeTurnBattle($attacker, $defender, $maxTurns = null) {
                     $defender['current_health'] -= $instantDamage;
                     $defender['current_health'] = max(0, $defender['current_health']);
                     $turnMessages[] = "防御側HP: {$defender['current_health']}/{$defender['max_health']}";
+                }
+                // 即時回復効果（生体再生など）
+                else if (isset($effect['effect_type']) && $effect['effect_type'] === 'heal') {
+                    $instantHeal = $effect['instant_heal'] ?? 0;
+                    $attacker['current_health'] = min($attacker['max_health'], $attacker['current_health'] + $instantHeal);
+                    $turnMessages[] = "攻撃側HP: {$attacker['current_health']}/{$attacker['max_health']}";
                 }
                 // 吸収効果（寝返りなど）
                 else if (isset($effect['effect_type']) && $effect['effect_type'] === 'drain') {
@@ -1256,6 +1367,12 @@ function executeTurnBattle($attacker, $defender, $maxTurns = null) {
                     $attacker['current_health'] -= $instantDamage;
                     $attacker['current_health'] = max(0, $attacker['current_health']);
                     $turnMessages[] = "攻撃側HP: {$attacker['current_health']}/{$attacker['max_health']}";
+                }
+                // 即時回復効果（生体再生など）
+                else if (isset($effect['effect_type']) && $effect['effect_type'] === 'heal') {
+                    $instantHeal = $effect['instant_heal'] ?? 0;
+                    $defender['current_health'] = min($defender['max_health'], $defender['current_health'] + $instantHeal);
+                    $turnMessages[] = "防御側HP: {$defender['current_health']}/{$defender['max_health']}";
                 }
                 // 吸収効果（寝返りなど）
                 else if (isset($effect['effect_type']) && $effect['effect_type'] === 'drain') {
