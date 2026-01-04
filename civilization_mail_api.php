@@ -170,6 +170,10 @@ if ($action === 'get_mails') {
     $mailType = $input['mail_type'] ?? null; // null: 全て, info, war, conquest, reconnaissance
     $offset = ($page - 1) * $perPage;
     
+    // 整数型にキャスト済みのため、SQLインジェクションの危険性なし
+    $limitVal = (int)$perPage;
+    $offsetVal = (int)$offset;
+    
     try {
         // 条件構築
         $conditions = ["(m.recipient_user_id = ? OR m.recipient_user_id IS NULL)"];
@@ -183,9 +187,8 @@ if ($action === 'get_mails') {
         $whereClause = implode(' AND ', $conditions);
         
         // メール取得
-        // LIMIT/OFFSETは整数値を直接SQLに埋め込む（PDOのエミュレーションモードでの文字列変換問題を回避）
-        $limitClause = "LIMIT " . (int)$perPage . " OFFSET " . (int)$offset;
-        $stmt = $pdo->prepare("
+        // LIMIT/OFFSETは整数値を直接SQLに埋め込む（整数キャスト済みのため安全）
+        $sql = "
             SELECT 
                 m.*,
                 COALESCE(mrs.is_read, FALSE) as is_read,
@@ -198,8 +201,9 @@ if ($action === 'get_mails') {
             LEFT JOIN users sender ON m.sender_user_id = sender.id
             WHERE {$whereClause}
             ORDER BY m.created_at DESC
-            {$limitClause}
-        ");
+            LIMIT {$limitVal} OFFSET {$offsetVal}
+        ";
+        $stmt = $pdo->prepare($sql);
         $allParams = array_merge([$me['id']], $params);
         $stmt->execute($allParams);
         $mails = $stmt->fetchAll(PDO::FETCH_ASSOC);
