@@ -1046,11 +1046,13 @@ function processDamageOverTime($unit) {
     foreach ($unit['active_effects'] as $effect) {
         // 全ての継続ダメージ系効果タイプを処理
         // damage_over_time, dot, nuclear_dot を統一的に処理
+        // 'dot' は damage_over_time の短縮形として使用される
         if (in_array($effect['effect_type'], ['damage_over_time', 'dot', 'nuclear_dot'])) {
             // スキルキーによる特別処理
             $skillKey = $effect['skill_key'] ?? '';
             
             // 核汚染系は固定ダメージ（兵数に応じて上限あり）
+            // skill_keyまたはeffect_typeで判定
             if ($skillKey === 'nuclear_contamination' || $effect['effect_type'] === 'nuclear_dot') {
                 $baseDamage = $effect['effect_value'];
                 // 最大HPに応じてスケール（ただし上限500ダメージ）
