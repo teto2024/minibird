@@ -2101,12 +2101,12 @@ function renderApp() {
                 <h3 style="color: #87ceeb; margin-bottom: 20px;">📬 メールボックス</h3>
                 
                 <!-- メールフィルター -->
-                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
-                    <button class="mail-filter-btn active" data-filter="all" style="padding: 8px 16px; border: 1px solid #6495ed; background: rgba(100, 149, 237, 0.3); color: #87ceeb; border-radius: 8px; cursor: pointer;">📋 すべて</button>
-                    <button class="mail-filter-btn" data-filter="info" style="padding: 8px 16px; border: 1px solid #6495ed; background: rgba(0,0,0,0.3); color: #87ceeb; border-radius: 8px; cursor: pointer;">📢 情報</button>
-                    <button class="mail-filter-btn" data-filter="war" style="padding: 8px 16px; border: 1px solid #6495ed; background: rgba(0,0,0,0.3); color: #87ceeb; border-radius: 8px; cursor: pointer;">⚔️ 戦争</button>
-                    <button class="mail-filter-btn" data-filter="conquest" style="padding: 8px 16px; border: 1px solid #6495ed; background: rgba(0,0,0,0.3); color: #87ceeb; border-radius: 8px; cursor: pointer;">🏰 占領戦</button>
-                    <button class="mail-filter-btn" data-filter="reconnaissance" style="padding: 8px 16px; border: 1px solid #6495ed; background: rgba(0,0,0,0.3); color: #87ceeb; border-radius: 8px; cursor: pointer;">🔭 偵察</button>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;" id="mail-filter-container">
+                    <button class="mail-filter-btn ${mailCurrentFilter === 'all' ? 'active' : ''}" data-filter="all" style="padding: 8px 16px; border: 1px solid #6495ed; background: ${mailCurrentFilter === 'all' ? 'rgba(100, 149, 237, 0.3)' : 'rgba(0,0,0,0.3)'}; color: #87ceeb; border-radius: 8px; cursor: pointer;">📋 すべて</button>
+                    <button class="mail-filter-btn ${mailCurrentFilter === 'info' ? 'active' : ''}" data-filter="info" style="padding: 8px 16px; border: 1px solid #6495ed; background: ${mailCurrentFilter === 'info' ? 'rgba(100, 149, 237, 0.3)' : 'rgba(0,0,0,0.3)'}; color: #87ceeb; border-radius: 8px; cursor: pointer;">📢 情報</button>
+                    <button class="mail-filter-btn ${mailCurrentFilter === 'war' ? 'active' : ''}" data-filter="war" style="padding: 8px 16px; border: 1px solid #6495ed; background: ${mailCurrentFilter === 'war' ? 'rgba(100, 149, 237, 0.3)' : 'rgba(0,0,0,0.3)'}; color: #87ceeb; border-radius: 8px; cursor: pointer;">⚔️ 戦争</button>
+                    <button class="mail-filter-btn ${mailCurrentFilter === 'conquest' ? 'active' : ''}" data-filter="conquest" style="padding: 8px 16px; border: 1px solid #6495ed; background: ${mailCurrentFilter === 'conquest' ? 'rgba(100, 149, 237, 0.3)' : 'rgba(0,0,0,0.3)'}; color: #87ceeb; border-radius: 8px; cursor: pointer;">🏰 占領戦</button>
+                    <button class="mail-filter-btn ${mailCurrentFilter === 'reconnaissance' ? 'active' : ''}" data-filter="reconnaissance" style="padding: 8px 16px; border: 1px solid #6495ed; background: ${mailCurrentFilter === 'reconnaissance' ? 'rgba(100, 149, 237, 0.3)' : 'rgba(0,0,0,0.3)'}; color: #87ceeb; border-radius: 8px; cursor: pointer;">🔭 偵察</button>
                 </div>
                 
                 <!-- メールリスト -->
@@ -2594,6 +2594,11 @@ function renderApp() {
             if (btn.dataset.tab === 'events') {
                 loadEventContent(currentEventType);
             }
+            // メールタブの場合、メールと偵察ステータスを読み込む
+            if (btn.dataset.tab === 'mail') {
+                loadMails(mailCurrentPage, mailCurrentFilter);
+                loadReconnaissanceStatus();
+            }
         });
     });
     
@@ -2635,6 +2640,11 @@ function renderApp() {
     // イベントタブがアクティブな場合、イベントを読み込む
     if (currentTab === 'events') {
         loadEventContent(currentEventType);
+    }
+    // メールタブがアクティブな場合、メールと偵察ステータスを読み込む
+    if (currentTab === 'mail') {
+        loadMails(mailCurrentPage, null);  // nullを渡してフィルターを変更しない
+        loadReconnaissanceStatus();
     }
     
     // 初回アクセス時にチュートリアルモーダルを表示
@@ -4754,6 +4764,11 @@ function startUpdateTimer() {
         // カウントダウンを更新するため、全体を再描画
         if (civData) {
             renderApp();
+            
+            // メールタブがアクティブな場合、偵察レート制限表示を更新
+            if (currentTab === 'mail') {
+                loadReconnaissanceStatus();
+            }
         }
     }, 10000); // 10秒ごと
 }
@@ -7324,6 +7339,9 @@ async function loadMailUnreadCount() {
 
 // 初期読み込み時に未読数を取得
 setTimeout(loadMailUnreadCount, 1000);
+
+// 初期読み込み時に偵察レート制限を取得
+setTimeout(loadReconnaissanceStatus, 1500);
 
 // 初期読み込み
 loadData();
